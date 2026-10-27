@@ -33,3 +33,15 @@ def test_unreadable_records_say_cannot_check_and_voice_passes_the_preopen_gate()
     assert "if(!bp||!gb){" in b and "貼り忘れの確認ができません（" in b
     assert "const prevLive=window.cockpitLiveSpeechEnabled;if(prevLive===false)window.cockpitLiveSpeechEnabled=true;" in b
     assert "finally{if(prevLive===false)window.cockpitLiveSpeechEnabled=false;}" in b
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

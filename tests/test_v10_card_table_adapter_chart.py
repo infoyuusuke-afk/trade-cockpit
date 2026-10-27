@@ -34,3 +34,15 @@ def test_kioxia_chart_hides_the_1970_crosshair_date():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     body = html.split("function ensureKioChart(){", 1)[1].split("kioForecastSeries=", 1)[0]
     assert "crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{labelVisible:false}}" in body
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

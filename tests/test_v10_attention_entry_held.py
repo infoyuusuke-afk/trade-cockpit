@@ -31,3 +31,15 @@ def test_held_block_lists_only_open_positions_and_carry_overs():
     body = _body()
     assert "rp.filter(p=>p&&p.status===\"OPEN\")" in body
     assert "持ち越し（仮想）" in body
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

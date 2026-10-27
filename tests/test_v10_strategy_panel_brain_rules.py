@@ -29,3 +29,15 @@ def test_rule_cards_show_counts_ev_pf_and_halves():
         assert k in body
     assert 'n>=20?"記録N="+n:"N不足（"+n+"回）"' in body
     assert '"SHADOW｜ルールの相対強弱","N≥20"' in body and "ranked.length>=2" in body
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

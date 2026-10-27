@@ -25,3 +25,15 @@ def test_control_tab_shows_the_review_and_the_owner_statement():
 
 def test_no_real_account_numbers_in_the_repo():
     assert not list(ROOT.rglob("owner_review_v1.json"))
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

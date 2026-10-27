@@ -23,3 +23,15 @@ def test_card_click_selects_and_syncs_the_list():
     assert "selectedCard=selectedCard===t?null:t;" in body
     assert "select.value=t;" in body
     assert 'document.getElementById("focus-owner-remove").addEventListener("click"' in body   # list way stays
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

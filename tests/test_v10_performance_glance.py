@@ -84,3 +84,15 @@ def test_bars_line_up_with_fixed_value_columns():
     assert ".g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 190px}.g-row.g-row5>b{text-align:right}" in html
     assert "minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;" in html
     assert "minmax(110px,auto)" not in html and "minmax(120px,auto)}" not in html
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

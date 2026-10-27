@@ -23,3 +23,15 @@ def test_voice_once_a_day_and_unreadable_is_not_none():
     assert "if(st.day!==now.day&&typeof window.cockpitSpeak===\"function\")" in b
     assert "15時25分。持ち越しは" in b
     assert "15:25 持ち越しの判断を確認できません" in b
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

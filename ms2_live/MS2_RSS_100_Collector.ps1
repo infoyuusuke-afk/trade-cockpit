@@ -3943,7 +3943,7 @@ try {
             foreach($ir in @($irPtsTop5|Select-Object -First 3)){
                 $irVoiceKey=[string]$ir.code+'|'+[string]$ir.disclosure_time+'|'+[string]$ir.title
                 if(-not $lastIrVoiceCodes.ContainsKey($irVoiceKey)){
-                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。TDnet原文と翌朝の気配を確認してください。")
+                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。")
                     $lastIrVoiceCodes[$irVoiceKey]=$now
                 }
             }

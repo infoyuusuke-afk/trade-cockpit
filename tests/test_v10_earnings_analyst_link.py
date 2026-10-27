@@ -28,3 +28,15 @@ def test_earnings_lines_show_gpt_and_grok_side_by_side():
     assert 'who:"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role)' in block
     assert 'who:"Grok"' in block
     assert 'div.className="ec-ai"' in block
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

@@ -25,3 +25,15 @@ def test_cards_show_unrealized_pl_from_entry_or_reference_price():
 def test_pl_colours():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     assert ".cc-pl.pl-plus b{color:#35e2ae}" in html and ".cc-pl.pl-minus b{color:#ff5a5f}" in html
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))

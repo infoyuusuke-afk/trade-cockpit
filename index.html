@@ -39,7 +39,7 @@
  <button class="cockpit-tab active" data-tab="scalp">トレード中</button>
  <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
- <button class="cockpit-tab" data-tab="pre-next">PRE-NEXT</button>
+ <button class="cockpit-tab" data-tab="pre-next">テーマ先回り</button>
  <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
  <button class="cockpit-tab" data-tab="value">VALUE 5</button>
@@ -291,7 +291,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros.control=["取引・建玉・成績","実発注ロック、建玉の接続状態、各タブの成績を一括確認。"];
  intros.brain=["AI BRAIN","V10の観測証拠、Controller、RSS、Shadow、実発注ロックを一画面で確認。"];
  intros["ai-journal"]=["AIトレード日記","判断と結果の照合、週間振返り、見逃し・改善仮説を追跡。実績の未認証値は非表示。"];
- intros["pre-next"]=["PRE-NEXT｜先行兆候の研究","上昇前の情報・発見時刻を検証。研究段階のテーマはREALTIMEの売買候補へ自動昇格しません。"];
+ intros["pre-next"]=["テーマ先回り｜今のテーマと関連銘柄","今動いているテーマの関連銘柄を、期待値（コクピットの記録）と勢いの順に並べます。研究段階で、売買の合図ではありません。"];
  intros["focus-owner"]=["FOCUS｜OWNER固定監視","OWNERが選択した銘柄を維持。MS2認証失敗時は価格・シグナルを表示しません。"];
  intros.correlation=["相関・米国の前日→寄りの窓","米国の前日の動きと東京の寄りの窓の関係だけを、2年分で確かめた結果。寄った後の方向には使わない。"];
  intros.events=["注意","重要イベント・市場警報・売買禁止条件を確認。"];
@@ -1069,7 +1069,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 #kioxia-5m-calendar .rotation-box>strong{color:#E8EAED}
 /* OWNER 2026-10-27 含み損益（保有中の仮想カード）: 緑＝含み益、赤＝含み損、灰＝現在値なし */
 .cc-pl{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:6px 0 8px;padding:8px 10px;border-radius:8px;border:1px solid #22252A;background:#0E1013}.cc-pl b{font-size:18px;font-weight:800}.cc-pl small{font-size:11px;color:#9AA0AA}.cc-pl.pl-plus{background:#0d2b23;border-color:#164536}.cc-pl.pl-plus b{color:#35e2ae}.cc-pl.pl-minus{background:#341418;border-color:#4a1f24}.cc-pl.pl-minus b{color:#ff5a5f}.cc-pl.pl-flat b,.cc-pl.pl-none b{color:#9AA0AA;font-size:14px}
-/* OWNER 2026-10-27 CONTROLの古い箱は『詳しい状態』を開いた時だけ */.tab-pane[data-pane="control"]>.pane-intro{order:0}#owner-real-order-line{order:1}.tab-pane[data-pane="control"]>.g-panel{order:2}.tab-pane[data-pane="control"]>.g-review-panel{order:2}.g-verdict{margin:4px 0 10px;padding:10px 14px;border:1px solid #4a1f24;border-radius:10px;background:#1c0d10;color:#ffd6d8;font-size:13px;line-height:1.7}.g-verdict b{color:#ff8a8f}.g-verdict ol{margin:6px 0 0;padding-left:20px}.g-decided{margin:4px 0;padding-left:20px;font-size:13px;color:#E8EAED}.g-brain-panel{order:3}#owner-detail-status{order:4}.tab-pane[data-pane="control"]>.cc-tab-owner-summary{order:5}.tab-pane[data-pane="control"]>.g-old{order:6}.tab-pane[data-pane="control"]>.cc-strategy-owner-panel{order:7}.tab-pane[data-pane="control"]:not(.g-detail-open)>.cc-tab-owner-summary,.tab-pane[data-pane="control"]:not(.g-detail-open)>.g-old{display:none!important}#owner-real-order-line,#owner-detail-status{grid-column:1/-1}.g-order-line{margin:0;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700}.g-order-off{background:#0d2b23;border:1px solid #164536;color:#35e2ae}.g-order-warn{background:#341418;border:1px solid #4a1f24;color:#ff8a8f}.g-detail{padding:8px 14px;border:1px solid #303033;border-radius:12px;background:#111113}.g-detail summary{cursor:pointer;font-weight:700;color:#9AA0AA}/* OWNER 2026-10-27 成績 */.g-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:4px 0 10px}.g-tile{background:#0E1013;border:1px solid #22252A;border-radius:10px;padding:10px 12px}.g-tile span{display:block;font-size:12px;color:#9AA0AA}.g-tile b{display:block;font-size:26px;font-weight:800;margin:4px 0;color:#E8EAED}.g-tile small{font-size:11px;color:#9AA0AA}.g-tile.g-plus{background:#0d2b23;border-color:#164536}.g-tile.g-plus b{color:#35e2ae}.g-tile.g-minus{background:#341418;border-color:#4a1f24}.g-tile.g-minus b{color:#ff5a5f}.g-h{font-size:14px;margin:12px 0 4px;color:#E8EAED}.g-rows{display:flex;flex-direction:column;gap:3px}.g-row{display:grid;grid-template-columns:minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;align-items:center;gap:8px;padding:5px 8px;background:#0E1013;border:1px solid #22252A;border-radius:8px;font-size:12px;color:#E8EAED}.g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 190px}.g-row.g-row5>b{text-align:right}.g-row>b,.g-row>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.g-kind{font-size:11px;color:#9AA0AA}.g-n{color:#9AA0AA;font-size:11px}.g-today{color:#9AA0AA;font-size:11px}.g-bar{display:block;height:8px;background:#22252A;border-radius:4px;overflow:hidden}.g-bar b{display:block;height:100%}.g-up{background:#35e2ae}.g-dn{background:#ff5a5f}.g-row b.g-plus{color:#35e2ae}.g-row b.g-minus{color:#ff5a5f}.g-row b.g-flat,.g-row b.g-none{color:#9AA0AA}.g-empty,.g-note{font-size:12px;color:#9AA0AA}
+/* OWNER 2026-10-27 「このページいろちがう」: REALTIME 5・テーマ先回りの注意書きの箱とレーダーを他のタブと同じ色に */.tab-pane[data-pane="ms2-live"] .warning,.tab-pane[data-pane="pre-next"] .warning{background:#0E1013;border:1px solid #22252A;color:#9AA0AA}#next-theme-radar{background:#111113!important;border-color:#303033!important}#next-theme-radar h2{color:#F5F5F7!important}.tw-head{margin:0 0 10px;color:#9AA0AA;font-size:13px}.tw-head b{color:#E8EAED;font-size:15px}.tw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.tw-card{background:#0E1013;border:1px solid #22252A;border-radius:10px;padding:10px 12px;color:#E8EAED;font-size:13px}.tw-card .tw-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.tw-card .tw-name{font-size:16px;font-weight:700}.tw-card .tw-role{display:block;color:#9AA0AA;font-size:12px;margin:2px 0 6px}.tw-card .tw-px{font-size:15px;font-weight:700}.tw-card .tw-row{display:flex;flex-wrap:wrap;gap:4px 12px;color:#9AA0AA;font-size:12px}.tw-card .tw-row b{color:#E8EAED;font-weight:600}.tw-up{color:#35e2ae!important}.tw-dn{color:#ff5a5f!important}.tw-card .tw-ev{margin-top:6px;padding:4px 8px;border-radius:6px;background:#090A0C;border:1px solid #22252A;font-size:12px;color:#9AA0AA}.tw-card .tw-ev b{color:#35e2ae}/* OWNER 2026-10-27 CONTROLの古い箱は『詳しい状態』を開いた時だけ */.tab-pane[data-pane="control"]>.pane-intro{order:0}#owner-real-order-line{order:1}.tab-pane[data-pane="control"]>.g-panel{order:2}.tab-pane[data-pane="control"]>.g-review-panel{order:2}.g-verdict{margin:4px 0 10px;padding:10px 14px;border:1px solid #4a1f24;border-radius:10px;background:#1c0d10;color:#ffd6d8;font-size:13px;line-height:1.7}.g-verdict b{color:#ff8a8f}.g-verdict ol{margin:6px 0 0;padding-left:20px}.g-decided{margin:4px 0;padding-left:20px;font-size:13px;color:#E8EAED}.g-brain-panel{order:3}#owner-detail-status{order:4}.tab-pane[data-pane="control"]>.cc-tab-owner-summary{order:5}.tab-pane[data-pane="control"]>.g-old{order:6}.tab-pane[data-pane="control"]>.cc-strategy-owner-panel{order:7}.tab-pane[data-pane="control"]:not(.g-detail-open)>.cc-tab-owner-summary,.tab-pane[data-pane="control"]:not(.g-detail-open)>.g-old{display:none!important}#owner-real-order-line,#owner-detail-status{grid-column:1/-1}.g-order-line{margin:0;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700}.g-order-off{background:#0d2b23;border:1px solid #164536;color:#35e2ae}.g-order-warn{background:#341418;border:1px solid #4a1f24;color:#ff8a8f}.g-detail{padding:8px 14px;border:1px solid #303033;border-radius:12px;background:#111113}.g-detail summary{cursor:pointer;font-weight:700;color:#9AA0AA}/* OWNER 2026-10-27 成績 */.g-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:4px 0 10px}.g-tile{background:#0E1013;border:1px solid #22252A;border-radius:10px;padding:10px 12px}.g-tile span{display:block;font-size:12px;color:#9AA0AA}.g-tile b{display:block;font-size:26px;font-weight:800;margin:4px 0;color:#E8EAED}.g-tile small{font-size:11px;color:#9AA0AA}.g-tile.g-plus{background:#0d2b23;border-color:#164536}.g-tile.g-plus b{color:#35e2ae}.g-tile.g-minus{background:#341418;border-color:#4a1f24}.g-tile.g-minus b{color:#ff5a5f}.g-h{font-size:14px;margin:12px 0 4px;color:#E8EAED}.g-rows{display:flex;flex-direction:column;gap:3px}.g-row{display:grid;grid-template-columns:minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;align-items:center;gap:8px;padding:5px 8px;background:#0E1013;border:1px solid #22252A;border-radius:8px;font-size:12px;color:#E8EAED}.g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 190px}.g-row.g-row5>b{text-align:right}.g-row>b,.g-row>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.g-kind{font-size:11px;color:#9AA0AA}.g-n{color:#9AA0AA;font-size:11px}.g-today{color:#9AA0AA;font-size:11px}.g-bar{display:block;height:8px;background:#22252A;border-radius:4px;overflow:hidden}.g-bar b{display:block;height:100%}.g-up{background:#35e2ae}.g-dn{background:#ff5a5f}.g-row b.g-plus{color:#35e2ae}.g-row b.g-minus{color:#ff5a5f}.g-row b.g-flat,.g-row b.g-none{color:#9AA0AA}.g-empty,.g-note{font-size:12px;color:#9AA0AA}
 </style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
@@ -2536,7 +2536,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 <style>.ai-top5 .ai5-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}.ai-top5 .ai5-mode{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid #303033;color:#9AA0AA}.ai-top5 .ai5-mode.auto{border-color:#164536;color:#35e2ae}.ai-top5 .ai5-mode.manual{border-color:#5a431c;color:#f5c542}
 .ai-top5 select,.ai-top5 button{height:32px;padding:0 12px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700}
-.ai-top5 .ai5-method{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#35e2ae}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
+.ai-top5 .ai5-method{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#E8EAED;font-weight:600}.ai-top5 .ai5-method .ai5-num{margin-left:10px;color:#35e2ae;font-weight:600}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
 .ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}.ai-top5 .ai5-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}</style>
 <script>
 // OWNER 2026-10-27 「SCL5いらない、ここをAIアナリストの注目期待値高い順TOP５をデフォルトとして、俺が任意でいれかえる形、
@@ -2589,7 +2589,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       const good=Object.entries(f).filter(([k,v])=>Number(v.n)>=20&&Number(v.ev_pct)>0&&Number(v.pf)>=1).sort((a,b)=>Number(b[1].ev_pct)-Number(a[1].ev_pct));
       // OWNER 2026-10-27 「一番上に今日の手法を1行出して」: the best one only, on one line (the rule behind it in the tooltip)
       m.title='ブレインの仮想売買の記録（'+(rs&&rs.forward_from||'')+'〜、費用込み）で20回以上・期待値プラス・PF1以上の手法のうち、期待値が一番高いもの。売買の判断はOWNER。';
-      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b>　1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
+      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class="ai5-num">1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）</span>':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
     paint();
   }
   function paint(){
@@ -2765,6 +2765,34 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   check();
   setInterval(check,15000);
+})();
+</script>
+<script>
+// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ、しっかり機能させろ、セキュリティ関連銘柄だして期待値銘柄のカード
+// タブの名称から再考」: /theme_watch.json (RuntimeDir\theme_watch_v1.json, made on this PC from Yahoo daily bars and the cockpit's
+// own recorded expected value) shown as cards at the top of テーマ先回り: a stock with a positive recorded EV first, then by
+// theme momentum. Display only; momentum is not an expected value.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pct=(v,d=1)=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(d)+"%";
+  const cls=v=>Number(v)>0?"tw-up":Number(v)<0?"tw-dn":"";
+  let sec=null;
+  async function render(){
+    const pane=document.querySelector('.tab-pane[data-pane="pre-next"]');if(!pane)return;
+    if(!sec){sec=document.createElement("section");sec.className="card wide";sec.id="theme-watch";
+      const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);}
+    let v=null;try{const r=await fetch("/theme_watch.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){}
+    if(!v||v.real_submit_allowed!==false||!Array.isArray(v.cards)){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマのデータを読めません（V10停止中、またはまだ作っていません）。</p>';return;}
+    sec.innerHTML='<h2>今のテーマ：'+esc(v.theme)+'</h2>'+
+      '<p class="tw-head"><b>'+esc(v.count)+'銘柄中 '+esc(v.breadth_up)+'銘柄が上げ</b>・前日比の平均 '+pct(v.avg_chg1d)+'・5日の平均 '+pct(v.avg_ret5)+'（'+esc(String(v.generated_at||"").slice(5,16).replace("T"," "))+' 更新）<br>'+esc(v.why)+'</p>'+
+      '<div class="tw-grid">'+v.cards.map(c=>'<article class="tw-card"><div class="tw-top"><span class="tw-name">'+esc(c.name)+'('+esc(c.code)+')</span><span class="tw-px '+cls(c.chg1d)+'">'+esc(Number(c.close).toLocaleString("ja-JP"))+'円 '+pct(c.chg1d,2)+'</span></div>'+
+        '<span class="tw-role">'+esc(c.role)+'・'+esc(c.day)+'の終値</span>'+
+        '<div class="tw-row"><span>5日 <b class="'+cls(c.ret5)+'">'+pct(c.ret5)+'</b></span><span>20日 <b class="'+cls(c.ret20)+'">'+pct(c.ret20)+'</b></span><span>日経比20日 <b class="'+cls(c.rel20)+'">'+pct(c.rel20)+'</b></span></div>'+
+        '<div class="tw-row"><span>出来高 <b>'+esc(c.vol_ratio??"—")+'倍</b>（5日÷前60日）</span><span>25日線から <b class="'+cls(c.from_ma25)+'">'+pct(c.from_ma25)+'</b></span><span>半年高値から <b>'+pct(c.from_high)+'</b></span></div>'+
+        '<div class="tw-ev">'+(c.ev?'期待値（コクピットの記録・'+esc(c.ev.n)+'回）：<b class="'+cls(c.ev.ev_pct)+'">'+pct(c.ev.ev_pct,3)+'</b>':'期待値：コクピットの記録なし（監視100銘柄の外）→ 勢いの順')+'</div></article>').join("")+'</div>'+
+      '<p class="g-note">勢い＝5日の上げ＋日経比20日の半分＋出来高の増え。期待値ではありません。値はYahooの日足（公開データ）。研究段階で、売買の合図ではありません。</p>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,600000);});
 })();
 </script>
 </body></html>

@@ -732,6 +732,30 @@ function Get-RuleShadowView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ…セキュリティ関連銘柄だして期待値銘柄のカード」: RuntimeDir\theme_watch_v1.json is
+# written on this PC (Claudeブレイン\研究スクリプト\theme_watch.py, Yahoo daily bars) and served as-is when its flags are safe.
+function Get-ThemeWatchView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'theme_watch_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'THEME_WATCH_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'THEME_WATCH_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-theme-watch-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'THEME_WATCH_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'THEME_WATCH_UNREADABLE')
+    }
+}
+
 # OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて」: RuntimeDir\owner_review_v1.json is written on
 # this PC from the OWNER's own 実現損益 CSV (never part of the repo). Served as-is when its flags are safe.
 function Get-OwnerReviewView([string]$RuntimeDir) {
@@ -2807,6 +2831,11 @@ try {
             if ($path -eq '/rule_shadow.json') {
                 $ruleView = Get-RuleShadowView $RuntimeDir
                 Send-Response $stream $ruleView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ruleView.body))
+                continue
+            }
+            if ($path -eq '/theme_watch.json') {
+                $themeView = Get-ThemeWatchView $RuntimeDir
+                Send-Response $stream $themeView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$themeView.body))
                 continue
             }
             if ($path -eq '/owner_review.json') {

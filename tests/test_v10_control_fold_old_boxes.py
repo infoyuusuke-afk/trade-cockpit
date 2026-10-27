@@ -28,3 +28,15 @@ def test_old_boxes_hidden_until_detail_opened():
     assert 'section.className="card wide g-old";' in js and 'section.className="card wide cc-strategy-owner-panel g-old";' in js
     assert ('.tab-pane[data-pane="control"]:not(.g-detail-open)>.cc-tab-owner-summary,'
             '.tab-pane[data-pane="control"]:not(.g-detail-open)>.g-old{display:none!important}') in html
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))
