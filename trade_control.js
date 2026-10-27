@@ -582,13 +582,21 @@
     const [bp,acct,an,gb]=await Promise.all([gJson("/brain_pick.json"),gJson("/real_positions.json"),gJson("analyst_scores.json"),gJson("grok_bots.json")]);
     const rs=glanceRuleShadow,pos=bp?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
     // real account (estimates from the read-only lists, no costs; the same arithmetic as the 実口座 cards)
-    let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null;const realHeld=[];
+    let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null,realUncalc=0;const realHeld=[],realSide={long:{yen:0,n:0},short:{yen:0,n:0}};
     if(acct){
-      const execs=Array.isArray(acct.executions_today)?acct.executions_today:[],byCode={};
-      execs.forEach(e=>{(byCode[e.code]=byCode[e.code]||{open:[],close:[]})[/埋|売付/.test(String(e.side))?"close":"open"].push(e);});
+      // OWNER 2026-10-27 「買い→売埋と空売り→買埋を分けて計算して、前日以前の建玉の決済は『未計算○件』と出して」:
+      // long = 買建/買付 opened and 売埋/売付 closed today; short = 売建 opened and 買埋 closed today, per stock.
+      // Only today's opened quantity is matched; a close beyond it (a position opened on an earlier day, whose
+      // entry price is not in today's list) is counted as 未計算 and never guessed.
+      const execs=Array.isArray(acct.executions_today)?acct.executions_today:[],groups={};
+      const dirOf=s=>/^(買建|買付)$/.test(s)?["long","open"]:/^(売埋|売付)$/.test(s)?["long","close"]:/^売建$/.test(s)?["short","open"]:/^買埋$/.test(s)?["short","close"]:null;
+      execs.forEach(e=>{const d=dirOf(String(e.side||"").trim());if(!d)return;const g=groups[e.code+"|"+d[0]]=groups[e.code+"|"+d[0]]||{dir:d[0],open:[],close:[]};g[d[1]].push(e);});
       const avg=a=>{const q=a.reduce((x,e)=>x+(knownNumber(e.qty)||0),0);return q?{q,p:a.reduce((x,e)=>x+(knownNumber(e.qty)||0)*(knownNumber(e.price)||0),0)/q}:null;};
-      Object.values(byCode).filter(g=>g.close.length).forEach(g=>{const o=avg(g.open),c=avg(g.close),short=g.close.some(e=>e.side==="買埋");
-        if(o&&c){const est=(c.p-o.p)*Math.min(o.q,c.q)*(short?-1:1);realDone+=est;realN++;if(est>0)realWin++;else if(est<0)realLose++;}});
+      Object.values(groups).filter(g=>g.close.length).forEach(g=>{const o=avg(g.open),c=avg(g.close);
+        if(!c)return;
+        if(!o||c.q>o.q)realUncalc++;                      // part or all of the close is an earlier day's position
+        if(o){const q=Math.min(o.q,c.q),est=(c.p-o.p)*q*(g.dir==="short"?-1:1);
+          realDone+=est;realN++;realSide[g.dir].yen+=est;realSide[g.dir].n++;if(est>0)realWin++;else if(est<0)realLose++;}});
       [...(Array.isArray(acct.margin)?acct.margin:[]),...(Array.isArray(acct.cash)?acct.cash:[])].forEach(x=>{const v=gNum(x.pnl);if(v!==null)realOpen=(realOpen||0)+v;
         realHeld.push({kind:"実口座",name:x.name,code:x.code,side:x.side||"現物",val:gNum(x.pnl_pct),text:gYen(v)+"（"+gPct(gNum(x.pnl_pct))+"）"});});
     }
@@ -599,7 +607,7 @@
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG")));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
     let html='<div class="g-tiles">'+
-      gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"決済"+realN+"銘柄・勝ち"+realWin+"／負け"+realLose+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
+      gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
       gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
       gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（1回ごとの％の合計）":"今日の仮想決済はまだありません")+
       gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":""))+

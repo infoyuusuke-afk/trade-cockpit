@@ -63,5 +63,16 @@ class GlancePanel(unittest.TestCase):
         self.assertIn("(short?1-u.now/e:u.now/e-1)*100", js)
 
 
+class RealTodaySplit(unittest.TestCase):
+    """OWNER 2026-10-27 「買い→売埋と空売り→買埋を分けて計算して、前日以前の建玉の決済は『未計算○件』と出して」"""
+
+    def test_long_and_short_are_matched_separately_and_earlier_positions_are_not_guessed(self):
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn('/^(買建|買付)$/.test(s)?["long","open"]:/^(売埋|売付)$/.test(s)?["long","close"]:/^売建$/.test(s)?["short","open"]:/^買埋$/.test(s)?["short","close"]', js)
+        self.assertIn("if(!o||c.q>o.q)realUncalc++;", js)
+        self.assertIn("const q=Math.min(o.q,c.q),est=(c.p-o.p)*q*(g.dir===\"short\"?-1:1);", js)
+        self.assertIn("未計算\"+realUncalc+\"件（前日以前の建玉の決済）", js)
+
+
 if __name__ == "__main__":
     unittest.main()
