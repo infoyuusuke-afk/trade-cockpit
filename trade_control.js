@@ -239,6 +239,51 @@
     return cards;
   }
 
+  // OWNER 2026-10-27 「戦略別パフォーマンスをつないで」: the brain's virtual (Shadow) results per rule, from
+  // /rule_shadow.json (recorded signals replayed on recorded MS2 ticks, forward from its forward_from date), next to
+  // each rule's past-data check (前半＝train / 後半＝test). Display only; a failed read shows 未接続, never 0.
+  async function loadRuleShadow(){
+    try{
+      const r=await fetch("/rule_shadow.json?t="+Date.now(),{cache:"no-store"});
+      if(!r.ok)return null;
+      const v=await r.json();
+      return v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false?v:null;
+    }catch(_e){return null;}
+  }
+  function brainRuleHtml(rs){
+    if(!rs||!rs.forward)return metricCard("SHADOW｜ブレインのルール別","未接続",[["取引件数","—"],["期待値","—"]],"ブレインの仮想売買の記録（rule_shadow）を読めません。0件と断定しません。","block");
+    const days=Array.isArray(rs.days)?rs.days:[];
+    const label=k=>k==="BRAIN"?(rs.brain?.label||"ブレインの選択"):(rs.rules?.[k]?.label||rs.gap_rules?.[k]?.label||k);
+    const sgn=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(3)+"%";
+    const exitsText=e=>e?["TARGET","STOP","TIME_EXIT"].filter(k=>e[k]).map(k=>({TARGET:"利確",STOP:"損切",TIME_EXIT:"時間"}[k])+e[k]).join("・")||"—":"—";
+    const order=["BRAIN","R1","R2","R4","R5"].concat(Object.keys(rs.forward).filter(k=>!["BRAIN","R1","R2","R4","R5"].includes(k)).sort());
+    let html=metricCard("SHADOW｜ブレインのルール別（仮想）","つながりました",[
+      ["記録の期間",(rs.forward_from||"—")+"〜"+(days.slice(-1)[0]||"—")],["日数",days.length+"日"],
+      ["ルールの数",Object.keys(rs.forward).length+"個"],["更新",String(rs.generated_at||"—").slice(0,16).replace("T"," ")+" UTC"]
+    ],"記録したサインを、記録した実際の値動きで仮想売買した結果（費用込みの期待値）。お金は動いていません。最大DDはこの記録に無いため出しません。","wait");
+    const ranked=[];
+    for(const k of order){
+      const f=rs.forward[k];if(!f)continue;
+      const bt=rs.rules?.[k]?.backtest||null,n=Number(f.n)||0,ev=Number(f.ev_pct),pf=Number(f.pf);
+      if(n>=20&&Number.isFinite(ev))ranked.push({k,ev});
+      html+=metricCard("SHADOW｜"+label(k),n>=20?"記録N="+n:"N不足（"+n+"回）",[
+        ["取引件数",n+"回"],["1回の期待値",sgn(f.ev_pct)],["勝率",f.win_rate_pct==null?"—":f.win_rate_pct+"%"],
+        ["PF",Number.isFinite(pf)?pf.toFixed(2):"—"],["決済の内訳",exitsText(f.exits)],
+        ["過去データ 前半",bt?.train?sgn(bt.train.ev_pct)+"・PF"+bt.train.pf+"（"+bt.train.n+"回）":"—"],
+        ["過去データ 後半",bt?.test?sgn(bt.test.ev_pct)+"・PF"+bt.test.pf+"（"+bt.test.n+"回）":"—"]
+      ],(rs.rules?.[k]?.record_only?"記録のみ（ブレイン・音声・注文カードに使わない）。":"")+"仮想売買・検証中。実発注の判断には使いません。",
+      n<20?"wait":ev>0&&pf>=1?"long":"short");
+    }
+    if(ranked.length>=2){
+      ranked.sort((a,b)=>b.ev-a.ev);
+      html+=metricCard("SHADOW｜ルールの相対強弱","N≥20",[
+        ["期待値 上位",label(ranked[0].k)+" "+sgn(ranked[0].ev)],["期待値 下位",label(ranked[ranked.length-1].k)+" "+sgn(ranked[ranked.length-1].ev)],
+        ["比べたルール",ranked.length+"個"]
+      ],"20回以上の記録があるルールだけを比べます。費用込み・仮想。日数が少ないので順位は変わります。","wait");
+    }
+    return html;
+  }
+
   function executionHtml(exec,runtime){
     const known=!!exec;
     const realAllowed=exec?.real_submit_allowed===true;
@@ -346,7 +391,7 @@
     });
 
     const strategy=document.getElementById("owner-strategy-performance");
-    if(strategy)strategy.innerHTML=controlPerformanceHtml(audit);
+    if(strategy)strategy.innerHTML=controlPerformanceHtml(audit)+brainRuleHtml(await loadRuleShadow());
 
     const health=await loadHealth();
     const exec=health?.execution||null,runtime=health?.runtime||null;
