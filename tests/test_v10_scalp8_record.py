@@ -87,6 +87,11 @@ class Scalp8Static(unittest.TestCase):
         self.assertIn("-and (Get-Date) -ge $scalp8RetryAt) {", cycle)
         self.assertIn('$s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"', cycle)
         self.assertIn("$s8Wait = [Math]::Min(300, 10 * [Math]::Pow(2, [Math]::Min(5, $scalp8FailCount - 1)))", cycle)
+        # OWNER 2026-10-27: the setup itself failed at the 18:36 start with no reason; it is retried from the cycle
+        self.assertIn("function Initialize-Scalp8 {", text)
+        self.assertIn("$scalp8SetupTries -lt 30 -and (Get-Date) -ge $scalp8SetupRetryAt", cycle)
+        self.assertIn('",setup" + [string]$scalp8SetupTries + ",60," + $scalp8SetupError', cycle)
+        self.assertIn("$script:scalp8SetupRetryAt = (Get-Date).AddSeconds(60)", text)
         catch = cycle[cycle.index("$scalp8FailCount++"):]
         self.assertNotIn("$scalp8Ready = $false", catch)
         self.assertNotIn("$scalp8Sheet = $null", catch)
