@@ -11,11 +11,13 @@ def _html():
 
 def test_tab_renamed_and_theme_cards_from_the_local_file():
     html = _html()
-    assert '<button class="cockpit-tab" data-tab="pre-next">テーマ先回り</button>' in html
-    assert 'intros["pre-next"]=["テーマ先回り｜今のテーマと関連銘柄"' in html
+    assert '<button class="cockpit-tab" data-tab="pre-next">テーマ</button>' in html   # OWNER 2026-10-27 「タブ名は『テーマ』」
+    assert 'intros["pre-next"]=["テーマ｜今のテーマと関連銘柄（Grok1号・毎日8:00）"' in html
     b = html.split("// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ", 1)[1].split("</script>", 1)[0]
     assert 'fetch("/theme_watch.json?t="' in b and "テーマのデータを読めません" in b
-    assert "期待値：コクピットの記録なし（監視100銘柄の外）→ 勢いの順" in b and "期待値ではありません" in b
+    assert "期待値：コクピットの記録なし（監視100銘柄の外）" in b and "期待値ではありません" in b
+    assert 'Array.isArray(v.themes)&&v.themes.length?v.themes:' in b and "Grok1号の採点（見つけた時の終値からの上げ下げ・日経比）" in b
+    assert "照合NG（コードが確かめられず表示から外した）" in b
 
 
 def test_gateway_serves_theme_watch_with_safe_flags_only():
