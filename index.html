@@ -743,7 +743,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
-<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><div id="paste-reminder" class="paste-reminder" hidden></div><details id="morning-brief" class="morning-brief"></details><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:16em;overflow-y:auto;margin:4px 0 0}.att-sec{font-size:12px;font-weight:700;color:#f5c542;margin:6px 0 2px}.att-sec:first-child{margin-top:0}.att-sec-held{color:#5aa9ff;border-top:1px solid #303033;padding-top:6px}.att-side{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;margin-right:6px;border-radius:6px}.att-long{background:#0d2b23;color:#35e2ae}.att-short{background:#341418;color:#ff5a5f}.att-wait,.att-in,.att-done{display:inline-block;font-size:12px;font-weight:700;margin:0 6px}.att-wait{color:#f5c542}.att-in{color:#35e2ae}.att-done{color:#9aa0a6}.attention-row{display:grid;grid-template-columns:4.8em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
+<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><div id="paste-reminder" class="paste-reminder" hidden></div><details id="morning-brief" class="morning-brief"></details><div id="carry-alert" class="carry-alert" hidden></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:16em;overflow-y:auto;margin:4px 0 0}.att-sec{font-size:12px;font-weight:700;color:#f5c542;margin:6px 0 2px}.att-sec:first-child{margin-top:0}.att-sec-held{color:#5aa9ff;border-top:1px solid #303033;padding-top:6px}.att-side{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;margin-right:6px;border-radius:6px}.att-long{background:#0d2b23;color:#35e2ae}.att-short{background:#341418;color:#ff5a5f}.att-wait,.att-in,.att-done{display:inline-block;font-size:12px;font-weight:700;margin:0 6px}.att-wait{color:#f5c542}.att-in{color:#35e2ae}.att-done{color:#9aa0a6}.attention-row{display:grid;grid-template-columns:4.8em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
 
 
 
@@ -2679,6 +2679,41 @@ document.addEventListener("DOMContentLoaded",()=>{
       new MutationObserver(()=>decorate()).observe(p,{childList:true,subtree:true});decorate();setInterval(decorate,60000);};
     hook();
   });
+})();
+</script>
+<style>.carry-alert{margin:0 0 8px;padding:10px 16px;border:1px solid #1d4f7a;border-radius:14px;background:#0d1d2b;color:#9fd0ff;font-size:14px;font-weight:700}.carry-alert small{display:block;margin-top:3px;color:#9AA0AA;font-size:12px;font-weight:400}.carry-alert .ca-long{color:#35e2ae}.carry-alert .ca-short{color:#ff8a8f}</style>
+<script>
+// OWNER 2026-10-27 「オーバーナイト・スイング・バリュー銘柄を保有する場合は15時25分入ったら音声と各タブで表示してしらせること」:
+// when the brain decides today's carry-over (brain_pick positions.overnight, decided at 15:25), a banner under 注目 (seen
+// on every tab) lists them with the side and the base price until 15:45, and the voice says it once a day. SWING / VALUE
+// have no hold decision in the cockpit yet, so the banner says so instead of guessing. Display and voice only.
+(()=>{
+  const box=document.getElementById("carry-alert");
+  if(!box)return;
+  const KEY="cockpitCarryAlertV1";
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const jst=()=>{const j=new Date(Date.now()+9*3600000);return {day:j.toISOString().slice(0,10),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+  async function check(){
+    const now=jst();
+    if(now.wd===0||now.wd===6||now.min<925||now.min>945){box.hidden=true;return;}
+    let bp=null;try{bp=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    if(!bp||bp.real_submit_allowed!==false){box.hidden=false;box.innerHTML="15:25 持ち越しの判断を確認できません（ブレインの記録を読めません）";return;}
+    const on=(Array.isArray(bp.positions&&bp.positions.overnight)?bp.positions.overnight:[]).filter(p=>String(p.decided_at||"").slice(0,10)===now.day);
+    if(!on.length&&now.min<927){box.hidden=true;return;}   // the decision lands right after 15:25
+    const nm=p=>String(p.name||"").replace(/（[0-9A-Z]{4}）$/,"")+"("+String(p.ticker||"").replace(/\.T$/,"")+")";
+    box.hidden=false;
+    box.innerHTML=(on.length?"15:25 持ち越し（オーバーナイト・仮想）"+on.length+"銘柄："+on.map(p=>'<span class="'+(p.side==="LONG"?"ca-long":"ca-short")+'">'+esc(nm(p))+" "+(p.side==="LONG"?"買い":"空売り")+"（基準 "+esc(p.reference_price)+"）</span>").join("・"):"15:25 持ち越し（オーバーナイト）：今日はありません")+
+      "<small>スイング・バリューは、コクピットにまだ「持ち越す」判断の仕組みがありません（候補の一覧だけ）。仮想の記録で、注文は出しません。</small>";
+    let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
+    if(st.day!==now.day&&typeof window.cockpitSpeak==="function"){
+      const prevLive=window.cockpitLiveSpeechEnabled;if(prevLive===false)window.cockpitLiveSpeechEnabled=true;
+      try{window.cockpitSpeak(on.length?"15時25分。持ち越しは"+on.length+"銘柄。"+on.slice(0,5).map(p=>String(p.name||"").replace(/（[0-9A-Z]{4}）$/,"")+(p.side==="LONG"?" 買い":" 空売り")).join("、")+"。":"15時25分。今日の持ち越しはありません。","CALM");}
+      finally{if(prevLive===false)window.cockpitLiveSpeechEnabled=false;}
+      try{localStorage.setItem(KEY,JSON.stringify({day:now.day}))}catch(_){}
+    }
+  }
+  check();
+  setInterval(check,20000);
 })();
 </script>
 </body></html>
