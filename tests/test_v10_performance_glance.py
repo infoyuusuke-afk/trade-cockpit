@@ -96,3 +96,12 @@ class FunctionTests(_unittest.TestCase):
 for _name, _fn in list(globals().items()):
     if _name.startswith("test_") and callable(_fn):
         setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))
+
+
+class VirtualTodayYen(unittest.TestCase):
+    def test_virtual_today_tile_also_in_yen_at_100_shares(self):
+        # OWNER 2026-10-27 「金額もいれる」
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);", js)
+        self.assertIn('closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし"', js)
+

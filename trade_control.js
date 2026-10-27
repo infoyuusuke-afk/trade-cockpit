@@ -652,13 +652,15 @@
     // cockpit virtual: today closed and open (open uses the screen's fresh live price)
     const closed=rp.filter(p=>p&&p.status==="CLOSED"&&gNum(p.return_pct)!==null);
     const vSum=closed.reduce((a,p)=>a+Number(p.return_pct),0),vWin=closed.filter(p=>Number(p.return_pct)>0).length;
+    // OWNER 2026-10-27 「金額もいれる」: the same closed trades in yen at 100 shares each (return after cost x fill price x 100)
+    const vYenRows=closed.filter(p=>gNum(p.fill_price)>0),vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);
     const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG")));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
     let html='<div class="g-tiles">'+
       gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
       gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
-      gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（1回ごとの％の合計）":"今日の仮想決済はまだありません")+
+      gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（％は1回ごとの合計・金額は100株ずつの換算、費用込み"+(vYenRows.length<closed.length?"・約定値の無い"+(closed.length-vYenRows.length)+"回は金額に入れず":"")+"）":"今日の仮想決済はまだありません")+
       gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":""))+
       '</div>';
     // OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
