@@ -392,9 +392,13 @@
 
     const strategy=document.getElementById("owner-strategy-performance");
     if(strategy)strategy.innerHTML=controlPerformanceHtml(audit)+brainRuleHtml(await loadRuleShadow());
+    const brainBox=document.getElementById("owner-brain-rules");
+    if(brainBox)brainBox.innerHTML=brainRuleHtml(await loadRuleShadow());
 
     const health=await loadHealth();
     const exec=health?.execution||null,runtime=health?.runtime||null;
+    const orderLine=document.getElementById("owner-real-order-line");
+    if(orderLine){orderLine.textContent=!exec?"実注文：状態を取得できません（ONとは扱いません）":exec.real_submit_allowed===true?"実注文：ON":"実注文：OFF固定（このコクピットは注文を出しません）";orderLine.className="g-order-line "+(exec&&exec.real_submit_allowed===false?"g-order-off":"g-order-warn");}
     panes.forEach(p=>{
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-execution-control]");
       if(box)box.innerHTML=executionHtml(exec,runtime)+shadowEngineHtml(exec);
@@ -640,19 +644,29 @@
     if(control&&!document.getElementById("owner-performance-glance")){
       const section=document.createElement("section");
       section.className="card wide g-panel";
-      section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>成績（ひと目で）</h2><p>全体・保有銘柄の含み損益・手法別・アナリスト別。</p></div><div id="owner-performance-glance"><div>成績読込中...</div></div>';
+      section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>成績</h2><p>全体・保有銘柄の含み損益・手法別・アナリスト別。</p></div><div id="owner-performance-glance"><div>成績読込中...</div></div>';
       const intro=control.querySelector(":scope > .pane-intro");
       if(intro)intro.after(section);else control.prepend(section);
+      // OWNER 2026-10-27 「CONTROLタブの古い箱をたたんで。実注文OFFの1行とブレインのルール別・ブレインの選択は残して、
+      // ほかは『詳しい状態』に入れて押した時だけ開く」: the old boxes stay where the code fills them, and CSS hides them
+      // until 詳しい状態 is opened (the pane is a one-column grid, so `order` sets the visible order). Display only.
+      const line=document.createElement("p");line.id="owner-real-order-line";line.className="g-order-line g-order-warn";line.textContent="実注文：確認中";
+      const brain=document.createElement("section");brain.className="card wide g-brain-panel";
+      brain.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>ブレインのルール別・ブレインの選択（仮想）</h2><p>仮想売買の記録です。お金は動いていません。</p></div><div id="owner-brain-rules" class="cc-grid"><div>読込中...</div></div>';
+      const more=document.createElement("details");more.id="owner-detail-status";more.className="g-detail";
+      more.innerHTML='<summary>詳しい状態（押すと開く）</summary>';
+      more.addEventListener("toggle",()=>control.classList.toggle("g-detail-open",more.open));
+      section.before(line);section.after(brain);brain.after(more);
     }
     if(control&&!document.getElementById("owner-control-overview")){
       const section=document.createElement("section");
-      section.className="card wide";
+      section.className="card wide g-old";
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>取引・建玉・成績</h2><p>実発注、実建玉、Shadow建玉、各タブ成績をここで一括確認します。</p></div><div id="owner-control-overview" class="cc-grid"><div>状態読込中...</div></div>';
       control.appendChild(section);
     }
     if(control&&!document.getElementById("owner-strategy-performance")){
       const section=document.createElement("section");
-      section.className="card wide cc-strategy-owner-panel";
+      section.className="card wide cc-strategy-owner-panel g-old";
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>戦略別パフォーマンス（実績区分・証拠付き）</h2><p>REAL／SHADOW・PAPER／BACKTESTを混同しません。証拠不足は未接続と表示します。</p></div><div id="owner-strategy-performance" class="cc-grid"><div>戦略実績を照合中...</div></div>';
       control.appendChild(section);
     }
