@@ -787,6 +787,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 #focus-owner-panel .focus-owner-action:hover{border-color:#4a4d55}
 #focus-owner-panel #focus-owner-status{margin:0 0 10px;padding:10px 14px;border-radius:10px}
 #focus-owner-panel #focus-owner-cards .focus-empty{padding:16px;align-items:flex-start}
+#focus-owner-panel .focus-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}#focus-owner-panel .focus-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}#focus-owner-panel .focus-unpin{align-self:stretch;padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}#focus-owner-panel .focus-unpin:hover{background:#341418}
 </style>
 <section id="focus-owner-panel" class="card wide focus-dashboard" aria-label="OWNER選択・MS2監視">
   <h2>FOCUS｜OWNER指定・最大5銘柄</h2>
@@ -837,12 +838,18 @@ document.addEventListener("DOMContentLoaded",()=>{
    const map=new Map(lastAll.filter(x=>validTicker(x?.ticker)).map(x=>[x.ticker,x]));
    target.innerHTML=pinned.map(t=>{
      const row=map.get(t);
+     return '<div class="focus-pin'+(t===selectedCard?' selected':'')+'" data-ticker="'+t+'">'+cardOf(t,row)+'<button type="button" class="focus-unpin" data-unpin="'+t+'">この銘柄を解除</button></div>';
+   }).join("");
+ };
+ // OWNER 2026-10-27 「解除方法はカード選択でできるようにして」: a card click selects it (blue frame, also in the
+ // list above) and each card has its own 解除 button; the list + 選択銘柄を解除 still work.
+ let selectedCard=null;
+ const cardOf=(t,row)=>{
      if(lastVerified&&eventRecent()&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
        return window.renderScalpCard({...row,_stale:false,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
      return window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:row?.name||t,direction:"block",
        failClosed:"MS2入力未認証・鮮度切れ・指定銘柄未取得",freshness:"stale",price:null,
        foot:"監視銘柄の固定は維持。実注文禁止。"});
-   }).join("");
  };
  const rowQuoteReady=row=>{
    // Reuse Collector's existing point-in-time contract; no invented quote_valid/quote_time.
@@ -902,6 +909,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(pinned.includes(value))return;
    if(pinned.length>=5){status.textContent="FOCUSは最大5銘柄。不要な銘柄を解除してください。";return}
    pinned.push(value);save();paint();
+ });
+ target.addEventListener("click",e=>{
+   const un=e.target.closest("[data-unpin]");
+   if(un){const t=un.getAttribute("data-unpin");if(!validTicker(t))return;pinned=pinned.filter(x=>x!==t);if(selectedCard===t)selectedCard=null;save();paint();status.textContent=t.replace(/\.T$/,"")+" の監視を解除しました。";return;}
+   const card=e.target.closest(".focus-pin");
+   if(!card)return;
+   const t=card.getAttribute("data-ticker");
+   if(!validTicker(t))return;
+   selectedCard=selectedCard===t?null:t;
+   if(selectedCard&&[...select.options].some(o=>o.value===t))select.value=t;
+   paint();
  });
  document.getElementById("focus-owner-remove").addEventListener("click",()=>{
    if(!validTicker(select.value))return;
