@@ -554,6 +554,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     // OWNER 2026-10-27 「鮮度不明も直して」: the age of the row's own quote time (source_timestamp_at, the time the
+     // Collector saw the price change); the row gate allows 120 s, so older reads as stale.
+     ageSeconds:isStaleCard?undefined:(()=>{const q=Date.parse(String(x.source_timestamp_at||""));return Number.isFinite(q)?Math.max(0,(Date.now()-q)/1000):undefined;})(),staleThresholdSeconds:120,
      freshness:isStaleCard?"stale":undefined,
      freshnessLabel:isStaleCard?"データ停止":undefined,
      failClosed:isStaleCard?"鮮度確認不可":false,
@@ -2529,8 +2532,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 <style>.ai-top5 .ai5-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}.ai-top5 .ai5-mode{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid #303033;color:#9AA0AA}.ai-top5 .ai5-mode.auto{border-color:#164536;color:#35e2ae}.ai-top5 .ai5-mode.manual{border-color:#5a431c;color:#f5c542}
 .ai-top5 select,.ai-top5 button{height:32px;padding:0 12px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700}
-.ai-top5 .ai5-method{margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#35e2ae}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
-.ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}</style>
+.ai-top5 .ai5-method{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#35e2ae}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
+.ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}.ai-top5 .ai5-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}</style>
 <script>
 // OWNER 2026-10-27 「SCL5いらない、ここをAIアナリストの注目期待値高い順TOP５をデフォルトとして、俺が任意でいれかえる形、
 // あと今日フォーカスする手法も表示」: in the トレード中 tab the SCALP 5 panel is hidden and this panel takes its place.
@@ -2544,8 +2547,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".scalp-tv").forEach(x=>{x.style.display="none";});
   const sec=document.createElement("section");
   sec.id="ai-top5";sec.className="card wide ai-top5";
-  sec.innerHTML='<h2>AIアナリスト注目 TOP5（期待値順）</h2><div class="ai5-method" id="ai5-method">今日フォーカスする手法を読込中...</div>'+
-    '<div class="ai5-bar"><span class="ai5-mode" id="ai5-mode">—</span><select id="ai5-select"><option value="">入れる銘柄を選ぶ</option></select>'+
+  sec.innerHTML='<h2>AIアナリスト注目 TOP5（当たり具合の良い順）</h2><div class="ai5-method" id="ai5-method">今日フォーカスする手法を読込中...</div>'+
+    '<div class="ai5-bar"><span class="ai5-mode" id="ai5-mode">—</span><select id="ai5-select"><option value="">入れる銘柄を選ぶ（カードを押すとそのカードと入れ替え）</option></select>'+
     '<button type="button" id="ai5-add">入れる</button><button type="button" id="ai5-reset">AIのおすすめに戻す</button></div>'+
     '<div id="ai5-cards" class="cc-grid"><div class="focus-empty">AIアナリストの注目を読込中...</div></div>';
   pane.appendChild(sec);
@@ -2554,10 +2557,15 @@ document.addEventListener("DOMContentLoaded",()=>{
   const today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
   const load=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||"{}");return v&&v.day===today()?v:{day:today(),mode:"auto",pinned:[]};}catch(_){return {day:today(),mode:"auto",pinned:[]};}};
   const save=s=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}};
-  let st=load(),live=[],liveOk=false,auto=[],sources={},evScore=()=>null;
+  let st=load(),live=[],liveOk=false,auto=[],sources={},evScore=()=>null,hitOf={},hitScore=()=>null,selected=null;
   const j=async u=>{try{const r=await fetch(u+(u.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}};
   async function refreshAuto(){
-    const [bp,gb,ev,rs]=await Promise.all([j("/brain_pick.json"),j("grok_bots.json"),j("/signal_ev.json"),j("/rule_shadow.json")]);
+    const [bp,gb,ev,rs,an]=await Promise.all([j("/brain_pick.json"),j("grok_bots.json"),j("/signal_ev.json"),j("/rule_shadow.json"),j("analyst_scores.json")]);
+    // OWNER 2026-10-27 「アナリストの注目銘柄を当たり具合の良い順に」: each analyst's hit rate so far (GPT: analyst_scores, Grok 3号:
+    // its answer checks); a stock takes the best rate among the analysts who named it; no score yet -> after the scored ones.
+    hitOf={};(Array.isArray(an&&an.analysts)?an.analysts:[]).forEach(a=>{if(a.scored>0&&a.hit_rate_pct!=null)hitOf["GPT"+(a.name==="需給"?"需給":" "+a.name)]={rate:Number(a.hit_rate_pct),n:a.scored};});
+    const g3=(Array.isArray(gb&&gb.bots)?gb.bots:[]).find(b=>b.bot==="Grok3号"),ck=Array.isArray(g3&&g3.checks)?g3.checks:[],h3=ck.reduce((x,c)=>x+(c.hit||0),0),m3=ck.reduce((x,c)=>x+(c.miss||0),0);
+    if(h3+m3>0)hitOf["Grok3号"]={rate:h3/(h3+m3)*100,n:h3+m3};
     const votes={};sources={};
     const add=(code,src)=>{const t=String(code||"").trim().toUpperCase()+".T";if(!valid(t))return;votes[t]=(votes[t]||0)+1;(sources[t]=sources[t]||new Set()).add(src);};
     const ma=(bp&&bp.manual_analysts)||{};
@@ -2568,13 +2576,16 @@ document.addEventListener("DOMContentLoaded",()=>{
     Object.entries((ev&&ev.by_strategy_ticker)||{}).forEach(([k,v])=>{const t=k.split("|").pop(),n=Number(v&&v.n)||0,e=Number(v&&v.ev_pct);if(!n||!Number.isFinite(e))return;const a=evOf[t]=evOf[t]||[0,0];a[0]+=n;a[1]+=n*e;});
     evScore=t=>evOf[t]&&evOf[t][0]>=10?evOf[t][1]/evOf[t][0]:null;
     const inLive=new Set(live.map(x=>x.ticker));
-    auto=Object.keys(votes).filter(t=>inLive.has(t)).sort((a,b)=>{const ea=evScore(a),eb=evScore(b);if((ea===null)!==(eb===null))return ea===null?1:-1;if(ea!==null&&eb!==ea)return eb-ea;return votes[b]-votes[a];}).slice(0,5);
+    hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);return r.length?r[0]:null;};
+    auto=Object.keys(votes).filter(t=>inLive.has(t)).sort((a,b)=>{const ha=hitScore(a),hb=hitScore(b);if((ha===null)!==(hb===null))return ha===null?1:-1;if(ha&&hb&&hb.rate!==ha.rate)return hb.rate-ha.rate;const ea=evScore(a),eb=evScore(b);if((ea===null)!==(eb===null))return ea===null?1:-1;if(ea!==null&&eb!==ea)return eb-ea;return votes[b]-votes[a];}).slice(0,5);
     // fewer than 5 analyst stocks in the 100: the rest are the highest recorded EV stocks of the 100 (labelled as such)
     if(auto.length<5){const fill=[...inLive].filter(t=>!auto.includes(t)&&evScore(t)!==null&&evScore(t)>0).sort((x,y)=>evScore(y)-evScore(x));for(const t of fill){if(auto.length>=5)break;auto.push(t);(sources[t]=sources[t]||new Set()).add("期待値上位（アナリスト注目なし）");}}
     const m=document.getElementById("ai5-method");
     if(m){const f=(rs&&rs.forward)||{},lab=k=>String((rs.rules&&rs.rules[k]&&rs.rules[k].label)||(rs.gap_rules&&rs.gap_rules[k]&&rs.gap_rules[k].label)||(k==="BRAIN"?"ブレインの選択":k));
       const good=Object.entries(f).filter(([k,v])=>Number(v.n)>=20&&Number(v.ev_pct)>0&&Number(v.pf)>=1).sort((a,b)=>Number(b[1].ev_pct)-Number(a[1].ev_pct));
-      m.innerHTML=rs?(good.length?'今日フォーカスする手法：'+good.slice(0,3).map(([k,v])=>'<b>'+esc(lab(k))+'</b>（1回 +'+esc(Number(v.ev_pct).toFixed(3))+'%・PF'+esc(v.pf)+'・'+esc(v.n)+'回）').join("／")+'<small>ブレインの仮想売買の記録（'+esc(rs.forward_from||"")+'〜、費用込み）で、20回以上・期待値プラス・PF1以上のもの。記録のみのルールを含みます。売買の判断はOWNER。</small>':'今日フォーカスする手法：期待値プラスの手法はまだありません（見送り寄り）<small>20回以上の記録で期待値プラス・PF1以上の手法が無い時はこう出ます。</small>'):'今日フォーカスする手法：記録を読めません（0件とは扱いません）';}
+      // OWNER 2026-10-27 「一番上に今日の手法を1行出して」: the best one only, on one line (the rule behind it in the tooltip)
+      m.title='ブレインの仮想売買の記録（'+(rs&&rs.forward_from||'')+'〜、費用込み）で20回以上・期待値プラス・PF1以上の手法のうち、期待値が一番高いもの。売買の判断はOWNER。';
+      m.innerHTML=rs?(good.length?'今日の手法：<b>'+esc(lab(good[0][0]))+'</b>　1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
     paint();
   }
   function paint(){
@@ -2587,16 +2598,22 @@ document.addEventListener("DOMContentLoaded",()=>{
     box.innerHTML=list.map(t=>{const row=map.get(t),ok=liveOk&&row&&window.cockpitMs2RowReady?.(row)===true,e=evScore(t);
       const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
         window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:(row&&row.name)||t,direction:"block",failClosed:"MS2の値が新しくない・未取得",freshness:"stale",price:null,foot:"実注文禁止"});
-      return '<div class="ai5-pin">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・期待値 '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");
+      const h=hitScore(t);
+      return '<div class="ai5-pin'+(t===selected?' selected':'')+'" data-pick="'+t+'">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・当たり率 '+(h?Math.round(h.rate)+'%（'+h.n+'件）':'まだ無し')+'・期待値 '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");
   }
   document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{};live=Array.isArray(d.all_targets)?d.all_targets.filter(x=>valid(x&&x.ticker)):[];liveOk=window.cockpitMs2ScreenReady?.(d)===true;
     const sel=document.getElementById("ai5-select");if(sel&&sel.options.length<=1&&live.length){live.forEach(x=>{const o=document.createElement("option");o.value=x.ticker;o.textContent=(x.name||x.ticker);sel.append(o);});}
     if(!auto.length)refreshAuto();else paint();});
   const toManual=()=>{if(st.mode!=="manual"){st={day:today(),mode:"manual",pinned:auto.slice()};}};
+  // OWNER 2026-10-27 「カード選択で入れ替えできるようにして」: a selected card (click) is replaced in place by the chosen stock;
+  // without a selection the stock is added (max 5).
   document.getElementById("ai5-add").addEventListener("click",()=>{const t=document.getElementById("ai5-select").value;if(!valid(t))return;toManual();if(st.pinned.includes(t))return;
-    if(st.pinned.length>=5){alert("5銘柄までです。先にどれかを外してください。");return;}st.pinned.push(t);save(st);paint();});
+    const i=selected?st.pinned.indexOf(selected):-1;if(i>=0){st.pinned[i]=t;selected=null;save(st);paint();return;}
+    if(st.pinned.length>=5){alert("5銘柄までです。入れ替えるカードを先に押して選んでください。");return;}st.pinned.push(t);save(st);paint();});
   document.getElementById("ai5-reset").addEventListener("click",()=>{st={day:today(),mode:"auto",pinned:[]};save(st);paint();});
-  document.getElementById("ai5-cards").addEventListener("click",e=>{const b=e.target.closest("[data-out]");if(!b)return;const t=b.getAttribute("data-out");toManual();st.pinned=st.pinned.filter(x=>x!==t);save(st);paint();});
+  document.getElementById("ai5-cards").addEventListener("click",e=>{const b=e.target.closest("[data-out]");if(b){const t=b.getAttribute("data-out");toManual();st.pinned=st.pinned.filter(x=>x!==t);if(selected===t)selected=null;save(st);paint();return;}
+    const c=e.target.closest("[data-pick]");if(!c)return;const t=c.getAttribute("data-pick");selected=selected===t?null:t;paint();
+    const sel=document.getElementById("ai5-select");if(sel&&selected)sel.focus();});
   refreshAuto();setInterval(refreshAuto,60000);
 });
 </script>

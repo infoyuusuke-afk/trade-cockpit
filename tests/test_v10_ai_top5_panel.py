@@ -44,3 +44,16 @@ def test_prices_only_from_fresh_rows():
     b = _block()
     assert "ok=liveOk&&row&&window.cockpitMs2RowReady?.(row)===true" in b
     assert 'failClosed:"MS2の値が新しくない・未取得"' in b
+
+
+def test_owner_follow_up_hit_rate_order_card_swap_one_line_method_and_freshness():
+    """OWNER 2026-10-27 「アナリストの注目銘柄を当たり具合の良い順にTOP5…カード選択で入れ替え…一番上に今日の手法を1行…鮮度不明も直して」"""
+    b = _block()
+    assert "AIアナリスト注目 TOP5（当たり具合の良い順）" in b
+    assert "hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);" in b
+    assert 'if(h3+m3>0)hitOf["Grok3号"]={rate:h3/(h3+m3)*100,n:h3+m3};' in b
+    assert "const i=selected?st.pinned.indexOf(selected):-1;if(i>=0){st.pinned[i]=t;selected=null;" in b
+    assert "今日の手法：<b>'+esc(lab(good[0][0]))+'</b>" in b
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    card = html.split("window.renderScalpCard=(x,sv,tf)=>{", 1)[1].split("metrics:[", 1)[0]
+    assert "Date.parse(String(x.source_timestamp_at||\"\"))" in card and "staleThresholdSeconds:120" in card
