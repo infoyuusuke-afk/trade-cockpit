@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _block():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
-    assert '<div id="attention-rows"></div></section></div><div id="paste-reminder" class="paste-reminder" hidden></div>' in html
+    assert '<div id="attention-rows"></div></section><div id="paste-reminder" class="paste-reminder" hidden></div>' in html   # inside the 注目 wrapper (OWNER 2026-10-27 サイズ)
     return html.split('const KEY="cockpitPasteReminderV1";', 1)[1].split("</script>", 1)[0]
 
 
