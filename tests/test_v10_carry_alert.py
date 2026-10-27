@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _block():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
-    assert '<details id="morning-brief" class="morning-brief" hidden></details><div id="carry-alert" class="carry-alert" hidden></div></div>' in html
+    assert '<details id="morning-brief" class="morning-brief" hidden></details><div id="carry-alert" class="carry-alert" hidden></div><div id="short-rebound-alert" class="short-rebound-alert" hidden></div></div>' in html
     return html.split('const KEY="cockpitCarryAlertV1";', 1)[1].split("</script>", 1)[0]
 
 
