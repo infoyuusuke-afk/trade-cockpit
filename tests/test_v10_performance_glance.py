@@ -1,0 +1,67 @@
+"""OWNER 2026-10-27 「AIコクピットの成績が一目で分かるように改修…全体成績、保有銘柄の損益（含み損・益）
+各投資手法別 各アナリスト別 コントロールタブで…数字、グラフも良いかも」: a 成績（ひと目で） panel at the top of
+CONTROL, and analyst_scores.json (GPT answers scored by direction at the close) served from the public feed."""
+import csv
+import tempfile
+import unittest
+from datetime import datetime, timezone
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import v10_public_feed_sync as feed  # noqa: E402
+
+LOG_FIELDS = ["seen_at", "source", "role", "note", "posted_at", "code", "name", "strength", "view", "reason", "sources",
+              "in_universe"]
+OUT_FIELDS = LOG_FIELDS + ["price_at_seen", "price_30m", "price_60m", "price_close", "hit_30m", "hit_60m", "hit_close"]
+
+
+class AnalystView(unittest.TestCase):
+    def test_scores_only_bull_and_bear_rows_by_direction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            day = Path(tmp) / "2026-01-05"
+            day.mkdir()
+            rows = [dict(source="gpt", role="pre_next", view="強気", price_at_seen="100", price_close="103"),
+                    dict(source="gpt", role="pre_next", view="弱気", price_at_seen="100", price_close="101"),
+                    dict(source="gpt", role="pre_next", view="監視", price_at_seen="100", price_close="90"),
+                    dict(source="grok", role="", view="強気", price_at_seen="100", price_close="120")]
+            for name, fields in (("manual_notes.csv", LOG_FIELDS), ("manual_notes_outcomes.csv", OUT_FIELDS)):
+                with open(day / name, "w", encoding="utf-8-sig", newline="") as f:
+                    w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+                    w.writeheader()
+                    w.writerows(rows)
+            v = feed.analyst_view(Path(tmp), datetime(2026, 1, 5, tzinfo=timezone.utc))
+        self.assertEqual(len(v["analysts"]), 1)
+        a = v["analysts"][0]
+        self.assertEqual((a["name"], a["answers"], a["watch"], a["scored"], a["hits"]), ("PRE-NEXT", 3, 1, 2, 1))
+        self.assertEqual(a["hit_rate_pct"], 50.0)
+        self.assertAlmostEqual(a["avg_move_pct"], 1.0)          # (+3 and -1) / 2
+        self.assertFalse(v["real_submit_allowed"])
+
+    def test_sync_writes_the_file_and_the_gateway_serves_it(self):
+        src = (ROOT / "scripts" / "v10_public_feed_sync.py").read_text(encoding="utf-8")
+        self.assertIn('ANALYST_FILE = "analyst_scores.json"', src)
+        self.assertIn("files[ANALYST_FILE] = {\"ok\": True", src)
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertEqual(gw.count("'analyst_scores.json', 'market_summary.json', 'public_feed_meta.json'"), 2)
+
+
+class GlancePanel(unittest.TestCase):
+    def test_panel_sits_at_the_top_of_control_with_the_four_parts(self):
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn('id="owner-performance-glance"', js)
+        self.assertIn("if(intro)intro.after(section);else control.prepend(section);", js)
+        for title in ("実口座 今日の確定損益（概算）", "実口座 含み損益", "コクピット仮想 今日の決済", "コクピット仮想 含み損益（平均）",
+                      "保有銘柄の損益（含み）", "手法別（ブレインの仮想売買", "アナリスト別（答えの向きの当たり・費用なし）"):
+            self.assertIn(title, js)
+        self.assertIn("setInterval(renderGlance,10000);", js)
+        self.assertIn("0件とは扱いません", js)
+
+    def test_short_open_pl_matches_the_scoring(self):
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("(short?1-u.now/e:u.now/e-1)*100", js)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -417,6 +417,57 @@ def grok_bots_view(root: Path) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-10-27 「AIコクピットの成績が一目で分かるように…各アナリスト別」: the GPT analysts' answers the
+# cockpit logged (records/<day>/manual_notes.csv) and their scores (manual_notes_outcomes.csv: 強気 hits when the
+# close is above the price when the note was seen, 弱気 when below; 監視 is counted but never scored).
+# Display only. Returns per analyst: answers, scored count, hits, hit rate and the average move in the view's direction.
+ANALYST_FILE = "analyst_scores.json"
+ANALYST_NAMES = {"pre_next": "PRE-NEXT", "supply_sq": "需給", "premarket": "寄り前", "revenue_hunter": "Revenue Hunter"}
+
+
+def _csv_num(v):
+    """A positive number from a CSV cell (text), else None."""
+    try:
+        x = float(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+    return x if x > 0 else None
+
+
+def analyst_view(records_root: Path, now: datetime) -> dict:
+    stats = {}
+    days = sorted(p for p in Path(records_root).glob("*") if p.is_dir()) if Path(records_root).is_dir() else []
+    for day in days:
+        for name, kind in (("manual_notes.csv", "log"), ("manual_notes_outcomes.csv", "out")):
+            path = day / name
+            if not path.is_file():
+                continue
+            with open(path, encoding="utf-8-sig", newline="") as f:
+                for r in csv.DictReader(f):
+                    if r.get("source") != "gpt":
+                        continue
+                    s = stats.setdefault(ANALYST_NAMES.get(r.get("role"), r.get("role") or "?"),
+                                         {"answers": 0, "watch": 0, "scored": 0, "hits": 0, "sum_pct": 0.0, "days": set()})
+                    if kind == "log":
+                        s["answers"] += 1
+                        s["watch"] += r.get("view") == "監視"
+                        s["days"].add(day.name)
+                        continue
+                    side = {"強気": 1, "弱気": -1}.get(r.get("view"))
+                    seen, close = _csv_num(r.get("price_at_seen")), _csv_num(r.get("price_close"))
+                    if side and seen and close:
+                        move = side * (close / seen - 1) * 100
+                        s["scored"] += 1
+                        s["hits"] += move > 0
+                        s["sum_pct"] += move
+    rows = [{"name": k, "answers": v["answers"], "watch": v["watch"], "days": len(v["days"]), "scored": v["scored"],
+             "hits": v["hits"], "hit_rate_pct": round(v["hits"] / v["scored"] * 100, 1) if v["scored"] else None,
+             "avg_move_pct": round(v["sum_pct"] / v["scored"], 3) if v["scored"] else None}
+            for k, v in sorted(stats.items())]
+    return {"updated_at": now.isoformat(), "basis": "強気/弱気の答えを、コクピットが答えを見た時の値段から大引けまでで採点（費用なし・向きだけ）",
+            "analysts": rows, "real_submit_allowed": False, "trade_instruction": False}
+
+
 # OWNER 2026-10-26 「ドル円をMS2から取って連動を出して。表示と記録だけで、サインには使わない」:
 # today's USD/JPY (key USDJPY in records/<day>/futures_index.csv, from MS2 RssFXMarket) beside the Nikkei
 # 225 mini future (N225MF) and Kioxia (285A.T in market_snapshots.csv): the last price of each minute in
@@ -688,6 +739,14 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
         files[GROK_FILE] = dict(fresh, ok=True, bytes=(target / GROK_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[GROK_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:   # OWNER 2026-10-27: analyst scores for the CONTROL results panel (display only)
+        view = analyst_view(Path(records_root) if records_root is not None else Path(target).parent / "records", now)
+        temp = target / (ANALYST_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / ANALYST_FILE)
+        files[ANALYST_FILE] = {"ok": True, "stale": False, "bytes": (target / ANALYST_FILE).stat().st_size}
+    except Exception as exc:  # keep the previous copy
+        files[ANALYST_FILE] = {"ok": False, "reason": type(exc).__name__}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
             "real_submit_allowed": False, "trade_instruction": False}
     (target / META_FILE).write_text(json.dumps(meta, sort_keys=True), encoding="utf-8")
