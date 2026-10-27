@@ -579,6 +579,51 @@
     const e=knownNumber(entry),val=u.now===null||e===null||e<=0?null:(short?1-u.now/e:u.now/e-1)*100;
     return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,text:u.text.replace("含み損益：","")};
   }
+  // OWNER 2026-10-27 過去実績（たたき直し）: /owner_review.json is built on this PC from the OWNER's own CSV exports
+  // (Claudeブレイン\研究スクリプト\owner_review_build.py). Display only; unreadable -> says so, never zero.
+  let ownerReviewAt=0;
+  async function renderOwnerReview(){
+    const root=document.getElementById("owner-history-review");
+    if(!root||Date.now()-ownerReviewAt<600000)return;
+    const rv=await gJson("/owner_review.json");
+    if(!rv||rv.real_submit_allowed!==false||!rv.japan){root.innerHTML='<p class="g-empty">過去実績のファイルを読めません（V10停止中、またはまだ作っていません）。</p>';return;}
+    ownerReviewAt=Date.now();
+    const j=rv.japan,yen=v=>gYen(gNum(v)),man=v=>{const n=gNum(v);return n===null?"—":(n>0?"+":"")+(Math.abs(n)>=10000?(n/10000).toLocaleString("ja-JP",{maximumFractionDigits:0})+"万円":Math.round(n).toLocaleString("ja-JP")+"円");};
+    const ratio=j.avg_loss_yen&&j.avg_win_yen?Math.abs(j.avg_loss_yen/j.avg_win_yen):null;
+    const top3=(j.most_traded||[]).slice(0,3),top3Loss=top3.filter(x=>x.yen<0);
+    const cap=(j.cap_sim||[])[0];
+    const say=[
+      "勝率"+j.win_pct+"%なのに負けている。負けの平均（"+yen(j.avg_loss_yen)+"）が勝ちの平均（"+yen(j.avg_win_yen)+"）の"+(ratio?ratio.toFixed(1):"—")+"倍。勝ちを小さく、負けを大きくしている",
+      "一番悪い20日だけで "+man(j.worst20_yen)+"（損失全体の"+esc(j.worst20_share_pct??"—")+"%）。1回で3万円以上負けた"+j.big_loss_trades+"回が "+man(j.big_loss_yen)+"。それ以外の取引は "+man(j.rest_yen)+" のプラス",
+      top3Loss.length?"一番よく触る銘柄が一番負けている："+top3.map(x=>esc(x.name)+"("+esc(x.code)+") "+x.n+"回 "+man(x.yen)).join("・"):"",
+      rv.owner_statement?"本人の申告：「"+esc(rv.owner_statement.text)+"」（"+esc(rv.owner_statement.note||"")+"）":"",
+      cap?"1日の負けを"+(cap.limit_yen/10000)+"万円で止めていれば "+man(cap.yen)+"（"+cap.days_hit+"日が該当・日の合計で見た目安）":""
+    ].filter(Boolean);
+    const others=Array.isArray(rv.other_accounts)?rv.other_accounts:[],all=[{label:"日本株（楽天）",yen:j.total_yen}].concat(others);
+    const allSum=all.reduce((a,x)=>a+(Number(x.yen)||0),0),aMax=Math.max(1,...all.map(x=>Math.abs(Number(x.yen)||0)));
+    const bars=(list,lab,val,max)=>'<div class="g-rows">'+list.map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(lab(x))+'</span><span class="g-name">'+esc(x._sub||"")+'</span>'+gBar(gNum(val(x)),max)+'<b class="'+gCls(gNum(val(x)))+'">'+yen(val(x))+'</b></div>').join("")+'</div>';
+    const yMax=Math.max(1,...(j.years||[]).map(x=>Math.abs(x.yen))),mMax=Math.max(1,...(j.last12||[]).map(x=>Math.abs(x.yen)));
+    const st=(list)=>'<div class="g-rows">'+(list||[]).map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(x.code)+'</span><span class="g-name">'+esc(x.name)+'・'+x.n+'回・勝率'+x.win_pct+'%</span>'+gBar(x.yen,Math.max(1,...(list||[]).map(y=>Math.abs(y.yen))))+'<b class="'+gCls(x.yen)+'">'+yen(x.yen)+'</b></div>').join("")+'</div>';
+    root.innerHTML=
+      '<div class="g-verdict"><b>たたき直し（数字が言っていること）</b><ol>'+say.map(t=>'<li>'+t+'</li>').join("")+'</ol></div>'+
+      '<div class="g-tiles">'+
+        gTile("日本株の実現損益（"+esc(j.from)+"〜"+esc(j.to)+"）",man(j.total_yen),gCls(j.total_yen),j.trades+"回・取引した日"+j.days+"日（勝ち日"+j.win_days+"）")+
+        gTile("勝率／PF",j.win_pct+"%／"+j.pf,"g-minus","PF1未満＝続けるほど減る")+
+        gTile("平均の勝ち／平均の負け",yen(j.avg_win_yen)+"／"+yen(j.avg_loss_yen),"g-minus","負けが勝ちの"+(ratio?ratio.toFixed(1):"—")+"倍")+
+        gTile("全部の口座の合計",man(allSum),gCls(allSum),"仮想通貨の約300万円は本人の記憶（未確認）")+
+      '</div>'+
+      '<h3 class="g-h">口座別（今後は日本株だけ）</h3>'+bars(all.map(x=>Object.assign({},x,{_sub:x.label})),x=>x.unverified?"未確認":"",x=>x.yen,aMax)+
+      '<h3 class="g-h">日本株　年別</h3>'+bars((j.years||[]).map(x=>Object.assign({},x,{_sub:x.year+"年"})),()=>"",x=>x.yen,yMax)+
+      '<h3 class="g-h">日本株　直近12か月（勝った月 '+j.months_won+'／'+j.months+'か月）</h3>'+bars((j.last12||[]).map(x=>Object.assign({},x,{_sub:x.month})),()=>"",x=>x.yen,mMax)+
+      '<h3 class="g-h">一番悪かった日</h3>'+bars((j.worst_days||[]).map(x=>Object.assign({},x,{_sub:x.date})),()=>"",x=>x.yen,Math.max(1,...(j.worst_days||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">負けが大きい銘柄</h3>'+st(j.worst_stocks)+
+      '<h3 class="g-h">勝てている銘柄</h3>'+st(j.best_stocks)+
+      '<h3 class="g-h">買い・空売り別／曜日別</h3>'+bars((j.sides||[]).map(x=>Object.assign({},x,{_sub:x.label+"・"+x.n+"回"})),()=>"",x=>x.yen,Math.max(1,...(j.sides||[]).map(x=>Math.abs(x.yen))))+
+        bars((j.weekdays||[]).map(x=>Object.assign({},x,{_sub:x.day+"曜・"+x.n+"日"})),()=>"",x=>x.yen,Math.max(1,...(j.weekdays||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">1日の負けの上限を決めていたら（目安）</h3>'+bars((j.cap_sim||[]).map(x=>Object.assign({},x,{_sub:(x.limit_yen/10000)+"万円で止める・"+x.days_hit+"日が該当"})),()=>"",x=>x.yen,Math.max(1,...(j.cap_sim||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">決めたこと</h3><ul class="g-decided">'+(rv.decided||[]).map(t=>'<li>'+esc(t)+'</li>').join("")+'</ul>'+
+      '<p class="g-note">'+esc(rv.source||"")+'。作成 '+esc(String(rv.generated_at||"").slice(0,16).replace("T"," "))+'。過去の数字で、これからも同じになる保証はありません。売買の指示ではありません。</p>';
+  }
   async function renderGlance(){
     const root=document.getElementById("owner-performance-glance");
     if(!root)return;
@@ -673,6 +718,10 @@
       more.innerHTML='<summary>詳しい状態（押すと開く）</summary>';
       more.addEventListener("toggle",()=>control.classList.toggle("g-detail-open",more.open));
       section.before(line);section.after(brain);brain.after(more);
+      // OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて、おれをたたきなおしてくれ」「必ず後場にまけていた」
+      const review=document.createElement("section");review.className="card wide g-review-panel";
+      review.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>あなたの過去実績（たたき直し）</h2><p>書き出してもらった実現損益CSVから。このPCの中だけのデータです。</p></div><div id="owner-history-review"><div>読込中...</div></div>';
+      section.after(review);
     }
     if(control&&!document.getElementById("owner-control-overview")){
       const section=document.createElement("section");
@@ -711,5 +760,7 @@
     setInterval(renderHoldings,10000);
     renderGlance();
     setInterval(renderGlance,10000);
+    renderOwnerReview();
+    setInterval(renderOwnerReview,60000);
   });
 })();
