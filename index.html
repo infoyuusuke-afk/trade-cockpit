@@ -2858,7 +2858,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="analysts";b.type="button";b.textContent="アナリスト";
     const after=nav.querySelector('.cockpit-tab[data-tab="control"]');
     if(after&&after.nextSibling)nav.insertBefore(b,after.nextSibling);else nav.prepend(b);
-    b.onclick=()=>{document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","analysts");}catch(_){}};
+    b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","analysts");}catch(_){}};
     pane.addEventListener("click",e=>{const c=e.target.closest("[data-an-copy]");if(!c)return;const t=document.getElementById(c.getAttribute("data-an-copy"));if(!t)return;
       (navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>{c.textContent="コピーしました";setTimeout(()=>{c.textContent="この指示をコピー";},2000);}).catch(()=>{t.select();document.execCommand("copy");});});
     try{if(localStorage.getItem("cockpitTabV5")==="analysts")b.click();}catch(_){}
