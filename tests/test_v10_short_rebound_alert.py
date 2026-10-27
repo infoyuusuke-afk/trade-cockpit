@@ -50,6 +50,31 @@ class Detector(unittest.TestCase):
         self.assertAlmostEqual(o["fall_from_peak_pct"], (955 / 970 - 1) * 100, places=2)
         self.assertEqual(pos.rebound_summary(det.outcomes())["n"], 1)
 
+    def test_second_stage_top_is_a_short_candidate_with_the_rebound_high_as_stop(self):
+        # OWNER 2026-10-27 「2段の合図（初動＝まだ売るな、上がり切り＝ショート候補と損切りの目安）」
+        det = falling_day(pos.ReboundDetector(), rebound=False)
+        vol = 200000
+        for t, p in (("10:20:00", 955), ("10:30:00", 962), ("10:31:00", 961), ("10:34:00", 958), ("15:20:00", 950)):
+            vol += 1000
+            det.feed(snap(t, p, vol))
+        self.assertEqual(len(det.tops), 1)
+        top = det.tops[0]
+        self.assertEqual((top["price"], top["stop"], top["top_at"][11:]), (958.0, 962.0, "10:34:00"))
+        o = det.outcomes()[0]["top"]
+        self.assertIsNone(o["stopped_at"])
+        self.assertAlmostEqual(o["short_pct"], (1 - 950 / 958) * 100, places=2)
+        self.assertEqual(pos.rebound_summary(det.outcomes())["tops"]["n"], 1)
+
+    def test_top_is_stopped_at_the_rebound_high(self):
+        det = falling_day(pos.ReboundDetector(), rebound=False)
+        vol = 200000
+        for t, p in (("10:30:00", 962), ("10:34:00", 958), ("10:40:00", 963), ("15:20:00", 940)):
+            vol += 1000
+            det.feed(snap(t, p, vol))
+        o = det.outcomes()[0]["top"]
+        self.assertEqual(o["stopped_at"], "10:40:00")
+        self.assertAlmostEqual(o["short_pct"], (1 - 962 / 958) * 100, places=2)
+
     def test_no_big_buy_or_no_thin_ask_means_no_signal(self):
         self.assertEqual(falling_day(pos.ReboundDetector(), big=2000).signals, [])
         self.assertEqual(falling_day(pos.ReboundDetector(), ask_qty=1000).signals, [])
@@ -100,11 +125,12 @@ def _block():
 
 
 class Screen(unittest.TestCase):
-    def test_box_reads_the_brain_and_speaks_each_new_one_at_most_8_a_day(self):
+    def test_box_shows_both_stages_and_speaks_each_new_one_at_most_8_a_day(self):
         b = _block()
         assert 'bp.positions&&bp.positions.short_rebound' in b
-        assert 'st.said.length<=8&&typeof window.cockpitSpeak==="function"' in b
-        assert '"ショートリバ初動。"' in b and "売買の合図ではありません" in b
+        assert 'if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだ売らない。")' in b
+        assert 'if(st.top.length<=8)say("ショートリバ上がり切り。"+short(t.name)+"。ショート候補。損切りの目安、"+t.stop+"円。")' in b
+        assert "sr.tops_today" in b and "売買の合図ではありません" in b
         assert "0件とは扱いません" in b and "order" not in b.lower().replace("no order", "")
 
 

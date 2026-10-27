@@ -56,12 +56,18 @@ OWNER_HISTORY_DAYS = 20
 #   - the day's low is 3 minutes old or more and not broken                   (安値を割らない)
 # One per stock per 60 minutes, 09:30-15:00. Each is followed until 15:20: the highest price (the top of the
 # rebound and when), the lowest, and the fall from the top to 15:20 (what a short at the top would have got).
+# OWNER 2026-10-27 「ショートリバの2段の合図（初動＝まだ売るな、上がり切り＝ショート候補と損切りの目安）」: the first move says
+# "not yet"; the second, 上がり切り, comes when the rebound has risen TOP_MIN_RISE_PCT or more from the first move, has
+# made no new high for TOP_STALL_MIN minutes, and the price is TOP_PULLBACK_PCT under that high (before 15:00). Its
+# stop guide is the rebound high. Each 上がり切り is followed as a virtual short to 15:20 or the stop.
 # Record, screen and voice only; no order.
 REBOUND_SIGNALS_FILE = "short_rebound_signals.csv"
 REBOUND_OUTCOMES_FILE = "short_rebound_outcomes.json"
+REBOUND_TOPS_FILE = "short_rebound_tops.csv"
 SNAPSHOTS_FILE = "market_snapshots.csv"
 REBOUND_FIELDS = ["detected_at", "ticker", "name", "price", "day_high", "day_low", "drop_from_high_pct", "vwap",
                   "volume_x", "ask_qty_ratio", "over_ratio", "low_age_min"]
+TOP_FIELDS = ["top_at", "ticker", "name", "price", "stop", "first_move_at", "first_move_price", "rise_pct", "stall_min"]
 
 
 def _rows(path: Path) -> list[dict]:
@@ -172,10 +178,14 @@ class ReboundDetector:
     ASK_RATIO = 0.5       # best ask quantity vs its previous 10-snapshot average
     OVER_RATIO = 0.8      # total ask (OVER) vs 10 snapshots before
     LOW_AGE_MIN = 3.0
+    TOP_MIN_RISE_PCT = 0.8   # the rebound from the first move's price
+    TOP_STALL_MIN = 3.0      # minutes without a new rebound high
+    TOP_PULLBACK_PCT = 0.3   # the price under the rebound high
 
     def __init__(self, **kw):
         self.s = {}
         self.signals = []
+        self.tops = []
         for k, v in kw.items():
             setattr(self, k, v)
 
@@ -198,6 +208,26 @@ class ReboundDetector:
                     f["peak"], f["peak_at"] = price, t
                 f["trough"] = min(f["trough"], price)
                 f["last"], f["last_at"] = price, t
+                top = f.get("top")
+                if top is None:
+                    p0 = f["sig"]["price"]
+                    stall = (_hms_sec(t) - _hms_sec(f["peak_at"])) / 60
+                    if (t <= "15:00:00" and (f["peak"] / p0 - 1) * 100 >= self.TOP_MIN_RISE_PCT and stall >= self.TOP_STALL_MIN
+                            and price <= f["peak"] * (1 - self.TOP_PULLBACK_PCT / 100)):
+                        f["top"] = top = {"top_at": str(row.get("captured_at"))[:19], "ticker": ticker, "name": st["name"],
+                                          "price": price, "stop": f["peak"], "first_move_at": f["sig"]["detected_at"],
+                                          "first_move_price": p0, "rise_pct": round((f["peak"] / p0 - 1) * 100, 2),
+                                          "stall_min": round(stall, 1)}
+                        f["short"] = {"best": price, "last": price, "last_at": t, "stopped_at": None}
+                        self.tops.append(top)
+                elif f["short"]["stopped_at"] is None:
+                    sh = f["short"]
+                    if price >= top["stop"]:
+                        sh["stopped_at"], sh["last"] = t, top["stop"]
+                    else:
+                        sh["best"] = min(sh["best"], price)
+                        sh["last"] = price
+                    sh["last_at"] = t
         hist = st["hist"]
         prev = hist[-1] if hist else None
         dvol = (vol - prev["vol"]) if (prev and vol is not None and prev["vol"] is not None) else None
@@ -246,8 +276,19 @@ class ReboundDetector:
                             "low_broken": f["trough"] < f["sig"]["day_low"],
                             "last_at": f["last_at"], "end_pct": round((f["last"] / p0 - 1) * 100, 3),
                             "fall_from_peak_pct": round((f["last"] / f["peak"] - 1) * 100, 3),
-                            "final": f["last_at"] >= "15:19:00"})
+                            "final": f["last_at"] >= "15:19:00", "top": self._top_outcome(f)})
         return sorted(out, key=lambda x: x["detected_at"])
+
+    @staticmethod
+    def _top_outcome(f):
+        top = f.get("top")
+        if not top:
+            return None
+        sh, e = f["short"], top["price"]
+        return dict(top, short_pct=round((1 - sh["last"] / e) * 100, 3), best_pct=round((1 - sh["best"] / e) * 100, 3),
+                    stopped_at=sh["stopped_at"], last_at=sh["last_at"],
+                    minutes_from_first_move=round((_hms_sec(top["top_at"][11:19]) - _hms_sec(top["first_move_at"][11:19])) / 60, 1),
+                    final=sh["stopped_at"] is not None or f["last_at"] >= "15:19:00")
 
 
 def rebound_summary(rows: list) -> dict:
@@ -257,10 +298,23 @@ def rebound_summary(rows: list) -> dict:
 
     def avg(k):
         return round(sum(float(r[k]) for r in done) / len(done), 3)
-    return {"n": len(done), "avg_rebound_pct": avg("rebound_pct"), "avg_minutes_to_peak": avg("minutes_to_peak"),
-            "avg_fall_from_peak_pct": avg("fall_from_peak_pct"), "avg_end_pct": avg("end_pct"),
-            "low_broken_pct": round(sum(1 for r in done if r["low_broken"]) / len(done) * 100, 1),
-            "rebound_1pct_or_more": sum(1 for r in done if r["rebound_pct"] >= 1)}
+    out = {"n": len(done), "avg_rebound_pct": avg("rebound_pct"), "avg_minutes_to_peak": avg("minutes_to_peak"),
+           "avg_fall_from_peak_pct": avg("fall_from_peak_pct"), "avg_end_pct": avg("end_pct"),
+           "low_broken_pct": round(sum(1 for r in done if r["low_broken"]) / len(done) * 100, 1),
+           "rebound_1pct_or_more": sum(1 for r in done if r["rebound_pct"] >= 1)}
+    tops = [r["top"] for r in done if r.get("top") and r["top"].get("final")]
+    if tops:
+        wins = [x["short_pct"] for x in tops if x["short_pct"] > 0]
+        loss = -sum(x["short_pct"] for x in tops if x["short_pct"] < 0)
+        out["tops"] = {"n": len(tops), "avg_short_pct": round(sum(x["short_pct"] for x in tops) / len(tops), 3),
+                       "win_pct": round(len(wins) / len(tops) * 100, 1),
+                       "pf": round(sum(wins) / loss, 2) if loss else None,
+                       "stopped_pct": round(sum(1 for x in tops if x["stopped_at"]) / len(tops) * 100, 1),
+                       "avg_best_pct": round(sum(x["best_pct"] for x in tops) / len(tops), 3),
+                       "avg_minutes_from_first_move": round(sum(x["minutes_from_first_move"] for x in tops) / len(tops), 1)}
+    else:
+        out["tops"] = {"n": 0}
+    return out
 
 
 def _short_rebound(day_dir: Path, records: Path, today: str, state: dict) -> dict:
@@ -302,6 +356,16 @@ def _short_rebound(day_dir: Path, records: Path, today: str, state: dict) -> dic
                 if first:
                     w.writeheader()
                 w.writerows(new)
+        top_path = day_dir / REBOUND_TOPS_FILE
+        have_tops = {(r.get("ticker"), r.get("top_at")) for r in _rows(top_path)}
+        new_tops = [x for x in det.tops if (x["ticker"], x["top_at"]) not in have_tops]
+        if new_tops:
+            first = not top_path.is_file()
+            with open(top_path, "a", newline="", encoding="utf-8-sig" if first else "utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=TOP_FIELDS)
+                if first:
+                    w.writeheader()
+                w.writerows(new_tops)
         tmp = day_dir / (REBOUND_OUTCOMES_FILE + ".tmp")
         tmp.write_text(json.dumps({"date": today, "outcomes": today_out}, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, day_dir / REBOUND_OUTCOMES_FILE)
@@ -317,6 +381,7 @@ def _short_rebound(day_dir: Path, records: Path, today: str, state: dict) -> dic
         except (OSError, ValueError):
             continue
     return {"date": today, "today": today_out[-12:], "today_count": len(today_out),
+            "tops_today": [r["top"] for r in today_out if r.get("top")][-8:],
             "summary_today": rebound_summary(today_out), "summary_past": rebound_summary(past),
             "past_days": len({str(r.get("detected_at"))[:10] for r in past})}
 
