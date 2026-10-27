@@ -1,5 +1,5 @@
 """OWNER 2026-10-27 「GTPとGROKのアナリストの回答はおれが朝AIコクピットを起動したら、ここにコピペするやり方にして、
-忘れてたら催促して…AIコクピットでも、俺に知らせるようにして（音声でも俺に知らせる）」: a banner above 注目 lists
+忘れてたら催促して…AIコクピットでも、俺に知らせるようにして（音声でも俺に知らせる）」: a banner right under 注目 lists
 today's missing GPT / Grok answers on weekdays 08:00-15:30 and the voice reminds every 30 minutes (at most 6 a day)."""
 from pathlib import Path
 
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _block():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
-    assert '<div id="paste-reminder" class="paste-reminder" hidden></div><section id="attention-box"' in html
+    assert '<div id="attention-rows"></div></section></div><div id="paste-reminder" class="paste-reminder" hidden></div>' in html
     return html.split('const KEY="cockpitPasteReminderV1";', 1)[1].split("</script>", 1)[0]
 
 
