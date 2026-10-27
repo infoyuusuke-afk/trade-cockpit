@@ -76,3 +76,11 @@ class RealTodaySplit(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_bars_line_up_with_fixed_value_columns():
+    # OWNER 2026-10-27 「横グラフの位置を統一」: the value column has a fixed width, so every bar starts at the same place.
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert ".g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 190px}" in html
+    assert "minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;" in html
+    assert "minmax(110px,auto)" not in html and "minmax(120px,auto)}" not in html
