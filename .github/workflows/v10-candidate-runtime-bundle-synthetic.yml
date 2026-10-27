@@ -68,7 +68,7 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "3fb53dc46e41a895ca93d831c4d8a3ac05d1191a"
+              test "$expected" = "96385d3b8ecf7228bf64a375d1bd21a71b3f2532"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"

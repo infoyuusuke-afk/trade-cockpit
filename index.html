@@ -1046,6 +1046,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 #kioxia-5m-calendar .kio-ms2-title strong{background:#0E1013;border-color:#22252A}
 #kioxia-5m-calendar .kio-metric>span,#kioxia-5m-calendar .kio-chart-legend>span,#kioxia-5m-calendar .kio-subpanel>p.sub,#kioxia-5m-calendar .kio-monitor-grid span{color:#9AA0AA!important}
 #kioxia-5m-calendar .rotation-box>strong{color:#E8EAED}
+/* OWNER 2026-10-27 含み損益（保有中の仮想カード）: 緑＝含み益、赤＝含み損、灰＝現在値なし */
+.cc-pl{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:6px 0 8px;padding:8px 10px;border-radius:8px;border:1px solid #22252A;background:#0E1013}.cc-pl b{font-size:18px;font-weight:800}.cc-pl small{font-size:11px;color:#9AA0AA}.cc-pl.pl-plus{background:#0d2b23;border-color:#164536}.cc-pl.pl-plus b{color:#35e2ae}.cc-pl.pl-minus{background:#341418;border-color:#4a1f24}.cc-pl.pl-minus b{color:#ff5a5f}.cc-pl.pl-flat b,.cc-pl.pl-none b{color:#9AA0AA;font-size:14px}
 </style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
@@ -2223,6 +2225,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    const controllerHealth=await fetchControllerHealth();
    const controllerForcesFailClosed=!!(controllerHealth&&controllerHealth.runtime&&controllerHealth.runtime.fail_closed===true);
    const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,staleFromAge=d.stale||age>60||age< -5,blocked=window.livePriceBlocked?window.livePriceBlocked(d):"MISSING_PRICE_DIAGNOSTICS",stale=staleFromAge||controllerForcesFailClosed||!!blocked||!screenReady(d);
+   // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるように」: the same fresh rows the screen trusts
+   // (row gate, not stale) are shared with the holdings cards; nothing is shared while the data is stopped.
+   window.cockpitLivePrices=stale?null:{at:Date.now(),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>rowReady(x)).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}

@@ -414,14 +414,25 @@
   // and what was held and closed today. 実口座: the OWNER's real holdings read by the Collector with the read-only RSS
   // position lists (this PC only). 仮想: the cockpit's simulated holdings (rule signals, overnight).
   // Display only; nothing here can place an order.
-  function holdingCard(name,code,badge,metrics,foot,cls){
+  function holdingCard(name,code,badge,metrics,foot,cls,pl){
     return '<article class="cc-card cc-card--'+cls+'">'+
       '<div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name||code||"—")+'</span>'+
       '<span class="cc-symbol">'+esc(code||"")+'</span></div><span class="cc-badge">'+esc(badge)+'</span></div>'+
+      (pl||"")+
       '<div class="cc-metrics-grid">'+metrics.filter(x=>x&&x[1]!=null).map(x=>'<span>'+esc(x[0])+'<b>'+esc(x[1])+'</b></span>').join("")+'</div>'+
       (foot?'<div class="cc-foot">'+esc(foot)+'</div>':"")+'</article>';
   }
   const yen=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"円";};
+  // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるようにして」: the live price the screen trusts
+  // (window.cockpitLivePrices, fresh rows only, at most 30 s old) against the virtual entry / reference price.
+  // No live price -> 「現在値なし」, never an old number. Display only.
+  function unrealized(code,entry,isShort){
+    const lp=window.cockpitLivePrices,now=lp&&Date.now()-lp.at<=30000?Number(lp.rows?.[code]):NaN,e=knownNumber(entry);
+    if(!Number.isFinite(now)||now<=0||e===null||e<=0)return {cls:"pl-none",text:"含み損益：現在値なし",now:null};
+    const pct=(isShort?e/now-1:now/e-1)*100,sign=pct>0?"+":"";
+    return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%",now};
+  }
+  function plLine(u){return '<div class="cc-pl '+u.cls+'"><b>'+esc(u.text)+'</b>'+(u.now!==null?'<small>現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}
   const shares=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"株";};
   const signedPct=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toFixed(2)+"%";};
   const openDay=v=>{const s=String(v||"");if(!/^\d{8}$/.test(s))return s||"—";const jst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"");return s===jst?"本日":s.slice(4,6)+"/"+s.slice(6,8);};
@@ -477,11 +488,13 @@
         const rules=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="OPEN").map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"保有中（仮想）",[
           ["サイン",p.signal||"—"],["ルール",p.rule||"—"],["約定（仮想）",yen(p.fill_price)],["約定時刻",p.fill_time||"—"],
           ["利確",yen(p.target)],["損切り",yen(p.stop)]
-        ],"ルールのサインの仮想売買（検証中・注文なし）",String(p.signal||"").includes("空売り")?"short":"long"));
+        ],"ルールのサインの仮想売買（検証中・注文なし）",String(p.signal||"").includes("空売り")?"short":"long",
+          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.fill_price,String(p.signal||"").includes("空売り")))));
         const overnight=(Array.isArray(pos.overnight)?pos.overnight:[]).map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"持ち越し（仮想）",[
           ["売買",p.side==="LONG"?"買い":"空売り"],["基準",yen(p.reference_price)],["決定",String(p.decided_at||"").slice(5,16)],
           ["採点",String(p.valid_until||"").replace("next trading day","翌営業日")]
-        ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short"));
+        ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short",
+          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.reference_price,p.side!=="LONG"))));
         virtRoot.innerHTML=(rules.join("")+overnight.join(""))||'<div class="focus-empty">仮想の保有はありません</div>';
         const vDone=document.getElementById("owner-virtual-closed");
         if(vDone){
