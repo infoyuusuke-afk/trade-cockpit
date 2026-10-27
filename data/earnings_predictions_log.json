@@ -3798,7 +3798,10 @@
     "logged_at": "2026-10-23 09:56:31 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.22,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.78,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "2211",
@@ -3807,7 +3810,10 @@
     "logged_at": "2026-10-23 09:56:31 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.67,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -1.03,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "3635",
@@ -3816,7 +3822,10 @@
     "logged_at": "2026-10-23 09:56:31 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.16,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 4.08,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "6230",
@@ -3825,7 +3834,10 @@
     "logged_at": "2026-10-23 09:56:31 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.6,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.3,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "6663",
@@ -3834,7 +3846,10 @@
     "logged_at": "2026-10-23 09:56:31 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -2.23,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -3.67,
+    "actual_direction": "下落",
+    "hit": true
   },
   {
     "code": "6923",
@@ -3843,7 +3858,10 @@
     "logged_at": "2026-10-23 09:56:32 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -2.34,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.17,
+    "actual_direction": "下落",
+    "hit": true
   },
   {
     "code": "7970",
@@ -3852,7 +3870,10 @@
     "logged_at": "2026-10-23 09:56:32 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -7.66,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 13.77,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "8060",
@@ -3861,7 +3882,10 @@
     "logged_at": "2026-10-23 09:56:32 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 4.82,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -4.99,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "2212",
