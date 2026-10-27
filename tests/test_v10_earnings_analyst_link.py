@@ -12,7 +12,9 @@ def _html():
 def test_morning_brief_box_under_attention_lists_today_and_next_weekday_watched_earnings():
     html = _html()
     assert '<div id="paste-reminder" class="paste-reminder" hidden></div><details id="morning-brief" class="morning-brief" hidden></details>' in html
-    assert "【朝やること】GPT・Grokへの追加の質問" in html and "mins<360||mins>690" in html   # OWNER 2026-10-27 「意味がよくわからない」
+    assert "決算銘柄の追加指示（GPT・Grokに貼る）" in html and "mins<360||mins>690" in html   # OWNER 2026-10-27 「名前を短く」
+    assert 'const fold=mins<540?"open":"fold"' in html   # OWNER 2026-10-27 「9時から後は畳む」
+    assert "【朝やること】" not in html
     block = html.split("const nextWeekday=day=>", 1)[1].split("async function decorate()", 1)[0]
     assert "x.watched===true&&x.date===d" in block
     assert "GPT_ANALYST_NOTE_V1" in block and "GROK_NOTE_V2" in block
