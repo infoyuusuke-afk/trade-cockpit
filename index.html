@@ -273,7 +273,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    else if(s.id==="strong-yen-top5")k="strong-yen";
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
-   else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="event-hot";
+   else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="pre-next";   // OWNER 2026-10-27 「EVENT 5はテーマタブに入れる」
    else if(s.id==="next-theme-radar")k="pre-next";
    else if(s.id==="focus-owner-panel")k="focus-owner";
    else if(s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
@@ -1188,7 +1188,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 
 <section id="speculative-theme-monitor" class="card wide scalp-tv">
- <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>EVENT 5</h2><span>全市場走査 / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
+ <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>急騰・過熱の監視（旧EVENT 5）</h2><span>全市場走査・終値ベース / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
  <div id="speculative-theme-watch" class="scalp-strip"><div class="focus-empty">全市場の仕手化兆候を走査中...</div></div>
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。VWAP・OR5・OR15・EMA・ENTRY/STOP/T1はMS2ライブ対象100銘柄外だと未取得のため「—」表示です。</p></section>
 <section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
@@ -2768,6 +2768,15 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 <script>
+// OWNER 2026-10-27 「EVENT 5はテーマタブに入れる」: the EVENT 5 tab button stays in the page (tab list kept) but is hidden; a saved
+// EVENT 5 tab opens テーマ instead.
+document.addEventListener("DOMContentLoaded",()=>{
+  const b=document.querySelector('.cockpit-tab[data-tab="event-hot"]');if(!b)return;
+  b.hidden=true;b.style.display="none";
+  if(b.classList.contains("active"))document.querySelector('.cockpit-tab[data-tab="pre-next"]')?.click();
+});
+</script>
+<script>
 // OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ、しっかり機能させろ、セキュリティ関連銘柄だして期待値銘柄のカード
 // タブの名称から再考」「テーマ先回りはPCの仕様書を元に、Grok1号は置きかえ、タブ名は『テーマ』」: /theme_watch.json (made on this PC:
 // Grok1号's daily 08:00 themes + the OWNER's themes, Yahoo daily bars, the cockpit's recorded EV, and Grok's score since each
@@ -2782,19 +2791,24 @@ document.addEventListener("DOMContentLoaded",()=>{
     '<span class="tw-role">'+esc(c.role||"")+'・'+esc(c.day)+'の終値'+(c.from_base!==undefined?'・見つけてから <b class="'+cls(c.from_base)+'">'+pct(c.from_base)+'</b>':'')+'</span>'+
     '<div class="tw-row"><span>5日 <b class="'+cls(c.ret5)+'">'+pct(c.ret5)+'</b></span><span>20日 <b class="'+cls(c.ret20)+'">'+pct(c.ret20)+'</b></span><span>日経比20日 <b class="'+cls(c.rel20)+'">'+pct(c.rel20)+'</b></span></div>'+
     '<div class="tw-row"><span>出来高 <b>'+esc(c.vol_ratio??"—")+'倍</b>（5日÷前60日）</span><span>25日線から <b class="'+cls(c.from_ma25)+'">'+pct(c.from_ma25)+'</b></span><span>半年高値から <b>'+pct(c.from_high)+'</b></span></div>'+
-    '<div class="tw-ev">'+(c.ev?'期待値（コクピットの記録・'+esc(c.ev.n)+'回）：<b class="'+cls(c.ev.ev_pct)+'">'+pct(c.ev.ev_pct,3)+'</b>':'期待値：コクピットの記録なし（監視100銘柄の外）')+'</div></article>';
+    '<div class="tw-ev">'+(c.ev?(Number(c.ev.n)>=20?'期待値（コクピットの記録・'+esc(c.ev.n)+'回）：<b class="'+cls(c.ev.ev_pct)+'">'+pct(c.ev.ev_pct,3)+'</b>':'期待値：根拠不足（記録'+esc(c.ev.n)+'回・20回未満）'):'期待値：コクピットの記録なし（監視100銘柄の外）')+'</div></article>';
   function draw(){
     const v=last;if(!sec||!v)return;
-    const themes=Array.isArray(v.themes)&&v.themes.length?v.themes:(Array.isArray(v.cards)?[{theme:v.theme,why:v.why,cards:v.cards,count:v.count,breadth_up:v.breadth_up,avg_chg1d:v.avg_chg1d,avg_ret5:v.avg_ret5}]:[]);
+    // OWNER 2026-10-27 「24時間より古い答えは順位に入れない」: Grok1's themes older than 24 hours go last, marked
+    const age=v.grok_run_at?(Date.now()-Date.parse(String(v.grok_run_at).replace(" ","T")+":00+09:00"))/3600000:null;
+    const stale=x=>x.source==="Grok1号"&&age!==null&&age>24;
+    const raw=Array.isArray(v.themes)&&v.themes.length?v.themes:(Array.isArray(v.cards)?[{theme:v.theme,why:v.why,cards:v.cards,count:v.count,breadth_up:v.breadth_up,avg_chg1d:v.avg_chg1d,avg_ret5:v.avg_ret5}]:[]);
+    const themes=raw.filter(x=>!stale(x)).concat(raw.filter(stale));
     if(!themes.length){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマがありません（Grok1号の8:00の答えを貼ると出ます）。</p>';return;}
     if(pick>=themes.length)pick=0;
     const t=themes[pick];
     const sc=(v.score&&Array.isArray(v.score.role))?v.score.role:[];
-    sec.innerHTML='<h2>今のテーマ</h2><div class="tw-themes">'+themes.map((x,i)=>'<button type="button" class="tw-tbtn'+(i===pick?' on':'')+'" data-tw="'+i+'">'+esc(x.theme)+(x.stage?'（'+esc(x.stage)+'）':'')+'<small>'+esc(x.count??0)+'銘柄・上げ'+esc(x.breadth_up??0)+'・前日比平均 '+pct(x.avg_chg1d)+'・5日 '+pct(x.avg_ret5)+'</small></button>').join("")+'</div>'+
+    sec.innerHTML='<h2>今のテーマ</h2><div class="tw-themes">'+themes.map((x,i)=>'<button type="button" class="tw-tbtn'+(i===pick?' on':'')+'" data-tw="'+i+'">'+esc(x.theme)+(x.stage?'（'+esc(x.stage)+'）':'')+(stale(x)?'・24時間より古い答え（順位に入れない）':'')+'<small>'+esc(x.count??0)+'銘柄・上げ'+esc(x.breadth_up??0)+'・前日比平均 '+pct(x.avg_chg1d)+'・5日 '+pct(x.avg_ret5)+'</small></button>').join("")+'</div>'+
       '<p class="tw-head"><b>'+esc(t.theme)+'</b>'+(t.status?'・'+esc(t.status):'')+(t.source?'・'+esc(t.source):'')+(t.first_seen?'・最初に見つけた '+esc(t.first_seen):'')+'<br>'+esc(t.why||"")+(t.next&&t.next!=="なし"?'<br>次に見る日：'+esc(t.next):'')+(Array.isArray(t.check_ng)&&t.check_ng.length?'<br>照合NG（コードが確かめられず表示から外した）：'+t.check_ng.map(esc).join("・"):'')+'</p>'+
       '<div class="tw-grid">'+(t.cards||[]).map(card).join("")+'</div>'+
       '<h3 class="g-h">Grok1号の採点（見つけた時の終値からの上げ下げ・日経比）</h3>'+
-      (sc.length?'<table class="tw-score"><tr><th>役割</th><th>何日後</th><th>回数</th><th>平均</th><th>日経比の平均</th><th>日経に勝った率</th></tr>'+sc.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td class="'+cls(r.avg_ret)+'">'+pct(r.avg_ret)+'</td><td class="'+cls(r.avg_vs_n225)+'">'+pct(r.avg_vs_n225)+'</td><td>'+esc(r.win_vs_n225_pct??"—")+'%</td></tr>').join("")+'</table>':'<p class="g-empty">まだ採点できる日数がありません（見つけた翌日から数えます）。</p>')+
+      (sc.length?'<table class="tw-score"><tr><th>役割</th><th>何日後</th><th>回数</th><th>平均</th><th>日経比の平均</th><th>日経に勝った率</th></tr>'+sc.map(r=>Number(r.n)<20?'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td colspan="3">根拠不足（20回未満）</td></tr>':'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td class="'+cls(r.avg_ret)+'">'+pct(r.avg_ret)+'</td><td class="'+cls(r.avg_vs_n225)+'">'+pct(r.avg_vs_n225)+'</td><td>'+esc(r.win_vs_n225_pct??"—")+'%</td></tr>').join("")+'</table>':'<p class="g-empty">まだ採点できる日数がありません（見つけた翌日から数えます）。</p>')+
+      '<p class="g-note">期待値と採点は20回以上の時だけ数字を出します（20回未満は根拠不足）。コードと社名が確かめられない銘柄は出しません。声と注文ボタンはありません。</p>'+
       '<p class="g-note">並び順：期待値プラス → 出遅れ → 勢い。勢い＝5日の上げ＋日経比20日の半分＋出来高の増えで、期待値ではありません。値はYahooの日足（公開データ）。研究段階で、売買の合図ではありません。</p>';
   }
   async function render(){
@@ -2805,6 +2819,12 @@ document.addEventListener("DOMContentLoaded",()=>{
     let v=null;try{const r=await fetch("/theme_watch.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){}
     if(!v||v.real_submit_allowed!==false){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマのデータを読めません（V10停止中、またはまだ作っていません）。</p>';return;}
     last=v;draw();
+    // EVENT 5 (急騰・過熱の監視) right under the theme section, with a mark on the stocks that are in a theme
+    const ev5=document.getElementById("speculative-theme-monitor");
+    if(ev5&&ev5.previousElementSibling!==sec)sec.after(ev5);
+    const codes=new Set([].concat(...(Array.isArray(v.themes)?v.themes:[]).map(x=>(x.cards||[]).map(c=>String(c.code)))));
+    document.querySelectorAll("#speculative-theme-watch .cc-symbol").forEach(el=>{const m=/TSE:([0-9A-Z]{4})/.exec(el.textContent||"");
+      if(m&&codes.has(m[1])&&!el.parentElement.querySelector(".tw-lag"))el.insertAdjacentHTML("afterend",'<span class="tw-lag">テーマ銘柄</span>');});
   }
   document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,600000);});
 })();

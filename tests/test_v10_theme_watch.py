@@ -20,6 +20,17 @@ def test_tab_renamed_and_theme_cards_from_the_local_file():
     assert "照合NG（コードが確かめられず表示から外した）" in b
 
 
+def test_event5_in_the_theme_tab_rules_of_the_owner():
+    # OWNER 2026-10-27 「EVENT 5はテーマタブに入れる。コード不一致は出さない、20回未満は根拠不足、24時間より古い答えは順位に入れない、声と注文ボタンなし」
+    html = _html()
+    assert 'else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="pre-next";' in html
+    assert "b.hidden=true;b.style.display=\"none\";" in html and "<h2>急騰・過熱の監視（旧EVENT 5）</h2>" in html
+    b = html.split("// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ", 1)[1].split("</script>", 1)[0]
+    assert "期待値：根拠不足（記録'+esc(c.ev.n)+'回・20回未満）" in b and "根拠不足（20回未満）" in b
+    assert "const stale=x=>x.source===\"Grok1号\"&&age!==null&&age>24;" in b and "24時間より古い答え（順位に入れない）" in b
+    assert "cockpitSpeak" not in b and "RssOrder" not in b and "<button" not in b.replace('<button type="button" class="tw-tbtn', "")
+
+
 def test_gateway_serves_theme_watch_with_safe_flags_only():
     ps = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
     body = ps.split("function Get-ThemeWatchView([string]$RuntimeDir) {", 1)[1].split("\nfunction ", 1)[0]
