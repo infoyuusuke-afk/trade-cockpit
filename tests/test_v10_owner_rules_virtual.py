@@ -53,7 +53,7 @@ class OwnerRules(unittest.TestCase):
 
     def test_brain_pick_carries_the_tally(self):
         src = (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8")
-        self.assertIn('"owner_rules")}', src)
+        self.assertIn('"owner_rules", "short_rebound")}', src)
 
 
 class OwnerRulesScreen(unittest.TestCase):

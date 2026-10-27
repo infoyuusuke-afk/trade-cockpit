@@ -45,6 +45,23 @@ OWNER_SHARES = 100
 OWNER_DAILY_LIMIT_YEN = -30000
 OWNER_VIRTUAL_ONLY = ("6146", "6920", "285A")
 OWNER_HISTORY_DAYS = 20
+# OWNER 2026-10-27 「ショートリバの初動検知（大きく下げた銘柄で、大きい買いの約定・売り板が薄くなる・安値を割らない）を記録と
+# 表示と声だけで作って、その後の戻りを毎日集計して」「あがりきったところで、ショートINする」: read from
+# records/<day>/market_snapshots.csv (every ~12 s, 100 stocks). A first move is a snapshot where
+#   - the price is 4 % or more under the day's high and under VWAP           (大きく下げた)
+#   - the volume traded since the last snapshot is 5x the median of the previous 20 and the price is at or
+#     above the previous ask                                                  (大きい買いの約定, estimated)
+#   - the best ask quantity is half or less of its previous 10-snapshot average, or the total ask (OVER) is
+#     20 % or more lower than 10 snapshots before                             (売り板が薄くなる)
+#   - the day's low is 3 minutes old or more and not broken                   (安値を割らない)
+# One per stock per 60 minutes, 09:30-15:00. Each is followed until 15:20: the highest price (the top of the
+# rebound and when), the lowest, and the fall from the top to 15:20 (what a short at the top would have got).
+# Record, screen and voice only; no order.
+REBOUND_SIGNALS_FILE = "short_rebound_signals.csv"
+REBOUND_OUTCOMES_FILE = "short_rebound_outcomes.json"
+SNAPSHOTS_FILE = "market_snapshots.csv"
+REBOUND_FIELDS = ["detected_at", "ticker", "name", "price", "day_high", "day_low", "drop_from_high_pct", "vwap",
+                  "volume_x", "ask_qty_ratio", "over_ratio", "low_age_min"]
 
 
 def _rows(path: Path) -> list[dict]:
@@ -137,6 +154,171 @@ def _num(v):
     except (TypeError, ValueError):
         return None
     return x if x == x else None
+
+
+def _hms_sec(t) -> int:
+    try:
+        h, m, sec = str(t).split(":")
+        return int(h) * 3600 + int(m) * 60 + int(float(sec))
+    except ValueError:
+        return -1
+
+
+class ReboundDetector:
+    """Per-stock state over the day's snapshots (fed oldest first); pure, so research can replay past days."""
+
+    DROP_PCT = -4.0       # under the day's high
+    VOLUME_X = 5.0        # traded since the last snapshot vs the median of the previous 20
+    ASK_RATIO = 0.5       # best ask quantity vs its previous 10-snapshot average
+    OVER_RATIO = 0.8      # total ask (OVER) vs 10 snapshots before
+    LOW_AGE_MIN = 3.0
+
+    def __init__(self, **kw):
+        self.s = {}
+        self.signals = []
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+    def feed(self, row: dict):
+        ticker = row.get("ticker") or ""
+        t = str(row.get("captured_at") or "")[11:19]
+        price, vol, vwap = _num(row.get("price")), _num(row.get("volume")), _num(row.get("vwap"))
+        ask, ask_qty, over = _num(row.get("ask")), _num(row.get("ask_qty")), _num(row.get("over"))
+        if not ticker or len(t) != 8 or not price or price <= 0 or t < "09:00:00" or t > "15:30:00":
+            return None
+        st = self.s.setdefault(ticker, {"hist": [], "high": price, "low": price, "low_t": t, "last_sig": -10 ** 9,
+                                        "name": row.get("name") or "", "follow": []})
+        if price > st["high"]:
+            st["high"] = price
+        if price < st["low"]:
+            st["low"], st["low_t"] = price, t
+        if t <= "15:20:00":
+            for f in st["follow"]:
+                if price > f["peak"]:
+                    f["peak"], f["peak_at"] = price, t
+                f["trough"] = min(f["trough"], price)
+                f["last"], f["last_at"] = price, t
+        hist = st["hist"]
+        prev = hist[-1] if hist else None
+        dvol = (vol - prev["vol"]) if (prev and vol is not None and prev["vol"] is not None) else None
+        sig = None
+        # 11:30-12:35 is skipped: the first afternoon snapshot carries the whole lunch-break volume
+        if (prev and len(hist) >= 20 and dvol is not None and dvol > 0 and "09:30:00" <= t <= "15:00:00"
+                and not ("11:30:00" <= t <= "12:35:00")):
+            past = sorted(h["dvol"] for h in hist[-20:] if h["dvol"] is not None and h["dvol"] >= 0)
+            med = past[len(past) // 2] if past else None
+            asks = [h["ask_qty"] for h in hist[-10:] if h["ask_qty"]]
+            avg_ask = sum(asks) / len(asks) if asks else None
+            over10 = hist[-10]["over"]
+            drop = (price / st["high"] - 1) * 100
+            vol_x = dvol / med if med else None
+            ask_ratio = ask_qty / avg_ask if (ask_qty is not None and avg_ask) else None
+            over_ratio = over / over10 if (over is not None and over10) else None
+            low_age = (_hms_sec(t) - _hms_sec(st["low_t"])) / 60
+            if (drop <= self.DROP_PCT and vwap and price < vwap
+                    and vol_x is not None and vol_x >= self.VOLUME_X and prev["ask"] and price >= prev["ask"]
+                    and ((ask_ratio is not None and ask_ratio <= self.ASK_RATIO)
+                         or (over_ratio is not None and over_ratio <= self.OVER_RATIO))
+                    and low_age >= self.LOW_AGE_MIN and _hms_sec(t) - st["last_sig"] >= 3600):
+                st["last_sig"] = _hms_sec(t)
+                sig = {"detected_at": str(row.get("captured_at"))[:19], "ticker": ticker, "name": st["name"],
+                       "price": price, "day_high": st["high"], "day_low": st["low"], "drop_from_high_pct": round(drop, 2),
+                       "vwap": round(vwap, 2), "volume_x": round(vol_x, 1),
+                       "ask_qty_ratio": None if ask_ratio is None else round(ask_ratio, 2),
+                       "over_ratio": None if over_ratio is None else round(over_ratio, 2), "low_age_min": round(low_age, 1)}
+                st["follow"].append({"sig": sig, "peak": price, "peak_at": t, "trough": price, "last": price, "last_at": t})
+                self.signals.append(sig)
+        hist.append({"vol": vol, "dvol": dvol, "ask": ask, "ask_qty": ask_qty, "over": over})
+        if len(hist) > 40:
+            del hist[0]
+        return sig
+
+    def outcomes(self) -> list:
+        out = []
+        for st in self.s.values():
+            for f in st["follow"]:
+                p0 = f["sig"]["price"]
+                out.append({"detected_at": f["sig"]["detected_at"], "ticker": f["sig"]["ticker"], "name": f["sig"]["name"],
+                            "price": p0, "peak": f["peak"], "peak_at": f["peak_at"],
+                            "rebound_pct": round((f["peak"] / p0 - 1) * 100, 3),
+                            "minutes_to_peak": round((_hms_sec(f["peak_at"]) - _hms_sec(f["sig"]["detected_at"][11:19])) / 60, 1),
+                            "worst_pct": round((f["trough"] / p0 - 1) * 100, 3),
+                            "low_broken": f["trough"] < f["sig"]["day_low"],
+                            "last_at": f["last_at"], "end_pct": round((f["last"] / p0 - 1) * 100, 3),
+                            "fall_from_peak_pct": round((f["last"] / f["peak"] - 1) * 100, 3),
+                            "final": f["last_at"] >= "15:19:00"})
+        return sorted(out, key=lambda x: x["detected_at"])
+
+
+def rebound_summary(rows: list) -> dict:
+    done = [r for r in rows if r.get("final")]
+    if not done:
+        return {"n": 0}
+
+    def avg(k):
+        return round(sum(float(r[k]) for r in done) / len(done), 3)
+    return {"n": len(done), "avg_rebound_pct": avg("rebound_pct"), "avg_minutes_to_peak": avg("minutes_to_peak"),
+            "avg_fall_from_peak_pct": avg("fall_from_peak_pct"), "avg_end_pct": avg("end_pct"),
+            "low_broken_pct": round(sum(1 for r in done if r["low_broken"]) / len(done) * 100, 1),
+            "rebound_1pct_or_more": sum(1 for r in done if r["rebound_pct"] >= 1)}
+
+
+def _short_rebound(day_dir: Path, records: Path, today: str, state: dict) -> dict:
+    """Feed new snapshot rows, append new first moves to the day's CSV, write the outcomes and the history."""
+    path = day_dir / SNAPSHOTS_FILE
+    if state.get("day") != today:
+        state.clear()
+        state.update(day=today, offset=0, header=None, det=ReboundDetector())
+    try:
+        size = path.stat().st_size
+    except OSError:
+        size = 0
+    if size < state["offset"]:
+        state.update(offset=0, header=None, det=ReboundDetector())
+    if size > state["offset"]:
+        with open(path, "rb") as f:
+            f.seek(state["offset"])
+            raw = f.read(min(size - state["offset"], MAX_READ_BYTES))
+        end = raw.rfind(b"\n")
+        if end >= 0:
+            state["offset"] += end + 1
+            lines = raw[:end + 1].decode("utf-8-sig", errors="replace").splitlines()
+            if state["header"] is None and lines:
+                state["header"] = next(csv.reader([lines[0]]))
+                lines = lines[1:]
+            for rec in csv.reader(io.StringIO("\n".join(lines))):
+                if len(rec) == len(state["header"]):
+                    state["det"].feed(dict(zip(state["header"], rec)))
+    det = state["det"]
+    today_out = det.outcomes()
+    if day_dir.is_dir():
+        sig_path = day_dir / REBOUND_SIGNALS_FILE
+        have = {(r.get("ticker"), r.get("detected_at")) for r in _rows(sig_path)}
+        new = [x for x in det.signals if (x["ticker"], x["detected_at"]) not in have]
+        if new:
+            first = not sig_path.is_file()
+            with open(sig_path, "a", newline="", encoding="utf-8-sig" if first else "utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=REBOUND_FIELDS)
+                if first:
+                    w.writeheader()
+                w.writerows(new)
+        tmp = day_dir / (REBOUND_OUTCOMES_FILE + ".tmp")
+        tmp.write_text(json.dumps({"date": today, "outcomes": today_out}, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, day_dir / REBOUND_OUTCOMES_FILE)
+    past = []
+    try:
+        names = sorted((p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today),
+                       reverse=True)
+    except OSError:
+        names = []
+    for name in names[:60]:
+        try:
+            past.extend(json.loads((Path(records) / name / REBOUND_OUTCOMES_FILE).read_text(encoding="utf-8")).get("outcomes") or [])
+        except (OSError, ValueError):
+            continue
+    return {"date": today, "today": today_out[-12:], "today_count": len(today_out),
+            "summary_today": rebound_summary(today_out), "summary_past": rebound_summary(past),
+            "past_days": len({str(r.get("detected_at"))[:10] for r in past})}
 
 
 def owner_rules(rule_positions: list[dict], day: str) -> dict:
@@ -250,6 +432,10 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         overnight = _overnight(prev, valid_until=scored_on + " " + OVERNIGHT_SCORED_AT)
     if (day_dir / OVERNIGHT_FILE).is_file():               # fixed at 15:25 today, held into the next day
         overnight = overnight + _overnight(day_dir, valid_until="next trading day " + OVERNIGHT_SCORED_AT)
+    try:
+        rebound = _short_rebound(day_dir, records, today, state.setdefault("rebound_state", {}))
+    except Exception as exc:   # the recorder never stops the holdings view
+        rebound = {"date": today, "status": "UNAVAILABLE", "reason": type(exc).__name__}
     owner = owner_rules(rule_positions, today)
     if day_dir.is_dir():
         tmp = day_dir / (OWNER_RULES_FILE + ".tmp")
@@ -258,7 +444,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     owner = dict(owner, history=_owner_history(records, today))
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
-            "owner_rules": owner,
+            "owner_rules": owner, "short_rebound": rebound,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}

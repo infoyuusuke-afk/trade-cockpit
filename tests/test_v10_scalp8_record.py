@@ -79,6 +79,18 @@ class Scalp8Static(unittest.TestCase):
         self.assertIn('Write-Host "[SCALP8] WARN / READ FAILED - recorder suspended, Collector continues"', cycle)
         self.assertNotIn("throw", cycle)
 
+    def test_failure_is_logged_with_its_reason_and_retried(self):
+        # OWNER 2026-10-27 「SCALP8の直し」: one READ FAILED used to stop it for the whole run, with no reason kept
+        text = _text()
+        cycle = _cycle(text)
+        self.assertIn("$scalp8FailCount = 0\n$scalp8RetryAt = [datetime]::MinValue", text.replace("\r\n", "\n"))
+        self.assertIn("-and (Get-Date) -ge $scalp8RetryAt) {", cycle)
+        self.assertIn('$s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"', cycle)
+        self.assertIn("$s8Wait = [Math]::Min(300, 10 * [Math]::Pow(2, [Math]::Min(5, $scalp8FailCount - 1)))", cycle)
+        catch = cycle[cycle.index("$scalp8FailCount++"):]
+        self.assertNotIn("$scalp8Ready = $false", catch)
+        self.assertNotIn("$scalp8Sheet = $null", catch)
+
 
 @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
 class Scalp8Functions(unittest.TestCase):

@@ -2142,6 +2142,11 @@ $scalp8Codes = @()
 $scalp8PrevKeys = @{}
 $scalp8PrevBoard = @{}
 $scalp8Seq = 0
+# OWNER 2026-10-27 「SCALP8の直し」: on 10/26 every start stopped the recorder after one READ FAILED and it stayed off
+# all day without a reason. Now the reason is written to records/<day>/scalp8_errors.csv and the read is tried again
+# after 10, 20, 40 ... seconds (at most 5 minutes) with the same sheet; only the local off switch stops it for good.
+$scalp8FailCount = 0
+$scalp8RetryAt = [datetime]::MinValue
 $scalp8StartConfig = Get-Scalp8Config
 if ($null -eq $scalp8StartConfig) {
     Write-Host "[SCALP8] OFF (no local scalp8 config or switched off)" -ForegroundColor DarkGray
@@ -2864,7 +2869,7 @@ try {
             $scalp8Ready = $false   # switched off or config gone: stays off until restart
             Write-Host "[SCALP8] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
-        if ($scalp8Ready -and $null -ne $scalp8Sheet) {
+        if ($scalp8Ready -and $null -ne $scalp8Sheet -and (Get-Date) -ge $scalp8RetryAt) {
             try {
                 $s8Started = Get-Date
                 $s8Packet = Invoke-ExcelCom -Label "SCALP8値取得" -Action {
@@ -2922,10 +2927,21 @@ try {
                 if ($s8TickLines.Count -gt 0) { Add-RecordLines $s8TickCsv $s8TickLines }
                 if ($s8BoardLines.Count -gt 0) { Add-RecordLines $s8BoardCsv $s8BoardLines }
                 if ($s8DiagLines.Count -gt 0) { Add-RecordLines $s8DiagCsv $s8DiagLines }
+                $scalp8FailCount = 0
             } catch {
-                $scalp8Ready = $false
-                $scalp8Sheet = $null
+                $scalp8FailCount++
+                $s8Wait = [Math]::Min(300, 10 * [Math]::Pow(2, [Math]::Min(5, $scalp8FailCount - 1)))
+                $scalp8RetryAt = (Get-Date).AddSeconds($s8Wait)
+                $s8Reason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[
+,"]', ' '
+                if ($s8Reason.Length -gt 200) { $s8Reason = $s8Reason.Substring(0, 200) }
+                try {
+                    $s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"
+                    Ensure-Csv $s8ErrCsv "captured_at,fail_count,retry_after_s,reason"
+                    Add-RecordLines $s8ErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$scalp8FailCount + "," + [string]$s8Wait + "," + $s8Reason))
+                } catch { }
                 Write-Host "[SCALP8] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
+                Write-Host ("[SCALP8] retry in " + [string]$s8Wait + "s (" + [string]$scalp8FailCount + "): " + $s8Reason) -ForegroundColor DarkYellow
             }
         }
         # OWNER 2026-10-23 夜: the OWNER's real holdings, read only, this PC only (see REAL_POS above).
