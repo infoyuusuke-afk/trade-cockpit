@@ -418,7 +418,8 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
     view["manual_analysts"] = manual_analysts or {}   # backup only, shown as 『手動』
     # OWNER 2026-10-23: virtual holdings for the screen colours and the 08:50 / 15:30 voice
     view["positions"] = {k: (positions or {}).get(k) for k in ("generated_at", "date", "rule_positions", "overnight",
-                                                               "swing", "value", "counts", "status")}
+                                                               "swing", "value", "counts", "status",
+                                                               "owner_rules")}   # OWNER 2026-10-27 OWNER's rules tally
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(view, ensure_ascii=False, sort_keys=True), encoding="utf-8")

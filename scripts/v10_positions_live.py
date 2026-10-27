@@ -35,6 +35,16 @@ OVERNIGHT_FILE = "overnight_hold_final.csv"
 TICKS_FILE = "ticks.csv"
 OVERNIGHT_SCORED_AT = "15:30"
 MAX_READ_BYTES = 64 * 1024 * 1024
+# OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
+# おれの実際の成績と毎日並べて」: the OWNER's rules are applied to today's rule trades as a second, virtual tally
+# (100 shares each, cost included). A trade without a stop is not counted; after the closed loss of the day reaches
+# 30,000 yen no new trade is counted; 6146 / 6920 / 285A are tallied apart as virtual only. Kept per day in
+# records/<day>/owner_rules_virtual.json. The real account side is added on the screen only (never read here).
+OWNER_RULES_FILE = "owner_rules_virtual.json"
+OWNER_SHARES = 100
+OWNER_DAILY_LIMIT_YEN = -30000
+OWNER_VIRTUAL_ONLY = ("6146", "6920", "285A")
+OWNER_HISTORY_DAYS = 20
 
 
 def _rows(path: Path) -> list[dict]:
@@ -121,6 +131,71 @@ def _overnight(day_dir: Path, *, valid_until: str) -> list[dict]:
     return out
 
 
+def _num(v):
+    try:
+        x = float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return x if x == x else None
+
+
+def owner_rules(rule_positions: list[dict], day: str) -> dict:
+    """Today's rule trades under the OWNER's rules (virtual, 100 shares, yen after the replay's cost)."""
+    filled = sorted((p for p in rule_positions if p.get("status") in ("OPEN", "CLOSED") and p.get("fill_time")),
+                    key=lambda p: str(p.get("fill_time")))
+    counted, apart = [], []
+    no_stop = skipped = 0
+    limit_hit_at = None
+    for p in filled:
+        code = str(p.get("ticker") or "").replace(".T", "")
+        stop, fill = _num(p.get("stop")), _num(p.get("fill_price"))
+        yen = None
+        if p.get("status") == "CLOSED" and p.get("return_pct") is not None and fill:
+            yen = round(float(p["return_pct"]) / 100 * fill * OWNER_SHARES)
+        row = {"ticker": p.get("ticker"), "name": p.get("name"), "rule": p.get("rule"), "fill_time": p.get("fill_time"),
+               "exit_time": p.get("exit_time"), "status": p.get("status"), "yen": yen}
+        if stop is None or stop <= 0:
+            no_stop += 1
+            continue
+        if code in OWNER_VIRTUAL_ONLY:
+            apart.append(row)
+            continue
+        closed_before = sum(r["yen"] for r in counted if r["yen"] is not None and r["exit_time"]
+                            and str(r["exit_time"]) <= str(p.get("fill_time")))
+        if closed_before <= OWNER_DAILY_LIMIT_YEN:
+            skipped += 1
+            limit_hit_at = limit_hit_at or str(p.get("fill_time"))
+            continue
+        counted.append(row)
+
+    def tally(rows):
+        closed = [r["yen"] for r in rows if r["yen"] is not None]
+        return {"n": len(rows), "closed": len(closed), "open": sum(1 for r in rows if r["status"] == "OPEN"),
+                "wins": sum(1 for y in closed if y > 0), "losses": sum(1 for y in closed if y < 0), "yen": sum(closed)}
+    return {"date": day, "shares": OWNER_SHARES, "daily_limit_yen": OWNER_DAILY_LIMIT_YEN,
+            "virtual_only_codes": list(OWNER_VIRTUAL_ONLY), "counted": tally(counted), "virtual_only": tally(apart),
+            "no_stop": no_stop, "skipped_after_limit": skipped, "limit_hit_at": limit_hit_at,
+            "trades": counted + [dict(r, virtual_only=True) for r in apart]}
+
+
+def _owner_history(records: Path, today: str) -> list[dict]:
+    out = []
+    try:
+        days = sorted((p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today),
+                      reverse=True)
+    except OSError:
+        return out
+    for name in days:
+        try:
+            v = json.loads((Path(records) / name / OWNER_RULES_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        out.append({k: v.get(k) for k in ("date", "counted", "virtual_only", "skipped_after_limit", "limit_hit_at")})
+        if len(out) >= OWNER_HISTORY_DAYS:
+            break
+    return out
+
+
 def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict:
     """Write RuntimeDir/positions_live_v1.json and return it."""
     runtime = Path(runtime)
@@ -163,6 +238,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                                "fill_price": got.get("fill_price"), "fill_time": got.get("fill_time"),
                                "exit": got.get("exit") if status == "CLOSED" else None,
                                "exit_price": got.get("exit_price") if status == "CLOSED" else None,
+                               "exit_time": got.get("exit_time") if status == "CLOSED" else None,
                                "return_pct": round(got["return_pct"], 3) if status == "CLOSED" and got.get("return_pct") is not None else None})
     overnight = []
     prev = _previous_day_dir(records, today)
@@ -174,8 +250,15 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         overnight = _overnight(prev, valid_until=scored_on + " " + OVERNIGHT_SCORED_AT)
     if (day_dir / OVERNIGHT_FILE).is_file():               # fixed at 15:25 today, held into the next day
         overnight = overnight + _overnight(day_dir, valid_until="next trading day " + OVERNIGHT_SCORED_AT)
+    owner = owner_rules(rule_positions, today)
+    if day_dir.is_dir():
+        tmp = day_dir / (OWNER_RULES_FILE + ".tmp")
+        tmp.write_text(json.dumps(owner, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+        os.replace(tmp, day_dir / OWNER_RULES_FILE)
+    owner = dict(owner, history=_owner_history(records, today))
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
+            "owner_rules": owner,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}

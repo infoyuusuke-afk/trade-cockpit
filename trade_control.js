@@ -616,6 +616,22 @@
       gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（1回ごとの％の合計）":"今日の仮想決済はまだありません")+
       gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":""))+
       '</div>';
+    // OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
+    // おれの実際の成績と毎日並べて」: AI side = brain_pick positions.owner_rules (virtual, 100 shares, cost included);
+    // real side = the same read-only estimate as the tile above. Each day's real estimate is kept in this browser only
+    // (localStorage), so a day the screen was not open says 記録なし instead of a number.
+    const own=pos.owner_rules||null,today=String(own?.date||pos.date||"");
+    let realDays={};try{realDays=JSON.parse(localStorage.getItem("cockpitRealDailyV1")||"{}")||{};}catch(_e){realDays={};}
+    if(acct&&today){realDays[today]=Math.round(realDone);try{localStorage.setItem("cockpitRealDailyV1",JSON.stringify(realDays));}catch(_e){}}
+    html+='<h3 class="g-h">AI（あなたのルール）と実口座　毎日の比べ</h3>';
+    if(own&&own.counted){
+      const rowsO=[own].concat(Array.isArray(own.history)?own.history:[]).slice(0,10);
+      const oMax=Math.max(1,...rowsO.map(o=>Math.abs(Number(o.counted?.yen)||0)),...rowsO.map(o=>Math.abs(Number(realDays[o.date])||0)));
+      html+='<p class="g-note">決まり：1回ごとに損切り（無いものは数えない）・1日の負けが3万円に届いたらその後は入らない・ディスコ(6146)・レーザーテック(6920)・キオクシア(285A)は別枠（仮想だけ）。100株で計算・費用込み・お金は動いていません。</p><div class="g-rows">'+
+        rowsO.map(o=>{const c=o.counted||{},r=realDays[o.date],ai=Number(c.yen)||0,rv=r===undefined?null:Number(r);
+          return '<div class="g-row g-row5"><span class="g-kind">'+esc(String(o.date||"").slice(5))+'</span><span class="g-name">AI '+esc(c.n??0)+'回（勝ち'+esc(c.wins??0)+'・負け'+esc(c.losses??0)+(c.open?'・保有中'+esc(c.open):'')+'）'+(o.limit_hit_at?'・上限で停止 '+esc(String(o.limit_hit_at).slice(0,5)):'')+'・別枠 '+gYen(Number(o.virtual_only?.yen)||0)+'</span>'+gBar(ai,oMax)+'<b class="'+gCls(ai)+'">AI '+gYen(ai)+'</b></div>'+
+            '<div class="g-row g-row5"><span class="g-kind"></span><span class="g-name">実口座（概算・手数料なし）</span>'+gBar(rv,oMax)+'<b class="'+gCls(rv)+'">'+(rv===null?'記録なし':'実 '+gYen(rv))+'</b></div>';}).join("")+'</div>';
+    }else html+='<p class="g-empty">AI（あなたのルール）の記録を読めません（V10停止中・新しい版の前）。0円とは扱いません。</p>';
     // holdings P/L list
     const holds=realHeld.concat(vHeld).sort((a,b)=>(b.val??-1e9)-(a.val??-1e9)),hMax=Math.max(1,...holds.map(x=>Math.abs(x.val||0)));
     html+='<h3 class="g-h">保有銘柄の損益（含み）</h3>'+(holds.length?'<div class="g-rows">'+holds.map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(x.kind)+'</span><span class="g-name">'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')・'+esc(x.side)+'</span>'+gBar(x.val,hMax)+'<b class="'+gCls(x.val)+'">'+esc(x.text)+'</b></div>').join("")+'</div>':'<p class="g-empty">保有はありません</p>');
