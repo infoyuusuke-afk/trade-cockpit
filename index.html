@@ -491,6 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  ptsPanel.id="pts-morning-pickup";
  ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
  evPanel.after(ptsPanel);
+ {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}';document.head.appendChild(st);}
  let ptsView=null,ptsLast={};
  const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
  const ptsMorningRow=(p,rows)=>{
@@ -499,9 +500,24 @@ document.addEventListener("DOMContentLoaded",()=>{
    const same=pre===null?"寄り前気配待ち":(pre>0)===(p.direction==="UP")?"PTSと同じ方向":"PTSと逆方向";
    return {pre,same};
  };
+ // OWNER 2026-10-28 「買い　空売り　期待値　色付け」: side and expected value of a day trade (open -> close, cost
+ // included) for a gap of this size over 3 years, from pts_pickup's ev_* fields. Colours as the attention list.
+ const ptsSide={BUY:["買い","pts-buy"],SHORT:["空売り","pts-short"],SKIP:["見送り","pts-skip"]};
+ const ptsEvHtml=p=>{
+   const s=ptsSide[p.ev_side];
+   if(!s)return '<span class="pts-side pts-skip">期待値 未計算</span>';
+   const pc=v=>Number.isFinite(Number(v))&&v!==null?(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%":"—";
+   const ev=Number(p.ev_pct);
+   const main=p.ev_side==="SKIP"?'<span class="pts-ev pts-ev-minus">期待値 買い '+pc(p.ev_buy_pct)+'・空売り '+pc(p.ev_short_pct)+'</span>':
+     '<span class="pts-ev '+(Number.isFinite(ev)&&ev>0?"pts-ev-plus":"pts-ev-minus")+'">期待値 '+pc(p.ev_pct)+(p.ev_pf!=null?' PF'+esc(p.ev_pf):'')+'</span>';
+   return '<span class="pts-side '+s[1]+'">'+s[0]+'</span>'+main+
+     '<small class="pts-ev-basis">窓'+esc(p.ev_bucket||"")+'で寄った日の 寄り→引け（費用込み・'+esc(p.ev_basis||"")+' '+esc(p.ev_n??"—")+'回）。買い・空売りは260銘柄全体で3年と直近1年の両方がプラスの時だけ</small>';
+ };
  const ptsRowHtml=(p,rows)=>{
    const m=ptsMorningRow(p,rows);
-   return '<div class="rotation-box"><b>'+esc(p.name||p.ticker)+'｜PTS '+ptsPct(p.pts_gap_pct)+'</b>'+
+   const s=ptsSide[p.ev_side];
+   return '<div class="rotation-box pts-card '+(s?s[1]+"-card":"")+'"><b>'+esc(p.name||p.ticker)+'｜PTS '+ptsPct(p.pts_gap_pct)+'</b>'+
+     '<div class="pts-ev-row">'+ptsEvHtml(p)+'</div>'+
      '<strong>'+esc(m.same)+'</strong>'+
      '<small>PTS '+esc(p.pts_price??"—")+'円（東証終値 '+esc(p.tse_close??"—")+'円）／売買代金 '+esc(Math.round(Number(p.turnover_yen||0)/10000).toLocaleString("ja-JP"))+'万円／気配の幅 '+esc(p.spread_pct)+'%</small>'+
      '<small>寄り前気配 '+(m.pre===null?"—":ptsPct(m.pre))+'／'+esc(p.stance||"")+'／記録 '+esc(String(p.captured_at||"").slice(5,16))+'</small></div>';

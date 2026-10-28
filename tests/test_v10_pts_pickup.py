@@ -61,6 +61,37 @@ class Pickup(unittest.TestCase):
         view = pts.build(empty, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
         self.assertEqual((view["pts_session_date"], view["recorded_pts_evenings"], view["rows"]), (None, 0, []))
 
+    def test_side_and_expected_value_from_the_local_table(self):
+        # OWNER 2026-10-28 「買い　空売り　期待値　色付け」 (synthetic table, not market data)
+        write(self.records, "2026-10-21", [
+            row("2026-10-21 21:00:00", "2000.JNX", 2.5, 50_000_000, 0.2),
+            row("2026-10-21 21:00:00", "3000.JNX", -3.5, 50_000_000, 0.2),
+            row("2026-10-21 21:00:00", "7000.JNX", -3.5, 50_000_000, 0.2),
+        ])
+        s = lambda n, ev, pf: {"n": n, "ev_pct": ev, "pf": pf}
+        table = {"schema_version": pts.EV_SCHEMA, "real_submit_allowed": False, "trade_instruction": False,
+                 "overall": {"+2〜3%": {"side": "SKIP", "buy": s(100, -0.1, 0.9), "short": s(100, -0.2, 0.8)},
+                             "−3%以下": {"side": "BUY", "buy": s(100, 0.2, 1.1), "short": s(100, -0.4, 0.7)}},
+                 "per_stock": {"7000": {"−3%以下": {"buy": s(25, -0.3, 0.8), "short": s(25, 0.1, 1.1)}}}}
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+        target = self.records.parent / "pts_pickup_v1.json"
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        got = {r["ticker"]: (r["ev_side"], r["ev_pct"], r["ev_buy_pct"], r["ev_short_pct"], r["ev_basis"]) for r in view["rows"]}
+        self.assertEqual(got["2000.T"], ("SKIP", None, -0.1, -0.2, "全体"))
+        self.assertEqual(got["3000.T"], ("BUY", 0.2, 0.2, -0.4, "全体"))
+        self.assertEqual(got["7000.T"], ("SKIP", None, -0.3, 0.1, "この銘柄"))   # the stock's own buy history is negative
+        # a table that is not ours or allows orders is ignored: no side at all
+        table["real_submit_allowed"] = True
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table), encoding="utf-8")
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        self.assertTrue(all("ev_side" not in r for r in view["rows"]))
+
+    def test_card_shows_side_ev_and_colour(self):
+        self.assertIn('const ptsSide={BUY:["買い","pts-buy"],SHORT:["空売り","pts-short"],SKIP:["見送り","pts-skip"]};', HTML)
+        self.assertIn("'<div class=\"pts-ev-row\">'+ptsEvHtml(p)+'</div>'", HTML)
+        self.assertIn(".pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}", HTML)
+        self.assertIn("期待値 未計算", HTML)
+
 
 class Observer(unittest.TestCase):
     def test_pin_and_rebuild_every_five_minutes(self):

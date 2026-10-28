@@ -100,8 +100,53 @@ def build(records: Path, *, now: datetime) -> dict:
     }
 
 
+# OWNER 2026-10-28 「買い　空売り　期待値　色付け」: each row gets the side and the expected value of a day trade
+# (open -> close, cost included) for a gap of that size, from the local research table RuntimeDir/pts_gap_ev_v1.json
+# (built on the PC from 3 years of daily bars). The stock's own numbers are used when it has 20 or more such days.
+# Display only: no signal, no order. Without the table the rows carry no side.
+EV_FILE = "pts_gap_ev_v1.json"
+EV_SCHEMA = "100b-v10-pts-gap-ev-v1"
+EV_BUCKETS = (("+3%以上", 3, 99), ("+2〜3%", 2, 3), ("+1〜2%", 1, 2), ("−1〜−2%", -2, -1), ("−2〜−3%", -3, -2), ("−3%以下", -99, -3))
+
+
+def load_ev(path: Path):
+    try:
+        ev = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(ev, dict) or ev.get("schema_version") != EV_SCHEMA or ev.get("real_submit_allowed") is not False:
+        return None
+    return ev
+
+
+def attach_ev(rows: list, ev) -> None:
+    for r in rows:
+        g = r["pts_gap_pct"]
+        b = next((name for name, lo, hi in EV_BUCKETS if lo <= g < hi), None)
+        if ev is None or b is None:
+            continue
+        code = r["ticker"].replace(".T", "")
+        own = (ev.get("per_stock") or {}).get(code, {}).get(b)
+        allb = (ev.get("overall") or {}).get(b) or {}
+        side = allb.get("side", "SKIP")
+        src = own if own else allb
+        pick = src.get("buy") if side == "BUY" else src.get("short") if side == "SHORT" else None
+        if pick is not None and pick["ev_pct"] <= 0:     # the stock's own history says no
+            side, pick = "SKIP", None
+        buy, short = src.get("buy") or {}, src.get("short") or {}
+        r["ev_side"] = side
+        r["ev_bucket"] = b
+        r["ev_pct"] = pick["ev_pct"] if pick else None
+        r["ev_pf"] = pick["pf"] if pick else None
+        r["ev_n"] = (pick or buy or short).get("n")
+        r["ev_buy_pct"] = buy.get("ev_pct")
+        r["ev_short_pct"] = short.get("ev_pct")
+        r["ev_basis"] = "この銘柄" if own else "全体"
+
+
 def write_pickup(records: Path, target: Path, *, now: datetime) -> dict:
     view = build(records, now=now)
+    attach_ev(view["rows"], load_ev(Path(records).parent / EV_FILE))
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(view, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     temp.replace(target)

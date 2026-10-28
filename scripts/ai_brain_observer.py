@@ -58,7 +58,7 @@ SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
 # Collector's PTS records into RuntimeDir/pts_pickup_v1.json (pinned module).
-PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
+PTS_PICKUP_MODULE = ("v10_pts_pickup", "8cc043490cbe0cd947c3150d3a282f80f9930e21")
 PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
