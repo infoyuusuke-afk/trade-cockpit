@@ -51,7 +51,7 @@ class AnalystTab(_unittest.TestCase):
         self.assertIn("const after=nav.querySelector('.cockpit-tab[data-tab=\"control\"]');", b)
         for name in ("GPT PRE-NEXT（ChatGPT）", "GPT 需給（ChatGPT）", "Grok1号 テーマ先回り（Grok）", "Grok2号 好決算監視（Grok）", "Grok3号 決算前監視（Grok）"):
             self.assertIn(name, b)
-        self.assertIn('gptText("需給","需給",today,tomorrow,a,b,"需給（信用残・空売り・貸借）から見た向き","決算前・需給",forWhen)', b)
+        self.assertIn('gptText("需給","需給",today,tomorrow,a,b,"需給（信用残・空売り・貸借）から見た向き","決算前・需給")', b)
         self.assertIn("決算日程を読めないので、今日の追加の指示を作れません。", b)
         self.assertNotIn("cockpitSpeak", b)
         self.assertIn("指示文は「アナリスト」タブ。", html)
@@ -67,11 +67,11 @@ class AnalystTab(_unittest.TestCase):
         self.assertEqual(b.count("paste:"), 5)
         self.assertEqual(b.count("last:lastAt("), 5)
 
-    def test_after_the_close_the_addition_is_for_tomorrows_morning_task(self):
-        # OWNER 2026-10-28 「引け後にタスク内容を変えておけば朝自動で実行する形にする」
+    def test_earnings_addition_folded_as_built_into_the_tasks(self):
+        # OWNER 2026-10-28 「決算の追加指示は②1回だけ入れる方式で…『定時タスクに組み込み済み』とたたむ」
         b = _html().split("// OWNER 2026-10-28 「全てのタブに同じ文言は不要", 1)[1].split("</script>", 1)[0]
-        self.assertIn('const evening=wk===0||wk===6||hm>="15:30";', b)
-        self.assertIn("const today=evening?stepDay(realToday,1):realToday", b)
-        self.assertIn('const forWhen=evening?"明日の朝のタスク用の追加指示":"今日の追加指示";', b)
-        self.assertIn("朝の定時タスクの指示の最後に入れて保存する（前の日に入れた追加指示は消す）。翌朝は自動で答える", b)
-        self.assertIn("at.slice(0,10)===realToday", b)
+        self.assertIn("(!c.g1?'<details class=\"an-fold\"><summary>定時タスクに組み込み済み（毎日貼らなくてよい）</summary>'", b)
+        self.assertIn("定時タスク用_決算の追記_20261028.txt", b)
+        self.assertIn('{id:"g2",cal:calPrev,', b)
+        self.assertNotIn("const evening=", b)
+
