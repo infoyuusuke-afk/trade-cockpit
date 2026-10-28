@@ -1684,13 +1684,15 @@ window.renderWickRows = (rows, at, fed) => {
   const yen = v => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP");
   const num = (v, n) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toFixed(n);
   const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // OWNER 2026-10-28 「色付け」: coloured spans (the card adapter keeps a cell's inner HTML, not its class)
+  const g = t => "<span class='rg-good'>" + t + "</span>", b = t => "<span class='rg-bad'>" + t + "</span>";
   const html = (rows || []).slice(0, 20).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "</td><td>" + e(x.phase || "—") +
-    "</td><td>" + e(x.setup || "—") + "</td><td><b class='up'>" + e(x.score) +
-    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>" + (x.fall_from_10d == null ? "—" : "−" + num(x.fall_from_10d, 1) + "%") +
-    "</td><td>" + (x.volume_ratio == null ? "—" : num(x.volume_ratio, 2) + "倍") +
+    "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "</td><td>" + (/確認/.test(x.phase || "") ? g(e(x.phase)) : e(x.phase || "—")) +
+    "</td><td>" + e(x.setup || "—") + "</td><td><b class='up'>" + g(e(x.score) + "/100") +
+    "</b></td><td>" + yen(x.close) + "</td><td class='down'>" + (x.fall_from_10d == null ? "—" : b("−" + num(x.fall_from_10d, 1) + "%")) +
+    "</td><td>" + (x.volume_ratio == null ? "—" : Number(x.volume_ratio) >= 1.5 ? g(num(x.volume_ratio, 2) + "倍") : num(x.volume_ratio, 2) + "倍") +
     "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
+    b(yen(x.stop)) + "</td><td>" + g(yen(x.target1) + "／" + yen(x.target2)) +
     "</td><td>" + e(x.reason || "") + "<br><small>判定日 " + e(x.signal_date || String(at || "").slice(0, 10)) + (fed ? "" : "（古い可能性）") + "</small></td></tr>").join("");
   const el = document.getElementById("daily-reversal-signals");
   if (el) el.innerHTML = html || "<tr><td colspan='12'>" + e(String(at || "").slice(0, 10)) + " のセリクラ反転合格銘柄なし。</td></tr>";

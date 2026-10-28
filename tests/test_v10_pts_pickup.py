@@ -155,3 +155,9 @@ class RegimeColour(unittest.TestCase):
         self.assertIn("const inverse = n => /VIX|金利/.test(n);", HTML)
         self.assertIn("rg(/^強い/.test(v.label || \"\") ? true : /^弱い/.test(v.label || \"\") ? false : null", HTML)
         self.assertIn(".rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}", HTML)
+
+    def test_wick_rows_coloured(self):
+        # OWNER 2026-10-28 「色付け」 (下ヒゲ吸収反転)
+        self.assertIn("const g = t => \"<span class='rg-good'>\" + t + \"</span>\", b = t => \"<span class='rg-bad'>\" + t + \"</span>\";", HTML)
+        self.assertIn("b(\"−\" + num(x.fall_from_10d, 1) + \"%\")", HTML)
+        self.assertIn("b(yen(x.stop))", HTML)
