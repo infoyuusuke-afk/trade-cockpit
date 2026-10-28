@@ -491,7 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  ptsPanel.id="pts-morning-pickup";
  ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
  evPanel.after(ptsPanel);
- {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}';document.head.appendChild(st);}
+ {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}.tw-rec{margin:6px 0;color:#f5c542;font-weight:700}';document.head.appendChild(st);}
  let ptsView=null,ptsLast={};
  const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
  const ptsMorningRow=(p,rows)=>{
@@ -2833,12 +2833,25 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!themes.length){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマがありません（Grok1号の8:00の答えを貼ると出ます）。</p>';return;}
     if(pick>=themes.length)pick=0;
     const t=themes[pick];
-    const sc=(v.score&&Array.isArray(v.score.role))?v.score.role:[];
+    // OWNER 2026-10-28 「Grok1号の採点は、本命・周辺・出遅れと段階だけでまとめて、20回までは『記録中：本命○/20回』の1行だけ
+    // にして。見出しのカードも直して」: only those groups; under 20 records one line per kind; the table keeps its rows
+    // (data-keep-table, so the card adapter does not turn its header row into a card).
+    const ROLES=["本命","周辺","出遅れ"],STAGES=["芽","初動","加速","過熱","終わりかけ"];
+    const scRows=k=>(v.score&&Array.isArray(v.score[k])?v.score[k]:[]).filter(r=>(k==="role"?ROLES:STAGES).includes(r.group));
+    const scoreHtml=(k,label,order)=>{
+      const rows=scRows(k),maxN={};rows.forEach(r=>{maxN[r.group]=Math.max(maxN[r.group]||0,Number(r.n)||0);});
+      const wait=order.filter(g=>g in maxN&&maxN[g]<20),ready=rows.filter(r=>maxN[r.group]>=20&&Number(r.n)>=20);
+      return (wait.length?'<p class="tw-rec">記録中（'+label+'）：'+wait.map(g=>esc(g)+' '+esc(maxN[g])+'/20回').join("・")+'</p>':'')+
+        (ready.length?'<table class="tw-score" data-keep-table><tr><th>'+label+'</th><th>何日後</th><th>回数</th><th>平均</th><th>日経比の平均</th><th>日経に勝った率</th></tr>'+
+          ready.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td class="'+cls(r.avg_ret)+'">'+pct(r.avg_ret)+'</td><td class="'+cls(r.avg_vs_n225)+'">'+pct(r.avg_vs_n225)+'</td><td>'+esc(r.win_vs_n225_pct??"—")+'%</td></tr>').join("")+'</table>':'');
+    };
+    const scoreAll=scoreHtml("role","役割",ROLES)+scoreHtml("stage","段階",STAGES);
     sec.innerHTML='<h2>今のテーマ</h2><div class="tw-themes">'+themes.map((x,i)=>'<button type="button" class="tw-tbtn'+(i===pick?' on':'')+'" data-tw="'+i+'">'+esc(x.theme)+(x.stage?'（'+esc(x.stage)+'）':'')+(stale(x)?'・24時間より古い答え（順位に入れない）':'')+'<small>'+esc(x.count??0)+'銘柄・上げ'+esc(x.breadth_up??0)+'・前日比平均 '+pct(x.avg_chg1d)+'・5日 '+pct(x.avg_ret5)+'</small></button>').join("")+'</div>'+
       '<p class="tw-head"><b>'+esc(t.theme)+'</b>'+(t.status?'・'+esc(t.status):'')+(t.source?'・'+esc(t.source):'')+(t.first_seen?'・最初に見つけた '+esc(t.first_seen):'')+'<br>'+esc(t.why||"")+(t.next&&t.next!=="なし"?'<br>次に見る日：'+esc(t.next):'')+(Array.isArray(t.check_ng)&&t.check_ng.length?'<br>照合NG（コードが確かめられず表示から外した）：'+t.check_ng.map(esc).join("・"):'')+'</p>'+
       '<div class="tw-grid">'+(t.cards||[]).map(card).join("")+'</div>'+
-      '<h3 class="g-h">Grok1号の採点（見つけた時の終値からの上げ下げ・日経比）</h3>'+
-      (sc.length?'<table class="tw-score"><tr><th>役割</th><th>何日後</th><th>回数</th><th>平均</th><th>日経比の平均</th><th>日経に勝った率</th></tr>'+sc.map(r=>Number(r.n)<20?'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td colspan="3">根拠不足（20回未満）</td></tr>':'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td class="'+cls(r.avg_ret)+'">'+pct(r.avg_ret)+'</td><td class="'+cls(r.avg_vs_n225)+'">'+pct(r.avg_vs_n225)+'</td><td>'+esc(r.win_vs_n225_pct??"—")+'%</td></tr>').join("")+'</table>':'<p class="g-empty">まだ採点できる日数がありません（見つけた翌日から数えます）。</p>')+
+      '<h3 class="g-h">Grok1号の採点（答えた後の最初の値段からの上げ下げ・日経比）</h3>'+
+      (scoreAll||'<p class="g-empty">採点の記録はまだありません。</p>')+
+      '<p class="g-note">採点の基準＝Grok1号が答えた時刻の後の最初の値段（朝8時の答えなら当日の寄り値）。役割（本命・周辺・出遅れ）と段階だけでまとめます。</p>'+
       '<p class="g-note">期待値と採点は20回以上の時だけ数字を出します（20回未満は根拠不足）。コードと社名が確かめられない銘柄は出しません。声と注文ボタンはありません。</p>'+
       '<p class="g-note">並び順：期待値プラス → 出遅れ → 勢い。勢い＝5日の上げ＋日経比20日の半分＋出来高の増えで、期待値ではありません。値はYahooの日足（公開データ）。研究段階で、売買の合図ではありません。</p>';
   }
