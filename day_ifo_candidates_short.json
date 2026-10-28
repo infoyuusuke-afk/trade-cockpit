@@ -1,7 +1,26 @@
 {
-  "updated_at": "2026-10-28 14:53:16 JST",
+  "updated_at": "2026-10-28 15:37:10 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 0,
-  "candidates": []
+  "count": 1,
+  "candidates": [
+    {
+      "name": "日東電工（6988）",
+      "code": "6988",
+      "ticker": "6988.T",
+      "side": "SHORT",
+      "score": 68,
+      "trigger": 3365.0,
+      "stop": 3610.0,
+      "target1": 3000.0,
+      "target2": 2750.0,
+      "rvol": 1.27,
+      "atr_pct": 2.7,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-5.1%／出来高比1.27倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    }
+  ]
 }
