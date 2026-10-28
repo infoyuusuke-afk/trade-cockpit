@@ -1,21 +1,21 @@
 {
-  "updated_at": "2026-10-28 15:46:55 JST",
+  "updated_at": "2026-10-28 18:00:07 JST",
   "source": "StockScope（株ビジョン）公開需給ページ",
   "source_url": "https://stockscope.app/en/issues/285A",
   "stocks": {
     "285A": {
       "name": "キオクシアホールディングス",
-      "margin_date": "2026-10-26",
+      "margin_date": "2026-10-27",
       "retrieved_date": "2026-10-28",
-      "previous_margin_date": "2026-10-23",
-      "margin_buy_balance": 48261100,
-      "margin_buy_change_1w": 26600,
-      "margin_buy_change_1w_pct": 0.06,
-      "margin_sell_balance": 1490400,
-      "margin_sell_change_1w": -124400,
-      "margin_sell_change_1w_pct": -7.7,
-      "credit_ratio": 32.38,
-      "margin_buy_change_4w_pct": 2.81,
+      "previous_margin_date": "2026-10-26",
+      "margin_buy_balance": 49280300,
+      "margin_buy_change_1w": 1019200,
+      "margin_buy_change_1w_pct": 2.11,
+      "margin_sell_balance": 1545600,
+      "margin_sell_change_1w": 55200,
+      "margin_sell_change_1w_pct": 3.7,
+      "credit_ratio": 31.88,
+      "margin_buy_change_4w_pct": 5.19,
       "institutional_short_change_pct": null,
       "institutional_buyback_firms": null,
       "supply_phase": "中立",
@@ -23,19 +23,6 @@
       "verified": true,
       "source_url": "https://stockscope.app/en/issues/285A",
       "history": [
-        {
-          "date": "2026-10-20",
-          "buy_balance": 46943400,
-          "sell_balance": 1691900,
-          "ratio": 27.75,
-          "standardized_buy": 29751700,
-          "negotiable_buy": 17191700,
-          "standardized_sell": 1158900,
-          "negotiable_sell": 533000,
-          "buy_change": null,
-          "sell_change": null,
-          "phase": "履歴起点"
-        },
         {
           "date": "2026-10-21",
           "buy_balance": 46850100,
@@ -45,9 +32,9 @@
           "negotiable_buy": 17249400,
           "standardized_sell": 1275600,
           "negotiable_sell": 576100,
-          "buy_change": -93300,
-          "sell_change": 159800,
-          "phase": "中立"
+          "buy_change": null,
+          "sell_change": null,
+          "phase": "履歴起点"
         },
         {
           "date": "2026-10-22",
@@ -86,6 +73,19 @@
           "negotiable_sell": 379100,
           "buy_change": 26600,
           "sell_change": -124400,
+          "phase": "中立"
+        },
+        {
+          "date": "2026-10-27",
+          "buy_balance": 49280300,
+          "sell_balance": 1545600,
+          "ratio": 31.88,
+          "standardized_buy": 31155400,
+          "negotiable_buy": 18124900,
+          "standardized_sell": 1215400,
+          "negotiable_sell": 330200,
+          "buy_change": 1019200,
+          "sell_change": 55200,
           "phase": "中立"
         }
       ],
