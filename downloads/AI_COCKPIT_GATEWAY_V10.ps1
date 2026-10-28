@@ -756,6 +756,31 @@ function Get-ThemeWatchView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して…『試験中』として成績だけ出して、合図にはしない」:
+# RuntimeDir	rial_methods_v1.json is written by the Brain observer (scripts10_trial_methods.py) and served as-is
+# when its flags are safe.
+function Get-TrialMethodsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'trial_methods_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'TRIAL_METHODS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 2097152) {
+            return (& $fail 'TRIAL_METHODS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-trial-methods-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'TRIAL_METHODS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'TRIAL_METHODS_UNREADABLE')
+    }
+}
+
 # OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて」: RuntimeDir\owner_review_v1.json is written on
 # this PC from the OWNER's own 実現損益 CSV (never part of the repo). Served as-is when its flags are safe.
 function Get-OwnerReviewView([string]$RuntimeDir) {
@@ -2836,6 +2861,11 @@ try {
             if ($path -eq '/theme_watch.json') {
                 $themeView = Get-ThemeWatchView $RuntimeDir
                 Send-Response $stream $themeView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$themeView.body))
+                continue
+            }
+            if ($path -eq '/trial_methods.json') {
+                $trialView = Get-TrialMethodsView $RuntimeDir
+                Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
                 continue
             }
             if ($path -eq '/owner_review.json') {

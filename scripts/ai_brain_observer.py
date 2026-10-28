@@ -61,6 +61,10 @@ SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 PTS_PICKUP_MODULE = ("v10_pts_pickup", "d58f9e4a067e823370eeb7e18e1f50c40d0b20f3")
 PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
+# OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して、手法ごとに別々に記録…『試験中』として成績だけ」:
+# methods on trial, recorded per method from the Collector's ticks (pinned module, display only).
+TRIAL_MODULE = ("v10_trial_methods", "54521cb810cef2a996b0b5596daa8e7c7c0a06dd")
+TRIAL_INTERVAL = timedelta(seconds=60)
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
 # background thread so a slow download never delays the Brain core. Display data only.
@@ -386,6 +390,24 @@ def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def trial_methods_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Record the methods on trial at most every minute. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + TRIAL_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *TRIAL_MODULE)
+        state["module"] = module
+        view = module.build(Path(live_path).parent, now=now, state=state.setdefault("module_state", {}))
+        summary = {"trial_methods": "BUILT", "methods": len(view["today"])}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"trial_methods": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def public_feed_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     """Start a refresh of the public display files at most every 10 minutes. Never raises."""
     now = now or datetime.now(timezone.utc)
@@ -660,6 +682,7 @@ def main(argv=None):
     agent_state = {}
     ev_state = {}
     pts_state = {}
+    trial_state = {}
     brain_state = {}
     jpx_state = {}
     feed_state = {}
@@ -668,6 +691,7 @@ def main(argv=None):
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
         pts_pickup_pass(pts_state, live)
+        trial_methods_pass(trial_state, live)
         jpx_margin_pass(jpx_state, live)
         public_feed_pass(feed_state, live)
         brain_core_pass(brain_state, live)
