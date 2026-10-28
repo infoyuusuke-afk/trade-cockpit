@@ -2891,16 +2891,16 @@ document.addEventListener("DOMContentLoaded",()=>{
       (navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>{c.textContent="コピーしました";setTimeout(()=>{c.textContent="この指示をコピー";},2000);}).catch(()=>{t.select();document.execCommand("copy");});});
     try{if(localStorage.getItem("cockpitTabV5")==="analysts")b.click();}catch(_){}
   }
-  function gptText(role,label,today,tomorrow,a,b,focus,prefix){
-    return "【今日の追加指示（"+label+"）"+today+"】\n"+
-      "次のAIコクピット監視銘柄は、今日・明日に決算があります。いつもの答えに加えて、全部の銘柄について"+focus+"の見立てを出してください。\n"+
+  function gptText(role,label,today,tomorrow,a,b,focus,prefix,forWhen){
+    return "【"+(forWhen||"今日の追加指示")+"（"+label+"）"+today+"】\n"+
+      "次のAIコクピット監視銘柄は、"+md(today)+"・"+md(tomorrow)+"に決算があります。いつもの答えに加えて、全部の銘柄について"+focus+"の見立てを出してください。\n"+
       "今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし")+"\n"+
       "答えの最後の GPT_ANALYST_NOTE_V1 のブロックに、1銘柄1行で入れてください（この追加分は5行の上限に数えない）。\n"+
       "形："+role+" | 銘柄コード4文字 | 強気 か 弱気 | 理由（120文字まで。先頭に「"+prefix+"」と書く） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\n"+
       "確かめられない数字は「未確認」と書き、作らない。";
   }
-  function grokText(label,head,lists,prefix,ask){
-    return "【今日の追加指示（"+label+"）"+head+"】\n"+lists+"\n"+ask+"\n"+
+  function grokText(label,head,lists,prefix,ask,forWhen){
+    return "【"+(forWhen||"今日の追加指示")+"（"+label+"）"+head+"】\n"+lists+"\n"+ask+"\n"+
       "答えの最後に、次のブロックを付けてください（1銘柄1行）。\nGROK_NOTE_V2\n"+
       "銘柄コード4文字 | 強・中・弱（話題の強さ） | 強気 か 弱気 | 理由（120文字まで。先頭に「"+prefix+"」と書く。事実とXの声を分ける） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\nEND\n"+
       "確かめられない数字は「未確認」と書き、作らない。";
@@ -2909,32 +2909,37 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!pane)return;
     const box=pane.querySelector("#an-cards");
     const [cal,bp,gb,tw]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json")]);
-    const today=dayStr(jst()),tomorrow=stepDay(today,1),prev=stepDay(today,-1);
+    // OWNER 2026-10-28 「引け後にタスク内容を変えておけば朝自動で実行する形にする」: from 15:30 (and on weekends) the
+    // addition is for the next business day's morning task, to be put into the scheduled task after the close.
+    const now=jst(),realToday=dayStr(now),hm=now.toISOString().slice(11,16),wk=now.getUTCDay();
+    const evening=wk===0||wk===6||hm>="15:30";
+    const today=evening?stepDay(realToday,1):realToday,tomorrow=stepDay(today,1),prev=stepDay(today,-1);
+    const forWhen=evening?"明日の朝のタスク用の追加指示":"今日の追加指示";
     const list=d=>(Array.isArray(cal&&cal.calendar)?cal.calendar:[]).filter(x=>x&&x.watched===true&&x.date===d).map(x=>String(x.name||"").trim()+"（"+x.code+"）");
     const a=list(today),b=list(tomorrow),y=list(prev);
     const arrived=(bp&&bp.manual_analysts&&bp.manual_analysts._arrived_today)||{};
     const bots=Array.isArray(gb&&gb.bots)?gb.bots:[];
-    const st=(at,known)=>!known?'<span class="an-st unk">確認できません</span>':at&&at.slice(0,10)===today?'<span class="an-st ok">今日の答え 届いた</span>':'<span class="an-st wait">今日の答え まだ</span>';
+    const st=(at,known)=>!known?'<span class="an-st unk">確認できません</span>':at&&at.slice(0,10)===realToday?'<span class="an-st ok">今日の答え 届いた</span>':'<span class="an-st wait">今日の答え まだ</span>';
     const lastAt=(at,known)=>!known?"読めません":at?at.slice(5,16).replace("-","/"):"まだ一度もありません";
     const botAt=k=>{const x=bots.find(v=>v.bot===k);return x&&x.saved_at?dayOf(x.saved_at):"";};
     const g1=tw&&tw.grok_run_at?String(tw.grok_run_at):botAt("Grok1号");
     const calOk=!!(cal&&Array.isArray(cal.calendar));
     const cards=[
       {id:"pre",name:"GPT PRE-NEXT（ChatGPT）",role:"翌日・当日に動きそうな銘柄を先回りで探す。決算前の銘柄の向きも答える。",when:"朝（ChatGPTの定時タスク）",
-       status:st(dayOf(arrived.pre_next),!!bp),last:lastAt(dayOf(arrived.pre_next),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("PRE-NEXT","PRE-NEXT",today,tomorrow,a,b,"決算前後の値動きの向き","決算前"):""):null},
+       status:st(dayOf(arrived.pre_next),!!bp),last:lastAt(dayOf(arrived.pre_next),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("PRE-NEXT","PRE-NEXT",today,tomorrow,a,b,"決算前後の値動きの向き","決算前",forWhen):""):null},
       {id:"sup",name:"GPT 需給（ChatGPT）",role:"信用買い残・売り残・信用倍率・貸借区分・空売り残高から、需給の偏りを見る。",when:"朝（ChatGPTの定時タスク）",
-       status:st(dayOf(arrived.supply_sq),!!bp),last:lastAt(dayOf(arrived.supply_sq),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("需給","需給",today,tomorrow,a,b,"需給（信用残・空売り・貸借）から見た向き","決算前・需給"):""):null},
+       status:st(dayOf(arrived.supply_sq),!!bp),last:lastAt(dayOf(arrived.supply_sq),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("需給","需給",today,tomorrow,a,b,"需給（信用残・空売り・貸借）から見た向き","決算前・需給",forWhen):""):null},
       {id:"g1",name:"Grok1号 テーマ先回り（Grok）",role:"株価が動く前に、これから来るテーマと関連銘柄（本命・周辺・出遅れ）を見つける。答えの最後は GROK_THEME_V1。",when:"毎日8:00に1回",
        status:st(g1,!!(tw||gb)),last:lastAt(g1,!!(tw||gb)),paste:"毎日8:00の答えが出たら",text:G1_TASK,g1:true},
       {id:"g2",name:"Grok2号 好決算監視（Grok）",role:"決算が出た後の銘柄が、好決算として買われ続けるか、出尽くしで売られるかを、ニュースとXの声で見る。",when:"朝",
-       status:st(botAt("Grok2号"),!!gb),last:lastAt(botAt("Grok2号"),!!gb),paste:"朝の答えが出たら",text:calOk?(y.length||a.length?grokText("Grok2号 好決算監視",today,"前の営業日（"+md(prev)+"）に決算："+(y.join("、")||"なし")+"\n今日（"+md(today)+"）に決算："+(a.join("、")||"なし"),"決算後","決算が出た後の反応（ニュース・Xの声）から、全部の銘柄について見立てを出してください。今日の銘柄は、発表が出たら見てください。"):""):null},
+       status:st(botAt("Grok2号"),!!gb),last:lastAt(botAt("Grok2号"),!!gb),paste:"朝の答えが出たら",text:calOk?(y.length||a.length?grokText("Grok2号 好決算監視",today,"前の営業日（"+md(prev)+"）に決算："+(y.join("、")||"なし")+"\n今日（"+md(today)+"）に決算："+(a.join("、")||"なし"),"決算後","決算が出た後の反応（ニュース・Xの声）から、全部の銘柄について見立てを出してください。今日の銘柄は、発表が出たら見てください。",forWhen):""):null},
       {id:"g3",name:"Grok3号 決算前監視（Grok）",role:"決算の前に、Xの空気・期待の高さ・需給を見て、決算をまたぐ時の向きを見る。",when:"朝と夜",
-       status:st(botAt("Grok3号"),!!gb),last:lastAt(botAt("Grok3号"),!!gb),paste:"朝と夜の答えが出たら",text:calOk?(a.length||b.length?grokText("Grok3号 決算前監視",today,"今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし"),"決算前","決算の前のXの空気・期待の高さから、全部の銘柄について見立てを出してください。"):""):null}
+       status:st(botAt("Grok3号"),!!gb),last:lastAt(botAt("Grok3号"),!!gb),paste:"朝と夜の答えが出たら",text:calOk?(a.length||b.length?grokText("Grok3号 決算前監視",today,"今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし"),"決算前","決算の前のXの空気・期待の高さから、全部の銘柄について見立てを出してください。",forWhen):""):null}
     ];
     box.innerHTML=cards.map(c=>'<div class="an-card"><h3>'+esc(c.name)+c.status+'</h3>'+
       '<p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+'<br><b>答えを貼る時刻</b>：'+esc(c.paste)+'（プロジェクトのチャットのPCのClaudeへ）<br><b>最後の答え</b>：'+esc(c.last)+'</p>'+
       (c.text===null?'<p class="an-none">決算日程を読めないので、今日の追加の指示を作れません。</p>':
-       c.text?'<ol><li>'+(c.g1?'下の指示（テーマ先回り・決算の追加はなし）を、Grok1号のタスク（毎日8:00）に入れておく':'下の今日の指示をコピーして、このアナリストのチャットに貼る')+'</li><li>返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る</li></ol><textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>':
+       c.text?'<ol><li>'+(c.g1?'下の指示（テーマ先回り・決算の追加はなし）を、Grok1号のタスク（毎日8:00）に入れておく':(evening?'引け後に、下の指示を、このアナリストの朝の定時タスクの指示の最後に入れて保存する（前の日に入れた追加指示は消す）。翌朝は自動で答える':'下の今日の指示をコピーして、このアナリストのチャットに貼る'))+'</li><li>返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る</li></ol><textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>':
        '<p class="an-none">'+esc(c.fixed||"今日は追加の指示はありません（対象の決算がない日）。いつもの答えだけ貼ってください。")+'</p>')+'</div>').join("");
   }
   document.addEventListener("DOMContentLoaded",()=>{mount();render();setInterval(render,300000);});
