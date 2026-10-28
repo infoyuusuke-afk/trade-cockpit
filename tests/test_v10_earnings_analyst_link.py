@@ -26,7 +26,7 @@ def test_morning_brief_box_under_attention_lists_today_and_next_weekday_watched_
 def test_earnings_lines_show_gpt_and_grok_side_by_side():
     block = _html().split("async function decorate(){", 1)[1].split('document.addEventListener("DOMContentLoaded"', 1)[0]
     assert "bp.manual_analysts" in block and "bp.grok&&bp.grok.notes" in block
-    assert 'who:"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role)' in block
+    assert 'who:/^Claude/.test(String(x.reason||""))?"Claude":"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role==="premarket"?"寄り前":role)' in block
     assert 'who:"Grok"' in block
     assert 'div.className="ec-ai"' in block
 

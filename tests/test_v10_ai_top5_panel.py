@@ -53,7 +53,7 @@ def test_owner_follow_up_hit_rate_order_card_swap_one_line_method_and_freshness(
     assert "hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);" in b
     assert 'if(h3+m3>0)hitOf["Grok3号"]={rate:h3/(h3+m3)*100,n:h3+m3};' in b
     assert "const i=selected?st.pinned.indexOf(selected):-1;if(i>=0){st.pinned[i]=t;selected=null;" in b
-    assert "今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class=\"ai5-num\">1回 +" in b   # OWNER 2026-10-27 「この文字変よみやすく」
+    assert "今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class=\"ai5-plain\">'+esc(plain(good[0][0]))+'</span><span class=\"ai5-num\">1回 +" in b   # OWNER 2026-10-27 「この文字変よみやすく」
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     card = html.split("window.renderScalpCard=(x,sv,tf)=>{", 1)[1].split("metrics:[", 1)[0]
     assert "Date.parse(String(x.source_timestamp_at||\"\"))" in card and "staleThresholdSeconds:120" in card
@@ -64,6 +64,14 @@ def test_list_shows_codes_and_rates_are_marked_under_verification():
     b = _block()
     assert 'o.textContent=code+"　"+' in b
     assert "当たり率（検証中）" in b and "期待値（検証中）" in b
+
+
+def test_plain_words_for_the_gap_rules_and_claude_label():
+    # OWNER 2026-10-29 「わかりにくいから寄り天・より底も追記して」; the PC Claude's rows say Claude, not GPT
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert "（窓を上に開けたら寄り天を狙って空売り・下に開けたら寄り底を狙って買い）" in html
+    assert 'add(x.code,/^Claude/.test(String(x.reason||""))?"Claude":' in html
+    assert 'who:/^Claude/.test(String(x.reason||""))?"Claude":' in html
 
 
 import unittest as _unittest  # noqa: E402

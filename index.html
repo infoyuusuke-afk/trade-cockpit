@@ -491,7 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  ptsPanel.id="pts-morning-pickup";
  ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
  evPanel.after(ptsPanel);
- {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}.tw-rec{margin:6px 0;color:#f5c542;font-weight:700}';document.head.appendChild(st);}
+ {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}.ai5-plain{margin-left:6px;color:#9AA0AA;font-size:12px}.tw-rec{margin:6px 0;color:#f5c542;font-weight:700}';document.head.appendChild(st);}
  let ptsView=null,ptsLast={};
  const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
  const ptsMorningRow=(p,rows)=>{
@@ -2604,7 +2604,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const votes={};sources={};
     const add=(code,src)=>{const t=String(code||"").trim().toUpperCase()+".T";if(!valid(t))return;votes[t]=(votes[t]||0)+1;(sources[t]=sources[t]||new Set()).add(src);};
     const ma=(bp&&bp.manual_analysts)||{};
-    Object.entries(ma).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>add(x.code,role==="supply_sq"?"GPT需給":role==="pre_next"?"GPT PRE-NEXT":"GPT"));});
+    Object.entries(ma).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>add(x.code,/^Claude/.test(String(x.reason||""))?"Claude":role==="supply_sq"?"GPT需給":role==="pre_next"?"GPT PRE-NEXT":"GPT"));});
     const tags=(gb&&gb.tags)||{},d=new Date(Date.now()+9*3600000),md=(d.getUTCMonth()+1)+"/"+d.getUTCDate();
     Object.entries(tags).forEach(([code,list])=>(Array.isArray(list)?list:[]).forEach(t=>{if(t&&t.day===md)add(code,"Grok"+(t.bot||""));}));
     const evOf={};
@@ -2620,7 +2620,9 @@ document.addEventListener("DOMContentLoaded",()=>{
       const good=Object.entries(f).filter(([k,v])=>Number(v.n)>=20&&Number(v.ev_pct)>0&&Number(v.pf)>=1).sort((a,b)=>Number(b[1].ev_pct)-Number(a[1].ev_pct));
       // OWNER 2026-10-27 「一番上に今日の手法を1行出して」: the best one only, on one line (the rule behind it in the tooltip)
       m.title='ブレインの仮想売買の記録（'+(rs&&rs.forward_from||'')+'〜、費用込み）で20回以上・期待値プラス・PF1以上の手法のうち、期待値が一番高いもの。売買の判断はOWNER。';
-      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class="ai5-num">1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）</span>':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
+      // OWNER 2026-10-29 「わかりにくいから寄り天・より底も追記して」: what the gap rules mean in plain words
+      const plain=k=>/^R3B/.test(k)?"（窓を上に開けたら寄り天を狙って空売り・下に開けたら寄り底を狙って買い）":/^R3A/.test(k)?"（窓を上に開けたら寄りから買い・下に開けたら寄りから空売り＝窓の方向に乗る）":"";
+      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class="ai5-plain">'+esc(plain(good[0][0]))+'</span><span class="ai5-num">1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）</span>':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
     paint();
   }
   function paint(){
@@ -2694,7 +2696,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const panel=document.getElementById("earnings-calendar-panel");if(!panel)return;
     const bp=await brainPick();if(!bp||bp.real_submit_allowed!==false)return;
     const by={};
-    Object.entries(bp.manual_analysts||{}).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>{(by[x.code]=by[x.code]||[]).push({who:"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role),view:x.view,reason:x.reason});});});
+    Object.entries(bp.manual_analysts||{}).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>{(by[x.code]=by[x.code]||[]).push({who:/^Claude/.test(String(x.reason||""))?"Claude":"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role==="premarket"?"寄り前":role),view:x.view,reason:x.reason});});});
     (Array.isArray(bp.grok&&bp.grok.notes)?bp.grok.notes:[]).forEach(x=>{(by[x.code]=by[x.code]||[]).push({who:"Grok",view:x.view||x.stance,reason:x.reason});});
     panel.querySelectorAll(".ec-item > strong").forEach(s=>{
       const m=/（([0-9][0-9A-Z]{3})）/.exec(s.textContent||"");const rows=m?by[m[1]]||[]:[];
