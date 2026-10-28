@@ -146,3 +146,12 @@ $o | ConvertTo-Json -Compress
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegimeColour(unittest.TestCase):
+    # OWNER 2026-10-28 「色付け」 (地合い判定): spans inside the cells survive the card adapter; VIX / yields are inverted
+    def test_good_and_bad_spans(self):
+        self.assertIn("const rg = (good, text) => good == null ? text : \"<span class='\" + (good ? \"rg-good\" : \"rg-bad\") + \"'>\" + text + \"</span>\";", HTML)
+        self.assertIn("const inverse = n => /VIX|金利/.test(n);", HTML)
+        self.assertIn("rg(/^強い/.test(v.label || \"\") ? true : /^弱い/.test(v.label || \"\") ? false : null", HTML)
+        self.assertIn(".rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}", HTML)

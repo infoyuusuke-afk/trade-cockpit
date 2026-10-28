@@ -491,7 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  ptsPanel.id="pts-morning-pickup";
  ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
  evPanel.after(ptsPanel);
- {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}';document.head.appendChild(st);}
+ {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}';document.head.appendChild(st);}
  let ptsView=null,ptsLast={};
  const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
  const ptsMorningRow=(p,rows)=>{
@@ -1714,18 +1714,24 @@ const loadRegimeSummary = () => fetch("market_summary.json?t=" + Date.now()).the
   const f = (v, digits) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP", {maximumFractionDigits: digits});
   const p = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
   const cls = v => Number(v) > 0 ? "up" : Number(v) < 0 ? "down" : "";
+  // OWNER 2026-10-28 「色付け」: the table becomes cards (card_table_adapter.js copies each cell's inner HTML, not its
+  // class), so the colour is a span inside the cell. Good for stocks = green, bad = red; VIX and yields rising is bad.
+  const rg = (good, text) => good == null ? text : "<span class='" + (good ? "rg-good" : "rg-bad") + "'>" + text + "</span>";
+  const sgn = (val, inv) => val == null || !Number.isFinite(Number(val)) || Number(val) === 0 ? null : (Number(val) > 0) !== !!inv;
   const v = d.verdict || {};
   document.getElementById("regime-summary-meta").textContent = "データ " + (d.updated_at || "不明") + "（" + (d.phase || "") + "）";
-  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + worldEsc(v.label || "—") + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い・しきい値は未検証）</span></div>"
-    + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）").join("<br>") || "—") + "</small></div>";
+  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + rg(/^強い/.test(v.label || "") ? true : /^弱い/.test(v.label || "") ? false : null, worldEsc(v.label || "—")) + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い・しきい値は未検証）</span></div>"
+    + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => rg(sgn(x.point), worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）")).join("<br>") || "—") + "</small></div>";
   // OWNER 2026-10-24: yields (金利) in percentage points: level 4.95%, day -0.19 points
   const pt = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "pt";
+  const inverse = n => /VIX|金利/.test(n);
+  const trend = (x, inv, upText, downText) => x.ma20 == null || x.ma60 == null ? "—" : rg((x.ma20 > x.ma60) !== inv, x.ma20 > x.ma60 ? upText : downText);
   document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) => x.unit === "yield" ?
-    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "%</td><td class='" + cls(x.change_pt) + "'>" + pt(x.change_pt) + "</td><td class='" + cls(x.ret5_pt) + "'>" + pt(x.ret5_pt) + "</td><td class='" + cls(x.from_ma20_pt) + "'>" + pt(x.from_ma20_pt) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : x.ma20 > x.ma60 ? "上昇基調" : "低下基調") + "</td></tr>" :
-    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + p(x.change_pct) + "</td><td class='" + cls(x.ret5) + "'>" + p(x.ret5) + "</td><td class='" + cls(x.from_ma20) + "'>" + p(x.from_ma20) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : (x.ma20 > x.ma60 ? "上向き" : "下向き")) + "</td></tr>"
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "%</td><td class='" + cls(x.change_pt) + "'>" + rg(sgn(x.change_pt, true), pt(x.change_pt)) + "</td><td class='" + cls(x.ret5_pt) + "'>" + rg(sgn(x.ret5_pt, true), pt(x.ret5_pt)) + "</td><td class='" + cls(x.from_ma20_pt) + "'>" + rg(sgn(x.from_ma20_pt, true), pt(x.from_ma20_pt)) + "</td><td>" + trend(x, true, "上昇基調", "低下基調") + "</td></tr>" :
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + rg(sgn(x.change_pct, inverse(n)), p(x.change_pct)) + "</td><td class='" + cls(x.ret5) + "'>" + rg(sgn(x.ret5, inverse(n)), p(x.ret5)) + "</td><td class='" + cls(x.from_ma20) + "'>" + rg(sgn(x.from_ma20, inverse(n)), p(x.from_ma20)) + "</td><td>" + trend(x, inverse(n), "上向き", "下向き") + "</td></tr>"
   ).join("") || "<tr><td colspan='6'>データなし</td></tr>";
   document.getElementById("regime-summary-themes").innerHTML = (d.themes || []).map((t, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + worldEsc(t.name) + "</td><td class='" + cls(t.score) + "'>" + f(t.score, 1) + "</td><td>" + (t.members || []).map(m => worldEsc(m.name) + " <small>" + p(m.change_pct) + "</small>").join("<br>") + "</td></tr>"
+    "<tr><td>" + (i + 1) + "</td><td>" + worldEsc(t.name) + "</td><td class='" + cls(t.score) + "'>" + f(t.score, 1) + "</td><td>" + (t.members || []).map(m => worldEsc(m.name) + " <small>" + rg(sgn(m.change_pct), p(m.change_pct)) + "</small>").join("<br>") + "</td></tr>"
   ).join("") || "<tr><td colspan='4'>データなし</td></tr>";
 }).catch(() => {
   document.getElementById("regime-summary-meta").textContent = "地合いデータ未取得（10分ごとに再取得）";
