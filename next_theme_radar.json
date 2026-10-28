@@ -1,21 +1,21 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-10-28T17:51:54.205691+09:00",
+  "updated_at": "2026-10-29T00:45:38.595668+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
-      "status": "WATCH",
-      "score": 45,
+      "status": "NO_EVENT",
+      "score": 15,
       "score_breakdown": {
-        "novelty": 15,
-        "catalyst": 5,
+        "novelty": 0,
+        "catalyst": 0,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
         "small_cap": 0,
-        "overseas_lead": 10,
+        "overseas_lead": 0,
         "price_confirmation": 0
       },
       "weights": {
@@ -28,16 +28,9 @@
         "overseas_lead": 10,
         "price_confirmation": 5
       },
-      "first_seen": "2026-10-27T23:06:58.538129+09:00",
-      "last_event_at": "2026-10-28T02:49:00+09:00",
-      "events": [
-        {
-          "title": "Japan’s JPYC Stablecoin Circulation Reaches Just $20 Million in First Year, Missing Target - Hokanews",
-          "url": "https://news.google.com/rss/articles/CBMifEFVX3lxTFBlWWdUNk41NE5UTV9EN3FzblRPWHY5YXhDM3ZkeEFCZ29WV1BxTUdnNl9rbFpYa2RZM3RZTFo3QUZkUHd4TFEtdFJrZlc4X0xoNTI3V1RrbjRSTGlXalVzT0UzdG9neHFmb0xnV0hTaFZZd2lpVU1TbG1yeDM?oc=5",
-          "published_at": "2026-10-28T02:49:00+09:00",
-          "source": "Hokanews"
-        }
-      ],
+      "first_seen": null,
+      "last_event_at": null,
+      "events": [],
       "stocks": [
         {
           "code": "3853",
@@ -75,18 +68,14 @@
       ],
       "reacting_stock_count": 0,
       "evidence": {
-        "news_fresh": true,
+        "news_fresh": false,
         "money_flow_fresh": false,
         "money_flow_anomaly": false,
         "tv_fresh": true,
         "money_flow_source": null
       },
       "emergency_display": false,
-      "handoff_codes": [
-        "3853",
-        "4072",
-        "4382"
-      ],
+      "handoff_codes": [],
       "trading_enabled": false,
       "real_submit_allowed": false
     }
