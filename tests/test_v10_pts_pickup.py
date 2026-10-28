@@ -161,3 +161,9 @@ class RegimeColour(unittest.TestCase):
         self.assertIn("const g = t => \"<span class='rg-good'>\" + t + \"</span>\", b = t => \"<span class='rg-bad'>\" + t + \"</span>\";", HTML)
         self.assertIn("b(\"−\" + num(x.fall_from_10d, 1) + \"%\")", HTML)
         self.assertIn("b(yen(x.stop))", HTML)
+
+    def test_accumulation_coloured_with_day_change(self):
+        # OWNER 2026-10-28 「色付け　毎日の変化率」 (大口買い集め): 前日比 column from the fed chart's last two closes
+        self.assertIn("<th>終値</th><th>前日比</th><th>5日</th>", HTML)
+        self.assertIn("const dayChg = x => {", HTML)
+        self.assertIn("gs(false, yen(x.stop))", HTML)
