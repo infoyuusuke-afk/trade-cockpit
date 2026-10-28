@@ -63,7 +63,7 @@ PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して、手法ごとに別々に記録…『試験中』として成績だけ」:
 # methods on trial, recorded per method from the Collector's ticks (pinned module, display only).
-TRIAL_MODULE = ("v10_trial_methods", "54521cb810cef2a996b0b5596daa8e7c7c0a06dd")
+TRIAL_MODULE = ("v10_trial_methods", "6a32aa1f6ed3425931e64c038e95327fb3d34671")
 TRIAL_INTERVAL = timedelta(seconds=60)
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a

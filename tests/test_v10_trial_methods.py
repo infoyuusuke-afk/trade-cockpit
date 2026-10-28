@@ -13,8 +13,8 @@ JST = timezone(timedelta(hours=9))
 HEAD = "captured_at,ticker,name,exchange_time,price,direction_estimate,bid,ask,note\n"
 
 
-def tick(t, ticker, price):
-    return '"2026-10-29 %s.000","%s","n","%s","%s","UNKNOWN","","",""\n' % (t, ticker, t, price)
+def tick(t, ticker, price, cap=None):
+    return '"2026-10-29 %s.000","%s","n","%s","%s","UNKNOWN","","",""\n' % (cap or t, ticker, t, price)
 
 
 class TrialMethods(unittest.TestCase):
@@ -67,6 +67,25 @@ class TrialMethods(unittest.TestCase):
         self.assertEqual(v["history"]["DT1"]["n"], 1)
         pos = json.loads((self.rt / tm.POS_FILE).read_text(encoding="utf-8"))["positions"]
         self.assertEqual({p["method"] for p in pos}, {"EP", "AI:勝ち型_EP 10%以上GUを寄りで買い→5日後の引け"})
+
+    def test_fixes_of_the_owner(self):
+        # OWNER 2026-10-28 「寄る前に入る前日の値段を記録から外す、土日と休みの日は数えない、EPとAIの同じ手法は二重に数えない」
+        self.write([
+            tick("15:24:59", "3333.T", 999, cap="08:59:30"),       # the previous session's last price, captured before the open
+            tick("09:00:03", "3333.T", 1120), tick("15:25:00", "3333.T", 1150),
+        ], ai=["勝ち型_EP 10%以上GUを寄りで買い→損切り−8%・10日後の引け"])
+        v = self.build()
+        m = self.by(v)
+        self.assertEqual(m["EP"]["trades"][0]["mark"], 1150)       # not 999 at "15:24:59"
+        self.assertIn("AIの採用手法と同じなので1つで記録", m["EP"]["label"])
+        self.assertNotIn("AI:勝ち型_EP 10%以上GUを寄りで買い→損切り−8%・10日後の引け", m)
+        # a weekend day with no prints: the position's sessions do not move
+        sat = self.rt / "records" / "2026-10-31"
+        sat.mkdir()
+        (sat / tm.TICKS_FILE).write_text(HEAD, encoding="utf-8-sig")
+        tm.build(self.rt, now=datetime(2026, 10, 31, 16, 0, tzinfo=JST), state={})
+        pos = json.loads((self.rt / tm.POS_FILE).read_text(encoding="utf-8"))["positions"]
+        self.assertEqual([p["sessions"] for p in pos], [1])
 
     def test_no_inputs_no_day_trade_1(self):
         self.write([tick("09:00:01", "1111.T", 990), tick("09:59:58", "1111.T", 995), tick("15:24:59", "1111.T", 1010)],

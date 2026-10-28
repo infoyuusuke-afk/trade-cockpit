@@ -60,6 +60,14 @@ def _num(v):
     return x if x == x and x not in (float("inf"), float("-inf")) else None
 
 
+def _sec(hms: str) -> int:
+    try:
+        h, m, x = hms.split(":")
+        return int(h) * 3600 + int(m) * 60 + int(x)
+    except ValueError:
+        return 0
+
+
 def read_ticks(path: Path, state: dict) -> dict:
     """ticker -> [(exchange_time, price)] for the day, read incrementally (state keeps the offset)."""
     if state.get("path") != str(path):
@@ -90,6 +98,11 @@ def read_ticks(path: Path, state: dict) -> dict:
             continue
         row = dict(zip(header, rec))
         t, p = (row.get("exchange_time") or "").strip(), _num(row.get("price"))
+        # OWNER 2026-10-28 「寄る前に入る前日の値段を記録から外す」: a row captured before 09:00 (or a print stamped later
+        # than its capture) is the previous session's price
+        cap = str(row.get("captured_at") or "")[11:19]
+        if len(cap) != 8 or cap < "09:00:00" or (len(t) == 8 and _sec(t) > _sec(cap) + 5):
+            continue
         if p and p > 0 and len(t) == 8 and "09:00:00" <= t <= "15:30:00":
             state["ticks"].setdefault(row.get("ticker", ""), []).append((t, p))
     return state["ticks"]
@@ -207,7 +220,7 @@ def multi_day(positions: list, ticks: dict, inputs: dict, preopen_ref: dict, tod
     for pos in positions:
         if pos.get("status") != "OPEN":
             continue
-        if pos.get("last_day") != today:
+        if pos.get("last_day") != today and ticks:   # OWNER 「土日と休みの日は数えない」: a day with no print is no session
             pos["sessions"] = int(pos.get("sessions", 0)) + 1
             pos["last_day"] = today
         tk = sorted(ticks.get(pos["ticker"], []))
@@ -244,6 +257,18 @@ def multi_day(positions: list, ticks: dict, inputs: dict, preopen_ref: dict, tod
                               "gap_pct": round(gap, 2), "hold": hold, "stop": stop, "sessions": 1, "last_day": today,
                               "status": "OPEN"})
             have.add((m, ticker, today))
+    for pos in positions:   # entered today: the stop after the entry, and today's value at the last print
+        if pos.get("status") != "OPEN" or pos.get("entry_day") != today or "mark" in pos and pos.get("marked_day") == today:
+            continue
+        tk = [x for x in sorted(ticks.get(pos["ticker"], [])) if x[0] > pos["entry_time"]]
+        stop_px = pos["entry"] * (1 - pos["stop"]) if pos.get("stop") else None
+        for t, p in tk:
+            if stop_px and p <= stop_px:
+                pos.update(status="CLOSED", exit_day=today, exit_time=t, exit=p, how="損切り")
+                break
+        pos["mark"] = tk[-1][1] if tk else pos["entry"]
+        pos["marked_day"] = today
+        pos["pct"], pos["yen"] = _yen(pos["entry"], pos.get("exit") or pos["mark"])
     return positions
 
 
@@ -301,14 +326,16 @@ def build(runtime: Path, *, now: datetime, state: dict) -> dict:
     methods_out, notes = [], []
     if inputs is None:
         notes.append("PCの入力（trial_inputs_v1.json）が今日の分ではない：デイトレ①は25日線の離れが分からないので止める")
-    cands = day_trades(ticks, inputs or {}, pre, now_hms)
+    cands = day_trades(ticks, inputs or {}, pre, now_hms) if ticks else {"DT1": [], "DT2": []}
     if inputs is None:
         cands["DT1"] = []
     for m in ("DT1", "DT2"):
         methods_out.append(settle_day(m, cands[m], ticks, now_hms))
     ai = [n for n in ((inputs or {}).get("ai_methods") or [])]
     runnable = {"EP": (10, 0.08)}
-    runnable.update({"AI:" + n: AI_RUNNABLE[n] for n in ai if n in AI_RUNNABLE})
+    # OWNER 2026-10-28 「EPとAIの同じ手法は二重に数えない」: an adopted method with the same rule as EP is recorded once (as EP)
+    same_as_ep = [n for n in ai if AI_RUNNABLE.get(n) == runnable["EP"]]
+    runnable.update({"AI:" + n: AI_RUNNABLE[n] for n in ai if n in AI_RUNNABLE and n not in same_as_ep})
     not_runnable = [n for n in ai if n not in AI_RUNNABLE]
     try:
         held = json.loads((runtime / POS_FILE).read_text(encoding="utf-8")).get("positions", [])
@@ -318,7 +345,10 @@ def build(runtime: Path, *, now: datetime, state: dict) -> dict:
     for m in runnable:
         mine = [p for p in held if p["method"] == m and (p["status"] == "OPEN" or p.get("exit_day") == today
                                                          or p.get("entry_day") == today)]
-        methods_out.append({"method": m, "label": LABELS.get(m, m.replace("AI:", "AIの採用：")), "trades": [
+        label = LABELS.get(m, m.replace("AI:", "AIの採用："))
+        if m == "EP" and same_as_ep:
+            label += "（AIの採用手法と同じなので1つで記録）"
+        methods_out.append({"method": m, "label": label, "trades": [
             dict(p, entry_time=p.get("entry_time"), status=p["status"]) for p in mine], "limit_hit_at": None})
     kept = [p for p in held if p["status"] == "OPEN" or p.get("exit_day", "") >= (local.date() - timedelta(days=30)).isoformat()]
     tmp = runtime / (POS_FILE + ".tmp")
