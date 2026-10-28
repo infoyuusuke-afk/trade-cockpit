@@ -511,7 +511,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const main=p.ev_side==="SKIP"?'<span class="pts-ev pts-ev-minus">期待値 買い '+pc(p.ev_buy_pct)+'・空売り '+pc(p.ev_short_pct)+'</span>':
      '<span class="pts-ev '+(Number.isFinite(ev)&&ev>0?"pts-ev-plus":"pts-ev-minus")+'">期待値 '+pc(p.ev_pct)+(p.ev_pf!=null?' PF'+esc(p.ev_pf):'')+'</span>';
    return '<span class="pts-side '+s[1]+'">'+s[0]+'</span>'+main+
-     '<small class="pts-ev-basis">窓'+esc(p.ev_bucket||"")+'で寄った日の 寄り→引け（費用込み・'+esc(p.ev_basis||"")+' '+esc(p.ev_n??"—")+'回）。買い・空売りは260銘柄全体で3年と直近1年の両方がプラスの時だけ</small>';
+     '<small class="pts-ev-basis">窓'+esc(p.ev_bucket||"")+'で寄った日の 寄り→引け（費用込み・'+esc(p.ev_basis||"")+' '+esc(p.ev_n??"—")+'回）。買い・空売りの札は、260銘柄全体で3年と直近1年の両方がプラス かつ PF1.5以上・30回以上の時だけ（銘柄ごとの成績は30回以上ある時だけ使う）</small>';
  };
  const ptsRowHtml=(p,rows)=>{
    const m=ptsMorningRow(p,rows);
@@ -1246,7 +1246,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
 <p class="warning">TradingView右側の監視リスト名を押す →「リストをインポート」→ ダウンロードしたTXTを選択。日本株はTSE:銘柄コード形式で出力し、重複は自動削除します。</p></section>
 <section id="lower-wick-reversal" class="card wide"><h2>最優先・下ヒゲ吸収反転（次足確認）</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>点数</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 
@@ -1386,7 +1386,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
   const accumulation = (src.large_lot_accumulation || []).slice(0, 20).map((x, i) => { const dc = dayChg(x); return (
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + gs(x.phase.includes("上放れ") ? true : null, x.phase) +
-    "</b></td><td><b class='up'>" + gs(true, x.score + "/100") + "</b></td><td>" +
+    "</b></td><td><b>" + x.score + "/100（未検証）</b></td><td>" +
     supplyText(x) + "</td><td>" + yen(x.close) + "</td><td>" + (dc == null ? "—" : gs(dc > 0 ? true : dc < 0 ? false : null, signedPct(dc, 2))) + "</td><td class='" +
     (x.ret5 >= 0 ? "up" : "down") + "'>" + gs(x.ret5 >= 0, signedPct(x.ret5, 1)) +
     "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" +
@@ -1692,7 +1692,7 @@ window.renderWickRows = (rows, at, fed) => {
   const g = t => "<span class='rg-good'>" + t + "</span>", b = t => "<span class='rg-bad'>" + t + "</span>";
   const html = (rows || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "</td><td>" + (/確認/.test(x.phase || "") ? g(e(x.phase)) : e(x.phase || "—")) +
-    "</td><td>" + e(x.setup || "—") + "</td><td><b class='up'>" + g(e(x.score) + "/100") +
+    "</td><td>" + e(x.setup || "—") + "</td><td><b>" + e(x.score) + "/100（未検証）" +
     "</b></td><td>" + yen(x.close) + "</td><td class='down'>" + (x.fall_from_10d == null ? "—" : b("−" + num(x.fall_from_10d, 1) + "%")) +
     "</td><td>" + (x.volume_ratio == null ? "—" : Number(x.volume_ratio) >= 1.5 ? g(num(x.volume_ratio, 2) + "倍") : num(x.volume_ratio, 2) + "倍") +
     "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +

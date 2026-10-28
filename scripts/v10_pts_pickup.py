@@ -106,6 +106,7 @@ def build(records: Path, *, now: datetime) -> dict:
 # Display only: no signal, no order. Without the table the rows carry no side.
 EV_FILE = "pts_gap_ev_v1.json"
 EV_SCHEMA = "100b-v10-pts-gap-ev-v1"
+MIN_PF, MIN_N = 1.5, 30
 EV_BUCKETS = (("+3%以上", 3, 99), ("+2〜3%", 2, 3), ("+1〜2%", 1, 2), ("−1〜−2%", -2, -1), ("−2〜−3%", -3, -2), ("−3%以下", -99, -3))
 
 
@@ -127,11 +128,15 @@ def attach_ev(rows: list, ev) -> None:
             continue
         code = r["ticker"].replace(".T", "")
         own = (ev.get("per_stock") or {}).get(code, {}).get(b)
+        # OWNER 2026-10-28 「PF1.5以上・回数30以上の時だけ買い・空売りの札にして、銘柄ごとの成績も回数を確かめて」
+        if own and min((own.get(k) or {}).get("n") or 0 for k in ("buy", "short")) < MIN_N:
+            own = None
         allb = (ev.get("overall") or {}).get(b) or {}
         side = allb.get("side", "SKIP")
         src = own if own else allb
         pick = src.get("buy") if side == "BUY" else src.get("short") if side == "SHORT" else None
-        if pick is not None and pick["ev_pct"] <= 0:     # the stock's own history says no
+        if pick is not None and (pick["ev_pct"] <= 0 or (pick.get("n") or 0) < MIN_N
+                                 or (pick.get("pf") is not None and pick["pf"] < MIN_PF)):
             side, pick = "SKIP", None
         buy, short = src.get("buy") or {}, src.get("short") or {}
         r["ev_side"] = side

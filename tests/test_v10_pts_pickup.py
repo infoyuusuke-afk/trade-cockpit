@@ -78,8 +78,17 @@ class Pickup(unittest.TestCase):
         view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
         got = {r["ticker"]: (r["ev_side"], r["ev_pct"], r["ev_buy_pct"], r["ev_short_pct"], r["ev_basis"]) for r in view["rows"]}
         self.assertEqual(got["2000.T"], ("SKIP", None, -0.1, -0.2, "全体"))
-        self.assertEqual(got["3000.T"], ("BUY", 0.2, 0.2, -0.4, "全体"))
-        self.assertEqual(got["7000.T"], ("SKIP", None, -0.3, 0.1, "この銘柄"))   # the stock's own buy history is negative
+        # OWNER 2026-10-28 「PF1.5以上・回数30以上の時だけ買い・空売りの札」: PF1.1 -> no badge
+        self.assertEqual(got["3000.T"], ("SKIP", None, 0.2, -0.4, "全体"))
+        # the stock's own numbers (25 times) are under 30: the overall numbers are used
+        self.assertEqual(got["7000.T"], ("SKIP", None, 0.2, -0.4, "全体"))
+        table["overall"]["−3%以下"]["buy"] = s(100, 0.4, 1.6)
+        table["per_stock"]["7000"]["−3%以下"] = {"buy": s(40, 0.5, 1.8), "short": s(40, -0.5, 0.5)}
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        got = {r["ticker"]: (r["ev_side"], r["ev_pct"], r["ev_basis"]) for r in view["rows"]}
+        self.assertEqual(got["3000.T"], ("BUY", 0.4, "全体"))
+        self.assertEqual(got["7000.T"], ("BUY", 0.5, "この銘柄"))
         # a table that is not ours or allows orders is ignored: no side at all
         table["real_submit_allowed"] = True
         (self.records.parent / pts.EV_FILE).write_text(json.dumps(table), encoding="utf-8")
@@ -159,6 +168,11 @@ class RegimeColour(unittest.TestCase):
     def test_wick_rows_coloured(self):
         # OWNER 2026-10-28 「色付け」 (下ヒゲ吸収反転)
         self.assertIn("const g = t => \"<span class='rg-good'>\" + t + \"</span>\", b = t => \"<span class='rg-bad'>\" + t + \"</span>\";", HTML)
+        # OWNER 2026-10-28 「下ヒゲ反転と大口の点数は未検証と書いて緑をやめて」
+        self.assertIn('e(x.score) + "/100（未検証）"', HTML)
+        self.assertIn('x.score + "/100（未検証）</b>', HTML)
+        self.assertNotIn("g(e(x.score)", HTML)
+        self.assertNotIn("gs(true, x.score", HTML)
         self.assertIn("b(\"−\" + num(x.fall_from_10d, 1) + \"%\")", HTML)
         self.assertIn("b(yen(x.stop))", HTML)
 
