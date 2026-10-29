@@ -8,7 +8,8 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from scripts.investor_regime import (
-    _equity_period, _equity_subjects, _period_from_name,
+    WIDE_GROUPS, WIDE_PARENTS, _equity_period, _equity_subjects, _is_equity_value_file,
+    _is_wide_layout, _period_from_name, _wide_subjects,
     detect_regime, directional_return, independent_week_count, learn_sensitivity,
     parse_derivative_csv, performance_metrics, safe_z, score_with_regime,
     select_asof, subject_metrics,
@@ -77,6 +78,47 @@ class MetricTests(unittest.TestCase):
         self.assertEqual(subjects["life_insurance"]["source_label"], "生保・損保（公式合算）")
         self.assertNotIn("non_life_insurance", subjects)
         self.assertEqual(turnover, 100_845_017_660)
+
+    def test_new_combined_weekly_workbook_reads_tokyo_nagoya_value_row(self):
+        frame = pd.DataFrame([[None] * 59 for _ in range(15)])
+        frame.iat[6, 2] = "株数／金額 Shares／Value 千株／千円"
+        for col, row, label in (*WIDE_GROUPS.values(), *WIDE_PARENTS):
+            frame.iat[row, col] = f"{label} Label"
+        frame.iat[13, 1] = "二市場\nTokyo & Nagoya Market"
+        frame.iat[13, 2] = "株数 Shares"
+        frame.iat[14, 2] = "金額 Value"
+        for k, (col, _, _) in enumerate(WIDE_GROUPS.values()):
+            sell, buy = 1000 + k, 1100 + 2 * k
+            frame.iat[13, col], frame.iat[13, col + 1] = 1, 2  # shares row must be ignored
+            frame.iat[14, col], frame.iat[14, col + 1] = sell, buy
+            frame.iat[14, col + 2], frame.iat[14, col + 3] = buy - sell, sell + buy
+        self.assertTrue(_is_wide_layout(frame))
+        subjects, turnover = _wide_subjects(frame)
+        # foreign = 法人(k=4) + 個人(k=5); proprietary = 現金(k=0) + 信用(k=1)
+        self.assertEqual(subjects["foreign"]["net"], (100 + 4) + (100 + 5))
+        self.assertEqual(subjects["proprietary"]["net"], 100 + 101)
+        self.assertEqual(subjects["individual_margin"]["net"], 100 + 3)
+        self.assertEqual(subjects["life_insurance"]["source_label"], "生保・損保（公式合算）")
+        self.assertEqual(turnover, sum(2100 + 3 * k for k in range(len(WIDE_GROUPS))))
+
+    def test_new_workbook_layout_change_fails_closed(self):
+        frame = pd.DataFrame([[None] * 59 for _ in range(15)])
+        frame.iat[6, 2] = "株数／金額"
+        for col, row, label in (*WIDE_GROUPS.values(), *WIDE_PARENTS):
+            frame.iat[row, col] = label
+        frame.iat[5, 51] = "その他"  # 信託銀行 column moved
+        self.assertEqual(_wide_subjects(frame), ({}, None))
+        frame.iat[5, 51] = "信託銀行"
+        frame.iat[14, 1], frame.iat[14, 2] = "二市場", "金額"
+        for col, _, _ in WIDE_GROUPS.values():
+            frame.iat[14, col], frame.iat[14, col + 1], frame.iat[14, col + 2] = 10, 20, 999
+        self.assertEqual(_wide_subjects(frame), ({}, None))  # 差引 disagrees
+
+    def test_equity_file_filter_accepts_new_name_only_for_weekly_files(self):
+        self.assertTrue(_is_equity_value_file("https://x/t13-att/stock_1_w_20261019_20261023.xlsx"))
+        self.assertTrue(_is_equity_value_file("https://x/stock_val_1_260902.xls"))
+        self.assertFalse(_is_equity_value_file("https://x/stock_vol_1_260902.xls"))
+        self.assertFalse(_is_equity_value_file("https://x/revision_information_j.xls"))
 
     def test_missing_and_zero_variance_do_not_become_zero_z(self):
         self.assertIsNone(safe_z(None, [1] * 52))
