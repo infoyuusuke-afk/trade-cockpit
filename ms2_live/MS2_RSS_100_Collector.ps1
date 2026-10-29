@@ -1026,6 +1026,61 @@ function Ensure-Csv([string]$path, [string]$header) {
     if (-not (Test-Path $path)) { [IO.File]::WriteAllText($path, $header + [Environment]::NewLine, [Text.UTF8Encoding]::new($true)) }
 }
 
+# OWNER 2026-10-29 「場中に起動し直しても、その日の記録から9:00〜9:15の高値・安値を読み直して、OR15を作り直すように」:
+# replays today's ticks.csv (exchange prints, captured in order) up to 11:30 and rebuilds each stock's OR15 with the
+# same windows as the live loop: 09:00-09:15, or first trade + 15 min for a stock whose first print is 09:01 or later
+# while other stocks already printed before 09:01 (a late open). The polled prices in market_snapshots.csv inside the same
+# windows are added too, so the range is at least what the live loop saw. Returns the number of stocks restored.
+function Restore-Or15FromTicks([string]$Path, $OrHigh, $OrLow, $OrStart, [string]$SnapshotPath = "") {
+    if (-not (Test-Path $Path)) { return 0 }
+    $start = @{}; $end = @{}; $sawEarly = $false
+    $fs = New-Object IO.FileStream($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    $reader = New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)
+    try {
+        [void]$reader.ReadLine()
+        while ($null -ne ($line = $reader.ReadLine())) {
+            $f = $line.Split('"')
+            if ($f.Count -lt 10) { continue }
+            if ($f[1].Length -ge 16 -and $f[1].Substring(11, 5) -ge "11:30") { break }
+            $ticker = $f[3]; $t = $f[7]; $px = 0.0
+            if ($t.Length -ne 8 -or $t -lt "09:00:00" -or -not [double]::TryParse($f[9], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$px) -or $px -le 0) { continue }
+            if (-not $start.ContainsKey($ticker)) {
+                $st = if ($t -lt "09:01:00" -or -not $sawEarly) { "09:00:00" } else { $t }
+                $start[$ticker] = $st
+                $end[$ticker] = [TimeSpan]::Parse($st).Add([TimeSpan]::FromMinutes(15)).ToString("hh\:mm\:ss")
+            } elseif ($start[$ticker] -ne "09:00:00" -and $t -lt $start[$ticker]) {
+                $start[$ticker] = $t
+                $end[$ticker] = [TimeSpan]::Parse($t).Add([TimeSpan]::FromMinutes(15)).ToString("hh\:mm\:ss")
+            }
+            if ($t -lt "09:01:00") { $sawEarly = $true }
+            if ($t -ge $start[$ticker] -and $t -lt $end[$ticker]) {
+                if (-not $OrHigh.ContainsKey($ticker) -or $px -gt $OrHigh[$ticker]) { $OrHigh[$ticker] = $px }
+                if (-not $OrLow.ContainsKey($ticker) -or $px -lt $OrLow[$ticker]) { $OrLow[$ticker] = $px }
+            }
+        }
+    } finally { $reader.Dispose(); $fs.Dispose() }
+    if ($SnapshotPath -and (Test-Path $SnapshotPath)) {
+        $fs = New-Object IO.FileStream($SnapshotPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        $reader = New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)
+        try {
+            [void]$reader.ReadLine()
+            while ($null -ne ($line = $reader.ReadLine())) {
+                $f = $line.Split('"')
+                if ($f.Count -lt 8 -or $f[1].Length -lt 19) { continue }
+                $t = $f[1].Substring(11, 8)
+                if ($t -ge "11:30:00") { break }
+                $ticker = $f[3]; $px = 0.0
+                if (-not $start.ContainsKey($ticker) -or $t -lt $start[$ticker] -or $t -ge $end[$ticker]) { continue }
+                if (-not [double]::TryParse($f[7], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$px) -or $px -le 0) { continue }
+                if ($px -gt $OrHigh[$ticker]) { $OrHigh[$ticker] = $px }
+                if ($px -lt $OrLow[$ticker]) { $OrLow[$ticker] = $px }
+            }
+        } finally { $reader.Dispose(); $fs.Dispose() }
+    }
+    foreach ($k in $start.Keys) { if (-not $OrStart.ContainsKey($k)) { $OrStart[$k] = [TimeSpan]::Parse($start[$k]) } }
+    return @($OrHigh.Keys).Count
+}
+
 # OWNER 2026-10-26 「ブレインとまりすぎ」: Add-Content fails ("used by another process") while any reader
 # has the record open (the Brain observer reads ticks.csv for the virtual holdings), and with
 # $ErrorActionPreference Stop that stopped the whole Collector 12 times in one morning. Records are now
@@ -2577,6 +2632,7 @@ $seenTicks = @{}
 $creditSaved = @{}
 $orHigh = @{}
 $orStart = @{}
+$orRestoredDay = ""
 $orWaiting = @{}
 $orLow = @{}
 $or5High = @{}
@@ -2697,6 +2753,17 @@ try {
         # ではなく、毎分すべての銘柄の条件評価値そのものを記録する。売買判定ロジック自体は変更しない。
         Ensure-Csv $conditionCsv "captured_at,ticker,name,price,vwap,ema9,ema20,trend_long,trend_short,or5_high,or5_low,or15_high,or15_low,bar_burst,flow_bias,whipsaw,chase_guard,or5_long,or5_short,or15_long,or15_short,pullback_long,pullback_short,signal,strategy"
         Ensure-Csv $holdFinalCsv "finalized_at,rank,ticker,name,hold_signal,hold_score,reference_price_1525,vwap,or15_high,or15_low,pm_above_minutes,pm_below_minutes,close_location_pct,market_state,breadth_pct,sector_breadth_pct,flow_bias,under_ratio"
+        if ($orRestoredDay -ne $activeDay) {
+            $orRestoredDay = $activeDay
+            if ($now.TimeOfDay -ge [TimeSpan]::Parse("09:00:00")) {
+                try {
+                    $restoredOr = Restore-Or15FromTicks $tickCsv $orHigh $orLow $orStart $snapshotCsv
+                    Write-Host ("[OR15] restored from today's ticks.csv: " + $restoredOr + " stocks") -ForegroundColor Green
+                } catch {
+                    Write-Host ("[OR15] WARN / restore failed - Collector continues: " + $_.Exception.Message) -ForegroundColor DarkYellow
+                }
+            }
+        }
         if($loadedHoldDay -ne $activeDay){
             $loadedHoldDay=$activeDay
             try {
