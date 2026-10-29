@@ -1043,6 +1043,8 @@ function Restore-Or15FromTicks([string]$Path, $OrHigh, $OrLow, $OrStart, [string
             if ($f.Count -lt 10) { continue }
             if ($f[1].Length -ge 16 -and $f[1].Substring(11, 5) -ge "11:30") { break }
             $ticker = $f[3]; $t = $f[7]; $px = 0.0
+            # OWNER 2026-10-29 「記録した時刻より後の時刻の歩み値（前日の値段）は外して」: a print stamped later than its capture is yesterday's
+            if ($f[1].Length -lt 19 -or $t -gt $f[1].Substring(11, 8)) { continue }
             if ($t.Length -ne 8 -or $t -lt "09:00:00" -or -not [double]::TryParse($f[9], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$px) -or $px -le 0) { continue }
             if (-not $start.ContainsKey($ticker)) {
                 $st = if ($t -lt "09:01:00" -or -not $sawEarly) { "09:00:00" } else { $t }
