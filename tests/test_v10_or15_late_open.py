@@ -43,7 +43,7 @@ class Or15RestoreOnRestart(unittest.TestCase):
         self.assertIn('[TimeSpan]::FromMinutes(15)', f)
         self.assertIn('-ge "11:30") { break }', f)
         self.assertIn("[IO.FileShare]::ReadWrite", f)
-        self.assertIn('if ($f[1].Length -lt 19 -or $t -gt $f[1].Substring(11, 8)) { continue }', f)
+        self.assertIn('.TotalSeconds -ge 5) { continue }', f)
 
     @unittest.skipUnless(__import__("shutil").which("pwsh") or __import__("shutil").which("powershell"), "no PowerShell")
     def test_restore_on_sample_records(self):
@@ -52,11 +52,13 @@ class Or15RestoreOnRestart(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             ticks = ['captured_at,ticker,name,exchange_time,price,direction_estimate,bid,ask,note']
-            # OWNER 2026-10-29 「記録した時刻より後の時刻の歩み値（前日の値段）は外して」: the 999 prints are stamped after their capture
+            # OWNER 2026-10-29 「記録した時刻より後の時刻の歩み値（前日の値段）は外して」「5秒以上後のものだけに」: the 999 and 90 prints are
+            # stamped 5 s or more after their capture (dropped); the 95 print is 4 s after (today's, kept)
             rows = [("09:00:01", "1111.T", "15:24:59", 999), ("09:00:01", "3333.T", "15:29:00", 999),
                     ("09:00:04", "1111.T", "09:00:02", 100), ("09:00:05", "3333.T", "09:00:05", 300),
                     ("09:00:06", "4444.T", "15:28:00", 999), ("09:00:07", "4444.T", "09:00:07", 400),
                     ("09:00:08", "5555.T", "15:27:00", 999), ("09:03:00", "3333.T", "15:29:00", 999), ("09:05:00", "1111.T", "09:04:59", 104),
+                    ("09:06:00", "1111.T", "09:06:04", 95), ("09:07:00", "1111.T", "09:07:05", 90),
                     ("09:07:00", "2222.T", "09:06:02", 500), ("09:14:00", "1111.T", "09:13:59", 97),
                     ("09:16:00", "1111.T", "09:15:30", 120), ("09:20:00", "2222.T", "09:20:00", 520),
                     ("09:22:00", "2222.T", "09:21:30", 480), ("11:31:00", "1111.T", "11:30:59", 50)]
@@ -73,4 +75,4 @@ class Or15RestoreOnRestart(unittest.TestCase):
             exe = shutil.which("pwsh") or shutil.which("powershell")
             out = subprocess.run([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps)],
                                  capture_output=True, text=True, timeout=120).stdout.strip().splitlines()[-1]
-        self.assertEqual(out, "4|106|97|09:00:00|520|500|09:06:02|300|300|09:00:00|09:00:00|400|[]")
+        self.assertEqual(out, "4|106|95|09:00:00|520|500|09:06:02|300|300|09:00:00|09:00:00|400|[]")
