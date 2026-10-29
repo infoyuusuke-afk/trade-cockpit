@@ -74,6 +74,13 @@ def test_plain_words_for_the_gap_rules_and_claude_label():
     assert 'who:/^Claude/.test(String(x.reason||""))?"Claude":' in html
 
 
+def test_cards_line_up():
+    # OWNER 2026-10-29 「ふぞろい」
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert ".ai-top5 #ai5-cards{align-items:stretch}.ai-top5 .ai5-pin>.cc-card{flex:1 1 auto}" in html
+    assert ".ai-top5 .ai5-out{margin-top:auto}" in html
+
+
 import unittest as _unittest  # noqa: E402
 
 
