@@ -568,6 +568,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    const isStaleCard=x?._stale===true||x?._staticCurrent===true;
    const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
    const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
+   // OWNER 2026-10-29 「AI注目TOP5のカードを全部同じ項目にして」: with _allMetrics every metric is shown ("—" when missing)
+   const mv=v=>v==null&&x&&x._allMetrics===true?"—":v;
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
      // OWNER 2026-10-27 「鮮度不明も直して」: the age of the row's own quote time (source_timestamp_at, the time the
@@ -581,12 +583,12 @@ document.addEventListener("DOMContentLoaded",()=>{
      entry:x.entry_price,stop:x.stop_price,target:x.target1,
      metrics:[
        {label:"時間軸",value:tf||"1m"},
-       {label:"VWAP",value:fmt(x.vwap)},
-       {label:"OR5",value:range(x.or5_low,x.or5_high)},
-       {label:"OR15",value:range(x.or_low,x.or_high)},
-       {label:"EMA 9/20",value:(num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null},
-       {label:"FLOW",value:x.flow_bias==null?null:esc(x.flow_bias)+"%"},
-       {label:"VOLUME",value:x.volume_burst==null?null:esc(x.volume_burst)+"x"}
+       {label:"VWAP",value:mv(fmt(x.vwap))},
+       {label:"OR5",value:mv(range(x.or5_low,x.or5_high))},
+       {label:"OR15",value:mv(range(x.or_low,x.or_high))},
+       {label:"EMA 9/20",value:mv((num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null)},
+       {label:"FLOW",value:mv(x.flow_bias==null?null:esc(x.flow_bias)+"%")},
+       {label:"VOLUME",value:mv(x.volume_burst==null?null:esc(x.volume_burst)+"x")}
      ],
      foot:x.foot||""
    });
@@ -2568,7 +2570,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>.ai-top5 .ai5-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}.ai-top5 .ai5-mode{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid #303033;color:#9AA0AA}.ai-top5 .ai5-mode.auto{border-color:#164536;color:#35e2ae}.ai-top5 .ai5-mode.manual{border-color:#5a431c;color:#f5c542}
 .ai-top5 select,.ai-top5 button{height:32px;padding:0 12px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700}
 .ai-top5 .ai5-method{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#E8EAED;font-weight:600}.ai-top5 .ai5-method .ai5-num{margin-left:10px;color:#35e2ae;font-weight:600}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
-.ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}.ai-top5 .ai5-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}/* OWNER 2026-10-29 「ふぞろい」: same height cards, the source line and the button at the bottom */.ai-top5 #ai5-cards{align-items:stretch}.ai-top5 .ai5-pin>.cc-card{flex:1 1 auto}.ai-top5 .ai5-src{min-height:30px}.ai-top5 .ai5-out{margin-top:auto}</style>
+.ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}.ai-top5 .ai5-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}/* OWNER 2026-10-29 「ふぞろい」: same height cards, the source line and the button at the bottom */.ai-top5 #ai5-cards{align-items:stretch}.ai-top5 .ai5-pin>.cc-card{flex:1 1 auto}.ai-top5 .ai5-src{min-height:30px}.ai-top5 .ai5-out{margin-top:auto}/* OWNER 2026-10-29 「5枚を1段に並べて」 */.ai-top5 #ai5-cards{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px}.ai-top5 #ai5-cards .cc-card{min-width:0}</style>
 <script>
 // OWNER 2026-10-27 「SCL5いらない、ここをAIアナリストの注目期待値高い順TOP５をデフォルトとして、俺が任意でいれかえる形、
 // あと今日フォーカスする手法も表示」: in the トレード中 tab the SCALP 5 panel is hidden and this panel takes its place.
@@ -2633,7 +2635,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!list.length){box.innerHTML='<div class="focus-empty">'+(st.mode==="manual"?"入れた銘柄がありません。":"今日のAIアナリストの注目のうち、監視100銘柄に入っている銘柄がまだありません。")+'</div>';return;}
     const map=new Map(live.map(x=>[x.ticker,x]));
     box.innerHTML=list.map(t=>{const row=map.get(t),ok=liveOk&&row&&window.cockpitMs2RowReady?.(row)===true,e=evScore(t);
-      const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
+      const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,_allMetrics:true,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
         window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:(row&&row.name)||t,direction:"block",failClosed:"MS2の値が新しくない・未取得",freshness:"stale",price:null,foot:"実注文禁止"});
       const h=hitScore(t);
       return '<div class="ai5-pin'+(t===selected?' selected':'')+'" data-pick="'+t+'">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・当たり率（検証中） '+(h?Math.round(h.rate)+'%（'+h.n+'件）':'まだ無し')+'・期待値（検証中） '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");

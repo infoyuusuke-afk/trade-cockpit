@@ -81,6 +81,15 @@ def test_cards_line_up():
     assert ".ai-top5 .ai5-out{margin-top:auto}" in html
 
 
+def test_same_fields_five_in_a_row():
+    # OWNER 2026-10-29 「AI注目TOP5のカードを全部同じ項目にして、5枚を1段に並べて」
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert 'const mv=v=>v==null&&x&&x._allMetrics===true?"—":v;' in html
+    assert '{label:"OR5",value:mv(range(x.or5_low,x.or5_high))}' in html
+    assert "_stale:false,_allMetrics:true,foot:" in html
+    assert ".ai-top5 #ai5-cards{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px}" in html
+
+
 import unittest as _unittest  # noqa: E402
 
 
