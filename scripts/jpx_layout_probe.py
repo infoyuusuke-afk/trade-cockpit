@@ -1,42 +1,24 @@
-"""Temporary probe: print the layout of the newest JPX investor-type workbook.
+"""Temporary probe: run the fixed parser on the real JPX workbooks.
 
-Numbers are masked (printed as N) so no JPX figures reach the public log.
-Delete this file and its workflow once investor_regime.py is fixed.
+Prints only which subjects parsed, the net sign and the regime name; no JPX
+figures reach the public log. Delete this file and its workflow before merge.
 """
-import io
-import re
-import sys
-from urllib.parse import urljoin
-from urllib.request import Request, urlopen
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-import pandas as pd
+from scripts import investor_regime as ir
 
-PAGE = "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html"
-
-
-def fetch(url):
-    return urlopen(Request(url, headers={"User-Agent": "TradeCockpit-JPX-PointInTime/1.0"}), timeout=30).read()
-
-
-def mask(v):
-    if pd.isna(v):
-        return ""
-    s = str(v).strip()
-    if re.fullmatch(r"[-+]?[\d,]+(\.\d+)?", s):
-        return "N"
-    return s[:24]
-
-
-html = fetch(PAGE).decode("utf-8", "replace")
-links = [urljoin(PAGE, x) for x in re.findall(r'href=["\']([^"\']+\.xlsx?)["\']', html, re.I)]
-print("xls links:", [l.rsplit("/", 1)[-1] for l in links])
-target = next(l for l in links if "stock_1_w_" in l and "YYYY" not in l)
-print("probe:", target.rsplit("/", 1)[-1])
-sheets = pd.read_excel(io.BytesIO(fetch(target)), sheet_name=None, header=None)
-for name, frame in sheets.items():
-    print(f"\n=== sheet {name!r} shape={frame.shape}")
-    for i in range(min(len(frame), 70)):
-        cells = [f"{chr(65 + j) if j < 26 else j}:{mask(v)}" for j, v in enumerate(frame.iloc[i].tolist()) if mask(v)]
-        if cells:
-            print(f"r{i:02d} " + " | ".join(cells))
-sys.stdout.flush()
+out = ir.build_output(datetime.now(ZoneInfo("Asia/Tokyo")))
+manifest = ir._load_manifest()
+new = [r for r in manifest if "stock_1_w_" in r.get("source_url", "")]
+print("new weekly files archived:", [(r["period_start"], r["period_end"]) for r in new])
+for r in new:
+    parsed = ir.parse_equity_workbook(ir.ROOT / r["local_file"], r["period_end"], r["period_start"])
+    if not parsed:
+        print(r["period_end"], "PARSE FAILED")
+        continue
+    signs = {k: ("買越" if v["net"] > 0 else "売越") for k, v in parsed["subjects"].items()}
+    share = parsed["subjects"]["foreign"]["gross"] / parsed["market_turnover"] * 100
+    print(r["period_end"], signs, "foreign share band:", "50-70%" if 50 <= share <= 70 else "OUTSIDE 50-70%")
+print("asof:", out["asof"]["period_end"], "observed_weeks:", out["connection"]["observed_weeks"],
+      "regime:", out["regime"]["name"])

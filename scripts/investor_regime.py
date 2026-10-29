@@ -329,6 +329,13 @@ def _period_from_name(url: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _is_equity_value_file(url: str) -> bool:
+    """Legacy value-only workbooks (stock_val_*) and, from the 2026-09-14 week,
+    the combined weekly workbook (stock_1_w_*) whose rows hold both shares and value."""
+    name = url.lower().split("?", 1)[0].rsplit("/", 1)[-1]
+    return "stock_val_" in name or name.startswith("stock_1_w_")
+
+
 def archive_official_files(now: datetime) -> list[dict]:
     ARCHIVE.mkdir(parents=True, exist_ok=True)
     manifest = _load_manifest()
@@ -341,7 +348,7 @@ def archive_official_files(now: datetime) -> list[dict]:
             # The equity page publishes both share-volume and trading-value
             # workbooks.  Regime calculations use value only; the two files
             # are different series, not revisions of one another.
-            if dataset == "equity" and "stock_val_" not in url.lower():
+            if dataset == "equity" and not _is_equity_value_file(url):
                 continue
             try: blob = _fetch(url)
             except Exception: continue
@@ -451,12 +458,86 @@ def _equity_subjects(frame: pd.DataFrame) -> tuple[dict[str, dict], float | None
     return subjects, market_turnover
 
 
-def parse_equity_workbook(path: Path, period_end: str | None = None) -> dict | None:
+# Combined weekly workbook published from 2026-09-29 (stock_1_w_YYYYMMDD_YYYYMMDD.xlsx):
+# one sheet, one row per market x basis (株数/金額), and four columns per subject
+# (売・買・差引・合計).  Column starts are fixed by JPX's sample file; the header
+# labels are checked so a layout change fails closed instead of misreading.
+WIDE_GROUPS = {
+    "proprietary_cash": (3, 4, "現金取引"), "proprietary_margin": (7, 4, "信用取引"),
+    "individual_cash": (11, 4, "現金取引"), "individual_margin": (15, 4, "信用取引"),
+    "foreign_corporate": (19, 4, "法人"), "foreign_individual": (23, 4, "個人"),
+    "securities_cos": (27, 4, "証券会社"),
+    "investment_trusts": (31, 4, "投資信託"), "business_corporations": (35, 4, "事業法人"),
+    "other_corporations": (39, 4, "その他法人"), "life_insurance": (43, 5, "生保・損保"),
+    "city_regional_banks": (47, 5, "都銀・地銀"), "trust_banks": (51, 5, "信託銀行"),
+    "other_financials": (55, 5, "その他金融機関"),
+}
+WIDE_PARENTS = ((3, 2, "自己"), (11, 3, "個人"), (19, 3, "海外投資家"), (43, 4, "金融機関"))
+
+
+def _is_wide_layout(frame: pd.DataFrame) -> bool:
+    head = " ".join(str(x) for x in frame.iloc[:8].to_numpy().flatten() if pd.notna(x))
+    return "株数／金額" in head or "Shares／Value" in head
+
+
+def _wide_subjects(frame: pd.DataFrame) -> tuple[dict[str, dict], float | None]:
+    """Parse the 二市場・金額 row of the combined weekly workbook."""
+    if frame.shape[1] < 59:
+        return {}, None
+    for col, row, label in (*WIDE_GROUPS.values(), *WIDE_PARENTS):
+        if not _normalise_label(frame.iat[row, col]).startswith(_normalise_label(label)):
+            return {}, None
+    market_rows = [i for i in range(len(frame))
+                   if "二市場" in str(frame.iat[i, 1]) or "Tokyo & Nagoya" in str(frame.iat[i, 1])]
+    value_row = next((i for start in market_rows for i in (start, start + 1)
+                      if i < len(frame) and "金額" in str(frame.iat[i, 2])), None)
+    if value_row is None:
+        return {}, None
+
+    leaves: dict[str, tuple[float, float]] = {}
+    for key, (col, _, _) in WIDE_GROUPS.items():
+        sell, buy, shown = (_num(frame.iat[value_row, col + k]) for k in range(3))
+        if sell is None or buy is None:
+            return {}, None
+        if shown is not None and abs((buy - sell) - shown) > max(2, abs(shown) * .002):
+            return {}, None
+        leaves[key] = (sell, buy)
+
+    def subject(label: str, *keys: str, source_label: str | None = None) -> dict:
+        sell = sum(leaves[k][0] for k in keys)
+        buy = sum(leaves[k][1] for k in keys)
+        return {"sell": sell, "buy": buy, "net": buy - sell, "gross": sell + buy,
+                "source_label": source_label or label, "availability": "available"}
+
+    subjects = {
+        "proprietary": subject("自己計", "proprietary_cash", "proprietary_margin"),
+        "foreign": subject("海外投資家", "foreign_corporate", "foreign_individual"),
+        "investment_trusts": subject("投資信託", "investment_trusts"),
+        "business_corporations": subject("事業法人", "business_corporations"),
+        "trust_banks": subject("信託銀行", "trust_banks"),
+        "life_insurance": subject("生保・損保", "life_insurance", source_label="生保・損保（公式合算）"),
+        "individual_cash": subject("個人現金", "individual_cash"),
+        "individual_margin": subject("個人信用", "individual_margin"),
+    }
+    # 総計 is not printed in the new sheet; every leaf above sums to it.
+    market_turnover = sum(sell + buy for sell, buy in leaves.values())
+    return subjects, market_turnover
+
+
+def parse_equity_workbook(path: Path, period_end: str | None = None,
+                          period_start: str | None = None) -> dict | None:
     """Parse JPX trading-value workbook; ambiguous fields remain missing."""
     try:
         sheets = pd.read_excel(path, sheet_name=None, header=None)
     except Exception:
         return None
+    wide = next((frame for frame in sheets.values() if _is_wide_layout(frame)), None)
+    if wide is not None:
+        subjects, market_turnover = _wide_subjects(wide)
+        if not subjects or not period_end:
+            return None
+        return {"period_start": period_start, "period_end": period_end,
+                "subjects": subjects, "market_turnover": market_turnover}
     preferred = next((frame for name, frame in sheets.items()
                       if "Tokyo & Nagoya" in str(name) or "二市場" in str(name)), None)
     if preferred is None:
@@ -581,9 +662,10 @@ def build_output(now: datetime, decision_at: datetime | None = None, fetch: bool
     weekly_records = []
     for record in manifest:
         if record.get("dataset") != "equity" or parse_dt(record["retrieved_at"]) > decision_at: continue
-        if "stock_val_" not in str(record.get("source_url", "")).lower():
+        if not _is_equity_value_file(str(record.get("source_url", ""))):
             continue
-        parsed = parse_equity_workbook(ROOT / record["local_file"], record["period_end"])
+        parsed = parse_equity_workbook(ROOT / record["local_file"], record["period_end"],
+                                       record.get("period_start"))
         if parsed:
             weekly_records.append({"record": record, "parsed": parsed})
     # Keep only the newest actually observed revision for each covered week.
