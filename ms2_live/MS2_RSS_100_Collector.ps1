@@ -2576,6 +2576,8 @@ $history = @{}
 $seenTicks = @{}
 $creditSaved = @{}
 $orHigh = @{}
+$orStart = @{}
+$orWaiting = @{}
 $orLow = @{}
 $or5High = @{}
 $or5Low = @{}
@@ -2643,7 +2645,7 @@ try {
         }
         if ($now.ToString("yyyy-MM-dd") -ne $activeDay) {
             $activeDay=$now.ToString("yyyy-MM-dd")
-            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
+            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $orStart=@{}; $orWaiting=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
             $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
@@ -3076,9 +3078,18 @@ try {
             $clock=$now.TimeOfDay
             $inOr5=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:05:00"))
             $afterOr5=($clock -ge [TimeSpan]::Parse("09:05:00"))
-            $inOr=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:15:00"))
+            # OWNER 2026-10-29 「寄りが遅れた銘柄は、寄ってから15分で高値・安値を作る」: a stock still untraded (volume 0, no open) at 09:01
+            # builds its OR15 from its first trade + 15 min. Already traded by 09:01, or first seen after 11:30 (a restart), stays 09:00-09:15.
+            if(-not $orStart.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:00:00")){
+                $tradedYet=(($null -ne $volume -and $volume -gt 0) -or ($null -ne $openPrice -and $openPrice -gt 0))
+                if(-not $tradedYet){if($clock -lt [TimeSpan]::Parse("11:30:00")){$orWaiting[$ticker]=$true}}
+                elseif($orWaiting.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:01:00")){$orStart[$ticker]=$clock}
+                else{$orStart[$ticker]=[TimeSpan]::Parse("09:00:00")}
+            }
+            $orBegin=if($orStart.ContainsKey($ticker)){$orStart[$ticker]}else{$null}
+            $inOr=($null -ne $orBegin -and $clock -ge $orBegin -and $clock -lt $orBegin.Add([TimeSpan]::FromMinutes(15)))
             $inPreopen=($clock -ge [TimeSpan]::Parse("08:00:00") -and $clock -lt [TimeSpan]::Parse("09:00:00"))
-            $afterOr=($clock -ge [TimeSpan]::Parse("09:15:00")); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
+            $afterOr=($null -ne $orBegin -and $clock -ge $orBegin.Add([TimeSpan]::FromMinutes(15))); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
 
             # Before the opening auction, RSS may leave Current Price blank even
             # though bid/ask and the reference price are already populated.  Do
