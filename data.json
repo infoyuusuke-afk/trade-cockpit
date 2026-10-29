@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-10-29 20:48:28 JST",
-  "phase": "大引け後版（20:48作成）",
+  "updated_at": "2026-10-29 22:39:37 JST",
+  "phase": "大引け後版（22:39作成）",
   "session": "close",
   "active_buybacks": [],
   "buybacks_updated_at": "未取得",
@@ -392,8 +392,8 @@
         "high": 2629.0,
         "low": 2518.0,
         "close": 2555.0,
-        "vwap": 2555.0,
-        "volume": 333600,
+        "vwap": 2567.58,
+        "volume": 227200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -786,8 +786,8 @@
         "high": 1336.0,
         "low": 1308.0,
         "close": 1331.0,
-        "vwap": 1325.65,
-        "volume": 2557600,
+        "vwap": 1324.7,
+        "volume": 2825000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -1180,8 +1180,8 @@
         "high": 4262.0,
         "low": 4034.0,
         "close": 4193.0,
-        "vwap": 4169.95,
-        "volume": 34042300,
+        "vwap": 4170.98,
+        "volume": 36439800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -1574,8 +1574,8 @@
         "high": 4170.0,
         "low": 4073.0,
         "close": 4147.0,
-        "vwap": 4124.66,
-        "volume": 312800,
+        "vwap": 4127.73,
+        "volume": 342500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -1968,8 +1968,8 @@
         "high": 5378.0,
         "low": 5192.0,
         "close": 5359.0,
-        "vwap": 5291.78,
-        "volume": 752400,
+        "vwap": 5297.41,
+        "volume": 698700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -2364,8 +2364,8 @@
         "high": 2871.0,
         "low": 2768.0,
         "close": 2851.0,
-        "vwap": 2831.65,
-        "volume": 253200,
+        "vwap": 2832.72,
+        "volume": 269800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -2758,8 +2758,8 @@
         "high": 8544.0,
         "low": 8259.0,
         "close": 8468.0,
-        "vwap": 8444.65,
-        "volume": 1448300,
+        "vwap": 8445.22,
+        "volume": 1634900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -3152,8 +3152,8 @@
         "high": 6049.0,
         "low": 5921.0,
         "close": 5982.0,
-        "vwap": 5991.6,
-        "volume": 3901000,
+        "vwap": 5994.63,
+        "volume": 4567500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -3546,8 +3546,8 @@
         "high": 5484.0,
         "low": 5399.0,
         "close": 5474.0,
-        "vwap": 5443.46,
-        "volume": 682800,
+        "vwap": 5444.64,
+        "volume": 744800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -3940,8 +3940,8 @@
         "high": 8125.0,
         "low": 7959.0,
         "close": 8091.0,
-        "vwap": 8048.54,
-        "volume": 365000,
+        "vwap": 8058.86,
+        "volume": 239900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -4695,47 +4695,39 @@
     },
     "NASDAQ": {
       "ok": true,
-      "price": 26549.85,
-      "open": 26541.61,
-      "high": 26587.34,
-      "low": 26414.92,
-      "prev_close": 26477.81,
-      "change_pct": 0.27,
-      "ret5": -0.57,
-      "ret5_prev": 0.04,
-      "ret20": -1.16,
-      "rvol": 1.01,
-      "turnover": 212002407620332,
-      "atr14": 388.09,
-      "atr_pct": 1.46,
-      "ma5": 26232.25,
-      "ma20": 26797.69,
-      "ma60": 26583.2,
-      "from_ma5": 1.21,
-      "from_ma20": -0.92,
-      "touch_ma5": true,
-      "to_high20": -4.23,
-      "to_high52": -4.23,
-      "bb_upper": 27825.69,
-      "bb_lower": 25769.69,
-      "bb_width": 7.67,
-      "bb_width_change": 0.77,
-      "bb_percentile": 59.2,
-      "bb_expansion_score": 39.0,
-      "day_score": 4.53,
-      "swing_score": -2.48,
-      "stable_score": 6.8,
-      "momentum_score": 7.69,
-      "high_score": 5.51,
+      "price": 26085.18,
+      "open": 26201.82,
+      "high": 26209.84,
+      "low": 26053.16,
+      "prev_close": 26549.85,
+      "change_pct": -1.75,
+      "ret5": 0.29,
+      "ret5_prev": -2.64,
+      "ret20": -2.93,
+      "rvol": 0.11,
+      "turnover": 21127016848110,
+      "atr14": 409.13,
+      "atr_pct": 1.57,
+      "ma5": 26247.51,
+      "ma20": 26758.37,
+      "ma60": 26578.57,
+      "from_ma5": -0.62,
+      "from_ma20": -2.52,
+      "touch_ma5": false,
+      "to_high20": -5.91,
+      "to_high52": -5.91,
+      "bb_upper": 27831.24,
+      "bb_lower": 25685.5,
+      "bb_width": 8.02,
+      "bb_width_change": 0.72,
+      "bb_percentile": 63.3,
+      "bb_expansion_score": 31.5,
+      "day_score": -0.14,
+      "swing_score": -3.52,
+      "stable_score": 5.58,
+      "momentum_score": 1.96,
+      "high_score": 4.16,
       "chart": [
-        {
-          "t": "2026-09-02",
-          "o": 26094.0,
-          "h": 26245.04,
-          "l": 26062.68,
-          "c": 26217.83,
-          "v": 7442550000
-        },
         {
           "t": "2026-09-03",
           "o": 26336.32,
@@ -5047,67 +5039,67 @@
           "l": 26414.92,
           "c": 26549.85,
           "v": 7985070000
+        },
+        {
+          "t": "2026-10-29",
+          "o": 26201.82,
+          "h": 26209.84,
+          "l": 26053.16,
+          "c": 26085.18,
+          "v": 809924266
         }
       ],
-      "data_date": "2026-10-28",
-      "data_age_days": 1,
-      "chart_last_close": 26549.85,
+      "data_date": "2026-10-29",
+      "data_age_days": 0,
+      "chart_last_close": 26085.18,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-28）",
-      "market_supply_score": 62,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給62点／上昇日出来高÷下落日1.14倍／安値切上げ×",
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "market_supply_score": 52,
+      "market_supply_improved": false,
+      "market_supply_status": "市場需給52点／上昇日出来高÷下落日1.02倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "S&P500": {
       "ok": true,
-      "price": 7743.98,
-      "open": 7735.56,
-      "high": 7758.43,
-      "low": 7718.37,
-      "prev_close": 7722.6,
-      "change_pct": 0.28,
-      "ret5": -0.17,
-      "ret5_prev": 0.5,
-      "ret20": 1.21,
-      "rvol": 1.03,
-      "turnover": 42336028794023,
-      "atr14": 70.86,
-      "atr_pct": 0.92,
-      "ma5": 7686.09,
-      "ma20": 7734.34,
-      "ma60": 7705.75,
-      "from_ma5": 0.75,
-      "from_ma20": 0.12,
+      "price": 7700.04,
+      "open": 7699.61,
+      "high": 7713.69,
+      "low": 7695.75,
+      "prev_close": 7743.98,
+      "change_pct": -0.57,
+      "ret5": 0.48,
+      "ret5_prev": -1.04,
+      "ret20": 0.44,
+      "rvol": 0.06,
+      "turnover": 2140677589905,
+      "atr14": 70.36,
+      "atr_pct": 0.91,
+      "ma5": 7693.41,
+      "ma20": 7736.02,
+      "ma60": 7705.36,
+      "from_ma5": 0.09,
+      "from_ma20": -0.47,
       "touch_ma5": true,
-      "to_high20": -1.28,
-      "to_high52": -1.28,
-      "bb_upper": 7848.33,
-      "bb_lower": 7620.35,
-      "bb_width": 2.95,
-      "bb_width_change": -0.07,
-      "bb_percentile": 20.8,
-      "bb_expansion_score": 71.6,
-      "day_score": 4.7,
-      "swing_score": 0.27,
-      "stable_score": 10.24,
-      "momentum_score": 8.15,
-      "high_score": 8.54,
+      "to_high20": -1.84,
+      "to_high52": -1.84,
+      "bb_upper": 7846.9,
+      "bb_lower": 7625.13,
+      "bb_width": 2.87,
+      "bb_width_change": -0.18,
+      "bb_percentile": 20.0,
+      "bb_expansion_score": 53.4,
+      "day_score": 2.8,
+      "swing_score": -2.67,
+      "stable_score": 6.13,
+      "momentum_score": 6.32,
+      "high_score": 7.08,
       "chart": [
-        {
-          "t": "2026-09-02",
-          "o": 7634.58,
-          "h": 7681.19,
-          "l": 7633.62,
-          "c": 7666.6,
-          "v": 4738910000
-        },
         {
           "t": "2026-09-03",
           "o": 7686.71,
@@ -5419,67 +5411,67 @@
           "l": 7718.37,
           "c": 7743.98,
           "v": 5466960000
+        },
+        {
+          "t": "2026-10-29",
+          "o": 7699.61,
+          "h": 7713.69,
+          "l": 7695.75,
+          "c": 7700.04,
+          "v": 278008631
         }
       ],
-      "data_date": "2026-10-28",
-      "data_age_days": 1,
-      "chart_last_close": 7743.98,
+      "data_date": "2026-10-29",
+      "data_age_days": 0,
+      "chart_last_close": 7700.04,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-28）",
-      "market_supply_score": 68,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "market_supply_score": 73,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給68点／上昇日出来高÷下落日1.36倍／安値切上げ×",
+      "market_supply_status": "市場需給73点／上昇日出来高÷下落日1.23倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "SOX": {
       "ok": true,
-      "price": 11684.0,
-      "open": 11557.38,
-      "high": 11731.3,
-      "low": 11488.36,
-      "prev_close": 11482.5,
-      "change_pct": 1.75,
-      "ret5": 1.55,
-      "ret5_prev": -1.53,
-      "ret20": -7.48,
+      "price": 11437.84,
+      "open": 11496.2,
+      "high": 11512.82,
+      "low": 11419.71,
+      "prev_close": 11684.0,
+      "change_pct": -2.11,
+      "ret5": 6.58,
+      "ret5_prev": -7.33,
+      "ret20": -10.84,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 420.37,
-      "atr_pct": 3.6,
-      "ma5": 11152.28,
-      "ma20": 11966.7,
-      "ma60": 11951.72,
-      "from_ma5": 4.77,
-      "from_ma20": -2.36,
+      "atr14": 416.48,
+      "atr_pct": 3.64,
+      "ma5": 11293.45,
+      "ma20": 11897.15,
+      "ma60": 11942.2,
+      "from_ma5": 1.28,
+      "from_ma20": -3.86,
       "touch_ma5": false,
-      "to_high20": -12.48,
-      "to_high52": -20.27,
-      "bb_upper": 13598.75,
-      "bb_lower": 10334.66,
-      "bb_width": 27.28,
-      "bb_width_change": 1.92,
+      "to_high20": -14.32,
+      "to_high52": -21.95,
+      "bb_upper": 13494.47,
+      "bb_lower": 10299.82,
+      "bb_width": 26.85,
+      "bb_width_change": 0.31,
       "bb_percentile": 92.5,
-      "bb_expansion_score": 12.6,
-      "day_score": 2.95,
-      "swing_score": -4.33,
-      "stable_score": 1.1,
-      "momentum_score": 0.6,
-      "high_score": 2.0,
+      "bb_expansion_score": 2.6,
+      "day_score": 1.62,
+      "swing_score": -3.41,
+      "stable_score": -1.9,
+      "momentum_score": 1.9,
+      "high_score": 0.0,
       "chart": [
-        {
-          "t": "2026-09-02",
-          "o": 11243.55,
-          "h": 11388.99,
-          "l": 11154.67,
-          "c": 11339.25,
-          "v": 0
-        },
         {
           "t": "2026-09-03",
           "o": 11219.44,
@@ -5791,57 +5783,65 @@
           "l": 11488.36,
           "c": 11684.0,
           "v": 0
+        },
+        {
+          "t": "2026-10-29",
+          "o": 11496.2,
+          "h": 11512.82,
+          "l": 11419.71,
+          "c": 11437.84,
+          "v": 0
         }
       ],
-      "data_date": "2026-10-28",
-      "data_age_days": 1,
-      "chart_last_close": 11684.0,
+      "data_date": "2026-10-29",
+      "data_age_days": 0,
+      "chart_last_close": 11437.84,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-28）",
-      "market_supply_score": 71,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "market_supply_score": 79,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給71点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給79点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "VIX": {
       "ok": true,
-      "price": 17.08,
+      "price": 16.99,
       "open": 17.15,
       "high": 17.36,
-      "low": 16.95,
+      "low": 16.83,
       "prev_close": 16.91,
-      "change_pct": 1.01,
-      "ret5": -10.25,
+      "change_pct": 0.47,
+      "ret5": -10.72,
       "ret5_prev": 15.61,
-      "ret20": 4.21,
+      "ret20": 3.66,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 2.0,
-      "atr_pct": 11.71,
-      "ma5": 17.87,
-      "ma20": 16.79,
+      "atr14": 2.01,
+      "atr_pct": 11.81,
+      "ma5": 17.85,
+      "ma20": 16.78,
       "ma60": 15.93,
-      "from_ma5": -4.42,
-      "from_ma20": 1.73,
+      "from_ma5": -4.83,
+      "from_ma20": 1.22,
       "touch_ma5": false,
-      "to_high20": -23.44,
-      "to_high52": -51.61,
+      "to_high20": -23.85,
+      "to_high52": -51.87,
       "bb_upper": 19.92,
-      "bb_lower": 13.66,
+      "bb_lower": 13.65,
       "bb_width": 37.31,
-      "bb_width_change": 0.6,
+      "bb_width_change": 0.59,
       "bb_percentile": 76.7,
       "bb_expansion_score": 30.2,
-      "day_score": -3.0,
-      "swing_score": 1.25,
-      "stable_score": 5.76,
-      "momentum_score": -5.09,
+      "day_score": -3.42,
+      "swing_score": 1.12,
+      "stable_score": 5.66,
+      "momentum_score": -5.16,
       "high_score": 2.0,
       "chart": [
         {
@@ -6160,60 +6160,60 @@
           "t": "2026-10-29",
           "o": 17.15,
           "h": 17.36,
-          "l": 16.95,
-          "c": 17.08,
+          "l": 16.83,
+          "c": 16.99,
           "v": 0
         }
       ],
       "data_date": "2026-10-29",
       "data_age_days": 0,
-      "chart_last_close": 17.08,
+      "chart_last_close": 16.99,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
-      "market_supply_score": 80,
+      "market_supply_score": 79,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給80点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給79点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "ドル円": {
       "ok": true,
-      "price": 157.94,
+      "price": 157.72,
       "open": 157.79,
-      "high": 158.07,
+      "high": 158.13,
       "low": 157.6,
       "prev_close": 157.99,
-      "change_pct": -0.03,
-      "ret5": -0.12,
+      "change_pct": -0.17,
+      "ret5": -0.26,
       "ret5_prev": 0.11,
-      "ret20": 0.24,
+      "ret20": 0.1,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.91,
-      "atr_pct": 0.57,
-      "ma5": 157.36,
-      "ma20": 157.94,
+      "atr_pct": 0.58,
+      "ma5": 157.31,
+      "ma20": 157.92,
       "ma60": 157.72,
-      "from_ma5": 0.37,
-      "from_ma20": 0.0,
+      "from_ma5": 0.26,
+      "from_ma20": -0.13,
       "touch_ma5": true,
-      "to_high20": -0.63,
-      "to_high52": -3.68,
+      "to_high20": -0.77,
+      "to_high52": -3.82,
       "bb_upper": 158.91,
-      "bb_lower": 156.96,
-      "bb_width": 1.24,
-      "bb_width_change": 0.04,
+      "bb_lower": 156.94,
+      "bb_width": 1.25,
+      "bb_width_change": 0.05,
       "bb_percentile": 10.8,
-      "bb_expansion_score": 68.2,
-      "day_score": 0.93,
-      "swing_score": -0.98,
-      "stable_score": 7.04,
-      "momentum_score": 6.99,
+      "bb_expansion_score": 56.2,
+      "day_score": 0.77,
+      "swing_score": -3.07,
+      "stable_score": 4.02,
+      "momentum_score": 6.93,
       "high_score": 2.0,
       "chart": [
         {
@@ -6531,71 +6531,63 @@
         {
           "t": "2026-10-29",
           "o": 157.79,
-          "h": 158.07,
+          "h": 158.13,
           "l": 157.6,
-          "c": 157.94,
+          "c": 157.72,
           "v": 0
         }
       ],
       "data_date": "2026-10-29",
       "data_age_days": 0,
-      "chart_last_close": 157.94,
+      "chart_last_close": 157.72,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
-      "market_supply_score": 71,
+      "market_supply_score": 67,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給71点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給67点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "米10年金利": {
       "ok": true,
-      "price": 5.05,
-      "open": 5.0,
-      "high": 5.05,
+      "price": 5.0,
+      "open": 5.03,
+      "high": 5.03,
       "low": 4.99,
-      "prev_close": 4.99,
-      "change_pct": 1.04,
-      "ret5": -1.96,
-      "ret5_prev": -0.85,
-      "ret20": -4.69,
+      "prev_close": 5.05,
+      "change_pct": -0.95,
+      "ret5": 0.89,
+      "ret5_prev": -2.67,
+      "ret20": -4.58,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.08,
-      "atr_pct": 1.5,
-      "ma5": 4.99,
-      "ma20": 5.15,
+      "atr_pct": 1.52,
+      "ma5": 5.0,
+      "ma20": 5.14,
       "ma60": 4.95,
-      "from_ma5": 1.04,
-      "from_ma20": -2.08,
-      "touch_ma5": true,
-      "to_high20": -5.95,
-      "to_high52": -5.95,
+      "from_ma5": -0.1,
+      "from_ma20": -2.79,
+      "touch_ma5": false,
+      "to_high20": -6.84,
+      "to_high52": -6.84,
       "bb_upper": 5.37,
-      "bb_lower": 4.93,
-      "bb_width": 8.59,
-      "bb_width_change": 1.4,
-      "bb_percentile": 77.5,
-      "bb_expansion_score": 25.9,
-      "day_score": 1.15,
-      "swing_score": -4.86,
-      "stable_score": 3.16,
-      "momentum_score": 2.81,
+      "bb_lower": 4.91,
+      "bb_width": 8.85,
+      "bb_width_change": 0.95,
+      "bb_percentile": 78.3,
+      "bb_expansion_score": 25.6,
+      "day_score": -1.45,
+      "swing_score": -3.83,
+      "stable_score": 3.18,
+      "momentum_score": -0.27,
       "high_score": 2.0,
       "chart": [
-        {
-          "t": "2026-09-02",
-          "o": 4.78,
-          "h": 4.81,
-          "l": 4.77,
-          "c": 4.8,
-          "v": 0
-        },
         {
           "t": "2026-09-03",
           "o": 4.77,
@@ -6907,20 +6899,28 @@
           "l": 4.99,
           "c": 5.05,
           "v": 0
+        },
+        {
+          "t": "2026-10-29",
+          "o": 5.03,
+          "h": 5.03,
+          "l": 4.99,
+          "c": 5.0,
+          "v": 0
         }
       ],
-      "data_date": "2026-10-28",
-      "data_age_days": 1,
-      "chart_last_close": 5.05,
+      "data_date": "2026-10-29",
+      "data_age_days": 0,
+      "chart_last_close": 5.0,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-28）",
-      "market_supply_score": 72,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "market_supply_score": 66,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給72点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給66点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -7308,8 +7308,8 @@
         "high": 10020.0,
         "low": 9586.0,
         "close": 9990.0,
-        "vwap": 9843.95,
-        "volume": 12409800,
+        "vwap": 9846.91,
+        "volume": 13566300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -7693,12 +7693,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 36500.0,
+        "open": 36490.0,
         "high": 38120.0,
         "low": 35790.0,
         "close": 37070.0,
-        "vwap": 37235.69,
-        "volume": 20253000,
+        "vwap": 37218.26,
+        "volume": 21404500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -8086,8 +8086,8 @@
         "high": 4203.0,
         "low": 4025.0,
         "close": 4103.0,
-        "vwap": 4109.93,
-        "volume": 873900,
+        "vwap": 4116.34,
+        "volume": 960500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -8478,8 +8478,8 @@
         "high": 3423.0,
         "low": 3350.0,
         "close": 3403.0,
-        "vwap": 3397.9,
-        "volume": 2049300,
+        "vwap": 3396.88,
+        "volume": 2366400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -8867,8 +8867,8 @@
         "high": 52800.0,
         "low": 50410.0,
         "close": 52170.0,
-        "vwap": 51752.68,
-        "volume": 2040900,
+        "vwap": 51777.24,
+        "volume": 2188900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -9256,8 +9256,8 @@
         "high": 42250.0,
         "low": 40100.0,
         "close": 41420.0,
-        "vwap": 41272.31,
-        "volume": 3807000,
+        "vwap": 41327.12,
+        "volume": 4122000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -9645,8 +9645,8 @@
         "high": 15600.0,
         "low": 14455.0,
         "close": 14950.0,
-        "vwap": 15057.99,
-        "volume": 110072400,
+        "vwap": 15052.7,
+        "volume": 115207000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -10034,8 +10034,8 @@
         "high": 1983.0,
         "low": 1862.5,
         "close": 1970.5,
-        "vwap": 1924.65,
-        "volume": 10171100,
+        "vwap": 1926.67,
+        "volume": 11667600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -10427,7 +10427,7 @@
         "low": 2428.0,
         "close": 2428.0,
         "vwap": 2428.33,
-        "volume": 476800,
+        "volume": 889700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -11204,7 +11204,7 @@
         "high": 1751.0,
         "low": 1680.0,
         "close": 1702.0,
-        "vwap": 1698.57,
+        "vwap": 1698.58,
         "volume": 241500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
@@ -11593,8 +11593,8 @@
         "high": 5280.0,
         "low": 5192.0,
         "close": 5265.0,
-        "vwap": 5246.65,
-        "volume": 2633400,
+        "vwap": 5242.73,
+        "volume": 2931100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -11982,8 +11982,8 @@
         "high": 3922.0,
         "low": 3732.0,
         "close": 3838.0,
-        "vwap": 3836.83,
-        "volume": 3668600,
+        "vwap": 3843.35,
+        "volume": 7485600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -11995,7 +11995,7 @@
       "price": 2521.5,
       "open": 2503.5,
       "high": 2582.5,
-      "low": 2435.5,
+      "low": 2435.0,
       "prev_close": 2534.5,
       "change_pct": -0.51,
       "ret5": 5.66,
@@ -12003,7 +12003,7 @@
       "ret20": -23.96,
       "rvol": 1.18,
       "turnover": 36071822550,
-      "atr14": 213.0,
+      "atr14": 213.04,
       "atr_pct": 8.45,
       "ma5": 2411.6,
       "ma20": 2937.7,
@@ -12341,7 +12341,7 @@
           "t": "2026-10-29",
           "o": 2503.5,
           "h": 2582.5,
-          "l": 2435.5,
+          "l": 2435.0,
           "c": 2521.5,
           "v": 14305700
         }
@@ -12349,12 +12349,12 @@
       "data_date": "2026-10-29",
       "data_age_days": 0,
       "chart_last_close": 2521.5,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 2521.5,
       "secondary_date": "2026-10-29",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-10-29終値 2,521.50円",
       "market_supply_score": 32,
       "market_supply_improved": false,
       "market_supply_status": "市場需給32点／上昇日出来高÷下落日0.54倍／安値切上げ×",
@@ -12371,12 +12371,13 @@
         "high": 2582.5,
         "low": 2435.0,
         "close": 2521.5,
-        "vwap": 2510.18,
-        "volume": 10734300,
+        "vwap": 2508.91,
+        "volume": 11982300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
-      "identity_verified": true
+      "identity_verified": true,
+      "rotation_group": "AI・テクノロジー"
     },
     "フジクラ（5803）": {
       "ok": true,
@@ -12759,8 +12760,8 @@
         "high": 4262.0,
         "low": 4034.0,
         "close": 4193.0,
-        "vwap": 4169.95,
-        "volume": 34042300,
+        "vwap": 4170.98,
+        "volume": 36439800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -13148,8 +13149,8 @@
         "high": 3113.0,
         "low": 2946.0,
         "close": 3076.0,
-        "vwap": 3036.54,
-        "volume": 23803900,
+        "vwap": 3033.7,
+        "volume": 25340800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -13926,8 +13927,8 @@
         "high": 5348.0,
         "low": 4968.0,
         "close": 5021.0,
-        "vwap": 5085.35,
-        "volume": 28821800,
+        "vwap": 5095.98,
+        "volume": 31291700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -14315,8 +14316,8 @@
         "high": 13715.0,
         "low": 13155.0,
         "close": 13320.0,
-        "vwap": 13392.84,
-        "volume": 1789300,
+        "vwap": 13412.54,
+        "volume": 1052300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -14704,8 +14705,8 @@
         "high": 3515.0,
         "low": 3453.0,
         "close": 3482.0,
-        "vwap": 3479.81,
-        "volume": 17564900,
+        "vwap": 3480.87,
+        "volume": 18815900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -15093,8 +15094,8 @@
         "high": 2373.0,
         "low": 2316.0,
         "close": 2350.5,
-        "vwap": 2344.81,
-        "volume": 10005900,
+        "vwap": 2346.49,
+        "volume": 10898400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -15482,8 +15483,8 @@
         "high": 2174.0,
         "low": 2127.5,
         "close": 2168.5,
-        "vwap": 2155.21,
-        "volume": 4282800,
+        "vwap": 2155.85,
+        "volume": 4685100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -15871,8 +15872,8 @@
         "high": 4834.0,
         "low": 4715.0,
         "close": 4817.0,
-        "vwap": 4789.02,
-        "volume": 3749400,
+        "vwap": 4789.71,
+        "volume": 4348300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -16260,8 +16261,8 @@
         "high": 4803.0,
         "low": 4582.0,
         "close": 4751.0,
-        "vwap": 4712.03,
-        "volume": 43512900,
+        "vwap": 4718.67,
+        "volume": 48145700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -16649,8 +16650,8 @@
         "high": 8278.0,
         "low": 8112.0,
         "close": 8210.0,
-        "vwap": 8194.86,
-        "volume": 4827400,
+        "vwap": 8192.27,
+        "volume": 5510200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -17038,8 +17039,8 @@
         "high": 18975.0,
         "low": 18465.0,
         "close": 18955.0,
-        "vwap": 18826.35,
-        "volume": 2067400,
+        "vwap": 18814.62,
+        "volume": 2432200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -17430,8 +17431,8 @@
         "high": 619.7,
         "low": 610.3,
         "close": 618.4,
-        "vwap": 615.42,
-        "volume": 8969900,
+        "vwap": 615.16,
+        "volume": 10122000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -17819,8 +17820,8 @@
         "high": 1242.5,
         "low": 1207.5,
         "close": 1233.0,
-        "vwap": 1228.47,
-        "volume": 986600,
+        "vwap": 1226.25,
+        "volume": 1176300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -18597,8 +18598,8 @@
         "high": 3462.0,
         "low": 3411.0,
         "close": 3452.0,
-        "vwap": 3438.29,
-        "volume": 22076600,
+        "vwap": 3436.44,
+        "volume": 25997600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -18986,8 +18987,8 @@
         "high": 3234.0,
         "low": 3175.0,
         "close": 3227.0,
-        "vwap": 3209.71,
-        "volume": 11377900,
+        "vwap": 3207.45,
+        "volume": 13039300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -19764,8 +19765,8 @@
         "high": 4068.0,
         "low": 4009.0,
         "close": 4036.0,
-        "vwap": 4035.5,
-        "volume": 3142200,
+        "vwap": 4036.61,
+        "volume": 3826000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -20153,8 +20154,8 @@
         "high": 4893.0,
         "low": 4802.0,
         "close": 4883.0,
-        "vwap": 4853.26,
-        "volume": 5167000,
+        "vwap": 4852.49,
+        "volume": 5587500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -20542,8 +20543,8 @@
         "high": 1871.0,
         "low": 1768.0,
         "close": 1813.0,
-        "vwap": 1823.9,
-        "volume": 2952900,
+        "vwap": 1825.88,
+        "volume": 3186600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -20931,8 +20932,8 @@
         "high": 78750.0,
         "low": 76950.0,
         "close": 77520.0,
-        "vwap": 77685.76,
-        "volume": 544800,
+        "vwap": 77927.7,
+        "volume": 910500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -21320,8 +21321,8 @@
         "high": 6049.0,
         "low": 5921.0,
         "close": 5982.0,
-        "vwap": 5991.6,
-        "volume": 3901000,
+        "vwap": 5994.63,
+        "volume": 4567500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -21712,8 +21713,8 @@
         "high": 5858.0,
         "low": 5671.0,
         "close": 5766.0,
-        "vwap": 5772.56,
-        "volume": 6095400,
+        "vwap": 5777.86,
+        "volume": 6822300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -21728,7 +21729,7 @@
       "price": 6300.0,
       "open": 6715.0,
       "high": 6827.0,
-      "low": 6201.0,
+      "low": 6202.0,
       "prev_close": 6815.0,
       "change_pct": -7.56,
       "ret5": -7.11,
@@ -21736,8 +21737,8 @@
       "ret20": -17.46,
       "rvol": 3.07,
       "turnover": 72516780000,
-      "atr14": 233.43,
-      "atr_pct": 3.71,
+      "atr14": 233.36,
+      "atr_pct": 3.7,
       "ma5": 6674.2,
       "ma20": 7185.2,
       "ma60": 7255.33,
@@ -22074,7 +22075,7 @@
           "t": "2026-10-29",
           "o": 6715.0,
           "h": 6827.0,
-          "l": 6201.0,
+          "l": 6202.0,
           "c": 6300.0,
           "v": 11510600
         }
@@ -22082,12 +22083,12 @@
       "data_date": "2026-10-29",
       "data_age_days": 0,
       "chart_last_close": 6300.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 6300.0,
       "secondary_date": "2026-10-29",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-29終値 6,300.00円",
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
       "market_supply_score": 29,
       "market_supply_improved": false,
       "market_supply_status": "市場需給29点／上昇日出来高÷下落日0.51倍／安値切上げ×",
@@ -22104,13 +22105,12 @@
         "high": 6827.0,
         "low": 6201.0,
         "close": 6213.0,
-        "vwap": 6517.02,
-        "volume": 9581600,
+        "vwap": 6481.95,
+        "volume": 8072800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
-      "identity_verified": true,
-      "rotation_group": "資本財・インフラ"
+      "identity_verified": true
     },
     "キヤノン（7751）": {
       "ok": true,
@@ -22493,8 +22493,8 @@
         "high": 4704.0,
         "low": 4601.0,
         "close": 4673.0,
-        "vwap": 4652.23,
-        "volume": 2425200,
+        "vwap": 4650.64,
+        "volume": 2776200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -22882,8 +22882,8 @@
         "high": 4992.0,
         "low": 4760.0,
         "close": 4954.0,
-        "vwap": 4886.06,
-        "volume": 11160800,
+        "vwap": 4893.26,
+        "volume": 12880300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -23274,8 +23274,8 @@
         "high": 4397.0,
         "low": 4240.0,
         "close": 4317.0,
-        "vwap": 4327.8,
-        "volume": 7500700,
+        "vwap": 4324.93,
+        "volume": 8530400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -23666,8 +23666,8 @@
         "high": 3789.0,
         "low": 3613.0,
         "close": 3706.0,
-        "vwap": 3689.02,
-        "volume": 6671800,
+        "vwap": 3695.03,
+        "volume": 7397400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -24055,8 +24055,8 @@
         "high": 3971.0,
         "low": 3883.0,
         "close": 3921.0,
-        "vwap": 3923.58,
-        "volume": 10415600,
+        "vwap": 3922.57,
+        "volume": 12713300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -24447,8 +24447,8 @@
         "high": 4187.0,
         "low": 4053.0,
         "close": 4147.0,
-        "vwap": 4127.08,
-        "volume": 2390100,
+        "vwap": 4129.73,
+        "volume": 2632000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -24836,8 +24836,8 @@
         "high": 1859.0,
         "low": 1786.0,
         "close": 1852.0,
-        "vwap": 1827.02,
-        "volume": 7157100,
+        "vwap": 1824.11,
+        "volume": 8043700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -25225,8 +25225,8 @@
         "high": 3860.0,
         "low": 3679.0,
         "close": 3844.0,
-        "vwap": 3784.93,
-        "volume": 3495700,
+        "vwap": 3787.4,
+        "volume": 3890600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -25614,8 +25614,8 @@
         "high": 2785.5,
         "low": 2661.0,
         "close": 2744.0,
-        "vwap": 2727.77,
-        "volume": 8322300,
+        "vwap": 2728.72,
+        "volume": 8958500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -26003,8 +26003,8 @@
         "high": 3576.0,
         "low": 3484.0,
         "close": 3537.0,
-        "vwap": 3526.51,
-        "volume": 2253800,
+        "vwap": 3526.03,
+        "volume": 2482500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -26392,8 +26392,8 @@
         "high": 12185.0,
         "low": 11660.0,
         "close": 12110.0,
-        "vwap": 12005.84,
-        "volume": 1566400,
+        "vwap": 12007.94,
+        "volume": 1674600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -26781,8 +26781,8 @@
         "high": 5506.0,
         "low": 5334.0,
         "close": 5457.0,
-        "vwap": 5429.93,
-        "volume": 868500,
+        "vwap": 5432.02,
+        "volume": 949400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -27170,8 +27170,8 @@
         "high": 1785.0,
         "low": 1760.0,
         "close": 1770.5,
-        "vwap": 1770.44,
-        "volume": 6968000,
+        "vwap": 1770.19,
+        "volume": 7933300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -27559,8 +27559,8 @@
         "high": 1863.5,
         "low": 1767.0,
         "close": 1860.0,
-        "vwap": 1820.72,
-        "volume": 20305700,
+        "vwap": 1819.18,
+        "volume": 21463200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -27948,8 +27948,8 @@
         "high": 3539.0,
         "low": 3497.0,
         "close": 3525.0,
-        "vwap": 3514.85,
-        "volume": 1467000,
+        "vwap": 3514.67,
+        "volume": 1626600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -28337,8 +28337,8 @@
         "high": 172.4,
         "low": 170.1,
         "close": 171.0,
-        "vwap": 170.99,
-        "volume": 102442400,
+        "vwap": 171.04,
+        "volume": 116576700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -28726,8 +28726,8 @@
         "high": 2800.0,
         "low": 2741.0,
         "close": 2788.5,
-        "vwap": 2770.35,
-        "volume": 5870700,
+        "vwap": 2772.62,
+        "volume": 6774500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -29115,8 +29115,8 @@
         "high": 232.4,
         "low": 228.9,
         "close": 231.5,
-        "vwap": 231.03,
-        "volume": 37808500,
+        "vwap": 230.99,
+        "volume": 42413700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -29504,8 +29504,8 @@
         "high": 2629.0,
         "low": 2518.0,
         "close": 2555.0,
-        "vwap": 2555.0,
-        "volume": 333600,
+        "vwap": 2567.58,
+        "volume": 227200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -29893,8 +29893,8 @@
         "high": 1336.0,
         "low": 1308.0,
         "close": 1331.0,
-        "vwap": 1325.65,
-        "volume": 2557600,
+        "vwap": 1324.7,
+        "volume": 2825000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -30282,8 +30282,8 @@
         "high": 4170.0,
         "low": 4073.0,
         "close": 4147.0,
-        "vwap": 4124.66,
-        "volume": 312800,
+        "vwap": 4127.73,
+        "volume": 342500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -30671,8 +30671,8 @@
         "high": 5378.0,
         "low": 5192.0,
         "close": 5359.0,
-        "vwap": 5291.78,
-        "volume": 752400,
+        "vwap": 5297.41,
+        "volume": 698700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -31060,8 +31060,8 @@
         "high": 2871.0,
         "low": 2768.0,
         "close": 2851.0,
-        "vwap": 2831.65,
-        "volume": 253200,
+        "vwap": 2832.72,
+        "volume": 269800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -31449,8 +31449,8 @@
         "high": 8544.0,
         "low": 8259.0,
         "close": 8468.0,
-        "vwap": 8444.65,
-        "volume": 1448300,
+        "vwap": 8445.22,
+        "volume": 1634900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -31838,8 +31838,8 @@
         "high": 5484.0,
         "low": 5399.0,
         "close": 5474.0,
-        "vwap": 5443.46,
-        "volume": 682800,
+        "vwap": 5444.64,
+        "volume": 744800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -32227,8 +32227,8 @@
         "high": 8125.0,
         "low": 7959.0,
         "close": 8091.0,
-        "vwap": 8048.54,
-        "volume": 365000,
+        "vwap": 8058.86,
+        "volume": 239900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -32616,8 +32616,8 @@
         "high": 243.0,
         "low": 237.0,
         "close": 243.0,
-        "vwap": 238.8,
-        "volume": 21500,
+        "vwap": 238.94,
+        "volume": 24500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -33005,8 +33005,8 @@
         "high": 299.0,
         "low": 294.0,
         "close": 295.0,
-        "vwap": 296.03,
-        "volume": 8400,
+        "vwap": 295.84,
+        "volume": 9300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -33394,8 +33394,8 @@
         "high": 2354.0,
         "low": 2015.0,
         "close": 2264.0,
-        "vwap": 2173.21,
-        "volume": 6148500,
+        "vwap": 2169.83,
+        "volume": 6495800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -33786,8 +33786,8 @@
         "high": 2244.0,
         "low": 2045.0,
         "close": 2090.0,
-        "vwap": 2133.33,
-        "volume": 35248600,
+        "vwap": 2137.55,
+        "volume": 37840400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -34175,8 +34175,8 @@
         "high": 2206.0,
         "low": 2125.0,
         "close": 2151.0,
-        "vwap": 2166.56,
-        "volume": 1526600,
+        "vwap": 2161.04,
+        "volume": 1103100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -34567,8 +34567,8 @@
         "high": 1180.0,
         "low": 1140.0,
         "close": 1160.0,
-        "vwap": 1151.26,
-        "volume": 22500,
+        "vwap": 1150.7,
+        "volume": 24600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -34956,8 +34956,8 @@
         "high": 3200.0,
         "low": 2986.0,
         "close": 3090.0,
-        "vwap": 3086.74,
-        "volume": 948900,
+        "vwap": 3085.02,
+        "volume": 1057400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -35348,8 +35348,8 @@
         "high": 6757.0,
         "low": 6515.0,
         "close": 6596.0,
-        "vwap": 6638.99,
-        "volume": 1134700,
+        "vwap": 6637.2,
+        "volume": 703100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -35740,8 +35740,8 @@
         "high": 4325.0,
         "low": 4075.0,
         "close": 4280.0,
-        "vwap": 4269.49,
-        "volume": 857100,
+        "vwap": 4255.43,
+        "volume": 967600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -36132,8 +36132,8 @@
         "high": 2193.0,
         "low": 2095.0,
         "close": 2127.0,
-        "vwap": 2139.96,
-        "volume": 975600,
+        "vwap": 2137.11,
+        "volume": 1121200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -36524,8 +36524,8 @@
         "high": 747.0,
         "low": 726.0,
         "close": 743.0,
-        "vwap": 738.89,
-        "volume": 150000,
+        "vwap": 739.94,
+        "volume": 318600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -36913,8 +36913,8 @@
         "high": 2852.0,
         "low": 2791.0,
         "close": 2807.0,
-        "vwap": 2814.94,
-        "volume": 197900,
+        "vwap": 2816.69,
+        "volume": 225200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -37302,8 +37302,8 @@
         "high": 6480.0,
         "low": 6080.0,
         "close": 6230.0,
-        "vwap": 6241.11,
-        "volume": 685300,
+        "vwap": 6239.75,
+        "volume": 1514100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -37691,8 +37691,8 @@
         "high": 1130.0,
         "low": 1072.0,
         "close": 1102.0,
-        "vwap": 1103.05,
-        "volume": 4092000,
+        "vwap": 1103.19,
+        "volume": 4361000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -38083,8 +38083,8 @@
         "high": 804.0,
         "low": 777.0,
         "close": 789.0,
-        "vwap": 787.68,
-        "volume": 677700,
+        "vwap": 789.29,
+        "volume": 785700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -38472,8 +38472,8 @@
         "high": 768.0,
         "low": 746.0,
         "close": 758.0,
-        "vwap": 757.73,
-        "volume": 268700,
+        "vwap": 757.04,
+        "volume": 294900,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -38485,7 +38485,7 @@
       "price": 1112.0,
       "open": 1117.5,
       "high": 1137.0,
-      "low": 1104.0,
+      "low": 1104.5,
       "prev_close": 1111.5,
       "change_pct": 0.04,
       "ret5": 3.68,
@@ -38493,7 +38493,7 @@
       "ret20": -0.13,
       "rvol": 2.03,
       "turnover": 1718262400,
-      "atr14": 34.25,
+      "atr14": 34.21,
       "atr_pct": 3.08,
       "ma5": 1082.6,
       "ma20": 1070.03,
@@ -38831,7 +38831,7 @@
           "t": "2026-10-29",
           "o": 1117.5,
           "h": 1137.0,
-          "l": 1104.0,
+          "l": 1104.5,
           "c": 1112.0,
           "v": 1545200
         }
@@ -38839,15 +38839,15 @@
       "data_date": "2026-10-29",
       "data_age_days": 0,
       "chart_last_close": 1112.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 1112.0,
       "secondary_date": "2026-10-29",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-29終値 1,112.00円",
-      "market_supply_score": 70,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-29）",
+      "market_supply_score": 69,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給70点／上昇日出来高÷下落日1.14倍／安値切上げ○",
+      "market_supply_status": "市場需給69点／上昇日出来高÷下落日1.14倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null,
@@ -38861,13 +38861,12 @@
         "high": 1137.0,
         "low": 1104.0,
         "close": 1113.0,
-        "vwap": 1119.17,
-        "volume": 789300,
+        "vwap": 1118.39,
+        "volume": 882700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー"
+      "identity_verified": true
     },
     "中外製薬（4519）": {
       "ok": true,
@@ -39250,8 +39249,8 @@
         "high": 6660.0,
         "low": 6522.0,
         "close": 6620.0,
-        "vwap": 6604.82,
-        "volume": 2099400,
+        "vwap": 6602.89,
+        "volume": 2414100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -39639,8 +39638,8 @@
         "high": 5972.0,
         "low": 5808.0,
         "close": 5893.0,
-        "vwap": 5878.18,
-        "volume": 984100,
+        "vwap": 5889.33,
+        "volume": 649700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -40028,8 +40027,8 @@
         "high": 5520.0,
         "low": 5260.0,
         "close": 5480.0,
-        "vwap": 5406.79,
-        "volume": 705500,
+        "vwap": 5408.88,
+        "volume": 788400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -40417,8 +40416,8 @@
         "high": 4425.0,
         "low": 4282.0,
         "close": 4370.0,
-        "vwap": 4356.87,
-        "volume": 740100,
+        "vwap": 4358.44,
+        "volume": 808800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -40806,8 +40805,8 @@
         "high": 975.0,
         "low": 929.0,
         "close": 940.0,
-        "vwap": 947.03,
-        "volume": 193400,
+        "vwap": 947.48,
+        "volume": 197400,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -41203,8 +41202,8 @@
         "high": 3328.0,
         "low": 3239.0,
         "close": 3321.0,
-        "vwap": 3300.95,
-        "volume": 1104500,
+        "vwap": 3298.22,
+        "volume": 1259000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -41595,8 +41594,8 @@
         "high": 4831.0,
         "low": 4733.0,
         "close": 4768.0,
-        "vwap": 4777.8,
-        "volume": 2109200,
+        "vwap": 4780.24,
+        "volume": 2514800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -41987,8 +41986,8 @@
         "high": 2913.0,
         "low": 2843.0,
         "close": 2864.0,
-        "vwap": 2869.76,
-        "volume": 1600000,
+        "vwap": 2883.39,
+        "volume": 3686300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -42376,7 +42375,7 @@
         "high": 4370.0,
         "low": 4270.0,
         "close": 4300.0,
-        "vwap": 4332.5,
+        "vwap": 4332.49,
         "volume": 651700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
@@ -42765,8 +42764,8 @@
         "high": 2968.0,
         "low": 2926.0,
         "close": 2965.0,
-        "vwap": 2951.27,
-        "volume": 530300,
+        "vwap": 2950.46,
+        "volume": 554100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -43157,8 +43156,8 @@
         "high": 5100.0,
         "low": 5020.0,
         "close": 5050.0,
-        "vwap": 5054.89,
-        "volume": 504000,
+        "vwap": 5057.44,
+        "volume": 553500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -43546,8 +43545,8 @@
         "high": 8000.0,
         "low": 7810.0,
         "close": 7920.0,
-        "vwap": 7913.12,
-        "volume": 426100,
+        "vwap": 7908.6,
+        "volume": 463700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -43938,8 +43937,8 @@
         "high": 3380.0,
         "low": 3140.0,
         "close": 3245.0,
-        "vwap": 3234.44,
-        "volume": 3468400,
+        "vwap": 3230.64,
+        "volume": 3898300,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -44327,7 +44326,7 @@
         "high": 3616.0,
         "low": 3522.0,
         "close": 3575.0,
-        "vwap": 3569.75,
+        "vwap": 3569.74,
         "volume": 1015200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
@@ -44719,8 +44718,8 @@
         "high": 1142.0,
         "low": 1072.5,
         "close": 1099.5,
-        "vwap": 1105.88,
-        "volume": 4480200,
+        "vwap": 1105.99,
+        "volume": 5004600,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -45111,8 +45110,8 @@
         "high": 2397.0,
         "low": 2281.0,
         "close": 2352.0,
-        "vwap": 2346.47,
-        "volume": 1415600,
+        "vwap": 2344.56,
+        "volume": 1579100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -45516,8 +45515,8 @@
     "status": "合格",
     "market_date": "2026-10-29",
     "universe": 100,
-    "verified": 98,
-    "excluded": 2,
+    "verified": 97,
+    "excluded": 3,
     "requirements": [
       "会社名コード＝ティッカー",
       "一次OHLC＝QUICK",
@@ -45529,8 +45528,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-29T20:47:49+09:00",
-    "decision_at": "2026-10-29T20:47:49+09:00",
+    "generated_at": "2026-10-29T22:39:05+09:00",
+    "decision_at": "2026-10-29T22:39:05+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -46188,7 +46187,7 @@
           "h": 6101.0,
           "l": 6034.0,
           "c": 6038.0,
-          "v": 610100
+          "v": 610200
         },
         {
           "t": "2026-10-28 09:10",
@@ -46324,7 +46323,7 @@
           "h": 5944.0,
           "l": 5928.0,
           "c": 5940.0,
-          "v": 104800
+          "v": 104700
         },
         {
           "t": "2026-10-28 10:35",
@@ -46332,7 +46331,7 @@
           "h": 5960.0,
           "l": 5937.0,
           "c": 5959.0,
-          "v": 119500
+          "v": 119600
         },
         {
           "t": "2026-10-28 10:40",
@@ -46708,7 +46707,7 @@
           "h": 6043.0,
           "l": 5983.0,
           "c": 6011.0,
-          "v": 165900
+          "v": 832400
         },
         {
           "t": "2026-10-29 09:10",
@@ -47000,7 +46999,7 @@
         },
         {
           "t": "2026-10-29 13:05",
-          "o": 5970.0,
+          "o": 5971.0,
           "h": 5972.0,
           "l": 5963.0,
           "c": 5965.0,
@@ -47048,7 +47047,7 @@
         },
         {
           "t": "2026-10-29 13:35",
-          "o": 5985.0,
+          "o": 5986.0,
           "h": 5995.0,
           "l": 5985.0,
           "c": 5992.0,
@@ -47156,7 +47155,7 @@
           "h": 6001.0,
           "l": 5994.0,
           "c": 6000.0,
-          "v": 34900
+          "v": 34600
         },
         {
           "t": "2026-10-29 14:45",
@@ -47164,7 +47163,7 @@
           "h": 6003.0,
           "l": 5990.0,
           "c": 5996.0,
-          "v": 42500
+          "v": 42800
         },
         {
           "t": "2026-10-29 14:50",
@@ -47248,10 +47247,10 @@
       "material_action": "OR15・VWAP一致で発動",
       "trigger": 2398,
       "entry_limit": 2400,
-      "stop": 2267.0,
-      "target1": 2600,
-      "target2": 2693,
-      "reason": "先回り候補／資本財・インフラ 流入初期 51点／前日比 +4.02%／出来高比 1.42倍／売買代金 57億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "stop": 2265.0,
+      "target1": 2602,
+      "target2": 2697,
+      "reason": "先回り候補／資本財・インフラ 流入初期 53点／前日比 +4.02%／出来高比 1.42倍／売買代金 57億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-31",
@@ -47962,7 +47961,7 @@
           "h": 2275.0,
           "l": 2269.0,
           "c": 2274.0,
-          "v": 10400
+          "v": 9700
         },
         {
           "t": "2026-10-28 14:00",
@@ -47970,7 +47969,7 @@
           "h": 2274.0,
           "l": 2272.0,
           "c": 2273.0,
-          "v": 6900
+          "v": 7600
         },
         {
           "t": "2026-10-28 14:05",
@@ -48106,7 +48105,7 @@
           "h": 2341.0,
           "l": 2310.0,
           "c": 2333.0,
-          "v": 28100
+          "v": 191600
         },
         {
           "t": "2026-10-29 09:10",
@@ -48386,7 +48385,7 @@
           "h": 2351.0,
           "l": 2340.0,
           "c": 2340.0,
-          "v": 25100
+          "v": 25800
         },
         {
           "t": "2026-10-29 13:00",
@@ -48394,7 +48393,7 @@
           "h": 2342.0,
           "l": 2333.0,
           "c": 2340.0,
-          "v": 14300
+          "v": 13600
         },
         {
           "t": "2026-10-29 13:05",
@@ -48498,7 +48497,7 @@
           "h": 2389.0,
           "l": 2377.0,
           "c": 2388.0,
-          "v": 22100
+          "v": 22200
         },
         {
           "t": "2026-10-29 14:10",
@@ -48506,7 +48505,7 @@
           "h": 2395.0,
           "l": 2386.0,
           "c": 2391.0,
-          "v": 23200
+          "v": 23100
         },
         {
           "t": "2026-10-29 14:15",
@@ -48562,7 +48561,7 @@
           "h": 2377.0,
           "l": 2365.0,
           "c": 2375.0,
-          "v": 26600
+          "v": 27400
         },
         {
           "t": "2026-10-29 14:50",
@@ -48570,7 +48569,7 @@
           "h": 2375.0,
           "l": 2361.0,
           "c": 2363.0,
-          "v": 21000
+          "v": 20200
         },
         {
           "t": "2026-10-29 14:55",
@@ -48646,10 +48645,10 @@
       "material_action": "OR15・VWAP一致で発動",
       "trigger": 3120,
       "entry_limit": 3130,
-      "stop": 2920.0,
-      "target1": 3445,
-      "target2": 3590,
-      "reason": "先回り候補／資本財・インフラ 流入初期 51点／前日比 +4.75%／出来高比 1.31倍／売買代金 912億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "stop": 2915.0,
+      "target1": 3450,
+      "target2": 3605,
+      "reason": "先回り候補／資本財・インフラ 流入初期 53点／前日比 +4.75%／出来高比 1.31倍／売買代金 912億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-31",
@@ -49020,7 +49019,7 @@
         },
         {
           "t": "2026-10-28 09:30",
-          "o": 2916.5,
+          "o": 2916.0,
           "h": 2918.0,
           "l": 2883.5,
           "c": 2894.0,
@@ -49240,7 +49239,7 @@
           "h": 2950.0,
           "l": 2926.5,
           "c": 2929.5,
-          "v": 281100
+          "v": 280900
         },
         {
           "t": "2026-10-28 12:45",
@@ -49248,7 +49247,7 @@
           "h": 2936.0,
           "l": 2920.0,
           "c": 2934.5,
-          "v": 295000
+          "v": 295200
         },
         {
           "t": "2026-10-28 12:50",
@@ -49504,7 +49503,7 @@
           "h": 3008.0,
           "l": 2972.0,
           "c": 2989.5,
-          "v": 596300
+          "v": 2133200
         },
         {
           "t": "2026-10-29 09:10",
@@ -50394,7 +50393,7 @@
         },
         {
           "t": "2026-10-28 09:10",
-          "o": 3596.0,
+          "o": 3595.0,
           "h": 3649.0,
           "l": 3585.0,
           "c": 3643.0,
@@ -50598,7 +50597,7 @@
           "h": 3787.0,
           "l": 3764.0,
           "c": 3770.0,
-          "v": 41100
+          "v": 0
         },
         {
           "t": "2026-10-28 11:20",
@@ -50606,7 +50605,7 @@
           "h": 3784.0,
           "l": 3767.0,
           "c": 3780.0,
-          "v": 48000
+          "v": 2368900
         },
         {
           "t": "2026-10-28 11:25",
@@ -50730,7 +50729,7 @@
         },
         {
           "t": "2026-10-28 13:35",
-          "o": 3761.0,
+          "o": 3760.0,
           "h": 3762.0,
           "l": 3747.0,
           "c": 3748.0,
@@ -50854,7 +50853,7 @@
           "h": 3804.0,
           "l": 3795.0,
           "c": 3802.0,
-          "v": 27900
+          "v": 27800
         },
         {
           "t": "2026-10-28 14:55",
@@ -50862,7 +50861,7 @@
           "h": 3809.0,
           "l": 3800.0,
           "c": 3808.0,
-          "v": 37900
+          "v": 38000
         },
         {
           "t": "2026-10-28 15:00",
@@ -50898,7 +50897,7 @@
         },
         {
           "t": "2026-10-28 15:20",
-          "o": 3830.0,
+          "o": 3822.0,
           "h": 3841.0,
           "l": 3821.0,
           "c": 3837.0,
@@ -50910,7 +50909,7 @@
           "h": 3861.0,
           "l": 3773.0,
           "c": 3835.0,
-          "v": 91100
+          "v": 436900
         },
         {
           "t": "2026-10-29 09:10",
@@ -51006,7 +51005,7 @@
           "h": 3905.0,
           "l": 3865.0,
           "c": 3897.0,
-          "v": 43500
+          "v": 43400
         },
         {
           "t": "2026-10-29 10:10",
@@ -51014,7 +51013,7 @@
           "h": 3901.0,
           "l": 3876.0,
           "c": 3883.0,
-          "v": 53000
+          "v": 53100
         },
         {
           "t": "2026-10-29 10:15",
@@ -51178,7 +51177,7 @@
         },
         {
           "t": "2026-10-29 12:50",
-          "o": 3789.0,
+          "o": 3790.0,
           "h": 3813.0,
           "l": 3786.0,
           "c": 3812.0,
@@ -51358,7 +51357,7 @@
           "h": 3866.0,
           "l": 3852.0,
           "c": 3860.0,
-          "v": 27000
+          "v": 0
         },
         {
           "t": "2026-10-29 14:45",
@@ -51366,7 +51365,7 @@
           "h": 3861.0,
           "l": 3844.0,
           "c": 3852.0,
-          "v": 30900
+          "v": 3529100
         },
         {
           "t": "2026-10-29 14:50",
@@ -51405,8 +51404,8 @@
           "o": 3842.0,
           "h": 3848.0,
           "l": 3833.0,
-          "c": 3834.0,
-          "v": 83400
+          "c": 3833.0,
+          "v": 83300
         },
         {
           "t": "2026-10-29 15:15",
@@ -51414,7 +51413,7 @@
           "h": 3840.0,
           "l": 3818.0,
           "c": 3832.0,
-          "v": 186700
+          "v": 186800
         },
         {
           "t": "2026-10-29 15:20",
@@ -51808,7 +51807,7 @@
         },
         {
           "t": "2026-10-28 09:20",
-          "o": 9656.0,
+          "o": 9655.0,
           "h": 9694.0,
           "l": 9626.0,
           "c": 9660.0,
@@ -52048,7 +52047,7 @@
         },
         {
           "t": "2026-10-28 12:45",
-          "o": 9883.0,
+          "o": 9884.0,
           "h": 9907.0,
           "l": 9858.0,
           "c": 9875.0,
@@ -52300,7 +52299,7 @@
           "h": 9813.0,
           "l": 9776.0,
           "c": 9813.0,
-          "v": 296300
+          "v": 296200
         },
         {
           "t": "2026-10-29 09:05",
@@ -52308,7 +52307,7 @@
           "h": 9950.0,
           "l": 9836.0,
           "c": 9850.0,
-          "v": 417400
+          "v": 1573900
         },
         {
           "t": "2026-10-29 09:10",
@@ -52838,13 +52837,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 157.947,
-    "usd_jpy_change_pct": 0.08,
-    "usd_jpy_ret5": -0.12,
+    "usd_jpy": 157.741,
+    "usd_jpy_change_pct": -0.05,
+    "usd_jpy_ret5": -0.26,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-10-29T20:48:00+09:00",
+    "fx_observed_at": "2026-10-29T22:39:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-29 20:48:20 JST",
+      "updated_at": "2026-10-29 22:39:32 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -53119,8 +53118,8 @@
         "supply_verified": false,
         "supply_improved": false,
         "supply_status": "信用買残・倍率未照合（監視のみ）",
-        "trigger": 3310,
-        "stop": 3260,
+        "trigger": 3305,
+        "stop": 3255,
         "target1": 3380,
         "target2": 3415,
         "chart": [
@@ -53464,9 +53463,9 @@
         "supply_verified": false,
         "supply_improved": false,
         "supply_status": "信用買残・倍率未照合（監視のみ）",
-        "trigger": 2957,
-        "stop": 2919,
-        "target1": 3015,
+        "trigger": 2956,
+        "stop": 2918,
+        "target1": 3014,
         "target2": 3041,
         "chart": [
           {
@@ -54140,6 +54139,351 @@
         "quote_status": "二経路検証済み：2026-10-29終値 4,771.00円"
       },
       {
+        "name": "セリア（2782）",
+        "code": "2782",
+        "ticker": "2782.T",
+        "price": 4215.0,
+        "change_pct": -2.99,
+        "score": 58,
+        "sensitivity": 94,
+        "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
+        "source": "https://www.seria-group.com/corporate/ir/",
+        "status": "為替確認待ち",
+        "executable": false,
+        "supply_verified": false,
+        "supply_improved": false,
+        "supply_status": "信用買残・倍率未照合（監視のみ）",
+        "trigger": 4300,
+        "stop": 4230,
+        "target1": 4405,
+        "target2": 4455,
+        "chart": [
+          {
+            "t": "2026-08-31",
+            "o": 4470.0,
+            "h": 4495.0,
+            "l": 4425.0,
+            "c": 4425.0,
+            "v": 224300
+          },
+          {
+            "t": "2026-09-01",
+            "o": 4410.0,
+            "h": 4425.0,
+            "l": 4335.0,
+            "c": 4375.0,
+            "v": 294600
+          },
+          {
+            "t": "2026-09-02",
+            "o": 4335.0,
+            "h": 4450.0,
+            "l": 4320.0,
+            "c": 4440.0,
+            "v": 300900
+          },
+          {
+            "t": "2026-09-03",
+            "o": 4450.0,
+            "h": 4465.0,
+            "l": 4350.0,
+            "c": 4380.0,
+            "v": 342100
+          },
+          {
+            "t": "2026-09-04",
+            "o": 4450.0,
+            "h": 4660.0,
+            "l": 4420.0,
+            "c": 4595.0,
+            "v": 633800
+          },
+          {
+            "t": "2026-09-07",
+            "o": 4595.0,
+            "h": 4625.0,
+            "l": 4550.0,
+            "c": 4570.0,
+            "v": 250800
+          },
+          {
+            "t": "2026-09-08",
+            "o": 4780.0,
+            "h": 4825.0,
+            "l": 4645.0,
+            "c": 4750.0,
+            "v": 735700
+          },
+          {
+            "t": "2026-09-09",
+            "o": 4715.0,
+            "h": 4830.0,
+            "l": 4675.0,
+            "c": 4775.0,
+            "v": 465500
+          },
+          {
+            "t": "2026-09-10",
+            "o": 4770.0,
+            "h": 4840.0,
+            "l": 4730.0,
+            "c": 4815.0,
+            "v": 333300
+          },
+          {
+            "t": "2026-09-11",
+            "o": 4770.0,
+            "h": 4810.0,
+            "l": 4620.0,
+            "c": 4660.0,
+            "v": 482500
+          },
+          {
+            "t": "2026-09-14",
+            "o": 4715.0,
+            "h": 4845.0,
+            "l": 4715.0,
+            "c": 4795.0,
+            "v": 310800
+          },
+          {
+            "t": "2026-09-15",
+            "o": 4865.0,
+            "h": 4905.0,
+            "l": 4820.0,
+            "c": 4885.0,
+            "v": 264700
+          },
+          {
+            "t": "2026-09-16",
+            "o": 4875.0,
+            "h": 4895.0,
+            "l": 4750.0,
+            "c": 4795.0,
+            "v": 348200
+          },
+          {
+            "t": "2026-09-17",
+            "o": 4790.0,
+            "h": 4800.0,
+            "l": 4685.0,
+            "c": 4785.0,
+            "v": 471400
+          },
+          {
+            "t": "2026-09-18",
+            "o": 4785.0,
+            "h": 4785.0,
+            "l": 4695.0,
+            "c": 4735.0,
+            "v": 307800
+          },
+          {
+            "t": "2026-09-24",
+            "o": 4665.0,
+            "h": 4740.0,
+            "l": 4640.0,
+            "c": 4680.0,
+            "v": 305500
+          },
+          {
+            "t": "2026-09-25",
+            "o": 4660.0,
+            "h": 4735.0,
+            "l": 4610.0,
+            "c": 4690.0,
+            "v": 217500
+          },
+          {
+            "t": "2026-09-28",
+            "o": 4645.0,
+            "h": 4710.0,
+            "l": 4635.0,
+            "c": 4650.0,
+            "v": 174800
+          },
+          {
+            "t": "2026-09-29",
+            "o": 4610.0,
+            "h": 4680.0,
+            "l": 4550.0,
+            "c": 4630.0,
+            "v": 191100
+          },
+          {
+            "t": "2026-09-30",
+            "o": 4615.0,
+            "h": 4655.0,
+            "l": 4585.0,
+            "c": 4655.0,
+            "v": 284300
+          },
+          {
+            "t": "2026-10-01",
+            "o": 4620.0,
+            "h": 4625.0,
+            "l": 4540.0,
+            "c": 4590.0,
+            "v": 311700
+          },
+          {
+            "t": "2026-10-02",
+            "o": 4540.0,
+            "h": 4560.0,
+            "l": 4415.0,
+            "c": 4475.0,
+            "v": 391800
+          },
+          {
+            "t": "2026-10-05",
+            "o": 4500.0,
+            "h": 4510.0,
+            "l": 4435.0,
+            "c": 4470.0,
+            "v": 242500
+          },
+          {
+            "t": "2026-10-06",
+            "o": 4400.0,
+            "h": 4420.0,
+            "l": 4180.0,
+            "c": 4270.0,
+            "v": 840900
+          },
+          {
+            "t": "2026-10-07",
+            "o": 4340.0,
+            "h": 4345.0,
+            "l": 4200.0,
+            "c": 4275.0,
+            "v": 612900
+          },
+          {
+            "t": "2026-10-08",
+            "o": 4250.0,
+            "h": 4325.0,
+            "l": 4120.0,
+            "c": 4180.0,
+            "v": 822800
+          },
+          {
+            "t": "2026-10-09",
+            "o": 4165.0,
+            "h": 4215.0,
+            "l": 4080.0,
+            "c": 4085.0,
+            "v": 485200
+          },
+          {
+            "t": "2026-10-13",
+            "o": 4115.0,
+            "h": 4235.0,
+            "l": 4100.0,
+            "c": 4100.0,
+            "v": 445400
+          },
+          {
+            "t": "2026-10-14",
+            "o": 4100.0,
+            "h": 4115.0,
+            "l": 3940.0,
+            "c": 3955.0,
+            "v": 468300
+          },
+          {
+            "t": "2026-10-15",
+            "o": 4010.0,
+            "h": 4090.0,
+            "l": 3985.0,
+            "c": 4085.0,
+            "v": 447500
+          },
+          {
+            "t": "2026-10-16",
+            "o": 4115.0,
+            "h": 4190.0,
+            "l": 4085.0,
+            "c": 4160.0,
+            "v": 404400
+          },
+          {
+            "t": "2026-10-19",
+            "o": 4170.0,
+            "h": 4290.0,
+            "l": 4165.0,
+            "c": 4230.0,
+            "v": 301900
+          },
+          {
+            "t": "2026-10-20",
+            "o": 4210.0,
+            "h": 4280.0,
+            "l": 4205.0,
+            "c": 4220.0,
+            "v": 288800
+          },
+          {
+            "t": "2026-10-21",
+            "o": 4270.0,
+            "h": 4290.0,
+            "l": 4220.0,
+            "c": 4245.0,
+            "v": 295200
+          },
+          {
+            "t": "2026-10-22",
+            "o": 4220.0,
+            "h": 4270.0,
+            "l": 4185.0,
+            "c": 4225.0,
+            "v": 320400
+          },
+          {
+            "t": "2026-10-23",
+            "o": 4295.0,
+            "h": 4330.0,
+            "l": 4210.0,
+            "c": 4270.0,
+            "v": 283100
+          },
+          {
+            "t": "2026-10-26",
+            "o": 4300.0,
+            "h": 4435.0,
+            "l": 4240.0,
+            "c": 4395.0,
+            "v": 389600
+          },
+          {
+            "t": "2026-10-27",
+            "o": 4410.0,
+            "h": 4435.0,
+            "l": 4335.0,
+            "c": 4395.0,
+            "v": 366200
+          },
+          {
+            "t": "2026-10-28",
+            "o": 4375.0,
+            "h": 4455.0,
+            "l": 4315.0,
+            "c": 4345.0,
+            "v": 577300
+          },
+          {
+            "t": "2026-10-29",
+            "o": 4310.0,
+            "h": 4370.0,
+            "l": 4215.0,
+            "c": 4215.0,
+            "v": 3912900
+          }
+        ],
+        "data_date": "2026-10-29",
+        "chart_last_close": 4215.0,
+        "quote_status": "二経路検証済み：2026-10-29終値 4,215.00円"
+      },
+      {
         "name": "サイゼリヤ（7581）",
         "code": "7581",
         "ticker": "7581.T",
@@ -54483,351 +54827,6 @@
         "data_date": "2026-10-29",
         "chart_last_close": 7940.0,
         "quote_status": "二経路検証済み：2026-10-29終値 7,940.00円"
-      },
-      {
-        "name": "セリア（2782）",
-        "code": "2782",
-        "ticker": "2782.T",
-        "price": 4215.0,
-        "change_pct": -2.99,
-        "score": 57,
-        "sensitivity": 94,
-        "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
-        "source": "https://www.seria-group.com/corporate/ir/",
-        "status": "為替確認待ち",
-        "executable": false,
-        "supply_verified": false,
-        "supply_improved": false,
-        "supply_status": "信用買残・倍率未照合（監視のみ）",
-        "trigger": 4300,
-        "stop": 4230,
-        "target1": 4405,
-        "target2": 4455,
-        "chart": [
-          {
-            "t": "2026-08-31",
-            "o": 4470.0,
-            "h": 4495.0,
-            "l": 4425.0,
-            "c": 4425.0,
-            "v": 224300
-          },
-          {
-            "t": "2026-09-01",
-            "o": 4410.0,
-            "h": 4425.0,
-            "l": 4335.0,
-            "c": 4375.0,
-            "v": 294600
-          },
-          {
-            "t": "2026-09-02",
-            "o": 4335.0,
-            "h": 4450.0,
-            "l": 4320.0,
-            "c": 4440.0,
-            "v": 300900
-          },
-          {
-            "t": "2026-09-03",
-            "o": 4450.0,
-            "h": 4465.0,
-            "l": 4350.0,
-            "c": 4380.0,
-            "v": 342100
-          },
-          {
-            "t": "2026-09-04",
-            "o": 4450.0,
-            "h": 4660.0,
-            "l": 4420.0,
-            "c": 4595.0,
-            "v": 633800
-          },
-          {
-            "t": "2026-09-07",
-            "o": 4595.0,
-            "h": 4625.0,
-            "l": 4550.0,
-            "c": 4570.0,
-            "v": 250800
-          },
-          {
-            "t": "2026-09-08",
-            "o": 4780.0,
-            "h": 4825.0,
-            "l": 4645.0,
-            "c": 4750.0,
-            "v": 735700
-          },
-          {
-            "t": "2026-09-09",
-            "o": 4715.0,
-            "h": 4830.0,
-            "l": 4675.0,
-            "c": 4775.0,
-            "v": 465500
-          },
-          {
-            "t": "2026-09-10",
-            "o": 4770.0,
-            "h": 4840.0,
-            "l": 4730.0,
-            "c": 4815.0,
-            "v": 333300
-          },
-          {
-            "t": "2026-09-11",
-            "o": 4770.0,
-            "h": 4810.0,
-            "l": 4620.0,
-            "c": 4660.0,
-            "v": 482500
-          },
-          {
-            "t": "2026-09-14",
-            "o": 4715.0,
-            "h": 4845.0,
-            "l": 4715.0,
-            "c": 4795.0,
-            "v": 310800
-          },
-          {
-            "t": "2026-09-15",
-            "o": 4865.0,
-            "h": 4905.0,
-            "l": 4820.0,
-            "c": 4885.0,
-            "v": 264700
-          },
-          {
-            "t": "2026-09-16",
-            "o": 4875.0,
-            "h": 4895.0,
-            "l": 4750.0,
-            "c": 4795.0,
-            "v": 348200
-          },
-          {
-            "t": "2026-09-17",
-            "o": 4790.0,
-            "h": 4800.0,
-            "l": 4685.0,
-            "c": 4785.0,
-            "v": 471400
-          },
-          {
-            "t": "2026-09-18",
-            "o": 4785.0,
-            "h": 4785.0,
-            "l": 4695.0,
-            "c": 4735.0,
-            "v": 307800
-          },
-          {
-            "t": "2026-09-24",
-            "o": 4665.0,
-            "h": 4740.0,
-            "l": 4640.0,
-            "c": 4680.0,
-            "v": 305500
-          },
-          {
-            "t": "2026-09-25",
-            "o": 4660.0,
-            "h": 4735.0,
-            "l": 4610.0,
-            "c": 4690.0,
-            "v": 217500
-          },
-          {
-            "t": "2026-09-28",
-            "o": 4645.0,
-            "h": 4710.0,
-            "l": 4635.0,
-            "c": 4650.0,
-            "v": 174800
-          },
-          {
-            "t": "2026-09-29",
-            "o": 4610.0,
-            "h": 4680.0,
-            "l": 4550.0,
-            "c": 4630.0,
-            "v": 191100
-          },
-          {
-            "t": "2026-09-30",
-            "o": 4615.0,
-            "h": 4655.0,
-            "l": 4585.0,
-            "c": 4655.0,
-            "v": 284300
-          },
-          {
-            "t": "2026-10-01",
-            "o": 4620.0,
-            "h": 4625.0,
-            "l": 4540.0,
-            "c": 4590.0,
-            "v": 311700
-          },
-          {
-            "t": "2026-10-02",
-            "o": 4540.0,
-            "h": 4560.0,
-            "l": 4415.0,
-            "c": 4475.0,
-            "v": 391800
-          },
-          {
-            "t": "2026-10-05",
-            "o": 4500.0,
-            "h": 4510.0,
-            "l": 4435.0,
-            "c": 4470.0,
-            "v": 242500
-          },
-          {
-            "t": "2026-10-06",
-            "o": 4400.0,
-            "h": 4420.0,
-            "l": 4180.0,
-            "c": 4270.0,
-            "v": 840900
-          },
-          {
-            "t": "2026-10-07",
-            "o": 4340.0,
-            "h": 4345.0,
-            "l": 4200.0,
-            "c": 4275.0,
-            "v": 612900
-          },
-          {
-            "t": "2026-10-08",
-            "o": 4250.0,
-            "h": 4325.0,
-            "l": 4120.0,
-            "c": 4180.0,
-            "v": 822800
-          },
-          {
-            "t": "2026-10-09",
-            "o": 4165.0,
-            "h": 4215.0,
-            "l": 4080.0,
-            "c": 4085.0,
-            "v": 485200
-          },
-          {
-            "t": "2026-10-13",
-            "o": 4115.0,
-            "h": 4235.0,
-            "l": 4100.0,
-            "c": 4100.0,
-            "v": 445400
-          },
-          {
-            "t": "2026-10-14",
-            "o": 4100.0,
-            "h": 4115.0,
-            "l": 3940.0,
-            "c": 3955.0,
-            "v": 468300
-          },
-          {
-            "t": "2026-10-15",
-            "o": 4010.0,
-            "h": 4090.0,
-            "l": 3985.0,
-            "c": 4085.0,
-            "v": 447500
-          },
-          {
-            "t": "2026-10-16",
-            "o": 4115.0,
-            "h": 4190.0,
-            "l": 4085.0,
-            "c": 4160.0,
-            "v": 404400
-          },
-          {
-            "t": "2026-10-19",
-            "o": 4170.0,
-            "h": 4290.0,
-            "l": 4165.0,
-            "c": 4230.0,
-            "v": 301900
-          },
-          {
-            "t": "2026-10-20",
-            "o": 4210.0,
-            "h": 4280.0,
-            "l": 4205.0,
-            "c": 4220.0,
-            "v": 288800
-          },
-          {
-            "t": "2026-10-21",
-            "o": 4270.0,
-            "h": 4290.0,
-            "l": 4220.0,
-            "c": 4245.0,
-            "v": 295200
-          },
-          {
-            "t": "2026-10-22",
-            "o": 4220.0,
-            "h": 4270.0,
-            "l": 4185.0,
-            "c": 4225.0,
-            "v": 320400
-          },
-          {
-            "t": "2026-10-23",
-            "o": 4295.0,
-            "h": 4330.0,
-            "l": 4210.0,
-            "c": 4270.0,
-            "v": 283100
-          },
-          {
-            "t": "2026-10-26",
-            "o": 4300.0,
-            "h": 4435.0,
-            "l": 4240.0,
-            "c": 4395.0,
-            "v": 389600
-          },
-          {
-            "t": "2026-10-27",
-            "o": 4410.0,
-            "h": 4435.0,
-            "l": 4335.0,
-            "c": 4395.0,
-            "v": 366200
-          },
-          {
-            "t": "2026-10-28",
-            "o": 4375.0,
-            "h": 4455.0,
-            "l": 4315.0,
-            "c": 4345.0,
-            "v": 577300
-          },
-          {
-            "t": "2026-10-29",
-            "o": 4310.0,
-            "h": 4370.0,
-            "l": 4215.0,
-            "c": 4215.0,
-            "v": 3912900
-          }
-        ],
-        "data_date": "2026-10-29",
-        "chart_last_close": 4215.0,
-        "quote_status": "二経路検証済み：2026-10-29終値 4,215.00円"
       }
     ]
   },
@@ -55214,8 +55213,8 @@
         "high": 2397.0,
         "low": 2281.0,
         "close": 2352.0,
-        "vwap": 2346.47,
-        "volume": 1415600,
+        "vwap": 2344.56,
+        "volume": 1579100,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -55225,10 +55224,10 @@
       "material_action": "OR15・VWAP一致で発動",
       "actionable_day_score": 10.77,
       "plan": {
-        "entry": 2351,
-        "stop": 2267,
-        "target1": 2478,
-        "target2": 2536,
+        "entry": 2349,
+        "stop": 2265,
+        "target1": 2476,
+        "target2": 2535,
         "risk": 84,
         "tick": 1
       }
@@ -55615,8 +55614,8 @@
         "high": 6049.0,
         "low": 5921.0,
         "close": 5982.0,
-        "vwap": 5991.6,
-        "volume": 3901000,
+        "vwap": 5994.63,
+        "volume": 4567500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -56016,8 +56015,8 @@
         "high": 8000.0,
         "low": 7810.0,
         "close": 7920.0,
-        "vwap": 7913.12,
-        "volume": 426100,
+        "vwap": 7908.6,
+        "volume": 463700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -56417,8 +56416,8 @@
         "high": 4831.0,
         "low": 4733.0,
         "close": 4768.0,
-        "vwap": 4777.8,
-        "volume": 2109200,
+        "vwap": 4780.24,
+        "volume": 2514800,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -56818,8 +56817,8 @@
         "high": 1130.0,
         "low": 1072.0,
         "close": 1102.0,
-        "vwap": 1103.05,
-        "volume": 4092000,
+        "vwap": 1103.19,
+        "volume": 4361000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -56944,7 +56943,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-29 20:48:06 JST",
+    "credit_supply_updated_at": "2026-10-29 22:39:20 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -57336,8 +57335,8 @@
           "high": 18975.0,
           "low": 18465.0,
           "close": 18955.0,
-          "vwap": 18826.35,
-          "volume": 2067400,
+          "vwap": 18814.62,
+          "volume": 2432200,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -57347,10 +57346,10 @@
         "material_action": "高値追い禁止・発動足待ち",
         "actionable_day_score": -4.04,
         "plan": {
-          "entry": 18860,
-          "stop": 18560,
-          "target1": 19330,
-          "target2": 19540,
+          "entry": 18850,
+          "stop": 18540,
+          "target1": 19310,
+          "target2": 19530,
           "risk": 310,
           "tick": 10
         }
@@ -57737,8 +57736,8 @@
           "high": 3328.0,
           "low": 3239.0,
           "close": 3321.0,
-          "vwap": 3300.95,
-          "volume": 1104500,
+          "vwap": 3298.22,
+          "volume": 1259000,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -57748,8 +57747,8 @@
         "material_action": "押し目反転だけ監視",
         "actionable_day_score": 1.31,
         "plan": {
-          "entry": 3310,
-          "stop": 3260,
+          "entry": 3305,
+          "stop": 3255,
           "target1": 3380,
           "target2": 3415,
           "risk": 50,
@@ -58138,8 +58137,8 @@
           "high": 4831.0,
           "low": 4733.0,
           "close": 4768.0,
-          "vwap": 4777.8,
-          "volume": 2109200,
+          "vwap": 4780.24,
+          "volume": 2514800,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -58539,8 +58538,8 @@
           "high": 2968.0,
           "low": 2926.0,
           "close": 2965.0,
-          "vwap": 2951.27,
-          "volume": 530300,
+          "vwap": 2950.46,
+          "volume": 554100,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -58550,9 +58549,9 @@
         "material_action": "高値追い禁止・発動足待ち",
         "actionable_day_score": -2.49,
         "plan": {
-          "entry": 2957,
-          "stop": 2919,
-          "target1": 3015,
+          "entry": 2956,
+          "stop": 2918,
+          "target1": 3014,
           "target2": 3041,
           "risk": 38,
           "tick": 1
@@ -58940,8 +58939,8 @@
           "high": 4397.0,
           "low": 4240.0,
           "close": 4317.0,
-          "vwap": 4327.8,
-          "volume": 7500700,
+          "vwap": 4324.93,
+          "volume": 8530400,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -59343,8 +59342,8 @@
           "high": 4068.0,
           "low": 4009.0,
           "close": 4036.0,
-          "vwap": 4035.5,
-          "volume": 3142200,
+          "vwap": 4036.61,
+          "volume": 3826000,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -59741,8 +59740,8 @@
           "high": 8000.0,
           "low": 7810.0,
           "close": 7920.0,
-          "vwap": 7913.12,
-          "volume": 426100,
+          "vwap": 7908.6,
+          "volume": 463700,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -60142,8 +60141,8 @@
           "high": 4831.0,
           "low": 4733.0,
           "close": 4768.0,
-          "vwap": 4777.8,
-          "volume": 2109200,
+          "vwap": 4780.24,
+          "volume": 2514800,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -60545,17 +60544,17 @@
           "high": 5280.0,
           "low": 5192.0,
           "close": 5265.0,
-          "vwap": 5246.65,
-          "volume": 2633400,
+          "vwap": 5242.73,
+          "volume": 2931100,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
         "identity_verified": true,
         "rotation_group": "金融",
         "plan": {
-          "entry": 5260,
+          "entry": 5250,
           "stop": 5190,
-          "target1": 5360,
+          "target1": 5350,
           "target2": 5400,
           "risk": 70,
           "tick": 10
@@ -60943,8 +60942,8 @@
           "high": 4831.0,
           "low": 4733.0,
           "close": 4768.0,
-          "vwap": 4777.8,
-          "volume": 2109200,
+          "vwap": 4780.24,
+          "volume": 2514800,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -61344,8 +61343,8 @@
           "high": 2968.0,
           "low": 2926.0,
           "close": 2965.0,
-          "vwap": 2951.27,
-          "volume": 530300,
+          "vwap": 2950.46,
+          "volume": 554100,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -61355,9 +61354,9 @@
         "material_action": "高値追い禁止・発動足待ち",
         "actionable_day_score": -2.49,
         "plan": {
-          "entry": 2957,
-          "stop": 2919,
-          "target1": 3015,
+          "entry": 2956,
+          "stop": 2918,
+          "target1": 3014,
           "target2": 3041,
           "risk": 38,
           "tick": 1
@@ -61746,7 +61745,7 @@
           "low": 2428.0,
           "close": 2428.0,
           "vwap": 2428.33,
-          "volume": 476800,
+          "volume": 889700,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:25 JST"
         },
@@ -62143,8 +62142,8 @@
           "high": 18975.0,
           "low": 18465.0,
           "close": 18955.0,
-          "vwap": 18826.35,
-          "volume": 2067400,
+          "vwap": 18814.62,
+          "volume": 2432200,
           "data_date": "2026-10-29",
           "data_time": "2026-10-29 15:20 JST"
         },
@@ -62154,10 +62153,10 @@
         "material_action": "高値追い禁止・発動足待ち",
         "actionable_day_score": -4.04,
         "plan": {
-          "entry": 18860,
-          "stop": 18560,
-          "target1": 19330,
-          "target2": 19540,
+          "entry": 18850,
+          "stop": 18540,
+          "target1": 19310,
+          "target2": 19530,
           "risk": 310,
           "tick": 10
         }
@@ -62171,7 +62170,7 @@
       "date": "2026-11-04",
       "price": 4908.0,
       "plan": {
-        "entry": 4865,
+        "entry": 4860,
         "stop": 4800,
         "target1": 4955,
         "target2": 5000,
@@ -62187,26 +62186,6 @@
       "technical_score": 77
     },
     {
-      "name": "TDK（6762）",
-      "date": "2026-10-30",
-      "price": 2772.0,
-      "plan": {
-        "entry": 2733,
-        "stop": 2651,
-        "target1": 2857,
-        "target2": 2915,
-        "risk": 83,
-        "tick": 1
-      },
-      "source": "JPX",
-      "expectation_score": 71,
-      "raw_expectation_score": 76,
-      "hurdle_risk": 20,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +26.8%／EPS予想幅 1.6%／予想売上成長 +20.3%／過去4回サプライズ平均 +7.7%／予想修正 上2／下0／決算前テクニカル 36/100／コンセンサス警戒 20/100（−5.6点）",
-      "technical_score": 36
-    },
-    {
       "name": "富士電機（6504）",
       "date": "2026-10-29",
       "price": 13385.0,
@@ -62219,12 +62198,32 @@
         "tick": 10
       },
       "source": "JPX",
-      "expectation_score": 70,
-      "raw_expectation_score": 80,
-      "hurdle_risk": 33,
+      "expectation_score": 71,
+      "raw_expectation_score": 76,
+      "hurdle_risk": 15,
       "score_coverage": 100,
-      "score_detail": "予想EPS成長 +35.8%／EPS予想幅 29.8%／予想売上成長 +8.3%／過去4回サプライズ平均 +17.8%／予想修正 上2／下0／決算前テクニカル 43/100／コンセンサス警戒 33/100（−9.2点）",
+      "score_detail": "予想EPS成長 +18.7%／EPS予想幅 25.2%／予想売上成長 +5.6%／過去4回サプライズ平均 +19.1%／予想修正 上2／下0／決算前テクニカル 43/100／コンセンサス警戒 15/100（−4.2点）",
       "technical_score": 43
+    },
+    {
+      "name": "TDK（6762）",
+      "date": "2026-10-30",
+      "price": 2772.0,
+      "plan": {
+        "entry": 2734,
+        "stop": 2652,
+        "target1": 2858,
+        "target2": 2916,
+        "risk": 83,
+        "tick": 1
+      },
+      "source": "JPX",
+      "expectation_score": 71,
+      "raw_expectation_score": 76,
+      "hurdle_risk": 20,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +26.8%／EPS予想幅 1.6%／予想売上成長 +20.3%／過去4回サプライズ平均 +7.7%／予想修正 上2／下0／決算前テクニカル 36/100／コンセンサス警戒 20/100（−5.6点）",
+      "technical_score": 36
     },
     {
       "name": "三菱電機（6503）",
@@ -62271,10 +62270,10 @@
       "date": "2026-11-05",
       "price": 3857.0,
       "plan": {
-        "entry": 3790,
-        "stop": 3660,
+        "entry": 3795,
+        "stop": 3665,
         "target1": 3990,
-        "target2": 4080,
+        "target2": 4085,
         "risk": 130,
         "tick": 5
       },
@@ -62291,9 +62290,9 @@
       "date": "2026-10-30",
       "price": 5328.0,
       "plan": {
-        "entry": 5300,
-        "stop": 5220,
-        "target1": 5420,
+        "entry": 5310,
+        "stop": 5230,
+        "target1": 5430,
         "target2": 5480,
         "risk": 80,
         "tick": 10
@@ -62313,7 +62312,7 @@
       "plan": {
         "entry": 3535,
         "stop": 3470,
-        "target1": 3630,
+        "target1": 3625,
         "target2": 3670,
         "risk": 65,
         "tick": 5
@@ -62371,10 +62370,10 @@
       "date": "2026-10-28",
       "price": 3230.0,
       "plan": {
-        "entry": 3240,
+        "entry": 3235,
         "stop": 3115,
         "target1": 3425,
-        "target2": 3515,
+        "target2": 3510,
         "risk": 125,
         "tick": 5
       },
@@ -62391,10 +62390,10 @@
       "date": "2026-10-28",
       "price": 4954.0,
       "plan": {
-        "entry": 4895,
-        "stop": 4785,
-        "target1": 5060,
-        "target2": 5135,
+        "entry": 4905,
+        "stop": 4795,
+        "target1": 5065,
+        "target2": 5145,
         "risk": 110,
         "tick": 5
       },
@@ -62427,26 +62426,6 @@
       "technical_score": 57
     },
     {
-      "name": "小松製作所（6301）",
-      "date": "2026-10-29",
-      "price": 6300.0,
-      "plan": {
-        "entry": 6210,
-        "stop": 6080,
-        "target1": 6410,
-        "target2": 6500,
-        "risk": 130,
-        "tick": 10
-      },
-      "source": "JPX",
-      "expectation_score": 59,
-      "raw_expectation_score": 68,
-      "hurdle_risk": 32,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +24.1%／EPS予想幅 23.4%／予想売上成長 +6.6%／過去4回サプライズ平均 +1.4%／予想修正 上2／下0／決算前テクニカル 43/100／コンセンサス警戒 32/100（−9.0点）",
-      "technical_score": 43
-    },
-    {
       "name": "フューチャー（4722）",
       "date": "2026-10-28",
       "price": 2428.0,
@@ -62465,6 +62444,26 @@
       "score_coverage": 30,
       "score_detail": "予想売上成長 +6.2%／決算前テクニカル 65/100／コンセンサス警戒 8/100（−2.2点）",
       "technical_score": 65
+    },
+    {
+      "name": "住友電気工業（5802）",
+      "date": "2026-10-30",
+      "price": 1870.0,
+      "plan": {
+        "entry": 1901,
+        "stop": 1844,
+        "target1": 1986,
+        "target2": 2026,
+        "risk": 57,
+        "tick": 1
+      },
+      "source": "JPX",
+      "expectation_score": 57,
+      "raw_expectation_score": 65,
+      "hurdle_risk": 30,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +28.3%／EPS予想幅 2.4%／予想売上成長 +8.1%／過去4回サプライズ平均 +26.5%／予想修正 上0／下3／決算前テクニカル 39/100／コンセンサス警戒 30/100（−8.4点）",
+      "technical_score": 39
     }
   ],
   "themes": [
@@ -62533,130 +62532,130 @@
     "method": "アセット→セクター→個別株のトップダウン",
     "regime": "グロースからバリュー・資本財へ",
     "regime_action": "AI一本へ集中せず、金融・資本財・ヘルスケアの初押しを優先",
-    "rate_view": "金利低下：グロースに追い風",
-    "rate5": -0.1,
-    "breadth": "8/11",
-    "spread": 22.0,
+    "rate_view": "金利横ばい：業績と需給を優先",
+    "rate5": 0.04,
+    "breadth": "7/11",
+    "spread": 23.4,
     "us_sectors": [
+      {
+        "sector": "ヘルスケア",
+        "ticker": "XLV",
+        "phase": "中立",
+        "score": 66.0,
+        "rel5": 1.29,
+        "rel20": 10.58,
+        "acceleration": -2.07,
+        "from_ma20": 5.57,
+        "action": "方向確認待ち"
+      },
       {
         "sector": "エネルギー",
         "ticker": "XLE",
-        "phase": "拡大",
-        "score": 68.6,
-        "rel5": 0.6,
-        "rel20": 10.09,
-        "acceleration": 0.32,
-        "from_ma20": 3.0,
-        "action": "順張り・押し目"
-      },
-      {
-        "sector": "公益",
-        "ticker": "XLU",
-        "phase": "拡大",
-        "score": 68.0,
-        "rel5": 1.34,
-        "rel20": 6.52,
-        "acceleration": 1.17,
-        "from_ma20": 2.15,
-        "action": "順張り・押し目"
+        "phase": "中立",
+        "score": 65.9,
+        "rel5": 1.44,
+        "rel20": 9.4,
+        "acceleration": -1.12,
+        "from_ma20": 3.15,
+        "action": "方向確認待ち"
       },
       {
         "sector": "素材",
         "ticker": "XLB",
         "phase": "中立",
-        "score": 62.8,
-        "rel5": 1.22,
-        "rel20": 5.28,
-        "acceleration": -1.6,
-        "from_ma20": 3.09,
+        "score": 58.1,
+        "rel5": 0.51,
+        "rel20": 7.1,
+        "acceleration": -2.76,
+        "from_ma20": 3.39,
         "action": "方向確認待ち"
-      },
-      {
-        "sector": "ヘルスケア",
-        "ticker": "XLV",
-        "phase": "中立",
-        "score": 61.4,
-        "rel5": 0.61,
-        "rel20": 5.5,
-        "acceleration": -1.75,
-        "from_ma20": 3.37,
-        "action": "方向確認待ち"
-      },
-      {
-        "sector": "生活必需品",
-        "ticker": "XLP",
-        "phase": "流出",
-        "score": 60.6,
-        "rel5": -0.14,
-        "rel20": 6.53,
-        "acceleration": -0.86,
-        "from_ma20": 1.96,
-        "action": "新規ロング停止"
       },
       {
         "sector": "不動産",
         "ticker": "XLRE",
-        "phase": "拡大",
-        "score": 58.4,
-        "rel5": 0.34,
-        "rel20": 1.77,
-        "acceleration": -0.53,
-        "from_ma20": 1.0,
-        "action": "順張り・押し目"
-      },
-      {
-        "sector": "金融",
-        "ticker": "XLF",
         "phase": "中立",
-        "score": 57.3,
-        "rel5": 0.33,
-        "rel20": 3.9,
-        "acceleration": -1.96,
-        "from_ma20": 2.04,
+        "score": 57.5,
+        "rel5": 0.5,
+        "rel20": 5.1,
+        "acceleration": -1.8,
+        "from_ma20": 2.65,
         "action": "方向確認待ち"
       },
       {
         "sector": "資本財・工業",
         "ticker": "XLI",
         "phase": "中立",
-        "score": 57.1,
-        "rel5": 0.28,
-        "rel20": -0.31,
-        "acceleration": 0.02,
-        "from_ma20": 0.21,
+        "score": 55.9,
+        "rel5": 0.69,
+        "rel20": -0.42,
+        "acceleration": 0.34,
+        "from_ma20": 0.32,
         "action": "方向確認待ち"
       },
       {
         "sector": "一般消費財",
         "ticker": "XLY",
+        "phase": "流出",
+        "score": 54.5,
+        "rel5": -0.08,
+        "rel20": 5.68,
+        "acceleration": -2.53,
+        "from_ma20": 2.0,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "金融",
+        "ticker": "XLF",
         "phase": "中立",
-        "score": 55.4,
-        "rel5": 0.0,
-        "rel20": 4.75,
-        "acceleration": -3.11,
-        "from_ma20": 2.17,
+        "score": 54.4,
+        "rel5": 0.1,
+        "rel20": 6.14,
+        "acceleration": -3.44,
+        "from_ma20": 3.26,
         "action": "方向確認待ち"
       },
       {
         "sector": "情報技術・AI",
         "ticker": "XLK",
         "phase": "流入初期",
-        "score": 50.1,
-        "rel5": 1.47,
-        "rel20": -3.64,
-        "acceleration": 2.96,
-        "from_ma20": -0.69,
+        "score": 54.3,
+        "rel5": 2.78,
+        "rel20": -5.25,
+        "acceleration": 5.36,
+        "from_ma20": -1.86,
         "action": "最優先監視・初押し"
+      },
+      {
+        "sector": "公益",
+        "ticker": "XLU",
+        "phase": "流出",
+        "score": 53.9,
+        "rel5": -0.13,
+        "rel20": 7.97,
+        "acceleration": -4.1,
+        "from_ma20": 3.01,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "生活必需品",
+        "ticker": "XLP",
+        "phase": "流出",
+        "score": 38.2,
+        "rel5": -3.06,
+        "rel20": 8.7,
+        "acceleration": -7.92,
+        "from_ma20": 2.49,
+        "action": "新規ロング停止"
       },
       {
         "sector": "コミュニケーション",
         "ticker": "XLC",
         "phase": "流出",
-        "score": 12.8,
-        "rel5": -5.18,
-        "rel20": -8.27,
-        "acceleration": -3.01,
-        "from_ma20": -5.69,
+        "score": 1.2,
+        "rel5": -6.96,
+        "rel20": -9.06,
+        "acceleration": -3.54,
+        "from_ma20": -7.74,
         "action": "新規ロング停止"
       }
     ],
@@ -62664,12 +62663,12 @@
       {
         "sector": "AI・テクノロジー",
         "phase": "流入初期",
-        "score": 69.0,
-        "rel5": 3.86,
-        "rel20": -1.92,
-        "acceleration": 5.46,
-        "breadth": 31.6,
-        "rvol": 1.61,
+        "score": 68.8,
+        "rel5": 3.91,
+        "rel20": -2.54,
+        "acceleration": 5.88,
+        "breadth": 28.9,
+        "rvol": 1.59,
         "members": 38,
         "leaders": [
           {
@@ -62809,13 +62808,13 @@
       {
         "sector": "資本財・インフラ",
         "phase": "流入初期",
-        "score": 50.8,
-        "rel5": 1.09,
-        "rel20": -7.72,
-        "acceleration": 4.74,
-        "breadth": 14.3,
-        "rvol": 1.91,
-        "members": 21,
+        "score": 53.3,
+        "rel5": 1.51,
+        "rel20": -7.35,
+        "acceleration": 5.13,
+        "breadth": 15.0,
+        "rvol": 1.85,
+        "members": 20,
         "leaders": [
           {
             "name": "パワーエックス（485A）",
@@ -62874,14 +62873,14 @@
         "material_stage": "先回り候補",
         "material_action": "OR15・VWAP一致で発動",
         "plan": {
-          "entry": 9860,
+          "entry": 9870,
           "stop": 9560,
           "target1": 10320,
-          "target2": 10530,
+          "target2": 10540,
           "risk": 300,
           "tick": 10
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.86%／出来高比 1.39倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.91%／出来高比 1.39倍"
       },
       {
         "name": "さくらインターネット（3778）",
@@ -62891,14 +62890,14 @@
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
-          "entry": 3240,
+          "entry": 3235,
           "stop": 3115,
           "target1": 3425,
-          "target2": 3515,
+          "target2": 3510,
           "risk": 125,
           "tick": 5
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.86%／出来高比 3.58倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.91%／出来高比 3.58倍"
       },
       {
         "name": "キオクシアHD（285A）",
@@ -62915,7 +62914,7 @@
           "risk": 710,
           "tick": 10
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.86%／出来高比 2.36倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.91%／出来高比 2.36倍"
       },
       {
         "name": "ソシオネクスト（6526）",
@@ -62925,14 +62924,14 @@
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
-          "entry": 1928,
-          "stop": 1868,
-          "target1": 2020,
-          "target2": 2062,
+          "entry": 1931,
+          "stop": 1870,
+          "target1": 2022,
+          "target2": 2064,
           "risk": 61,
           "tick": 1
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.86%／出来高比 2.28倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.91%／出来高比 2.28倍"
       },
       {
         "name": "ナブテスコ（6268）",
@@ -62943,13 +62942,13 @@
         "material_action": "OR15・VWAP一致で発動",
         "plan": {
           "entry": 4365,
-          "stop": 4260,
-          "target1": 4520,
+          "stop": 4265,
+          "target1": 4525,
           "target2": 4595,
           "risk": 105,
           "tick": 5
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.86%／出来高比 1.32倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +3.91%／出来高比 1.32倍"
       },
       {
         "name": "freee（4478）",
@@ -62959,10 +62958,10 @@
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
-          "entry": 4280,
-          "stop": 4155,
-          "target1": 4460,
-          "target2": 4550,
+          "entry": 4265,
+          "stop": 4140,
+          "target1": 4450,
+          "target2": 4535,
           "risk": 125,
           "tick": 5
         },
@@ -62991,8 +62990,8 @@
       "status": "流入初期",
       "action": "反転条件だけ再評価",
       "detail": "セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。",
-      "sector_score": 69.0,
-      "sector_rel5": 3.86
+      "sector_score": 68.8,
+      "sector_rel5": 3.91
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -63404,8 +63403,8 @@
             "high": 5858.0,
             "low": 5671.0,
             "close": 5766.0,
-            "vwap": 5772.56,
-            "volume": 6095400,
+            "vwap": 5777.86,
+            "volume": 6822300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -63428,10 +63427,10 @@
           "status": "信用需給待ち",
           "score": 52,
           "plan": {
-            "entry": 4135,
-            "stop": 4025,
+            "entry": 4140,
+            "stop": 4030,
             "target1": 4300,
-            "target2": 4375,
+            "target2": 4380,
             "risk": 110,
             "tick": 5
           },
@@ -63815,8 +63814,8 @@
             "high": 4187.0,
             "low": 4053.0,
             "close": 4147.0,
-            "vwap": 4127.08,
-            "volume": 2390100,
+            "vwap": 4129.73,
+            "volume": 2632000,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -64223,8 +64222,8 @@
             "high": 5520.0,
             "low": 5260.0,
             "close": 5480.0,
-            "vwap": 5406.79,
-            "volume": 705500,
+            "vwap": 5408.88,
+            "volume": 788400,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -64245,8 +64244,8 @@
           "score": 47,
           "plan": {
             "entry": 4365,
-            "stop": 4260,
-            "target1": 4520,
+            "stop": 4265,
+            "target1": 4525,
             "target2": 4595,
             "risk": 105,
             "tick": 5
@@ -64631,8 +64630,8 @@
             "high": 4425.0,
             "low": 4282.0,
             "close": 4370.0,
-            "vwap": 4356.87,
-            "volume": 740100,
+            "vwap": 4358.44,
+            "volume": 808800,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -64662,10 +64661,10 @@
           "status": "信用需給待ち",
           "score": 64,
           "plan": {
-            "entry": 2178,
-            "stop": 2053,
-            "target1": 2364,
-            "target2": 2452,
+            "entry": 2174,
+            "stop": 2050,
+            "target1": 2361,
+            "target2": 2448,
             "risk": 125,
             "tick": 1
           },
@@ -65049,8 +65048,8 @@
             "high": 2354.0,
             "low": 2015.0,
             "close": 2264.0,
-            "vwap": 2173.21,
-            "volume": 6148500,
+            "vwap": 2169.83,
+            "volume": 6495800,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -65073,10 +65072,10 @@
           "status": "信用需給待ち",
           "score": 48,
           "plan": {
-            "entry": 1824,
-            "stop": 1805,
-            "target1": 1854,
-            "target2": 1867,
+            "entry": 1823,
+            "stop": 1803,
+            "target1": 1852,
+            "target2": 1866,
             "risk": 20,
             "tick": 1
           },
@@ -65460,8 +65459,8 @@
             "high": 1863.5,
             "low": 1767.0,
             "close": 1860.0,
-            "vwap": 1820.72,
-            "volume": 20305700,
+            "vwap": 1819.18,
+            "volume": 21463200,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -65868,8 +65867,8 @@
             "high": 975.0,
             "low": 929.0,
             "close": 940.0,
-            "vwap": 947.03,
-            "volume": 193400,
+            "vwap": 947.48,
+            "volume": 197400,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -66286,8 +66285,8 @@
             "high": 768.0,
             "low": 746.0,
             "close": 758.0,
-            "vwap": 757.73,
-            "volume": 268700,
+            "vwap": 757.04,
+            "volume": 294900,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -66307,10 +66306,10 @@
           "status": "信用需給待ち",
           "score": 40,
           "plan": {
-            "entry": 4895,
-            "stop": 4785,
-            "target1": 5060,
-            "target2": 5135,
+            "entry": 4905,
+            "stop": 4795,
+            "target1": 5065,
+            "target2": 5145,
             "risk": 110,
             "tick": 5
           },
@@ -66694,8 +66693,8 @@
             "high": 4992.0,
             "low": 4760.0,
             "close": 4954.0,
-            "vwap": 4886.06,
-            "volume": 11160800,
+            "vwap": 4893.26,
+            "volume": 12880300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -67111,12 +67110,12 @@
           "day_bucket": null,
           "intraday": {
             "ok": true,
-            "open": 36500.0,
+            "open": 36490.0,
             "high": 38120.0,
             "low": 35790.0,
             "close": 37070.0,
-            "vwap": 37235.69,
-            "volume": 20253000,
+            "vwap": 37218.26,
+            "volume": 21404500,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -67136,10 +67135,10 @@
           "status": "信用需給待ち",
           "score": 56,
           "plan": {
-            "entry": 9860,
+            "entry": 9870,
             "stop": 9560,
             "target1": 10320,
-            "target2": 10530,
+            "target2": 10540,
             "risk": 300,
             "tick": 10
           },
@@ -67523,8 +67522,8 @@
             "high": 10020.0,
             "low": 9586.0,
             "close": 9990.0,
-            "vwap": 9843.95,
-            "volume": 12409800,
+            "vwap": 9846.91,
+            "volume": 13566300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -67931,8 +67930,8 @@
             "high": 15600.0,
             "low": 14455.0,
             "close": 14950.0,
-            "vwap": 15057.99,
-            "volume": 110072400,
+            "vwap": 15052.7,
+            "volume": 115207000,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -68339,8 +68338,8 @@
             "high": 52800.0,
             "low": 50410.0,
             "close": 52170.0,
-            "vwap": 51752.68,
-            "volume": 2040900,
+            "vwap": 51777.24,
+            "volume": 2188900,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:25 JST"
           },
@@ -68360,10 +68359,10 @@
           "status": "信用需給待ち",
           "score": 52,
           "plan": {
-            "entry": 1928,
-            "stop": 1868,
-            "target1": 2020,
-            "target2": 2062,
+            "entry": 1931,
+            "stop": 1870,
+            "target1": 2022,
+            "target2": 2064,
             "risk": 61,
             "tick": 1
           },
@@ -68747,8 +68746,8 @@
             "high": 1983.0,
             "low": 1862.5,
             "close": 1970.5,
-            "vwap": 1924.65,
-            "volume": 10171100,
+            "vwap": 1926.67,
+            "volume": 11667600,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -69168,8 +69167,8 @@
             "high": 3515.0,
             "low": 3453.0,
             "close": 3482.0,
-            "vwap": 3479.81,
-            "volume": 17564900,
+            "vwap": 3480.87,
+            "volume": 18815900,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -69189,10 +69188,10 @@
           "status": "信用需給待ち",
           "score": 50,
           "plan": {
-            "entry": 2349,
-            "stop": 2301,
-            "target1": 2423,
-            "target2": 2457,
+            "entry": 2350,
+            "stop": 2302,
+            "target1": 2424,
+            "target2": 2458,
             "risk": 49,
             "tick": 1
           },
@@ -69576,8 +69575,8 @@
             "high": 2373.0,
             "low": 2316.0,
             "close": 2350.5,
-            "vwap": 2344.81,
-            "volume": 10005900,
+            "vwap": 2346.49,
+            "volume": 10898400,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -69984,8 +69983,8 @@
             "high": 4834.0,
             "low": 4715.0,
             "close": 4817.0,
-            "vwap": 4789.02,
-            "volume": 3749400,
+            "vwap": 4789.71,
+            "volume": 4348300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -70402,8 +70401,8 @@
             "high": 1871.0,
             "low": 1768.0,
             "close": 1813.0,
-            "vwap": 1823.9,
-            "volume": 2952900,
+            "vwap": 1825.88,
+            "volume": 3186600,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -70810,8 +70809,8 @@
             "high": 13715.0,
             "low": 13155.0,
             "close": 13320.0,
-            "vwap": 13392.84,
-            "volume": 1789300,
+            "vwap": 13412.54,
+            "volume": 1052300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -71626,8 +71625,8 @@
             "high": 5348.0,
             "low": 4968.0,
             "close": 5021.0,
-            "vwap": 5085.35,
-            "volume": 28821800,
+            "vwap": 5095.98,
+            "volume": 31291700,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:25 JST"
           },
@@ -72044,8 +72043,8 @@
             "high": 4397.0,
             "low": 4240.0,
             "close": 4317.0,
-            "vwap": 4327.8,
-            "volume": 7500700,
+            "vwap": 4324.93,
+            "volume": 8530400,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -72455,8 +72454,8 @@
             "high": 172.4,
             "low": 170.1,
             "close": 171.0,
-            "vwap": 170.99,
-            "volume": 102442400,
+            "vwap": 171.04,
+            "volume": 116576700,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -72476,10 +72475,10 @@
           "status": "信用需給待ち",
           "score": 39,
           "plan": {
-            "entry": 4895,
-            "stop": 4785,
-            "target1": 5060,
-            "target2": 5135,
+            "entry": 4905,
+            "stop": 4795,
+            "target1": 5065,
+            "target2": 5145,
             "risk": 110,
             "tick": 5
           },
@@ -72863,8 +72862,8 @@
             "high": 4992.0,
             "low": 4760.0,
             "close": 4954.0,
-            "vwap": 4886.06,
-            "volume": 11160800,
+            "vwap": 4893.26,
+            "volume": 12880300,
             "data_date": "2026-10-29",
             "data_time": "2026-10-29 15:20 JST"
           },
@@ -73261,18 +73260,18 @@
         "high": 1863.5,
         "low": 1767.0,
         "close": 1860.0,
-        "vwap": 1820.72,
-        "volume": 20305700,
+        "vwap": 1819.18,
+        "volume": 21463200,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
       "identity_verified": true,
       "rotation_group": "自動車・モビリティ",
       "plan": {
-        "entry": 1824,
-        "stop": 1805,
-        "target1": 1854,
-        "target2": 1867,
+        "entry": 1823,
+        "stop": 1803,
+        "target1": 1852,
+        "target2": 1866,
         "risk": 20,
         "tick": 1
       }
@@ -73659,18 +73658,18 @@
         "high": 1336.0,
         "low": 1308.0,
         "close": 1331.0,
-        "vwap": 1325.65,
-        "volume": 2557600,
+        "vwap": 1324.7,
+        "volume": 2825000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
       "identity_verified": true,
       "rotation_group": "資本財・インフラ",
       "plan": {
-        "entry": 1328,
-        "stop": 1315,
-        "target1": 1348,
-        "target2": 1358,
+        "entry": 1327,
+        "stop": 1314,
+        "target1": 1347,
+        "target2": 1357,
         "risk": 13,
         "tick": 1
       }
@@ -74058,7 +74057,7 @@
         "low": 2428.0,
         "close": 2428.0,
         "vwap": 2428.33,
-        "volume": 476800,
+        "volume": 889700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:25 JST"
       },
@@ -74455,418 +74454,20 @@
         "high": 4893.0,
         "low": 4802.0,
         "close": 4883.0,
-        "vwap": 4853.26,
-        "volume": 5167000,
+        "vwap": 4852.49,
+        "volume": 5587500,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
       "identity_verified": true,
       "rotation_group": "資源・素材・商社",
       "plan": {
-        "entry": 4865,
+        "entry": 4860,
         "stop": 4800,
         "target1": 4955,
         "target2": 5000,
         "risk": 65,
         "tick": 5
-      }
-    },
-    {
-      "name": "ペプチドリーム（4587）",
-      "ok": true,
-      "price": 1112.0,
-      "open": 1117.5,
-      "high": 1137.0,
-      "low": 1104.0,
-      "prev_close": 1111.5,
-      "change_pct": 0.04,
-      "ret5": 3.68,
-      "ret5_prev": 4.03,
-      "ret20": -0.13,
-      "rvol": 2.03,
-      "turnover": 1718262400,
-      "atr14": 34.25,
-      "atr_pct": 3.08,
-      "ma5": 1082.6,
-      "ma20": 1070.03,
-      "ma60": 1058.49,
-      "from_ma5": 2.72,
-      "from_ma20": 3.92,
-      "touch_ma5": false,
-      "to_high20": -2.8,
-      "to_high52": -37.98,
-      "bb_upper": 1119.5,
-      "bb_lower": 1020.55,
-      "bb_width": 9.25,
-      "bb_width_change": 0.44,
-      "bb_percentile": 25.0,
-      "bb_expansion_score": 66.8,
-      "day_score": 5.37,
-      "swing_score": 6.26,
-      "stable_score": 5.98,
-      "momentum_score": 6.22,
-      "high_score": 3.04,
-      "chart": [
-        {
-          "t": "2026-08-31",
-          "o": 1100.0,
-          "h": 1104.0,
-          "l": 1085.0,
-          "c": 1090.0,
-          "v": 907800
-        },
-        {
-          "t": "2026-09-01",
-          "o": 1079.0,
-          "h": 1107.0,
-          "l": 1071.0,
-          "c": 1098.0,
-          "v": 534200
-        },
-        {
-          "t": "2026-09-02",
-          "o": 1085.5,
-          "h": 1106.5,
-          "l": 1074.5,
-          "c": 1075.5,
-          "v": 745300
-        },
-        {
-          "t": "2026-09-03",
-          "o": 1075.0,
-          "h": 1111.0,
-          "l": 1074.5,
-          "c": 1098.0,
-          "v": 550100
-        },
-        {
-          "t": "2026-09-04",
-          "o": 1095.0,
-          "h": 1105.5,
-          "l": 1056.5,
-          "c": 1069.0,
-          "v": 733500
-        },
-        {
-          "t": "2026-09-07",
-          "o": 1070.0,
-          "h": 1098.0,
-          "l": 1070.0,
-          "c": 1088.5,
-          "v": 544100
-        },
-        {
-          "t": "2026-09-08",
-          "o": 1075.5,
-          "h": 1112.0,
-          "l": 1068.0,
-          "c": 1096.0,
-          "v": 829800
-        },
-        {
-          "t": "2026-09-09",
-          "o": 1098.5,
-          "h": 1107.0,
-          "l": 1073.5,
-          "c": 1082.5,
-          "v": 781800
-        },
-        {
-          "t": "2026-09-10",
-          "o": 1063.0,
-          "h": 1091.0,
-          "l": 1057.5,
-          "c": 1068.0,
-          "v": 700600
-        },
-        {
-          "t": "2026-09-11",
-          "o": 1042.5,
-          "h": 1060.5,
-          "l": 1032.5,
-          "c": 1060.5,
-          "v": 713200
-        },
-        {
-          "t": "2026-09-14",
-          "o": 1037.5,
-          "h": 1061.0,
-          "l": 1028.0,
-          "c": 1057.0,
-          "v": 663500
-        },
-        {
-          "t": "2026-09-15",
-          "o": 1067.5,
-          "h": 1070.5,
-          "l": 1046.5,
-          "c": 1060.5,
-          "v": 521700
-        },
-        {
-          "t": "2026-09-16",
-          "o": 1060.0,
-          "h": 1064.0,
-          "l": 1031.0,
-          "c": 1041.5,
-          "v": 589300
-        },
-        {
-          "t": "2026-09-17",
-          "o": 1047.0,
-          "h": 1068.0,
-          "l": 1041.5,
-          "c": 1049.0,
-          "v": 629000
-        },
-        {
-          "t": "2026-09-18",
-          "o": 1044.0,
-          "h": 1082.0,
-          "l": 1038.5,
-          "c": 1070.0,
-          "v": 1049200
-        },
-        {
-          "t": "2026-09-24",
-          "o": 1057.0,
-          "h": 1076.0,
-          "l": 1047.0,
-          "c": 1056.5,
-          "v": 814200
-        },
-        {
-          "t": "2026-09-25",
-          "o": 1056.5,
-          "h": 1072.5,
-          "l": 1055.5,
-          "c": 1069.0,
-          "v": 494300
-        },
-        {
-          "t": "2026-09-28",
-          "o": 1084.0,
-          "h": 1084.5,
-          "l": 1063.0,
-          "c": 1066.0,
-          "v": 694100
-        },
-        {
-          "t": "2026-09-29",
-          "o": 1059.0,
-          "h": 1065.5,
-          "l": 1039.5,
-          "c": 1053.5,
-          "v": 517300
-        },
-        {
-          "t": "2026-09-30",
-          "o": 1051.0,
-          "h": 1121.0,
-          "l": 1045.0,
-          "c": 1113.5,
-          "v": 1396900
-        },
-        {
-          "t": "2026-10-01",
-          "o": 1123.0,
-          "h": 1144.0,
-          "l": 1106.0,
-          "c": 1133.0,
-          "v": 956300
-        },
-        {
-          "t": "2026-10-02",
-          "o": 1108.0,
-          "h": 1122.5,
-          "l": 1076.0,
-          "c": 1076.0,
-          "v": 783100
-        },
-        {
-          "t": "2026-10-05",
-          "o": 1074.0,
-          "h": 1075.5,
-          "l": 1052.5,
-          "c": 1056.5,
-          "v": 555200
-        },
-        {
-          "t": "2026-10-06",
-          "o": 1073.5,
-          "h": 1086.5,
-          "l": 1047.5,
-          "c": 1058.5,
-          "v": 734400
-        },
-        {
-          "t": "2026-10-07",
-          "o": 1060.0,
-          "h": 1075.5,
-          "l": 1052.0,
-          "c": 1060.5,
-          "v": 589500
-        },
-        {
-          "t": "2026-10-08",
-          "o": 1069.5,
-          "h": 1086.0,
-          "l": 1040.0,
-          "c": 1052.5,
-          "v": 616900
-        },
-        {
-          "t": "2026-10-09",
-          "o": 1048.0,
-          "h": 1079.0,
-          "l": 1040.5,
-          "c": 1075.0,
-          "v": 579200
-        },
-        {
-          "t": "2026-10-13",
-          "o": 1085.0,
-          "h": 1092.5,
-          "l": 1067.5,
-          "c": 1081.0,
-          "v": 592800
-        },
-        {
-          "t": "2026-10-14",
-          "o": 1055.0,
-          "h": 1073.5,
-          "l": 1038.0,
-          "c": 1041.5,
-          "v": 1532900
-        },
-        {
-          "t": "2026-10-15",
-          "o": 1044.5,
-          "h": 1053.5,
-          "l": 1022.5,
-          "c": 1031.0,
-          "v": 771000
-        },
-        {
-          "t": "2026-10-16",
-          "o": 1055.5,
-          "h": 1072.5,
-          "l": 1042.5,
-          "c": 1072.5,
-          "v": 555900
-        },
-        {
-          "t": "2026-10-19",
-          "o": 1053.0,
-          "h": 1072.5,
-          "l": 1043.5,
-          "c": 1049.0,
-          "v": 707200
-        },
-        {
-          "t": "2026-10-20",
-          "o": 1054.0,
-          "h": 1057.5,
-          "l": 1031.5,
-          "c": 1043.5,
-          "v": 532000
-        },
-        {
-          "t": "2026-10-21",
-          "o": 1073.5,
-          "h": 1105.0,
-          "l": 1072.5,
-          "c": 1084.5,
-          "v": 1136300
-        },
-        {
-          "t": "2026-10-22",
-          "o": 1085.0,
-          "h": 1111.0,
-          "l": 1072.5,
-          "c": 1072.5,
-          "v": 645900
-        },
-        {
-          "t": "2026-10-23",
-          "o": 1075.0,
-          "h": 1078.0,
-          "l": 1055.0,
-          "c": 1059.5,
-          "v": 513100
-        },
-        {
-          "t": "2026-10-26",
-          "o": 1062.5,
-          "h": 1079.5,
-          "l": 1056.0,
-          "c": 1061.0,
-          "v": 485600
-        },
-        {
-          "t": "2026-10-27",
-          "o": 1065.0,
-          "h": 1076.0,
-          "l": 1057.0,
-          "c": 1069.0,
-          "v": 427600
-        },
-        {
-          "t": "2026-10-28",
-          "o": 1078.0,
-          "h": 1116.0,
-          "l": 1072.5,
-          "c": 1111.5,
-          "v": 967300
-        },
-        {
-          "t": "2026-10-29",
-          "o": 1117.5,
-          "h": 1137.0,
-          "l": 1104.0,
-          "c": 1112.0,
-          "v": 1545200
-        }
-      ],
-      "data_date": "2026-10-29",
-      "data_age_days": 0,
-      "chart_last_close": 1112.0,
-      "quote_verified": true,
-      "secondary_source": "Nomura/QUICK",
-      "secondary_price": 1112.0,
-      "secondary_date": "2026-10-29",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-29終値 1,112.00円",
-      "market_supply_score": 70,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給70点／上昇日出来高÷下落日1.14倍／安値切上げ○",
-      "last_dividend": 0,
-      "estimated_ex_date": null,
-      "dividend_days": null,
-      "ticker": "4587.T",
-      "sector": "AI創薬・バイオ",
-      "style": "both",
-      "day_bucket": "テーマ・マネーゲーム",
-      "intraday": {
-        "ok": true,
-        "open": 1117.5,
-        "high": 1137.0,
-        "low": 1104.0,
-        "close": 1113.0,
-        "vwap": 1119.17,
-        "volume": 789300,
-        "data_date": "2026-10-29",
-        "data_time": "2026-10-29 15:20 JST"
-      },
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー",
-      "plan": {
-        "entry": 1113,
-        "stop": 1094,
-        "target1": 1141,
-        "target2": 1154,
-        "risk": 19,
-        "tick": 1
       }
     },
     {
@@ -75251,8 +74852,8 @@
         "high": 3328.0,
         "low": 3239.0,
         "close": 3321.0,
-        "vwap": 3300.95,
-        "volume": 1104500,
+        "vwap": 3298.22,
+        "volume": 1259000,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
@@ -75262,8 +74863,8 @@
       "material_action": "押し目反転だけ監視",
       "actionable_day_score": 1.31,
       "plan": {
-        "entry": 3310,
-        "stop": 3260,
+        "entry": 3305,
+        "stop": 3255,
         "target1": 3380,
         "target2": 3415,
         "risk": 50,
@@ -75652,19 +75253,417 @@
         "high": 5378.0,
         "low": 5192.0,
         "close": 5359.0,
-        "vwap": 5291.78,
-        "volume": 752400,
+        "vwap": 5297.41,
+        "volume": 698700,
         "data_date": "2026-10-29",
         "data_time": "2026-10-29 15:20 JST"
       },
       "identity_verified": true,
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 5300,
-        "stop": 5220,
-        "target1": 5420,
+        "entry": 5310,
+        "stop": 5230,
+        "target1": 5430,
         "target2": 5480,
         "risk": 80,
+        "tick": 10
+      }
+    },
+    {
+      "name": "双日（2768）",
+      "ok": true,
+      "price": 5474.0,
+      "open": 5445.0,
+      "high": 5484.0,
+      "low": 5399.0,
+      "prev_close": 5447.0,
+      "change_pct": 0.5,
+      "ret5": 3.67,
+      "ret5_prev": -0.99,
+      "ret20": -3.49,
+      "rvol": 2.54,
+      "turnover": 17030708800,
+      "atr14": 127.07,
+      "atr_pct": 2.32,
+      "ma5": 5416.4,
+      "ma20": 5413.3,
+      "ma60": 5572.87,
+      "from_ma5": 1.06,
+      "from_ma20": 1.12,
+      "touch_ma5": true,
+      "to_high20": -3.73,
+      "to_high52": -24.57,
+      "bb_upper": 5611.15,
+      "bb_lower": 5215.45,
+      "bb_width": 7.31,
+      "bb_width_change": -2.41,
+      "bb_percentile": 28.3,
+      "bb_expansion_score": 62.0,
+      "day_score": 8.49,
+      "swing_score": 5.41,
+      "stable_score": 4.37,
+      "momentum_score": 11.84,
+      "high_score": 5.81,
+      "chart": [
+        {
+          "t": "2026-08-31",
+          "o": 5590.0,
+          "h": 5611.0,
+          "l": 5512.0,
+          "c": 5604.0,
+          "v": 1239100
+        },
+        {
+          "t": "2026-09-01",
+          "o": 5580.0,
+          "h": 5813.0,
+          "l": 5572.0,
+          "c": 5813.0,
+          "v": 1589400
+        },
+        {
+          "t": "2026-09-02",
+          "o": 5720.0,
+          "h": 5735.0,
+          "l": 5659.0,
+          "c": 5659.0,
+          "v": 1383100
+        },
+        {
+          "t": "2026-09-03",
+          "o": 5730.0,
+          "h": 5836.0,
+          "l": 5720.0,
+          "c": 5778.0,
+          "v": 1406400
+        },
+        {
+          "t": "2026-09-04",
+          "o": 5878.0,
+          "h": 5887.0,
+          "l": 5685.0,
+          "c": 5762.0,
+          "v": 1985200
+        },
+        {
+          "t": "2026-09-07",
+          "o": 5775.0,
+          "h": 5894.0,
+          "l": 5764.0,
+          "c": 5853.0,
+          "v": 1055700
+        },
+        {
+          "t": "2026-09-08",
+          "o": 5821.0,
+          "h": 5884.0,
+          "l": 5721.0,
+          "c": 5783.0,
+          "v": 905200
+        },
+        {
+          "t": "2026-09-09",
+          "o": 5761.0,
+          "h": 5887.0,
+          "l": 5738.0,
+          "c": 5864.0,
+          "v": 1302800
+        },
+        {
+          "t": "2026-09-10",
+          "o": 5770.0,
+          "h": 5805.0,
+          "l": 5697.0,
+          "c": 5745.0,
+          "v": 1436500
+        },
+        {
+          "t": "2026-09-11",
+          "o": 5625.0,
+          "h": 5785.0,
+          "l": 5580.0,
+          "c": 5739.0,
+          "v": 1242400
+        },
+        {
+          "t": "2026-09-14",
+          "o": 5770.0,
+          "h": 5840.0,
+          "l": 5756.0,
+          "c": 5810.0,
+          "v": 954500
+        },
+        {
+          "t": "2026-09-15",
+          "o": 5780.0,
+          "h": 5789.0,
+          "l": 5691.0,
+          "c": 5729.0,
+          "v": 880300
+        },
+        {
+          "t": "2026-09-16",
+          "o": 5788.0,
+          "h": 5848.0,
+          "l": 5766.0,
+          "c": 5770.0,
+          "v": 854200
+        },
+        {
+          "t": "2026-09-17",
+          "o": 5810.0,
+          "h": 5898.0,
+          "l": 5800.0,
+          "c": 5888.0,
+          "v": 1059400
+        },
+        {
+          "t": "2026-09-18",
+          "o": 5940.0,
+          "h": 5949.0,
+          "l": 5851.0,
+          "c": 5872.0,
+          "v": 1406900
+        },
+        {
+          "t": "2026-09-24",
+          "o": 5870.0,
+          "h": 5875.0,
+          "l": 5714.0,
+          "c": 5714.0,
+          "v": 1393600
+        },
+        {
+          "t": "2026-09-25",
+          "o": 5750.0,
+          "h": 5774.0,
+          "l": 5706.0,
+          "c": 5756.0,
+          "v": 1170900
+        },
+        {
+          "t": "2026-09-28",
+          "o": 5784.0,
+          "h": 5812.0,
+          "l": 5718.0,
+          "c": 5726.0,
+          "v": 1205900
+        },
+        {
+          "t": "2026-09-29",
+          "o": 5617.0,
+          "h": 5622.0,
+          "l": 5530.0,
+          "c": 5560.0,
+          "v": 1253500
+        },
+        {
+          "t": "2026-09-30",
+          "o": 5598.0,
+          "h": 5686.0,
+          "l": 5516.0,
+          "c": 5672.0,
+          "v": 1141200
+        },
+        {
+          "t": "2026-10-01",
+          "o": 5632.0,
+          "h": 5643.0,
+          "l": 5533.0,
+          "c": 5607.0,
+          "v": 1474900
+        },
+        {
+          "t": "2026-10-02",
+          "o": 5570.0,
+          "h": 5627.0,
+          "l": 5535.0,
+          "c": 5535.0,
+          "v": 1003400
+        },
+        {
+          "t": "2026-10-05",
+          "o": 5575.0,
+          "h": 5577.0,
+          "l": 5486.0,
+          "c": 5498.0,
+          "v": 1105300
+        },
+        {
+          "t": "2026-10-06",
+          "o": 5508.0,
+          "h": 5545.0,
+          "l": 5437.0,
+          "c": 5523.0,
+          "v": 1110100
+        },
+        {
+          "t": "2026-10-07",
+          "o": 5526.0,
+          "h": 5577.0,
+          "l": 5452.0,
+          "c": 5452.0,
+          "v": 1269400
+        },
+        {
+          "t": "2026-10-08",
+          "o": 5404.0,
+          "h": 5428.0,
+          "l": 5283.0,
+          "c": 5342.0,
+          "v": 1396500
+        },
+        {
+          "t": "2026-10-09",
+          "o": 5346.0,
+          "h": 5392.0,
+          "l": 5281.0,
+          "c": 5340.0,
+          "v": 941800
+        },
+        {
+          "t": "2026-10-13",
+          "o": 5300.0,
+          "h": 5434.0,
+          "l": 5275.0,
+          "c": 5418.0,
+          "v": 1034900
+        },
+        {
+          "t": "2026-10-14",
+          "o": 5418.0,
+          "h": 5484.0,
+          "l": 5353.0,
+          "c": 5448.0,
+          "v": 1303700
+        },
+        {
+          "t": "2026-10-15",
+          "o": 5440.0,
+          "h": 5445.0,
+          "l": 5308.0,
+          "c": 5333.0,
+          "v": 1420300
+        },
+        {
+          "t": "2026-10-16",
+          "o": 5422.0,
+          "h": 5476.0,
+          "l": 5380.0,
+          "c": 5438.0,
+          "v": 944400
+        },
+        {
+          "t": "2026-10-19",
+          "o": 5436.0,
+          "h": 5441.0,
+          "l": 5361.0,
+          "c": 5400.0,
+          "v": 731300
+        },
+        {
+          "t": "2026-10-20",
+          "o": 5365.0,
+          "h": 5422.0,
+          "l": 5260.0,
+          "c": 5274.0,
+          "v": 970000
+        },
+        {
+          "t": "2026-10-21",
+          "o": 5326.0,
+          "h": 5335.0,
+          "l": 5277.0,
+          "c": 5296.0,
+          "v": 861200
+        },
+        {
+          "t": "2026-10-22",
+          "o": 5320.0,
+          "h": 5362.0,
+          "l": 5253.0,
+          "c": 5280.0,
+          "v": 1190500
+        },
+        {
+          "t": "2026-10-23",
+          "o": 5278.0,
+          "h": 5280.0,
+          "l": 5142.0,
+          "c": 5222.0,
+          "v": 1128500
+        },
+        {
+          "t": "2026-10-26",
+          "o": 5260.0,
+          "h": 5419.0,
+          "l": 5259.0,
+          "c": 5419.0,
+          "v": 1302100
+        },
+        {
+          "t": "2026-10-27",
+          "o": 5430.0,
+          "h": 5520.0,
+          "l": 5363.0,
+          "c": 5520.0,
+          "v": 1255800
+        },
+        {
+          "t": "2026-10-28",
+          "o": 5530.0,
+          "h": 5553.0,
+          "l": 5447.0,
+          "c": 5447.0,
+          "v": 939100
+        },
+        {
+          "t": "2026-10-29",
+          "o": 5445.0,
+          "h": 5484.0,
+          "l": 5399.0,
+          "c": 5474.0,
+          "v": 3111200
+        }
+      ],
+      "data_date": "2026-10-29",
+      "data_age_days": 0,
+      "chart_last_close": 5474.0,
+      "quote_verified": true,
+      "secondary_source": "Nomura/QUICK",
+      "secondary_price": 5474.0,
+      "secondary_date": "2026-10-29",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-10-29終値 5,474.00円",
+      "market_supply_score": 65,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給65点／上昇日出来高÷下落日0.90倍／安値切上げ○",
+      "last_dividend": 90.0,
+      "estimated_ex_date": "2027-03-31",
+      "dividend_days": 153,
+      "ticker": "2768.T",
+      "sector": "資源商社・レアアース",
+      "style": "swing",
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5440.0,
+        "high": 5484.0,
+        "low": 5399.0,
+        "close": 5474.0,
+        "vwap": 5444.64,
+        "volume": 744800,
+        "data_date": "2026-10-29",
+        "data_time": "2026-10-29 15:20 JST"
+      },
+      "identity_verified": true,
+      "rotation_group": "資源・素材・商社",
+      "plan": {
+        "entry": 5460,
+        "stop": 5390,
+        "target1": 5560,
+        "target2": 5610,
+        "risk": 70,
         "tick": 10
       }
     }
@@ -75709,7 +75708,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 2352.0,
-      "vwap": 2346.47,
+      "vwap": 2344.56,
       "pnl_yen": 4800,
       "r": 0.48,
       "R": 0.48,
@@ -75753,7 +75752,7 @@
       "result": "IFO損切り",
       "exit_reason": "STOP",
       "close": 5982.0,
-      "vwap": 5991.6,
+      "vwap": 5994.63,
       "pnl_yen": -9000,
       "r": -1.0,
       "R": -1.0,
@@ -75797,7 +75796,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 7920.0,
-      "vwap": 7913.12,
+      "vwap": 7908.6,
       "pnl_yen": 6000,
       "r": 0.26,
       "R": 0.26,
@@ -75841,7 +75840,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 4768.0,
-      "vwap": 4777.8,
+      "vwap": 4780.24,
       "pnl_yen": 1800,
       "r": 0.18,
       "R": 0.18,
@@ -75885,7 +75884,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 1102.0,
-      "vwap": 1103.05,
+      "vwap": 1103.19,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -75929,7 +75928,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 5021.0,
-      "vwap": 5085.35,
+      "vwap": 5095.98,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -75973,7 +75972,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 2350.5,
-      "vwap": 2344.81,
+      "vwap": 2346.49,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -76017,7 +76016,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 6213.0,
-      "vwap": 6517.02,
+      "vwap": 6481.95,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -76061,7 +76060,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 2864.0,
-      "vwap": 2869.76,
+      "vwap": 2883.39,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -76105,7 +76104,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 5050.0,
-      "vwap": 5054.89,
+      "vwap": 5057.44,
       "pnl_yen": null,
       "r": null,
       "R": null,
