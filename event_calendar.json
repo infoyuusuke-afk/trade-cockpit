@@ -1,10 +1,9 @@
 {
-  "updated_at": "2026-10-28 22:29 JST",
-  "today": "2026-10-28",
-  "today_level": "通常",
-  "today_rule": "通常ルール。OR15・VWAP・需給を確認。",
-  "today_events": [],
-  "upcoming": [
+  "updated_at": "2026-10-29 20:08 JST",
+  "today": "2026-10-29",
+  "today_level": "高警戒",
+  "today_rule": "イベント由来の方向を決め打ちしない。発表・実需確認後にOR15/VWAPで再判定。",
+  "today_events": [
     {
       "id": "fomc-2026-10-29",
       "title": "FOMC",
@@ -28,7 +27,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-28T18:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -70,7 +69,93 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-29T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-29T12:00:00+00:00",
+          "at_jst": "2026-10-29 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-29T12:25:00+00:00",
+          "at_jst": "2026-10-29 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-29T12:30:00+00:00",
+          "at_jst": "2026-10-29 21:30"
+        }
+      ]
+    }
+  ],
+  "upcoming": [
+    {
+      "id": "fomc-2026-10-29",
+      "title": "FOMC",
+      "date": "2026-10-29",
+      "category": "中央銀行",
+      "time_jst": "03:00",
+      "status": "公式確認済み",
+      "impact": "高",
+      "expected_flow": "発表後の米株・金利・為替が東京寄りへ波及",
+      "action": "前夜持ち越しを縮小。東京寄りはOR15とVWAPを再確認",
+      "announcement_date": "—",
+      "base_date": "—",
+      "flow_date": "2026-10-29",
+      "effective_date": "—",
+      "trade_block": false,
+      "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
+      "source_name": "Federal Reserve・FOMC calendar",
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-28T18:00:00+00:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-28T17:30:00+00:00",
+          "at_jst": "2026-10-29 02:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-28T17:55:00+00:00",
+          "at_jst": "2026-10-29 02:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-28T18:00:00+00:00",
+          "at_jst": "2026-10-29 03:00"
+        }
+      ]
+    },
+    {
+      "id": "bea-2026-10-29",
+      "title": "米GDP速報・PCE（9月）",
+      "date": "2026-10-29",
+      "category": "米経済",
+      "time_jst": "21:30",
+      "status": "公式確認済み",
+      "impact": "中",
+      "expected_flow": "米金利とグロース評価へ影響",
+      "action": "持ち越し時だけ警戒",
+      "announcement_date": "—",
+      "base_date": "—",
+      "flow_date": "2026-10-29",
+      "effective_date": "—",
+      "trade_block": false,
+      "note": "",
+      "source_name": "U.S. BEA・release schedule",
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-29T12:30:00+00:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -112,7 +197,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -138,7 +223,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -164,7 +249,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -190,7 +275,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -216,7 +301,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-06T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -258,7 +343,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-10T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -300,7 +385,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -326,7 +411,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -352,7 +437,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -378,7 +463,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-25T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -420,7 +505,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -446,7 +531,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -472,7 +557,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-04T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -514,7 +599,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-09T19:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -556,7 +641,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-10T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -598,7 +683,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -624,7 +709,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -650,7 +735,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -676,7 +761,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     }
   ],
@@ -704,7 +789,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     }
   ],
@@ -732,7 +817,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -758,7 +843,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-09-04T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -800,7 +885,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-09-07T05:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -842,7 +927,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -868,7 +953,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-09-11T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -910,7 +995,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -936,7 +1021,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-09-16T18:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -978,7 +1063,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1004,7 +1089,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1030,7 +1115,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1056,7 +1141,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1082,7 +1167,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1108,7 +1193,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-09-30T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1150,7 +1235,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1176,7 +1261,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1202,7 +1287,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-02T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1244,7 +1329,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1270,7 +1355,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1296,7 +1381,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-14T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1338,7 +1423,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-28T18:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1380,7 +1465,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-10-29T12:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1422,7 +1507,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1448,7 +1533,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1474,7 +1559,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1500,7 +1585,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1526,7 +1611,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-06T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1568,7 +1653,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-10T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1610,7 +1695,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1636,7 +1721,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1662,7 +1747,7 @@
       "tier": "A",
       "time_certainty": "date_only",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1688,7 +1773,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-11-25T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1730,7 +1815,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1756,7 +1841,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1782,7 +1867,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-04T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1824,7 +1909,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-09T19:00:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1866,7 +1951,7 @@
       "tier": "A",
       "time_certainty": "exact",
       "scheduled_at_utc": "2026-12-10T13:30:00+00:00",
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": [
         {
           "stage": "T-30分",
@@ -1908,7 +1993,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1934,7 +2019,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1960,7 +2045,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     },
     {
@@ -1986,7 +2071,7 @@
       "tier": "A",
       "time_certainty": "window",
       "scheduled_at_utc": null,
-      "fetched_at": "2026-10-28T22:29:03.133753+09:00",
+      "fetched_at": "2026-10-29T20:08:00.165306+09:00",
       "notification_schedule": []
     }
   ],
