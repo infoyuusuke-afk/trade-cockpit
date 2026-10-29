@@ -2,7 +2,6 @@
   "use strict";
 
   const lastLevel=new Map();
-  const lastSpokenAt=new Map();
   const pulseUntil=new Map();
   const EVENT_KEY="cockpitOpportunityEventsV1";
   let eventLog=[];
@@ -76,13 +75,6 @@
     return {level,score,direction,reasons:[...new Set(reasons)].slice(0,4),momentum3,bars:bars1m(x)};
   }
 
-  function speechText(x,o){
-    const rel=n(x?.vwap)>0&&n(x?.price)!=null?(n(x.price)>=n(x.vwap)?"VWAPの上":"VWAPの下"):"VWAP位置未確認";
-    const why=o.reasons.slice(0,3).join("、");
-    return (x?.name||String(x?.ticker||"").replace(".T",""))+"、"+o.level+"。"+
-      (why||"監視条件上昇")+"。現在値"+yen(x?.price)+"円、"+rel+"。";
-  }
-
   function renderEventLog(){
     const box=document.getElementById("opportunity-event-log");
     if(!box)return;
@@ -130,11 +122,8 @@
     const box=document.getElementById("cockpit-onair-cards");
     if(box&&window.renderOnAirPanel)box.innerHTML=window.renderOnAirPanel();
 
-    const now=Date.now(),last=lastSpokenAt.get(symbol)||0;
-    if(now-last>=60000){
-      lastSpokenAt.set(symbol,now);
-      window.cockpitSpeak?.(speechText(x,o),o.level==="HOT"?"HOT":"WATCH");
-    }
+    // OWNER 2026-10-22: the screen no longer speaks WATCH/HOT. Voice is the
+    // Collector's IR急騰 and rules ①②④⑤ only; the card above still updates.
   }
 
   function radarCard(x,o,stale){

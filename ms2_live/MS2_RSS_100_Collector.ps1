@@ -718,6 +718,31 @@ function Get-BoardAvailability {
         if ($unexpected.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_UNEXPECTED") }
         if ($declaredOk -and $declared -ne $expectedCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
     }
+    # OWNER 2026-10-26 「特別気配の直し」: rows missing only because the stock has no price yet
+    # (特別気配 at the open) do not block the board. Each such row must be listed by the
+    # Collector in missing_rows as PRICE_MISSING with its sheet code matching, at most 5 rows,
+    # no unexpected row, the declared universe equal to the expected one and to present +
+    # pending rows, >= 95% of the expected rows FRESH, and the Collector's FRESH_ROWS_ONLY
+    # declaration (the same as the partial rule). The rows stay reported (missing_*,
+    # quote_pending_*) and are never used; the board becomes AVAILABLE_PARTIAL.
+    $quotePendingMax = 5
+    $quotePending = New-Object System.Collections.Generic.List[string]
+    if ($universeVerified -and $missing.Count -gt 0 -and $missing.Count -le $quotePendingMax -and $unexpected.Count -eq 0 -and
+        $declaredOk -and $declared -eq $expectedCount -and $declared -eq ($rowCount + $missing.Count) -and $null -ne $LiveObj -and
+        [string]$LiveObj.aggregate_basis -ceq "FRESH_ROWS_ONLY" -and
+        $null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts -and $expectedCount -gt 0 -and
+        (100.0 * [int]$RowFreshness.state_counts.FRESH / $expectedCount) -ge 95.0) {
+        $pendingDeclared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($m in @($LiveObj.missing_rows)) {
+            if ($null -ne $m -and [string]$m.reason -ceq "PRICE_MISSING" -and $m.sheet_code_matches -eq $true -and $m.ticker -is [string]) { [void]$pendingDeclared.Add($m.ticker) }
+        }
+        $allPending = $true
+        foreach ($t in $missing) { if (-not $pendingDeclared.Contains([string]$t)) { $allPending = $false } }
+        if ($allPending) {
+            foreach ($t in $missing) { [void]$quotePending.Add([string]$t) }
+            [void]$reasons.RemoveAll([Predicate[string]]{ param($r) $r -ceq "UNIVERSE_ROW_MISSING" -or $r -ceq "UNIVERSE_DECLARED_MISMATCH" })
+        }
+    }
     $unique = @($reasons | Select-Object -Unique)
     $sorted = [string[]]$unique
     if ($null -eq $sorted) { $sorted = [string[]]@() }
@@ -751,6 +776,11 @@ function Get-BoardAvailability {
             $status = "AVAILABLE_PARTIAL"
         }
     }
+    if ($quotePending.Count -gt 0) {
+        $partialRows = $true
+        $partialReasons = [string[]]@(@($partialReasons) + @("UNIVERSE_QUOTE_PENDING") | Select-Object -Unique)
+        if ($status -ceq "AVAILABLE") { $status = "AVAILABLE_PARTIAL" }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -783,6 +813,8 @@ function Get-BoardAvailability {
         partial_rows = $partialRows
         partial_reasons = @($partialReasons)
         partial_min_fresh_pct = $partialMinFreshPct
+        quote_pending_count = $quotePending.Count
+        quote_pending_sample = @($quotePending | Select-Object -First 10)
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -805,6 +837,8 @@ function Get-AvailabilitySummary($Availability) {
         missing_count = $Availability.missing_count
         missing_sample = @($Availability.missing_sample)
         unexpected_count = $Availability.unexpected_count
+        quote_pending_count = $Availability.quote_pending_count
+        quote_pending_sample = @($Availability.quote_pending_sample)
         collector_valid_count = $Availability.collector_valid_count
         collector_valid_quality_pass = ($Availability.collector_valid_quality_pass -eq $true)
         order_allowed = $false
@@ -992,6 +1026,88 @@ function Ensure-Csv([string]$path, [string]$header) {
     if (-not (Test-Path $path)) { [IO.File]::WriteAllText($path, $header + [Environment]::NewLine, [Text.UTF8Encoding]::new($true)) }
 }
 
+# OWNER 2026-10-29 「場中に起動し直しても、その日の記録から9:00〜9:15の高値・安値を読み直して、OR15を作り直すように」:
+# replays today's ticks.csv (exchange prints, captured in order) up to 11:30 and rebuilds each stock's OR15 with the
+# same windows as the live loop: 09:00-09:15, or first trade + 15 min for a stock whose first print is 09:01 or later
+# while other stocks already printed before 09:01 (a late open). The polled prices in market_snapshots.csv inside the same
+# windows are added too, so the range is at least what the live loop saw. Returns the number of stocks restored.
+function Restore-Or15FromTicks([string]$Path, $OrHigh, $OrLow, $OrStart, [string]$SnapshotPath = "") {
+    if (-not (Test-Path $Path)) { return 0 }
+    $start = @{}; $end = @{}; $sawEarly = $false
+    $fs = New-Object IO.FileStream($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    $reader = New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)
+    try {
+        [void]$reader.ReadLine()
+        while ($null -ne ($line = $reader.ReadLine())) {
+            $f = $line.Split('"')
+            if ($f.Count -lt 10) { continue }
+            if ($f[1].Length -ge 16 -and $f[1].Substring(11, 5) -ge "11:30") { break }
+            $ticker = $f[3]; $t = $f[7]; $px = 0.0
+            # OWNER 2026-10-29 「記録した時刻より後の時刻の歩み値（前日の値段）は外して」「5秒以上後のものだけに」: a print stamped 5 s or more
+            # after its capture is yesterday's; up to 4 s is today's (the capture time is cut to the second)
+            if ($f[1].Length -lt 19) { continue }
+            if ($t -gt $f[1].Substring(11, 8) -and $t.Length -eq 8 -and ([TimeSpan]::Parse($t) - [TimeSpan]::Parse($f[1].Substring(11, 8))).TotalSeconds -ge 5) { continue }
+            if ($t.Length -ne 8 -or $t -lt "09:00:00" -or -not [double]::TryParse($f[9], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$px) -or $px -le 0) { continue }
+            if (-not $start.ContainsKey($ticker)) {
+                $st = if ($t -lt "09:01:00" -or -not $sawEarly) { "09:00:00" } else { $t }
+                $start[$ticker] = $st
+                $end[$ticker] = [TimeSpan]::Parse($st).Add([TimeSpan]::FromMinutes(15)).ToString("hh\:mm\:ss")
+            } elseif ($start[$ticker] -ne "09:00:00" -and $t -lt $start[$ticker]) {
+                $start[$ticker] = $t
+                $end[$ticker] = [TimeSpan]::Parse($t).Add([TimeSpan]::FromMinutes(15)).ToString("hh\:mm\:ss")
+            }
+            if ($t -lt "09:01:00") { $sawEarly = $true }
+            if ($t -ge $start[$ticker] -and $t -lt $end[$ticker]) {
+                if (-not $OrHigh.ContainsKey($ticker) -or $px -gt $OrHigh[$ticker]) { $OrHigh[$ticker] = $px }
+                if (-not $OrLow.ContainsKey($ticker) -or $px -lt $OrLow[$ticker]) { $OrLow[$ticker] = $px }
+            }
+        }
+    } finally { $reader.Dispose(); $fs.Dispose() }
+    if ($SnapshotPath -and (Test-Path $SnapshotPath)) {
+        $fs = New-Object IO.FileStream($SnapshotPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        $reader = New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)
+        try {
+            [void]$reader.ReadLine()
+            while ($null -ne ($line = $reader.ReadLine())) {
+                $f = $line.Split('"')
+                if ($f.Count -lt 8 -or $f[1].Length -lt 19) { continue }
+                $t = $f[1].Substring(11, 8)
+                if ($t -ge "11:30:00") { break }
+                $ticker = $f[3]; $px = 0.0
+                if (-not $start.ContainsKey($ticker) -or $t -lt $start[$ticker] -or $t -ge $end[$ticker]) { continue }
+                if (-not [double]::TryParse($f[7], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$px) -or $px -le 0) { continue }
+                if ($px -gt $OrHigh[$ticker]) { $OrHigh[$ticker] = $px }
+                if ($px -lt $OrLow[$ticker]) { $OrLow[$ticker] = $px }
+            }
+        } finally { $reader.Dispose(); $fs.Dispose() }
+    }
+    foreach ($k in $start.Keys) { if (-not $OrStart.ContainsKey($k)) { $OrStart[$k] = [TimeSpan]::Parse($start[$k]) } }
+    return @($OrHigh.Keys).Count
+}
+
+# OWNER 2026-10-26 「ブレインとまりすぎ」: Add-Content fails ("used by another process") while any reader
+# has the record open (the Brain observer reads ticks.csv for the virtual holdings), and with
+# $ErrorActionPreference Stop that stopped the whole Collector 12 times in one morning. Records are now
+# appended with FileShare.ReadWrite, retried 3 times, and a write that still fails is skipped with a
+# warning: a record line may be lost, the Collector keeps running.
+$script:recordWriteFailures = 0
+function Add-RecordLines([string]$Path, $Value) {
+    $lines = @($Value | ForEach-Object { [string]$_ })
+    if ($lines.Count -eq 0) { return }
+    $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            $fs = New-Object IO.FileStream($Path, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+            try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+            return
+        } catch {
+            if ($attempt -lt 3) { Start-Sleep -Milliseconds 40 }
+        }
+    }
+    $script:recordWriteFailures++
+    Write-Host ("[RECORD] WARN / WRITE SKIPPED " + [IO.Path]::GetFileName($Path) + " (count " + $script:recordWriteFailures + ") - Collector continues") -ForegroundColor DarkYellow
+}
+
 function Write-CsvObjects([string]$path, [object[]]$rows) {
     if ($null -eq $rows -or $rows.Count -eq 0) { return }
     $csv = ($rows | ConvertTo-Csv -NoTypeInformation) -join [Environment]::NewLine
@@ -1058,8 +1174,22 @@ function Write-ImmutableJson([string]$path, [object]$payload) {
     } catch [IO.IOException] { return $false }
 }
 
+# OWNER 2026-10-24 (overnight / 10-23 session logs): the loop grew from ~1.3 s to 10-19 s within a
+# couple of hours, because every cycle walked the whole day's 1-minute bars of all 100 rows with
+# Select-Object pipelines and a full-day EMA. Index slices and a bounded EMA keep each cycle flat.
+function Get-LastItems($Items, [int]$Count) {
+    $all = @($Items)
+    if ($Count -le 0 -or $all.Count -eq 0) { return @() }
+    if ($all.Count -le $Count) { return $all }
+    return $all[($all.Count - $Count)..($all.Count - 1)]
+}
+
+# EMA over the most recent bars only: the weight left on bars older than 150 is (1-2/21)^150 < 0.0001,
+# so EMA9 / EMA20 match the full-day value to well below one tick.
+$EmaWindowBars = 150
 function Get-EmaValue([object[]]$bars, [int]$period) {
     if ($null -eq $bars -or $bars.Count -lt 3) { return $null }
+    $bars = @(Get-LastItems $bars $(if ($script:EmaWindowBars -gt 0) { $script:EmaWindowBars } else { 150 }))
     $alpha = 2.0 / ($period + 1.0)
     $ema = [double]$bars[0].Close
     foreach ($bar in $bars) { $ema = ([double]$bar.Close * $alpha) + ($ema * (1.0 - $alpha)) }
@@ -1112,7 +1242,7 @@ function Convert-LiveBars([object[]]$bars, [int]$minutes, [double]$currentVwap =
             $x.vwap = $currentVwap
         }
     }
-    return @($groups.Values | Select-Object -Last 180)
+    return @(Get-LastItems @($groups.Values) 180)
 }
 
 function Get-MarketTimeBand([DateTime]$at) {
@@ -1716,6 +1846,13 @@ Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | 
 
 
 # キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
+# OWNER 2026-10-23 夜 「PTS修正」: the JNX code is the 4-character code + ".JNX" (e.g. 8035.JNX).
+# The old pattern '\\.T$' (a literal backslash) never matched, so every row asked RSS for
+# "8035.T.JNX", got nothing, and no PTS row was ever recorded (kioxia_jnx_pts.csv held the
+# header only from 10/10 to 10/23).
+function ConvertTo-JnxTicker([string]$Ticker) {
+    return (($Ticker.Trim()) -replace '\.T$', '') + '.JNX'
+}
 # JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
 $jnxSheet = $null
 $jnxReady = $false
@@ -1741,7 +1878,19 @@ try {
         throw "KIOXIA_JNX worksheet is unavailable."
     }
 
-    if (-not $liveSheetReady) {
+    # A prepared workbook keeps its JNX sheet, so wrong codes saved in it are rewritten for this
+    # session (Safe Stop closes the workbook without saving).
+    $jnxRewrite = -not $liveSheetReady
+    if ($liveSheetReady -and $null -ne $jnxSheet -and $stocks.Count -gt 0) {
+        $jnxExpectedCode = ConvertTo-JnxTicker ([string]$stocks[0].Ticker)
+        $jnxFirstCode = [string](Invoke-ExcelCom -Label "JNXコード確認" -Action { $jnxSheet.Cells.Item(2,1).Value2 })
+        if ($jnxFirstCode -cne $jnxExpectedCode) {
+            $jnxRewrite = $true
+            Write-Host ("[JNX] codes corrected: " + $jnxFirstCode + " -> " + $jnxExpectedCode) -ForegroundColor Yellow
+        }
+    }
+
+    if ($jnxRewrite) {
     $jnxHeaders = @("コード","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","歩み1時刻","現在日付")
     $jnxItems = @("現在値","現在値詳細時刻","前日終値","前日比率","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","歩み1詳細時刻","現在日付")
 
@@ -1757,7 +1906,7 @@ try {
 
     for ($i=0; $i -lt $stocks.Count; $i++) {
         $jnxRow = $i + 2
-        $jnxTicker = (([string]$stocks[$i].Ticker) -replace '\\.T$','') + '.JNX'
+        $jnxTicker = ConvertTo-JnxTicker ([string]$stocks[$i].Ticker)
         Invoke-ExcelCom -Label "JNXコード設定" -Action {
             $cell = $jnxSheet.Cells.Item($jnxRow,1)
             if ($null -eq $cell) { throw "JNX ticker cell unavailable." }
@@ -1796,6 +1945,425 @@ try {
     } else {
         $jnxStatus = "OFF / MARKET CLOSED"
         Write-Host "[JNX] OFF / MARKET CLOSED" -ForegroundColor DarkGray
+    }
+}
+
+# OWNER 2026-10-22 「先物を追加」「グロースも追加」 / D-045 R2: the 7 futures/index series
+# are recorded with the 100 stocks on the same cycle, to records/<day>/futures_index.csv.
+# Record only: nothing here feeds a signal, gate, freshness, Brain, voice, screen or order,
+# and a failure suspends only this recorder (the Collector continues).
+# Local switch and contract months: d045_futures_index_config.json next to this script
+# (RuntimeDir, not in GitHub), e.g.
+#   {"schema":"100b-d045-config-v1","enabled":true,
+#    "contract_month":{"N225MF":"202612","TOPIX":"202612","MOTF":"202612"}}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector
+# restarts (the OWNER's off switch; V10 keeps running). The months are the OWNER's: no
+# automatic month choice; from a contract's SQ day (second Friday) its row records no data.
+$d045ConfigPath = Join-Path $PSScriptRoot "d045_futures_index_config.json"
+$d045Latched = $false
+function Get-D045Config {
+    if ($script:d045Latched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $d045ConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($d045ConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-d045-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:d045Latched = $true; return $null }
+        return $cfg
+    } catch {
+        return $null
+    }
+}
+function Test-D045Month([string]$Month, [datetime]$Day) {
+    # A quarterly YYYYMM whose SQ (second Friday of that month) is still ahead of $Day.
+    if ($Month -notmatch '^(20\d\d)(03|06|09|12)$') { return $false }
+    $m = New-Object datetime ([int]$Matches[1]), ([int]$Matches[2]), 1
+    $offset = (([int][DayOfWeek]::Friday - [int]$m.DayOfWeek) + 7) % 7
+    return ($Day.Date -lt $m.AddDays($offset + 7))
+}
+function ConvertTo-D045Month($value) {
+    # The month an RSS 限月 cell names (e.g. 202612, 2026/12, 26/12) as YYYYMM, else $null.
+    if ($null -eq $value) { return $null }
+    $digits = ([string]$value) -replace '[^0-9]', ''
+    if ($digits.Length -ge 6 -and $digits.Substring(0, 2) -eq '20') { return $digits.Substring(0, 6) }
+    if ($digits.Length -eq 4) { return '20' + $digits }
+    return $null
+}
+# Fn RssFOPMarket rows read 限月 in column J and are kept only when it equals the
+# configured month. TOPIX futures are not in the RssFOPCode product list. OWNER 2026-10-23 fix:
+# "TOPX.FUT01.OS" is an RssIndexMarket (指標) code, so RssFOPMarket returned nothing and every
+# row was MONTH_NOT_CONFIRMED. The 9-digit Osaka code is now built from the configured month
+# (楽天証券 先物OPコード構成: 1, 6 = futures, year digit (2015 = 0, cycling) + month, 00, 05 =
+# TOPIX), and the row is still kept only while its returned 限月 is the configured month.
+function ConvertTo-JpxFutureCode([string]$Month, [string]$IndexDigits) {
+    if ($Month -notmatch '^20\d{2}(0[1-9]|1[0-2])$' -or $IndexDigits -notmatch '^\d{2}$') { return $null }
+    $yearDigit = ([int]$Month.Substring(0, 4) - 2015) % 10
+    return ("16" + [string]$yearDigit + $Month.Substring(4, 2) + "00" + $IndexDigits)
+}
+$futIndexDefs = @(
+    @{ Key = "N225MF"; Code = "N225MF";        Resolve = "RssFOPCode"; Name = "日経225ミニ";        Fn = "RssFOPMarket" },
+    @{ Key = "TOPIX";  Code = "05";            Resolve = "JPX9";       Name = "TOPIX先物";          Fn = "RssFOPMarket" },
+    @{ Key = "MOTF";   Code = "MOTF";          Resolve = "RssFOPCode"; Name = "グロース250先物";     Fn = "RssFOPMarket" },
+    @{ Key = "N225";   Code = "N225";          Resolve = "";           Name = "日経225";            Fn = "RssIndexMarket" },
+    @{ Key = "TOPX";   Code = "TOPX";          Resolve = "";           Name = "TOPIX";              Fn = "RssIndexMarket" },
+    @{ Key = "MTHR";   Code = "MTHR";          Resolve = "";           Name = "東証グロース250指数";  Fn = "RssIndexMarket" },
+    @{ Key = "TSGM";   Code = "TSGM";          Resolve = "";           Name = "東証グロース市場指数";  Fn = "RssIndexMarket" },
+    # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」: USD/JPY through RssFXMarket (楽天
+    # ms2rss_function.pdf 2026/9/19: 指標コード 186 USD/JPY, 取得項目 現在値(Bid)/(Ask), 現在値更新日時, 前日終値(Bid)).
+    @{ Key = "USDJPY"; Code = "USD/JPY";       Resolve = "";           Name = "ドル円";             Fn = "RssFXMarket" }
+)
+# Columns B..J read through the code in column A. Indexes have no 詳細時刻, VWAP, quotes,
+# open interest or 限月 (empty columns); their 更新時刻 is HH:MM only.
+$futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉","限月")
+$indexItems = @("現在値","更新時刻","前日比率","出来高","","","","","")
+# FX: B 現在値(Bid), C 現在値更新日時 (YY/MM/DD HH:MM, minute), G ask, H bid, I 前日終値(Bid) (used for
+# change_pct; open_interest stays empty), no volume / VWAP / 限月.
+$fxItems = @("現在値(Bid)","現在値更新日時","","","","現在値(Ask)","現在値(Bid)","前日終値(Bid)","")
+$futIndexSheet = $null
+$futIndexReady = $false
+$d045StartConfig = Get-D045Config
+if ($null -eq $d045StartConfig) {
+    Write-Host "[FUT_INDEX] OFF (no local D-045 config or switched off)" -ForegroundColor DarkGray
+} else {
+    try {
+        try {
+            $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート確認" -Action { $book.Worksheets.Item("FUT_INDEX") }
+        } catch {
+            $futIndexSheet = $null
+        }
+        if ($null -eq $futIndexSheet) {
+            # The saved workbook has no such sheet; it is added for this session only (Safe Stop
+            # closes the workbook without saving).
+            $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Label "先物指数シート命名" -Action { $futIndexSheet.Name = "FUT_INDEX" } | Out-Null
+        }
+        # OWNER 2026-10-26: the saved workbook already had a FUT_INDEX sheet, so the formulas were never
+        # written again (the USD/JPY row stayed empty, TOPIX kept an old code). Every start now clears the
+        # rows and writes the formulas from $futIndexDefs.
+        if ($null -ne $futIndexSheet) {
+            Invoke-ExcelCom -Label "先物指数シート消去" -Action { $futIndexSheet.Range("A2:J" + [string]($futIndexDefs.Count + 9)).ClearContents() } | Out-Null
+            for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
+                $fiRow = $i + 2
+                $fiDef = $futIndexDefs[$i]
+                $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } elseif ($fiDef.Fn -eq "RssFXMarket") { $fxItems } else { $indexItems }
+                $fiMonth = [string]$d045StartConfig.contract_month.($fiDef.Key)
+                if ($fiDef.Resolve -eq "RssFOPCode") {
+                    if (-not (Test-D045Month $fiMonth (Get-Date))) { continue }   # no valid month: no formula, no data
+                    $fiCodeFormula = '=RssFOPCode("' + [string]$fiDef.Code + '","' + $fiMonth + '")'
+                    Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).FormulaLocal = [string]$fiCodeFormula } | Out-Null
+                } elseif ($fiDef.Resolve -eq "JPX9") {
+                    $fiJpxCode = ConvertTo-JpxFutureCode $fiMonth ([string]$fiDef.Code)
+                    if (-not (Test-D045Month $fiMonth (Get-Date)) -or $null -eq $fiJpxCode) { continue }   # no valid month: no formula, no data
+                    Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiJpxCode } | Out-Null
+                } else {
+                    Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
+                }
+                for ($j=0; $j -lt $fiItems.Count; $j++) {
+                    if ([string]::IsNullOrEmpty($fiItems[$j])) { continue }
+                    $fiCol = $j + 2
+                    $fiFormula = '=' + $fiDef.Fn + '(A' + [string]$fiRow + ',"' + [string]$fiItems[$j] + '")'
+                    Invoke-ExcelCom -Label "先物指数RSS式設定" -Action { $futIndexSheet.Cells.Item($fiRow,$fiCol).FormulaLocal = [string]$fiFormula } | Out-Null
+                }
+            }
+            Invoke-ExcelCom -Label "先物指数シート非表示" -Action { $futIndexSheet.Visible = 0 } | Out-Null
+        }
+        $futIndexReady = ($null -ne $futIndexSheet)
+        Write-Host "[FUT_INDEX] READY (record only)" -ForegroundColor Green
+    } catch {
+        $futIndexSheet = $null
+        $futIndexReady = $false
+        Write-Host "[FUT_INDEX] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+    }
+}
+
+# OWNER 2026-10-26 「ドル円の時刻は日付ごと読んで、今日の日付でなければ古い値として記録して」:
+# the date of the FX 現在値更新日時 (YY/MM/DD HH:MM, YYYY/MM/DD HH:MM, or a date-time serial) as yyyy-MM-dd, else $null.
+function Get-FxQuoteDate($value) {
+    if ($null -eq $value) { return $null }
+    if ($value -is [double]) {
+        if ($value -lt 1) { return $null }   # a time without a date
+        try { return [DateTime]::FromOADate($value).ToString("yyyy-MM-dd") } catch { return $null }
+    }
+    $text = ([string]$value).Trim()
+    if ($text -match '^(\d{2}|\d{4})/(\d{1,2})/(\d{1,2})') {
+        $y = [int]$Matches[1]; if ($y -lt 100) { $y += 2000 }
+        try { return (New-Object datetime $y, ([int]$Matches[2]), ([int]$Matches[3])).ToString("yyyy-MM-dd") } catch { return $null }
+    }
+    return $null
+}
+
+# The source clock as text with its precision: futures 詳細時刻 to the second, index
+# 更新時刻 to the minute. A minute clock is never padded into a fake second.
+function ConvertTo-FutIndexClock($value, [string]$Precision) {
+    if ($null -eq $value) { return $null }
+    $clock = $null
+    # a date and time serial (e.g. FX 現在値更新日時 read as a number) keeps its time of day
+    if ($value -is [double] -and $value -ge 1) { $value = $value - [Math]::Floor($value) }
+    if ($value -is [double] -and $value -ge 0 -and $value -lt 1) {
+        $clock = [TimeSpan]::FromSeconds([Math]::Round($value * 86400)).ToString("hh\:mm\:ss")
+    } else {
+        $text = ([string]$value).Trim()
+        if ($text -match '(\d{1,2}):(\d{2})(?::(\d{2}))?') {
+            if ($Precision -eq "second" -and -not $Matches[3]) { return $null }   # no seconds given
+            $clock = $Matches[1].PadLeft(2, '0') + ":" + $Matches[2] + $(if ($Matches[3]) { ":" + $Matches[3] } else { "" })
+        }
+    }
+    if ($null -eq $clock) { return $null }
+    if ($Precision -eq "minute") { return $clock.Substring(0, 5) }
+    return $clock
+}
+# Lag of a same-day source clock behind the capture time, in seconds: exact for a second
+# clock, a [min, max] range for a minute clock. A clock in the future (or before midnight
+# of a night session) gives no lag.
+function Get-FutIndexLag([datetime]$Now, [string]$Clock, [string]$Precision) {
+    $none = @{ Exact = ""; Min = ""; Max = "" }
+    if ([string]::IsNullOrEmpty($Clock)) { return $none }
+    $fmt = if ($Precision -eq "minute") { "yyyy-MM-dd HH:mm" } else { "yyyy-MM-dd HH:mm:ss" }
+    $at = [datetime]::ParseExact($Now.ToString("yyyy-MM-dd") + " " + $Clock, $fmt, [Globalization.CultureInfo]::InvariantCulture)
+    if ($Precision -eq "minute") {
+        $max = [Math]::Floor(($Now - $at).TotalSeconds)
+        $min = $max - 59
+        if ($max -lt 0) { return $none }
+        return @{ Exact = ""; Min = [string][Math]::Max(0, $min); Max = [string]$max }
+    }
+    $lag = [Math]::Round(($Now - $at).TotalSeconds)
+    if ($lag -lt 0) { return $none }
+    return @{ Exact = [string]$lag; Min = [string]$lag; Max = [string]$lag }
+}
+
+# OWNER 2026-10-23 「Phase 2」 (SCALP8-SYSTEM-SPEC-001): up to 8 focus issues, each with its
+# RssTickList (300 prints, with the volume of every print) and its 10-level board, read on the
+# same 2-second cycle as the 100 stocks with ONE extra COM read, and saved to
+# records/<day>/scalp8_ticks.csv, scalp8_board.csv and scalp8_diag.csv.
+# Record only: nothing here feeds a signal, gate, freshness, Brain, voice, screen or order,
+# and a failure suspends only this recorder (the Collector continues).
+# Local switch and issues: scalp8_config.json next to this script (RuntimeDir, not in GitHub), e.g.
+#   {"schema":"100b-scalp8-config-v1","enabled":true,"codes":["285A","6857","8035","9984"]}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector restarts.
+# The issues are fixed for the session (no intraday switching: a new formula loses prints).
+# Phase 1 (2026-10-23, copy of the workbook): 8 issues read in about 6 ms, 2.0 s cycle.
+$scalp8ConfigPath = Join-Path $PSScriptRoot "scalp8_config.json"
+$scalp8Latched = $false
+$scalp8MaxIssues = 8
+$scalp8TickRows = 300
+$scalp8TickFirstRow = 22   # RssTickList at row 20: header on row 21, prints from row 22 (newest first)
+$scalp8BlockWidth = 6
+function Test-Scalp8Code([string]$Code) {
+    return ($Code -cmatch '^[0-9][0-9A-Z]{3}$')
+}
+function Get-Scalp8Config {
+    if ($script:scalp8Latched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $scalp8ConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($scalp8ConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-scalp8-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:scalp8Latched = $true; return $null }
+        $codes = @($cfg.codes | ForEach-Object { ([string]$_).Trim().ToUpperInvariant() } | Where-Object { Test-Scalp8Code $_ } | Select-Object -Unique)
+        if ($codes.Count -lt 1 -or $codes.Count -gt $script:scalp8MaxIssues) { return $null }
+        return @{ Codes = $codes }
+    } catch {
+        return $null
+    }
+}
+# Prints that are new since the previous read. RssTickList has no print id, so the newest part of
+# the previous window is looked for inside the current one (same time, price and volume in the
+# same order); everything above the match is new. Repeated identical prints are kept. When the
+# previous window cannot be found at all, every print is returned and Gap is set (more than 300
+# prints in 2 s, or a restart of the list).
+function Get-Scalp8NewTicks($Previous, $Current) {
+    $cur = if ($null -eq $Current) { @() } else { @($Current) }
+    $prev = if ($null -eq $Previous) { @() } else { @($Previous) }
+    if ($cur.Count -eq 0) { return @{ New = @(); Gap = $false } }
+    if ($prev.Count -eq 0) { return @{ New = $cur; Gap = $false } }
+    $probe = [Math]::Min(10, $prev.Count)
+    for ($o = 0; $o -lt $cur.Count; $o++) {
+        $m = [Math]::Min($probe, $cur.Count - $o)
+        if ($m -lt [Math]::Min($probe, 3) -and $o -gt 0) { break }
+        $same = $true
+        for ($k = 0; $k -lt $m; $k++) {
+            if ($cur[$o + $k] -cne $prev[$k]) { $same = $false; break }
+        }
+        if ($same) {
+            if ($o -eq 0) { return @{ New = @(); Gap = $false } }
+            return @{ New = @($cur[0..($o - 1)]); Gap = $false }
+        }
+    }
+    return @{ New = $cur; Gap = $true }
+}
+# Which side took the print, judged against the best quotes of the same read (an estimate).
+function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
+    if ($Ask -is [double] -and $Ask -gt 0 -and $Price -ge $Ask) { return "BUY" }
+    if ($Bid -is [double] -and $Bid -gt 0 -and $Price -le $Bid) { return "SELL" }
+    return "MID"
+}
+$scalp8Sheet = $null
+$scalp8Ready = $false
+$scalp8Codes = @()
+$scalp8PrevKeys = @{}
+$scalp8PrevBoard = @{}
+$scalp8Seq = 0
+# OWNER 2026-10-27 「SCALP8の直し」: on 10/26 every start stopped the recorder after one READ FAILED and it stayed off
+# all day without a reason. Now the reason is written to records/<day>/scalp8_errors.csv and the read is tried again
+# after 10, 20, 40 ... seconds (at most 5 minutes) with the same sheet; only the local off switch stops it for good.
+$scalp8FailCount = 0
+$scalp8RetryAt = [datetime]::MinValue
+# OWNER 2026-10-27: at the 18:36 start the setup itself failed ("UNAVAILABLE") and nothing said why. The setup is
+# now a function: a failure keeps its reason and the cycle tries the setup again.
+# OWNER 2026-10-27 「SCALP8の準備やり直しは…1回の待ちを短く8:50から上限ありにして」: a retry from the cycle waits for
+# Excel at most about 2 s per call (8 tries of 250 ms instead of 240), runs only from 08:50, every 30 s, at most 10 times
+# a run, so it never holds up the 100-stock collection for long.
+$scalp8SetupError = $null
+$scalp8SetupTries = 0
+$scalp8SetupRetryAt = [datetime]::MinValue
+function Initialize-Scalp8([int]$Retries = 240) {
+    $script:scalp8SetupTries++
+    try {
+        $codes = @($script:scalp8StartConfig.Codes)
+        $sheet = $null
+        try {
+            $sheet = Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート確認" -Action { $book.Worksheets.Item("SCALP8") }
+        } catch {
+            $sheet = $null
+        }
+        if ($null -eq $sheet) {
+            # Added for this session only (Safe Stop closes the workbook without saving).
+            $sheet = Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート命名" -Action { $sheet.Name = "SCALP8" } | Out-Null
+        }
+        for ($i = 0; $i -lt $codes.Count; $i++) {
+            $s8Col = 1 + $scalp8BlockWidth * $i
+            $s8Sym = [string]$codes[$i] + ".T"
+            Invoke-ExcelCom -Retries $Retries -Label "SCALP8コード設定" -Action { $sheet.Cells.Item(1, $s8Col).Value2 = $s8Sym } | Out-Null
+            for ($lv = 1; $lv -le 10; $lv++) {
+                $s8Items = @(("最良売気配値" + $lv), ("最良売気配数量" + $lv), ("最良買気配値" + $lv), ("最良買気配数量" + $lv))
+                for ($j = 0; $j -lt 4; $j++) {
+                    $s8Formula = '=RssMarket("' + $s8Sym + '","' + $s8Items[$j] + '")'
+                    Invoke-ExcelCom -Retries $Retries -Label "SCALP8板式設定" -Action { $sheet.Cells.Item(2 + $lv, $s8Col + $j).FormulaLocal = [string]$s8Formula } | Out-Null
+                }
+            }
+            $s8TickFormula = '=RssTickList(,"' + $s8Sym + '",' + [string]$scalp8TickRows + ')'
+            Invoke-ExcelCom -Retries $Retries -Label "SCALP8歩み値式設定" -Action { $sheet.Cells.Item(20, $s8Col).FormulaLocal = [string]$s8TickFormula } | Out-Null
+        }
+        Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート非表示" -Action { $sheet.Visible = 0 } | Out-Null
+        $script:scalp8Codes = $codes
+        $script:scalp8Sheet = $sheet
+        $script:scalp8Ready = $true
+        $script:scalp8SetupError = $null
+        Write-Host ("[SCALP8] READY (record only) " + ($codes -join ",")) -ForegroundColor Green
+    } catch {
+        $script:scalp8Sheet = $null
+        $script:scalp8Ready = $false
+        $reason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
+        if ($reason.Length -gt 200) { $reason = $reason.Substring(0, 200) }
+        $script:scalp8SetupError = $reason
+        $script:scalp8SetupRetryAt = (Get-Date).AddSeconds(30)
+        Write-Host "[SCALP8] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+        Write-Host ("[SCALP8] setup retry in 30s from 08:50 (" + [string]$script:scalp8SetupTries + "/10): " + $reason) -ForegroundColor DarkYellow
+    }
+}
+$scalp8StartConfig = Get-Scalp8Config
+if ($null -eq $scalp8StartConfig) {
+    Write-Host "[SCALP8] OFF (no local scalp8 config or switched off)" -ForegroundColor DarkGray
+} else {
+    Initialize-Scalp8
+}
+
+# OWNER 2026-10-23 夜 「コントロールに保有株をカード表示追加、場中、売買したら保有中」「両方 ただし分けて表示」:
+# the OWNER's real holdings are read with the RSS list functions that only READ the account
+# (RssMarginPositionList = 信用建玉一覧, RssPositionList = 現物保有一覧, RssExecutionList = 約定一覧 for the
+# open time and today's closed trades; 楽天 MS2 RSS 関数一覧) into
+# RuntimeDir\real_positions_v1.json for the CONTROL tab of this PC only. Display only: no order
+# function is written or called, the file is not published (not in the public feed, GitHub, the
+# Brain or any AI), and a failure stops only this reader.
+# Local switch: real_positions_config.json next to this script,
+#   {"schema":"100b-real-positions-config-v1","enabled":true}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector restarts.
+$realPosConfigPath = Join-Path $PSScriptRoot "real_positions_config.json"
+$realPosFile = Join-Path $PSScriptRoot "real_positions_v1.json"
+$realPosLatched = $false
+$realPosEvery = 5            # loops between reads (about 6 to 10 s)
+$realPosRows = 300           # rows kept for each list
+$realPosMarginTop = 1        # formula cell; header on the next row, positions after it
+$realPosCashTop = 310
+$realPosExecTop = 620
+function Get-RealPosConfig {
+    if ($script:realPosLatched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $realPosConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($realPosConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-real-positions-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:realPosLatched = $true; return $null }
+        return $cfg
+    } catch {
+        return $null
+    }
+}
+# One list block (header row + rows) of the read range -> objects keyed by the RSS header names.
+# A block whose header has no 銘柄コード is not ready (null), an empty list is @().
+function ConvertFrom-RealPosBlock($Data, [int]$HeaderRow, [int]$Rows, [int]$Cols) {
+    $names = @{}
+    for ($c = 1; $c -le $Cols; $c++) {
+        $h = $Data[$HeaderRow, $c]
+        if ($null -ne $h -and -not [string]::IsNullOrWhiteSpace([string]$h)) { $names[$c] = ([string]$h).Trim() }
+    }
+    if (-not ($names.Values -contains "銘柄コード")) { return $null }
+    $out = New-Object System.Collections.Generic.List[object]
+    for ($r = $HeaderRow + 1; $r -le $HeaderRow + $Rows; $r++) {
+        $row = [ordered]@{}
+        foreach ($c in $names.Keys) { $row[$names[$c]] = $Data[$r, $c] }
+        $code = [string]$row["銘柄コード"]
+        if ([string]::IsNullOrWhiteSpace($code)) { break }
+        # OWNER PC check 2026-10-24 (copy of the workbook, V10 stopped): an empty list is shown by RSS as
+        # one row of "--------" in every column; that row is not a position.
+        if ($code.Trim() -match '^-+$') { break }
+        $out.Add([pscustomobject]$row)
+    }
+    return ,$out.ToArray()
+}
+# The execution date may come as an Excel date number (Value2) or as text; both become yyyy/MM/dd.
+function Get-RealPosDate($Value) {
+    if ($Value -is [double]) {
+        try { return [DateTime]::FromOADate($Value).ToString("yyyy/MM/dd") } catch { return "" }
+    }
+    $s = ([string]$Value).Trim()
+    $m = [regex]::Match($s, '^(\d{4})[/-](\d{1,2})[/-](\d{1,2})')
+    if ($m.Success) { return ("{0}/{1:D2}/{2:D2}" -f $m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value) }
+    return ""
+}
+function Get-RealPosNumber($Value) {
+    if ($Value -is [double]) { return $Value }
+    $t = ([string]$Value) -replace '[,\s円株%]', ''
+    $n = 0.0
+    if ([double]::TryParse($t, [ref]$n)) { return $n }
+    return $null
+}
+$realPosSheet = $null
+$realPosReady = $false
+$realPosSeq = 0
+if ($null -eq (Get-RealPosConfig)) {
+    Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
+} else {
+    try {
+        try {
+            $realPosSheet = Invoke-ExcelCom -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") }
+        } catch {
+            $realPosSheet = $null
+        }
+        if ($null -eq $realPosSheet) {
+            # Added for this session only (Safe Stop closes the workbook without saving).
+            $realPosSheet = Invoke-ExcelCom -Label "実保有シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Label "実保有シート命名" -Action { $realPosSheet.Name = "REAL_POS" } | Out-Null
+        }
+        # read-only list functions only (all issues, all accounts, all margin kinds and sides)
+        Invoke-ExcelCom -Label "信用建玉一覧式設定" -Action { $realPosSheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
+        Invoke-ExcelCom -Label "現物保有一覧式設定" -Action { $realPosSheet.Cells.Item($realPosCashTop, 1).FormulaLocal = '=RssPositionList(,,"A")' } | Out-Null
+        Invoke-ExcelCom -Label "約定一覧式設定" -Action { $realPosSheet.Cells.Item($realPosExecTop, 1).FormulaLocal = '=RssExecutionList(,0,,"A",0,0)' } | Out-Null
+        Invoke-ExcelCom -Label "実保有シート非表示" -Action { $realPosSheet.Visible = 0 } | Out-Null
+        $realPosReady = $true
+        Write-Host "[REAL_POS] READY (read only, this PC only)" -ForegroundColor Green
+    } catch {
+        $realPosSheet = $null
+        $realPosReady = $false
+        Write-Host "[REAL_POS] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
     }
 }
 
@@ -1980,10 +2548,66 @@ function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
             $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
             [string]$view.state -notin @('PICK','NO_PICK')) { return @() }
         if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
-        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
+        # OWNER 2026-10-26 「ルール①を記録だけにして」: a record-only rule signal is never spoken
+        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') -and $_.record_only -ne $true })
     } catch {
         return @()
     }
+}
+# OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: a stock's first entry into
+# the Brain ranking today, from the same fresh, checked file (the same gates as the rule voice).
+function Get-BrainNewPicks([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return @() }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
+            [string]$view.state -cne 'PICK') { return @() }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
+        # only stocks still picked now (never an old entry after a restart)
+        $pickedNow = @($view.picks | ForEach-Object { [string]$_.ticker+'|'+[string]$_.signal+'|'+[string]$_.strategy })
+        return @($view.today.attention | Where-Object { [string]$_.kind -ceq 'RANKING' -and
+            [string]$_.signal -in @('買いサイン', '空売りサイン') -and
+            ([string]$_.ticker+'|'+[string]$_.signal+'|'+[string]$_.strategy) -in $pickedNow })
+    } catch {
+        return @()
+    }
+}
+# OWNER 2026-10-23 「オーバーナイト、スイング、バリューもまた音声で何銘柄保有中と朝の8時50分くらいに告知、
+# 引けは15時30分保有銘柄告知」: the virtual holdings the Brain observer wrote into the same fresh,
+# checked pick file. Any problem gives $null, i.e. silence.
+function Get-BrainPositions([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return $null }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction) { return $null }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return $null }
+        if ($null -eq $view.positions -or $null -eq $view.positions.counts) { return $null }
+        return $view.positions
+    } catch {
+        return $null
+    }
+}
+function Format-HoldingVoice($Positions, [string]$When) {
+    $parts = @("保有の告知、" + $When + "。仮想の検証で、注文はありません。")
+    $on = @($Positions.overnight)
+    if ($on.Count -gt 0) {
+        $names = @($on | ForEach-Object { ([string]$_.name -replace '（[0-9A-Z]{4}）$','') + "、" + $(if ([string]$_.side -eq 'LONG') { "買い" } else { "空売り" }) })
+        $parts += ("オーバーナイト" + $on.Count + "銘柄。" + ($names -join "。") + "。")
+    } else {
+        $parts += "オーバーナイトの保有はありません。"
+    }
+    $open = @($Positions.rule_positions | Where-Object { [string]$_.status -eq 'OPEN' })
+    if ($open.Count -gt 0) { $parts += ("ルールの仮想売買で保有中" + $open.Count + "銘柄。") }
+    $parts += "スイングとバリューは、保有の記録がまだありません。"
+    return ($parts -join "")
 }
 function Test-RuleSignalStillListed([string]$Path, [string]$Key) {
     # Re-read right before speaking: the setup must still be listed in a fresh, valid file.
@@ -1998,6 +2622,12 @@ $PreopenVoiceUntil = [TimeSpan]::Parse("08:59:30")   # audit 6326225807: never s
 $preopenSkipLoggedAt = Get-Date "2000-01-01"
 $brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
 $spokenRuleSignals = @{}
+# OWNER 2026-10-23 hotfix: set at start-up as well (the day-reset line alone left it null on a
+# same-day start, and the first new ranking entry stopped the Collector at 09:16)
+$spokenNewPicks = @{}
+$holdingVoiceMorningDone = $false; $holdingVoiceCloseDone = $false
+$HoldingVoiceMorningFrom = [TimeSpan]::Parse("08:50:00"); $HoldingVoiceMorningUntil = [TimeSpan]::Parse("08:55:00")
+$HoldingVoiceCloseFrom = [TimeSpan]::Parse("15:30:00"); $HoldingVoiceCloseUntil = [TimeSpan]::Parse("15:35:00")
 $preopenGapSpoken = $false
 $PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
@@ -2005,6 +2635,9 @@ $history = @{}
 $seenTicks = @{}
 $creditSaved = @{}
 $orHigh = @{}
+$orStart = @{}
+$orRestoredDay = ""
+$orWaiting = @{}
 $orLow = @{}
 $or5High = @{}
 $or5Low = @{}
@@ -2072,9 +2705,9 @@ try {
         }
         if ($now.ToString("yyyy-MM-dd") -ne $activeDay) {
             $activeDay=$now.ToString("yyyy-MM-dd")
-            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
+            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $orStart=@{}; $orWaiting=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $preopenGapSpoken=$false
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -2124,6 +2757,17 @@ try {
         # ではなく、毎分すべての銘柄の条件評価値そのものを記録する。売買判定ロジック自体は変更しない。
         Ensure-Csv $conditionCsv "captured_at,ticker,name,price,vwap,ema9,ema20,trend_long,trend_short,or5_high,or5_low,or15_high,or15_low,bar_burst,flow_bias,whipsaw,chase_guard,or5_long,or5_short,or15_long,or15_short,pullback_long,pullback_short,signal,strategy"
         Ensure-Csv $holdFinalCsv "finalized_at,rank,ticker,name,hold_signal,hold_score,reference_price_1525,vwap,or15_high,or15_low,pm_above_minutes,pm_below_minutes,close_location_pct,market_state,breadth_pct,sector_breadth_pct,flow_bias,under_ratio"
+        if ($orRestoredDay -ne $activeDay) {
+            $orRestoredDay = $activeDay
+            if ($now.TimeOfDay -ge [TimeSpan]::Parse("09:00:00")) {
+                try {
+                    $restoredOr = Restore-Or15FromTicks $tickCsv $orHigh $orLow $orStart $snapshotCsv
+                    Write-Host ("[OR15] restored from today's ticks.csv: " + $restoredOr + " stocks") -ForegroundColor Green
+                } catch {
+                    Write-Host ("[OR15] WARN / restore failed - Collector continues: " + $_.Exception.Message) -ForegroundColor DarkYellow
+                }
+            }
+        }
         if($loadedHoldDay -ne $activeDay){
             $loadedHoldDay=$activeDay
             try {
@@ -2242,6 +2886,232 @@ try {
                 }
             }
         }
+        # OWNER 2026-10-22: futures and index quotes, record only (see FUT_INDEX above).
+        $d045Config = if ($futIndexReady) { Get-D045Config } else { $null }
+        if ($futIndexReady -and $null -eq $d045Config) {
+            $futIndexReady = $false   # switched off or config gone: stays off until restart
+            Write-Host "[FUT_INDEX] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
+        if ($futIndexReady -and $null -ne $futIndexSheet) {
+            try {
+                $fiPacket = Invoke-ExcelCom -Label "先物指数値取得" -Action {
+                    [pscustomobject]@{ Data = $futIndexSheet.Range("A2:J" + [string]($futIndexDefs.Count + 1)).Value2 }
+                }
+                $fiCsv = Join-Path $dayDir "futures_index.csv"
+                Ensure-Csv $fiCsv "captured_at,key,code,configured_month,contract_code,contract_month_seen,status,name,price,source_clock,source_precision,lag_seconds,lag_min_seconds,lag_max_seconds,change_pct,volume,vwap,ask,bid,open_interest"
+                $fiNow = Get-Date
+                $fiLines = New-Object System.Collections.Generic.List[string]
+                for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
+                    $fiDef = $futIndexDefs[$i]
+                    $fiRowVals = @(for ($j=1; $j -le 10; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 10 })
+                    $fiVals = @($fiRowVals[1..9])
+                    $isFut = ($fiDef.Fn -eq "RssFOPMarket")
+                    $isFx = ($fiDef.Fn -eq "RssFXMarket")
+                    $fiPrecision = if ($isFut) { "second" } else { "minute" }
+                    $fiMonth = if ($isFut) { [string]$d045Config.contract_month.($fiDef.Key) } else { "" }
+                    $fiSeen = if ($isFut) { ConvertTo-D045Month $fiVals[8] } else { $null }
+                    $fiStatus = "OK"
+                    if ($isFut) {
+                        if (-not (Test-D045Month $fiMonth $fiNow)) { $fiStatus = "NO_VALID_MONTH_OR_EXPIRED" }
+                        elseif ($fiSeen -ne $fiMonth) { $fiStatus = "MONTH_NOT_CONFIRMED" }
+                    }
+                    if ($fiStatus -eq "OK" -and ($null -eq $fiVals[0] -or [string]::IsNullOrWhiteSpace([string]$fiVals[0]))) { $fiStatus = "NO_VALUE" }
+                    if ($isFx -and $fiStatus -eq "OK") {
+                        # an FX value whose update date is not today is recorded as old (never as today's value)
+                        $fxDate = Get-FxQuoteDate $fiVals[1]
+                        if ($null -eq $fxDate) { $fiStatus = "STALE_DATE_UNKNOWN" }
+                        elseif ($fxDate -ne $fiNow.ToString("yyyy-MM-dd")) { $fiStatus = "STALE_OLD_DATE" }
+                    }
+                    $fiClock = $null
+                    $fiLag = @{ Exact = ""; Min = ""; Max = "" }
+                    if ($fiStatus -eq "OK" -or ($isFx -and $fiStatus -like "STALE_*")) {
+                        $fiClock = ConvertTo-FutIndexClock $fiVals[1] $fiPrecision
+                        $fiLag = Get-FutIndexLag $fiNow ([string]$fiClock) $fiPrecision
+                    }
+                    # old FX values keep their price and clock in the record, marked by the status
+                    $ok = ($fiStatus -eq "OK" -or ($isFx -and $fiStatus -like "STALE_*"))
+                    $fiChange = $(if ($ok) { [string]$fiVals[2] } else { "" })
+                    $fiOi = $(if ($ok) { [string]$fiVals[7] } else { "" })
+                    if ($isFx) {
+                        # change_pct from 現在値(Bid) and 前日終値(Bid); no open interest for FX
+                        $fiChange = ""
+                        $fiOi = ""
+                        $fxNow = 0.0; $fxPrev = 0.0
+                        if ($ok -and [double]::TryParse([string]$fiVals[0], [ref]$fxNow) -and [double]::TryParse([string]$fiVals[7], [ref]$fxPrev) -and $fxPrev -gt 0) {
+                            $fiChange = [string][Math]::Round(($fxNow / $fxPrev - 1) * 100, 3)
+                        }
+                    }
+                    $fiCells = @($fiNow.ToString("yyyy-MM-ddTHH:mm:sszzz"), $fiDef.Key, $fiDef.Code, $fiMonth,
+                        [string]$fiRowVals[0], [string]$fiSeen, $fiStatus, $fiDef.Name,
+                        $(if ($ok) { [string]$fiVals[0] } else { "" }), [string]$fiClock, $fiPrecision,
+                        $fiLag.Exact, $fiLag.Min, $fiLag.Max,
+                        $fiChange, $(if ($ok) { [string]$fiVals[3] } else { "" }),
+                        $(if ($ok) { [string]$fiVals[4] } else { "" }), $(if ($ok) { [string]$fiVals[5] } else { "" }),
+                        $(if ($ok) { [string]$fiVals[6] } else { "" }), $fiOi)
+                    $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
+                }
+                Add-RecordLines $fiCsv $fiLines
+            } catch {
+                $futIndexReady = $false
+                $futIndexSheet = $null
+                Write-Host "[FUT_INDEX] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
+            }
+        }
+        # OWNER 2026-10-23 Phase 2: SCALP8 prints and 10-level boards, record only (see SCALP8 above).
+        # OWNER 2026-10-27: a failed setup is tried again (from 08:50, every 30 s, at most 10 times, short Excel waits)
+        # and its reason is written to records/<day>/scalp8_errors.csv.
+        if (-not $scalp8Ready -and $null -ne $scalp8StartConfig -and $null -ne $scalp8SetupError -and
+                $scalp8SetupTries -lt 10 -and (Get-Date).ToString("HH:mm") -ge "08:50" -and
+                (Get-Date) -ge $scalp8SetupRetryAt -and $null -ne (Get-Scalp8Config)) {
+            try {
+                $s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"
+                Ensure-Csv $s8ErrCsv "captured_at,fail_count,retry_after_s,reason"
+                Add-RecordLines $s8ErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + ",setup" + [string]$scalp8SetupTries + ",30," + $scalp8SetupError))
+            } catch { }
+            Initialize-Scalp8 -Retries 8
+        }
+        $scalp8Config = if ($scalp8Ready) { Get-Scalp8Config } else { $null }
+        if ($scalp8Ready -and $null -eq $scalp8Config) {
+            $scalp8Ready = $false   # switched off or config gone: stays off until restart
+            Write-Host "[SCALP8] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
+        if ($scalp8Ready -and $null -ne $scalp8Sheet -and (Get-Date) -ge $scalp8RetryAt) {
+            try {
+                $s8Started = Get-Date
+                $s8Packet = Invoke-ExcelCom -Label "SCALP8値取得" -Action {
+                    [pscustomobject]@{ Data = $scalp8Sheet.Range($scalp8Sheet.Cells.Item(1, 1), $scalp8Sheet.Cells.Item($scalp8TickFirstRow + $scalp8TickRows - 1, $scalp8BlockWidth * $scalp8Codes.Count)).Value2 }
+                }
+                $s8Now = Get-Date
+                $s8ReadMs = [int]($s8Now - $s8Started).TotalMilliseconds
+                $scalp8Seq++
+                $s8Data = $s8Packet.Data
+                $s8TickCsv = Join-Path $dayDir "scalp8_ticks.csv"
+                $s8BoardCsv = Join-Path $dayDir "scalp8_board.csv"
+                $s8DiagCsv = Join-Path $dayDir "scalp8_diag.csv"
+                Ensure-Csv $s8TickCsv "captured_at,ticker,exchange_time,price,volume,side_estimate,best_bid,best_ask,read_seq,batch"
+                $s8BoardHeader = "captured_at,ticker,read_seq," + ((1..10 | ForEach-Object { "ask$_,ask_qty$_,bid$_,bid_qty$_" }) -join ",")
+                Ensure-Csv $s8BoardCsv $s8BoardHeader
+                Ensure-Csv $s8DiagCsv "captured_at,read_seq,read_ms,ticker,window,new_ticks,gap_suspected"
+                $s8Stamp = $s8Now.ToString("yyyy-MM-dd HH:mm:ss.fff")
+                $s8TickLines = New-Object System.Collections.Generic.List[string]
+                $s8BoardLines = New-Object System.Collections.Generic.List[string]
+                $s8DiagLines = New-Object System.Collections.Generic.List[string]
+                for ($i = 0; $i -lt $scalp8Codes.Count; $i++) {
+                    $c = 1 + $scalp8BlockWidth * $i
+                    $code = [string]$scalp8Codes[$i]
+                    $ask = $s8Data[3, $c]
+                    $bid = $s8Data[3, ($c + 2)]
+                    $keys = New-Object System.Collections.Generic.List[string]
+                    for ($r = $scalp8TickFirstRow; $r -lt $scalp8TickFirstRow + $scalp8TickRows; $r++) {
+                        $tm = $s8Data[$r, $c]; $vol = $s8Data[$r, ($c + 1)]; $px = $s8Data[$r, ($c + 2)]
+                        if ($vol -is [double] -and $px -is [double] -and $vol -gt 0 -and $px -gt 0) {
+                            $tt = if ($tm -is [double]) { [TimeSpan]::FromSeconds([Math]::Round(($tm % 1) * 86400)).ToString("hh\:mm\:ss") } else { ([string]$tm).Trim() }
+                            $keys.Add($tt + "|" + [string]$px + "|" + [string]$vol)
+                        }
+                    }
+                    $first = -not $scalp8PrevKeys.ContainsKey($code)
+                    $diff = Get-Scalp8NewTicks $scalp8PrevKeys[$code] $keys
+                    $scalp8PrevKeys[$code] = $keys
+                    $batch = if ($first) { "initial" } elseif ($diff.Gap) { "gap" } else { "" }
+                    $newTicks = @($diff.New)
+                    for ($k = $newTicks.Count - 1; $k -ge 0; $k--) {   # oldest first
+                        $parts = ([string]$newTicks[$k]).Split("|")
+                        # the first read holds older prints: the quotes of this read say nothing about them
+                        $side = if ($first) { "" } else { Get-Scalp8Side ([double]$parts[1]) $bid $ask }
+                        $s8TickLines.Add((@($s8Stamp, $code, $parts[0], $parts[1], $parts[2], $side, [string]$bid, [string]$ask, [string]$scalp8Seq, $batch) -join ","))
+                    }
+                    $boardVals = @(for ($lv = 1; $lv -le 10; $lv++) { for ($j = 0; $j -lt 4; $j++) { $bv = $s8Data[(2 + $lv), ($c + $j)]; if ($bv -is [double]) { [string]$bv } else { "" } } })
+                    $boardText = $boardVals -join ","
+                    if ($scalp8PrevBoard[$code] -cne $boardText -and ($boardVals | Where-Object { $_ -ne "" }).Count -gt 0) {
+                        $scalp8PrevBoard[$code] = $boardText
+                        $s8BoardLines.Add($s8Stamp + "," + $code + "," + [string]$scalp8Seq + "," + $boardText)
+                    }
+                    if ($newTicks.Count -gt 0 -or $diff.Gap -or ($scalp8Seq % 30) -eq 1) {
+                        $s8DiagLines.Add((@($s8Stamp, [string]$scalp8Seq, [string]$s8ReadMs, $code, [string]$keys.Count, [string]$newTicks.Count, [string]([bool]$diff.Gap)) -join ","))
+                    }
+                }
+                if ($s8TickLines.Count -gt 0) { Add-RecordLines $s8TickCsv $s8TickLines }
+                if ($s8BoardLines.Count -gt 0) { Add-RecordLines $s8BoardCsv $s8BoardLines }
+                if ($s8DiagLines.Count -gt 0) { Add-RecordLines $s8DiagCsv $s8DiagLines }
+                $scalp8FailCount = 0
+            } catch {
+                $scalp8FailCount++
+                $s8Wait = [Math]::Min(300, 10 * [Math]::Pow(2, [Math]::Min(5, $scalp8FailCount - 1)))
+                $scalp8RetryAt = (Get-Date).AddSeconds($s8Wait)
+                $s8Reason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
+                if ($s8Reason.Length -gt 200) { $s8Reason = $s8Reason.Substring(0, 200) }
+                try {
+                    $s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"
+                    Ensure-Csv $s8ErrCsv "captured_at,fail_count,retry_after_s,reason"
+                    Add-RecordLines $s8ErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$scalp8FailCount + "," + [string]$s8Wait + "," + $s8Reason))
+                } catch { }
+                Write-Host "[SCALP8] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
+                Write-Host ("[SCALP8] retry in " + [string]$s8Wait + "s (" + [string]$scalp8FailCount + "): " + $s8Reason) -ForegroundColor DarkYellow
+            }
+        }
+        # OWNER 2026-10-23 夜: the OWNER's real holdings, read only, this PC only (see REAL_POS above).
+        if ($realPosReady -and $null -eq (Get-RealPosConfig)) {
+            $realPosReady = $false   # switched off or config gone: stays off until restart
+            Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
+        $realPosSeq++
+        if ($realPosReady -and $null -ne $realPosSheet -and ($realPosSeq % $realPosEvery) -eq 1) {
+            try {
+                $rpLast = $realPosExecTop + $realPosRows + 2
+                $rpPacket = Invoke-ExcelCom -Label "実保有取得" -Action {
+                    [pscustomobject]@{ Data = $realPosSheet.Range($realPosSheet.Cells.Item(1, 1), $realPosSheet.Cells.Item($rpLast, 20)).Value2 }
+                }
+                $rpData = $rpPacket.Data
+                $rpMargin = $null
+                foreach ($h in @($realPosMarginTop, ($realPosMarginTop + 1), ($realPosMarginTop + 2))) {
+                    $rpMargin = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpMargin) { break }
+                }
+                $rpCash = $null
+                foreach ($h in @($realPosCashTop, ($realPosCashTop + 1), ($realPosCashTop + 2))) {
+                    $rpCash = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpCash) { break }
+                }
+                $rpExec = $null
+                foreach ($h in @($realPosExecTop, ($realPosExecTop + 1), ($realPosExecTop + 2))) {
+                    $rpExec = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpExec) { break }
+                }
+                $rpToday = (Get-Date).ToString("yyyy/MM/dd")
+                $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
+                    [ordered]@{ at = Get-RealPosDate $p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                market = [string]$p."市場名称"; trade = [string]$p."取引"; side = [string]$p."売買"
+                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } })
+                $rpMarginRows = @(foreach ($p in @($rpMargin)) { if ($null -ne $p) {
+                    [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                market = [string]$p."建市場"; kind = [string]$p."信用区分"; term = [string]$p."弁済期限"; side = [string]$p."売買"
+                                qty = Get-RealPosNumber $p."建玉数量"; price = Get-RealPosNumber $p."建値"; open_date = [string]$p."建日"
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
+                $rpCashRows = @(foreach ($p in @($rpCash)) { if ($null -ne $p) {
+                    [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                qty = Get-RealPosNumber $p."保有数量"; price = Get-RealPosNumber $p."平均取得価額"
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
+                $rpView = [ordered]@{
+                    schema_version = "100b-v10-real-positions-v1"
+                    updated_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
+                    source = "MS2 RSS RssMarginPositionList / RssPositionList (read only)"
+                    margin_state = $(if ($null -eq $rpMargin) { "NOT_READY" } else { "OK" })
+                    cash_state = $(if ($null -eq $rpCash) { "NOT_READY" } else { "OK" })
+                    executions_state = $(if ($null -eq $rpExec) { "NOT_READY" } else { "OK" })
+                    margin = $rpMarginRows
+                    cash = $rpCashRows
+                    executions_today = $rpExecRows
+                    read_only = $true
+                    real_submit_allowed = $false
+                    trade_instruction = $false
+                }
+                Write-AtomicUtf8 $realPosFile ($rpView | ConvertTo-Json -Depth 5)
+            } catch {
+                $realPosReady = $false
+                $realPosSheet = $null
+                Write-Host "[REAL_POS] WARN / READ FAILED - reader suspended, Collector continues" -ForegroundColor DarkYellow
+            }
+        }
         $script:preopenIdentitySpare = $null
         $script:identityUntraded = $null
         $results = @()
@@ -2279,9 +3149,18 @@ try {
             $clock=$now.TimeOfDay
             $inOr5=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:05:00"))
             $afterOr5=($clock -ge [TimeSpan]::Parse("09:05:00"))
-            $inOr=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:15:00"))
+            # OWNER 2026-10-29 「寄りが遅れた銘柄は、寄ってから15分で高値・安値を作る」: a stock still untraded (volume 0, no open) at 09:01
+            # builds its OR15 from its first trade + 15 min. Already traded by 09:01, or first seen after 11:30 (a restart), stays 09:00-09:15.
+            if(-not $orStart.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:00:00")){
+                $tradedYet=(($null -ne $volume -and $volume -gt 0) -or ($null -ne $openPrice -and $openPrice -gt 0))
+                if(-not $tradedYet){if($clock -lt [TimeSpan]::Parse("11:30:00")){$orWaiting[$ticker]=$true}}
+                elseif($orWaiting.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:01:00")){$orStart[$ticker]=$clock}
+                else{$orStart[$ticker]=[TimeSpan]::Parse("09:00:00")}
+            }
+            $orBegin=if($orStart.ContainsKey($ticker)){$orStart[$ticker]}else{$null}
+            $inOr=($null -ne $orBegin -and $clock -ge $orBegin -and $clock -lt $orBegin.Add([TimeSpan]::FromMinutes(15)))
             $inPreopen=($clock -ge [TimeSpan]::Parse("08:00:00") -and $clock -lt [TimeSpan]::Parse("09:00:00"))
-            $afterOr=($clock -ge [TimeSpan]::Parse("09:15:00")); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
+            $afterOr=($null -ne $orBegin -and $clock -ge $orBegin.Add([TimeSpan]::FromMinutes(15))); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
 
             # Before the opening auction, RSS may leave Current Price blank even
             # though bid/ask and the reference price are already populated.  Do
@@ -2376,10 +3255,10 @@ try {
             $emaReady=($completedBars.Count -ge 20)
             $barBurst=0.0; $atr1m=0.0; $medianBody=0.0; $chaseGuard=$false; $observedTick=Get-ObservedTick $history[$ticker]
             if($completedBars.Count -ge 3 -and $null -ne $lastBar){
-                $priorBars=@($completedBars|Select-Object -SkipLast 1|Select-Object -Last 10)
+                $priorBars=@(Get-LastItems $completedBars[0..($completedBars.Count-2)] 10)
                 $avgBarVolume=($priorBars|Measure-Object -Property Volume -Average).Average
                 if($avgBarVolume -gt 0){$barBurst=[double]$lastBar.Volume/[double]$avgBarVolume}
-                $ranges=@($completedBars|Select-Object -Last 14|ForEach-Object{[double]$_.High-[double]$_.Low})
+                $ranges=@(Get-LastItems $completedBars 14|ForEach-Object{[double]$_.High-[double]$_.Low})
                 if($ranges.Count -gt 0){$atr1m=($ranges|Measure-Object -Average).Average}
                 $bodies=@($priorBars|ForEach-Object{[Math]::Abs([double]$_.Close-[double]$_.Open)})
                 $medianBody=Get-Median $bodies
@@ -2517,7 +3396,7 @@ try {
                     if (-not $seenTicks.ContainsKey($tickKey)) {
                         $tickDir=if ($ask -gt 0 -and $tickPrice -ge $ask) {"BUY_EST"} elseif ($bid -gt 0 -and $tickPrice -le $bid) {"SELL_EST"} else {"UNKNOWN"}
                         $line=@($now.ToString("yyyy-MM-dd HH:mm:ss.fff"),$ticker,$s.Name,$tickTime,$tickPrice,$tickDir,$bid,$ask,"方向は気配との比較による推定") | ForEach-Object {Escape-Csv $_}
-                        Add-Content -Encoding UTF8 -Path $tickCsv -Value ($line -join ',')
+                        Add-RecordLines $tickCsv ($line -join ',')
                         $seenTicks[$tickKey]=$now
                     }
                 }
@@ -2529,20 +3408,20 @@ try {
                 $orHighForLog=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
                 $orLowForLog=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$vwap,$ema9,$ema20,$trendLong,$trendShort,$or5HighValue,$or5LowValue,$orHighForLog,$orLowForLog,[Math]::Round($barBurst,3),[Math]::Round($flowBias,4),$whipsaw,$chaseGuard,$or5Long,$or5Short,$or15Long,$or15Short,$pullbackLong,$pullbackShort,$signal,$strategy)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $conditionCsv -Value ($line -join ',')
+                Add-RecordLines $conditionCsv ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$over,$under,[Math]::Round($underRatio,5),[Math]::Round($uoChange,5),$vwap)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $supplyCsv -Value ($line -join ',')
+                Add-RecordLines $supplyCsv ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$volume,$vwap,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,$over,$under)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $snapshotCsv -Value ($line -join ',')
+                Add-RecordLines $snapshotCsv ($line -join ',')
                 if (-not $creditSaved.ContainsKey($ticker)) {
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$creditSell,$creditSellChange,$creditBuy,$creditBuyChange,$creditRatio)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $creditCsv -Value ($line -join ',')
+                    Add-RecordLines $creditCsv ($line -join ',')
                     $creditSaved[$ticker]=$true
                 }
             }
             if($snapshotDue -and $inPreopen){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$reference,$quoteCenter,$gapPct,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,[Math]::Round($marketImbalance*100,2),$over,$under,[Math]::Round($underRatio*100,2),$quoteChange1m,$quoteChange5m,$specialSell,$specialBuy,[Math]::Round($preopenScore,1),$preopenPlan)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $preopenCsv -Value ($line -join ',')
+                Add-RecordLines $preopenCsv ($line -join ',')
             }
 
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
@@ -2724,7 +3603,7 @@ try {
             $ptsResults += $ptsRow
             if($snapshotDue -and $inPts){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ptsTicker,$stock.Name,$ptsDate,$ptsTime,$ptsPrice,$tseClose,$ptsGap,$ptsVolume,$tseVolume,$ptsVolumeRatio,$turnover,$ptsVwap,$ptsBid,$ptsAsk,$spreadPct,$ptsBidQty,$ptsAskQty,$ptsOver,$ptsUnder,$ptsUnderRatio,$ptsTick,$biasScore,$expectation,$stance)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
+                Add-RecordLines $ptsCsv ($line -join ',')
             }
         }
 
@@ -2802,7 +3681,7 @@ try {
         if($snapshotDue -and $inPts){
             foreach($ir in $irPtsTop5){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ir.code,$ir.ticker,$ir.name,$ir.disclosure_time,$ir.material_label,$ir.material_score,$ir.title,$ir.official_url,$ir.pts_price,$ir.tse_close,$ir.gap_pct,$ir.turnover,$ir.spread_pct,$ir.under_ratio,$ir.pts_score,$ir.total_score,$ir.judgement)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $irPtsCsv -Value ($line -join ',')
+                Add-RecordLines $irPtsCsv ($line -join ',')
             }
         }
         $kioxiaPts=$ptsResults|Where-Object{$_.tse_ticker -eq "285A.T"}|Select-Object -First 1
@@ -2957,8 +3836,8 @@ try {
             # Full-day bars for 100 rows made live_ms2.json ~15MB by 11:00 and the 2-second cycle ~25 s.
             $rowBars=@($minuteBars[[string]$result.ticker])
             if([string]$result.ticker -ne "285A.T"){
-                $rowBars1m=@($rowBars|Select-Object -Last $LiveRowBars1m)
-                $rowBars5m=@(Convert-LiveBars @($rowBars|Select-Object -Last ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)|Select-Object -Last $LiveRowBars5m)
+                $rowBars1m=@(Get-LastItems $rowBars $LiveRowBars1m)
+                $rowBars5m=@(Get-LastItems (Convert-LiveBars @(Get-LastItems $rowBars ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)) $LiveRowBars5m)
             } else {
                 $rowBars1m=$rowBars
                 $rowBars5m=@(Convert-LiveBars $rowBars 5 ([double]$result.vwap))
@@ -2970,7 +3849,7 @@ try {
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
                 if(-not $loggedSignals.ContainsKey($logKey)){
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$result.ticker,$result.name,$result.signal,$result.strategy,$result.signal_bar_time,$result.entry_price,$result.stop_price,$result.target1,$result.target2,$marketState,$breadthPct,$sectorPct,$holdSignal,$result.hold_score)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $signalCsv -Value ($line -join ',')
+                    Add-RecordLines $signalCsv ($line -join ',')
                     $loggedSignals[$logKey]=$true
                 }
             }
@@ -3150,7 +4029,7 @@ try {
             foreach($ir in @($irPtsTop5|Select-Object -First 3)){
                 $irVoiceKey=[string]$ir.code+'|'+[string]$ir.disclosure_time+'|'+[string]$ir.title
                 if(-not $lastIrVoiceCodes.ContainsKey($irVoiceKey)){
-                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。TDnet原文と翌朝の気配を確認してください。")
+                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。")
                     $lastIrVoiceCodes[$irVoiceKey]=$now
                 }
             }
@@ -3182,7 +4061,45 @@ try {
                 if (-not (Test-RuleSignalStillListed $brainPickPath $key)) { continue }
                 $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
                 $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
-                Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                Invoke-SerializedSpeak $speaker ("注目、検証中。"+$ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                $lastSpoken[[string]$x.ticker]=$now
+                $ruleVoices++
+            }
+        }
+        # OWNER 2026-10-23: holdings read out once at 08:50-08:55 and once at 15:30-15:35 (virtual
+        # only). Not tied to live prices (before the open none are published); the pick file must
+        # be fresh. A window without a valid file stays silent and is retried next cycle.
+        $clockNow = (Get-Date).TimeOfDay
+        if (-not $holdingVoiceMorningDone -and $clockNow -ge $HoldingVoiceMorningFrom -and $clockNow -lt $HoldingVoiceMorningUntil) {
+            $positions = Get-BrainPositions $brainPickPath (Get-Date)
+            if ($null -ne $positions) {
+                $holdingVoiceMorningDone = $true
+                Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "朝")
+            }
+        }
+        if (-not $holdingVoiceCloseDone -and $clockNow -ge $HoldingVoiceCloseFrom -and $clockNow -lt $HoldingVoiceCloseUntil) {
+            $positions = Get-BrainPositions $brainPickPath (Get-Date)
+            if ($null -ne $positions) {
+                $holdingVoiceCloseDone = $true
+                Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "引け")
+            }
+        }
+        # OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: each stock's first
+        # entry into the Brain ranking, once a day, within the same one-voice-per-cycle cap and
+        # current-row check. If a rule voice named the stock in the last 10 minutes, the
+        # OWNER has already heard it: marked as told, not read again.
+        if ($publishLiveValues) {
+            foreach ($x in (Get-BrainNewPicks $brainPickPath (Get-Date))) {
+                if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }
+                $key=[string]$x.ticker
+                if ($spokenNewPicks.ContainsKey($key)) { continue }
+                $row=@($results | Where-Object { $_.ticker -eq $x.ticker } | Select-Object -First 1)
+                if ($row.Count -eq 0 -or $row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal -or [string]$row[0].strategy -ne [string]$x.strategy) { continue }
+                $spokenNewPicks[$key]=$now
+                $spokenAt=$lastSpoken[[string]$x.ticker]
+                if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
+                $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
+                Invoke-SerializedSpeak $speaker ("注目、検証中。ブレインのランキングに新しく入りました。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
                 $lastSpoken[[string]$x.ticker]=$now
                 $ruleVoices++
             }

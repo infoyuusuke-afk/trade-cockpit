@@ -273,6 +273,19 @@ public static class AIExcelNative {
         # Runtime RSS writes are transient. Never persist them into the clean
         # canonical workbook during Safe Stop.
         $targetBook.Close($false)
+        # OWNER 2026-10-22 S1: Excel itself is closed only when no other
+        # workbook is open in it. Another open book is the Owner's work: the
+        # V10 book is closed without saving and Excel is left running.
+        $otherBooks = -1
+        try { $otherBooks = [int]$app.Workbooks.Count } catch { $otherBooks = -1 }
+        if ($otherBooks -ne 0) {
+            if ($otherBooks -gt 0) {
+                Write-Host ("V10 workbook closed. Excel PID " + $ExcelPid + " still has " + $otherBooks + " other workbook(s) open, so Excel was left running.") -ForegroundColor Yellow
+                $script:ExcelLeftForOtherBooks = $true
+                return $true
+            }
+            return $false
+        }
         try { $app.Quit() } catch {}
 
         # The window can disappear before EXCEL.EXE exits. Wait briefly; the
@@ -294,6 +307,31 @@ public static class AIExcelNative {
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
     }
+}
+
+# OWNER 2026-10-22 S3: if any Excel other than the V10 Excel is running in
+# this Windows session, Safe Stop stops nothing and refuses. The V10 Excel
+# is found through the shared Excel.Application object, which another Excel
+# can take over; the Owner closes the other Excel first.
+$script:ExcelLeftForOtherBooks = $false
+try {
+    $selfSessionForExcel = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+    $v10ExcelPid = 0
+    [void][int]::TryParse([string]$state.excel_pid, [ref]$v10ExcelPid)
+    $otherExcelAtStop = @(Get-Process EXCEL -ErrorAction Stop | Where-Object {
+        [int]$_.SessionId -eq $selfSessionForExcel -and [int]$_.Id -ne $v10ExcelPid
+    })
+} catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+    $otherExcelAtStop = @()
+} catch {
+    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_CHECK_FAILED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+if ($otherExcelAtStop.Count -gt 0) {
+    Write-Host ("SAFE_STOP_PREFLIGHT=BLOCKED_OTHER_EXCEL (PID " + (($otherExcelAtStop | ForEach-Object { $_.Id }) -join ",") + "); no processes stopped.") -ForegroundColor Red
+    # Japanese text kept as escapes: this file has no BOM (PowerShell 5.1 would misread UTF-8).
+    Write-Host ([regex]::Unescape("V10\u4ee5\u5916\u306eExcel\u304c\u958b\u3044\u3066\u3044\u307e\u3059\u3002\u305d\u306eExcel\u3092\u9589\u3058\u3066\u304b\u3089\u3001\u3082\u3046\u4e00\u5ea6\u5b89\u5168\u505c\u6b62\u3057\u3066\u304f\u3060\u3055\u3044\u3002")) -ForegroundColor Red
+    exit 2
 }
 
 # P0-25: The legacy state produced before independent BRAIN tracking may
@@ -553,4 +591,8 @@ try {
     Write-Host "V10 state removal failed; cannot report Safe Stop success." -ForegroundColor Red
     exit 2
 }
-Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
+if ($script:ExcelLeftForOtherBooks) {
+    Write-Host "AI Cockpit V10 managed processes stopped; the V10 workbook was closed and Excel was left open for the other workbook(s)." -ForegroundColor Green
+} else {
+    Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
+}

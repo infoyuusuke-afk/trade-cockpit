@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style><!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
@@ -36,10 +36,10 @@
  <button class="cockpit-tab" data-tab="control">CONTROL</button>
  <button class="cockpit-tab" data-tab="brain">BRAIN</button>
  <button class="cockpit-tab" data-tab="ai-journal">AIトレード日記</button>
- <button class="cockpit-tab active" data-tab="scalp">SCALP 5</button>
+ <button class="cockpit-tab active" data-tab="scalp">トレード中</button>
  <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
- <button class="cockpit-tab" data-tab="pre-next">PRE-NEXT</button>
+ <button class="cockpit-tab" data-tab="pre-next">テーマ</button>
  <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
  <button class="cockpit-tab" data-tab="value">VALUE 5</button>
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const brainPanel=document.createElement("section");
  brainPanel.className="card wide";
  brainPanel.id="brain-runtime";
- brainPanel.innerHTML='<h2>AI BRAIN</h2><p class="sub">V10 Brain Gateway / Controller / Market Data / AI Shadow の実稼働状態</p><div class="rotation-grid" id="brain-runtime-grid"><div class="rotation-box"><b>状態</b><strong>接続待ち</strong></div></div>';
+ brainPanel.innerHTML='<h2>AI BRAIN</h2><div id="brain-lamp" class="brain-lamp gray"><span class="brain-lamp-dot"></span><div><b>確認中</b><small>接続待ち</small></div></div><details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary><div class="rotation-grid" id="brain-runtime-grid"></div></details><style>.brain-lamp{display:flex;align-items:center;gap:16px;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}.brain-lamp-dot{width:22px;height:22px;border-radius:50%;flex:0 0 22px;background:#5f646b}.brain-lamp b{display:block;font-size:20px;color:#e7e9eb}.brain-lamp small{display:block;margin-top:4px;color:#9ba3af;font-size:13px}.brain-lamp.green .brain-lamp-dot{background:#35e2ae;box-shadow:0 0 12px #35e2ae99}.brain-lamp.yellow .brain-lamp-dot{background:#f7a600;box-shadow:0 0 12px #f7a60099}.brain-lamp.red .brain-lamp-dot{background:#f23645;box-shadow:0 0 12px #f2364599}.brain-lamp.mini{padding:10px 14px;margin:8px 0;gap:12px}.brain-lamp.mini .brain-lamp-dot{width:14px;height:14px;flex:0 0 14px}.brain-lamp.mini b{font-size:15px}.brain-lamp.mini small{font-size:12px}.brain-detail{margin-top:10px;color:#8b9299}.brain-detail summary{cursor:pointer;font-size:12px}</style>';
  panes.brain.appendChild(brainPanel);
 
  // Specialist AI analysts (GPT API research). Research lane only: never a
@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const agentPanel=document.createElement("section");
  agentPanel.className="card wide";
  agentPanel.id="agent-research";
- agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">GPT APIの研究レポート（BRAIN受信・ACK済みのものだけ）。価格・板・出来高はMS2の検証済み情報だけを使い、このレポートは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-lamp"></div><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div><h2 style="margin-top:18px">Grokの答え</h2><p class="sub">5番のボタンで保存した、Grok Botのいちばん新しい答えです。読むためだけに出しています（売買判定・点数・発注には使いません）。</p><div id="grok-lamp"></div><div id="grok-bots-body"><div class="focus-empty">取得待ち</div></div>';
  panes.brain.appendChild(agentPanel);
  const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
  const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
@@ -89,29 +89,81 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!Array.isArray(rep?.evidence)||rep.evidence.length===0)return {ok:false,reason:"NO_SOURCE"};
    return {ok:true,reason:null};
  };
+ // OWNER 2026-10-23 「こんなの表示されても意味がわからない」: each analyst card says in plain
+ // Japanese what it concluded, which issues it watches (4-character codes found in its
+ // text) and until when; the English original is folded under 原文（英語）.
+ const AGENT_STATUS_JA={WATCH:"監視候補あり",NO_SIGNAL:"材料なし",NO_DATA:"データ不足で判断なし",UNAVAILABLE:"分析できず"};
+ const agentJst=v=>{const t=Date.parse(v||"");if(!Number.isFinite(t))return "—";const d=new Date(t+324e5);return (d.getUTCMonth()+1)+"/"+d.getUTCDate()+" "+String(d.getUTCHours()).padStart(2,"0")+":"+String(d.getUTCMinutes()).padStart(2,"0");};
+ const agentCodes=rep=>[...new Set((String(rep?.hypothesis||"")+" "+String(rep?.conditions||"")).match(/\b[0-9][0-9A-Z]{3}\b/g)||[])].filter(c=>!/^20\d\d$/.test(c)).slice(0,10);
+ // OWNER 2026-10-23 「各AIアナリストが注目する銘柄のみ表示」: per analyst, only the issues it
+ // watches (WATCH reports that can still be referred to); names from the Brain's
+ // specialist_watch list when known.
+ let agentNames={};
  const agentReportCard=(rep,nowMs)=>{
    const u=agentReportUsable(rep,nowMs);
-   const links=(Array.isArray(rep.evidence)?rep.evidence:[]).map(e=>'<a href="'+kioSafeUrl(e.source_url)+'" target="_blank" rel="noopener">'+esc(e.source_id)+'</a>').join(" ")||"—";
-   return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'｜'+esc(rep.status)+'</b>'+
-     '<strong>'+(u.ok?"研究用・参照可":esc(AGENT_REASON_LABEL[u.reason]||u.reason))+'</strong>'+
-     '<small>report_id '+esc(rep.report_id)+'<br>対象 '+esc(rep.target_at)+'／期限 '+esc(rep.expires_at)+'</small>'+
-     '<small>仮説：'+esc(rep.hypothesis)+'<br>成立条件：'+esc(rep.conditions)+'<br>撤回条件：'+esc(rep.invalidation)+'</small>'+
-     '<small>出典：'+links+'</small></div>';
+   const codes=u.ok&&rep.status==="WATCH"?agentCodes(rep):[];
+   return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'</b>'+
+     (codes.length?'<strong>'+codes.map(c=>esc(agentNames[c]?agentNames[c]+"("+c+")":c)).join("<br>")+'</strong>':'<small>注目銘柄なし</small>')+'</div>';
  };
+ // OWNER 2026-10-24 「専門アナリストも同様　ステータスランプで最新情報なのか過去情報なのかわからないとこわい」「グロックも同様」
+ globalThis.freshLamp=(cls,label,line)=>'<div class="brain-lamp mini '+cls+'"><span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'</small></div></div>';
+ globalThis.jstParts=ms=>{const j=new Date(ms+9*3600000);return {day:j.toISOString().slice(0,10),md:j.toISOString().slice(5,10).replace("-","/"),hm:j.toISOString().slice(11,16),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+ globalThis.parseJstMs=s=>{s=String(s||"").trim().replace(" ","T");if(!s)return NaN;if(!/(Z|[+-]\d{2}:?\d{2})$/.test(s))s+="+09:00";return Date.parse(s);};
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
    // Brain signature or freshness of the view; that body is still shown as the reason.
-   fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).then(v=>{
+   let manual={},arrivedToday={};
+   fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(b=>{manual=(b&&b.real_submit_allowed===false&&b.manual_analysts)||{};arrivedToday=manual._arrived_today||{};manual=Object.fromEntries(Object.entries(manual).filter(([k])=>!k.startsWith("_")));(b?.specialist_watch||[]).forEach(w=>{if(w?.code&&w?.name&&w.name!==w.code)agentNames[w.code]=String(w.name).replace(/（[0-9A-Z]{4}）$/,"");});}).catch(()=>{}).then(()=>
+   fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).catch(()=>null)).then(v=>{
      const box=document.getElementById("agent-research-body");
-     if(v?.state==="DISABLED"){box.innerHTML='<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
-     if(v?.state==="UNAVAILABLE"){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
-     if(v?.real_submit_allowed!==false||!Array.isArray(v?.runs)){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可</div>';return;}
+     // OWNER 2026-10-23: backup answers pasted by hand when an automatic run failed, marked 『手動』;
+     // shown above the automatic reports, and also when those are unavailable.
+     // OWNER 2026-10-24 「アナリストは自動になったはず」: the GPT API runs are stopped (2026-10-23), so the panel shows
+     // the ChatGPT tasks' answers (analyst_inbox) as the automatic source; the API runs are not listed.
+     // OWNER 2026-10-26 「GPTの答えを1銘柄1枚のカードにして。コードと名前を大きく、PRE-NEXTか需給かの札、何があったか1行、
+     // 注目する条件を緑・無効になる条件を灰色で分けて、需給は買残・売残・倍率を数字で並べて」
+     const gptCard=(role,x)=>{
+       const reason=String(x.reason||"");
+       const parts=reason.split(/[。：]/).map(s=>s.trim()).filter(Boolean);
+       const named=parts.length&&/株式会社|ホールディングス|グループ/.test(parts[0]);
+       const name=String(x.name||"").replace(/（[^）]*）$/,"")||(named?parts[0].replace(/株式会社/g,"").trim():"");
+       const rest=(named?parts.slice(1):parts).flatMap(s=>/注目/.test(s)&&/無効/.test(s)?s.split("、").map(v=>v.trim()).filter(Boolean):[s]);
+       const go=rest.filter(s=>/注目/.test(s)),stop=rest.filter(s=>/無効/.test(s)&&!/注目/.test(s));
+       const num=re=>{const m=re.exec(reason);return m?m[1]:null;};
+       const supply=role==="supply_sq"?{buy:num(/買残\s*([+\-−]?[0-9.]+%)/),sell:num(/売残\s*([+\-−]?[0-9.]+%)/),ratio:num(/倍率\s*([0-9.]+倍)/),asof:num(/対象\s*(\d{4}-\d{2}-\d{2})/)}:null;
+       const other=rest.filter(s=>!/注目|無効/.test(s)&&!(supply&&/(買残|売残|倍率)\s*[+\-−]?[0-9]/.test(s)));
+       const what=other[0]||"—";
+       const sign=v=>v==null?"—":v;
+       const cls=v=>v==null?"":/^[\-−]/.test(v)?"down":"up";
+       return '<article class="cc-card cc-card--wait gpt-card"><div class="cc-head"><div class="cc-identity"><span class="gpt-code">'+esc(x.code)+'</span><span class="gpt-name">'+esc(name||"—")+'</span></div>'+
+        '<span class="gpt-role-badge '+esc(role)+'">'+esc(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":(AGENT_ROLE_LABEL[role]||role))+'</span></div>'+
+        '<div class="gpt-what">'+esc(what)+'</div>'+
+        (supply?'<div class="gpt-supply"><span>買残<b class="'+cls(supply.buy)+'">'+esc(sign(supply.buy))+'</b></span><span>売残<b class="'+cls(supply.sell)+'">'+esc(sign(supply.sell))+'</b></span><span>倍率<b>'+esc(sign(supply.ratio))+'</b></span></div>'+(supply.asof?'<small class="gpt-asof">信用残 '+esc(supply.asof)+'時点（前週比）</small>':''):'')+
+        (go.length?'<div class="gpt-cond go"><b>注目</b>'+esc(go.join("、"))+'</div>':'')+(stop.length?'<div class="gpt-cond stop"><b>無効</b>'+esc(stop.join("、"))+'</div>':'')+
+        (other.length>1?'<small class="gpt-more">'+esc(other.slice(1).join("／"))+'</small>':'')+
+        '<div class="cc-foot">'+esc(x.view||"")+'・'+esc(String(x.posted_at||"").slice(11,16))+'　出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
+     const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="scalp-strip gpt-cards">'+Object.entries(manual).map(([role,rows])=>(Array.isArray(rows)?rows:[]).map(x=>gptCard(role,x)).join("")).join("")+'</div>':'';
+     const expiredAt=Object.values(arrivedToday).map(parseJstMs).filter(Number.isFinite);
+     box.innerHTML=manualHtml||(expiredAt.length?'<div class="focus-empty">期限切れ：今日 '+esc(jstParts(Math.max(...expiredAt)).hm)+' に届いたGPTタスクの答え（届いてから8時間を過ぎたので一覧から外しました）</div>':'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>');
+     const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
+     const now=jstParts(Date.now()),latest=posted.length?Math.max(...posted):null,lp=latest?jstParts(latest):null;
+     // OWNER 2026-10-26: after the 8-hour display window the answers are gone from the list, not missing
+     const arrivedMs=Object.values(arrivedToday).map(parseJstMs).filter(Number.isFinite),arrivedLast=arrivedMs.length?jstParts(Math.max(...arrivedMs)):null;
+     const lamp=latest&&lp.day===now.day?["green","最新","今日 "+lp.hm+" の答え"]:
+       arrivedLast&&arrivedLast.day===now.day?["gray","期限切れ","今日 "+arrivedLast.hm+" に届いた答え（届いてから8時間を過ぎたので期限切れ）"]:
+       latest?["yellow","前の答え",lp.md+" "+lp.hm+" の答え（今日の分はまだ）"]:
+       (now.wd===0||now.wd===6)?["gray","休日","次は平日の7:30に届きます"]:
+       now.min<465?["gray","まだ","今日の答えは7:30に届きます"]:["red","届いていません","今日7:30の答えが来ていません（ChatGPTアプリとPCが動いているか確認）"];
+     const al=document.getElementById("agent-lamp");if(al)al.innerHTML=freshLamp(...lamp);
+     return;
+     if(v?.state==="DISABLED"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
+     if(v?.state==="UNAVAILABLE"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
+     if(v?.real_submit_allowed!==false||!Array.isArray(v?.runs)){box.innerHTML=manualHtml+'<div class="focus-empty">専門AIレポート利用不可</div>';return;}
      const nowMs=Date.now();
-     box.innerHTML=v.runs.slice(0,3).map(run=>{
+     box.innerHTML=manualHtml+v.runs.slice(0,3).map(run=>{
        const reps=Array.isArray(run.reports)?run.reports:[];
        const market=reps.filter(x=>x.lane==="MARKET_RESEARCH_NOT_EXECUTION"),progress=reps.filter(x=>x.lane==="PROJECT_PROGRESS_NOT_TRADING");
-       return '<h3>'+esc(run.slot||"")+'｜run '+esc(run.run_id)+'</h3><p class="sub">受信 '+esc(run.received_at)+'／ACK '+esc(String(run.ack_sha256||"").slice(0,12))+'／統括 '+esc(run.coordinator?.status||"—")+'：'+esc(run.coordinator?.summary||"")+'</p>'+
-         (Array.isArray(run.verification_checks)&&run.verification_checks.length?'<p class="warning">確認事項：'+run.verification_checks.map(esc).join("／")+'</p>':"")+
+       return '<h3>'+esc(agentJst(run.received_at))+'受信</h3>'+
          '<div class="rotation-grid">'+market.map(x=>agentReportCard(x,nowMs)).join("")+'</div>'+
          (progress.length?'<h3>PROJECT進捗（売買判定に使わない）</h3><div class="rotation-grid">'+progress.map(x=>agentReportCard(x,nowMs)).join("")+'</div>':"");
      }).join("")||'<div class="focus-empty">受信済みレポートなし</div>';
@@ -163,8 +215,41 @@ document.addEventListener("DOMContentLoaded",()=>{
        ["UPDATED",h.now||"—"]
      ];
      document.getElementById("brain-runtime-grid").innerHTML=cells.map(([k,v])=>'<div class="rotation-box"><b>'+esc(k)+'</b><strong>'+esc(v)+'</strong></div>').join("");
+     // OWNER 2026-10-24 「ブレインが正常稼働しているかのステータスランプがほしい」: one lamp; the details stay folded.
+     const j=new Date(Date.now()+9*3600000), wd=j.getUTCDay(), hm=j.getUTCHours()*60+j.getUTCMinutes();
+     const session=wd>=1&&wd<=5&&((hm>=540&&hm<690)||(hm>=750&&hm<930));
+     const down=[];
+     if(!rt.controller_pid)down.push("コントローラーが止まっています");
+     if(String(rt.collector_status||"")!=="LIVE")down.push("データ収集が止まっています");
+     if(!rt.workbook_identity_verified)down.push("RSSのExcelが確認できません");
+     if(String(proof.dataConflict).toUpperCase()==="TRUE")down.push("データが食い違っています");
+     const lockUnknown=ex.real_submit_allowed!==false;
+     if(lockUnknown)down.push("実注文のロックが確認できません");
+     if(session&&String(rt.price_source_status||"")!=="OK")down.push("場中なのに値段が止まっています");
+     const pausedInSession=session&&!/RUNNING/.test(String(ex.shadow_engine_state||""));
+     // OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet (特別気配) are set aside; the lamp says which
+     const pend=Array.isArray(rt.availability?.quote_pending_sample)?rt.availability.quote_pending_sample:[];
+     // OWNER 2026-10-26 「たびたびとまる」: one 5-second read glitch (the Collector re-reading Excel) recovers by
+     // itself; red only when it has stayed down for 20 seconds, before that a yellow "確認中".
+     if(down.length){window.__brainDownSince=window.__brainDownSince||Date.now();}else{window.__brainDownSince=0;}
+     // OWNER 2026-10-26 「実注文のロックが確認できない時だけは待たずにすぐ赤にして」
+     const briefDown=down.length&&!lockUnknown&&Date.now()-window.__brainDownSince<20000;
+     const [cls,label,line]=briefDown?["yellow","確認中","一瞬データが読めませんでした（"+down.join("／")+"）。20秒続いたら赤にします"]:
+       down.length?["red","止まっています",down.join("／")]:
+       pend.length?["yellow","動いています（値待ちあり）","特別気配など値がまだない "+pend.length+"銘柄（"+pend.map(s=>String(s).replace(/\.T$/,"")).join("・")+"）は外して動作中。寄れば自動で戻ります"]:
+       pausedInSession?["yellow","一時停止中","データの鮮度を待っています（自動で戻ります）"]:
+       ["green","正常に動いています",session?"場中：データ収集・ブレインとも動作中":"市場時間外：収集は動作中。値段は次の取引時間から動きます"];
+     const lamp=document.getElementById("brain-lamp");
+     if(lamp){lamp.className="brain-lamp "+cls;lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'　更新 '+esc(String(h.now||"—").slice(11,19))+'</small></div>';}
+     const tl=document.getElementById("trade-brain-lamp");
+     if(tl)tl.innerHTML=freshLamp(cls,"ブレイン："+label,line);
    }).catch(()=>{
      document.getElementById("brain-runtime-grid").innerHTML='<div class="rotation-box"><b>BRAIN</b><strong>OFFLINE</strong></div>';
+     const lamp=document.getElementById("brain-lamp");
+     if(lamp){lamp.className="brain-lamp red";lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>止まっています</b><small>ブレインの状態が読めません（コクピットが止まっている可能性）</small></div>';}
+     // OWNER 2026-10-24 「トレード中タブのブレインのランプを、状態が読めない時は赤にして」
+     const tl=document.getElementById("trade-brain-lamp");
+     if(tl&&typeof freshLamp==="function")tl.innerHTML=freshLamp("red","ブレイン：止まっています","ブレインの状態が読めません（コクピットが止まっている可能性）");
    });
  };
  renderBrain();
@@ -188,7 +273,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    else if(s.id==="strong-yen-top5")k="strong-yen";
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
-   else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="event-hot";
+   else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="pre-next";   // OWNER 2026-10-27 「EVENT 5はテーマタブに入れる」
    else if(s.id==="next-theme-radar")k="pre-next";
    else if(s.id==="focus-owner-panel")k="focus-owner";
    else if(s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
@@ -206,9 +291,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros.control=["取引・建玉・成績","実発注ロック、建玉の接続状態、各タブの成績を一括確認。"];
  intros.brain=["AI BRAIN","V10の観測証拠、Controller、RSS、Shadow、実発注ロックを一画面で確認。"];
  intros["ai-journal"]=["AIトレード日記","判断と結果の照合、週間振返り、見逃し・改善仮説を追跡。実績の未認証値は非表示。"];
- intros["pre-next"]=["PRE-NEXT｜先行兆候の研究","上昇前の情報・発見時刻を検証。研究段階のテーマはREALTIMEの売買候補へ自動昇格しません。"];
+ intros["pre-next"]=["テーマ｜今のテーマと関連銘柄（Grok1号・毎日8:00）","Grok1号が見つけたテーマとOWNERが決めたテーマの関連銘柄を、期待値（コクピットの記録）→出遅れ→勢いの順に並べ、見つけてからの値動きでGrokを採点します。研究段階で、売買の合図ではありません。"];
  intros["focus-owner"]=["FOCUS｜OWNER固定監視","OWNERが選択した銘柄を維持。MS2認証失敗時は価格・シグナルを表示しません。"];
- intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
+ intros.correlation=["相関・米国の前日→寄りの窓","米国の前日の動きと東京の寄りの窓の関係だけを、2年分で確かめた結果。寄った後の方向には使わない。"];
  intros.events=["注意","重要イベント・市場警報・売買禁止条件を確認。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
  intros["kioxia-calendar"]=["KIOXIA","キオクシア専用。5分足カレンダー、MS2 RSS、時間帯統計を集約。"];
@@ -226,7 +311,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const evPanel=document.createElement("section");
  evPanel.className="card wide";
  evPanel.id="signal-ev-ranking";
- evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><div id="brain-pick-rows"><div class="focus-empty">ブレインの選択 取得待ち</div></div><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
+ evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><div id="brain-pick-rows"><div class="focus-empty">ブレインの選択 取得待ち</div></div><div id="grok-rows"></div><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
  if(panes["ms2-live"]){const intro=panes["ms2-live"].querySelector(":scope > .pane-intro");if(intro)intro.after(evPanel);else panes["ms2-live"].prepend(evPanel);}
  let evTable=null;
  const evStatFor=(t,x)=>{
@@ -303,16 +388,66 @@ document.addEventListener("DOMContentLoaded",()=>{
    // OWNER 2026-10-22: specialists watch ahead, the Brain decides. Their watched issues, listed only.
    const watchLine=(brainPick.specialist_watch||[]).length?'<p class="sub">専門AIの先回り監視：'+brainPick.specialist_watch.map(w=>esc(w.name)+(w.signal_now?"（"+esc(w.signal_now)+"点灯中）":"")).join("／")+'（監視のみ・判断はブレイン）</p>':'';
    const picks=(brainPick.state==="PICK"?brainPick.picks:[]).filter(p=>{const x=rows.find(y=>y&&y.ticker===p.ticker);return x&&window.cockpitMs2RowReady?.(x)===true&&x.signal===p.signal&&x.strategy===p.strategy;});
-   if(!picks.length){box.innerHTML=watchLine+'<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値で、今も鮮度が確認できるサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
+   if(!picks.length){box.innerHTML=watchLine+'<div class="focus-empty">ブレインの選択：今は見送り（基準を超える順位スコアで、今も鮮度が確認できるサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
    box.innerHTML=watchLine+'<p class="sub">ブレインの選択（検証中・期待値は仮の数字・Shadow・発注しません）</p><div class="rotation-grid">'+picks.map(p=>
      '<div class="rotation-box"><b>'+esc(p.rank)+'. '+esc(p.name)+'｜'+esc(p.signal)+'・'+esc(p.strategy)+'</b>'+
-     '<strong>期待値 '+evPct(p.score_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     // OWNER 2026-10-22 ③: the expected value is ev_pct; score_pct (ev shrunk by the
+     // amount of evidence) only orders the picks and is labelled as a ranking score.
+     '<strong>期待値 '+evPct(p.ev_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     '<small>順位スコア '+evPct(p.score_pct)+'（根拠の少なさで割り引いた並べ替え用の数字）</small>'+
      '<small>'+(Number(p.forward_n)>0?"検証中：Shadow実績 "+esc(p.forward_n)+"回を含む":"未検証：過去記録だけの数字（Shadow実績まだ0回）")+'</small>'+
      '<small>'+(p.rule_label?esc(p.rule_label):p.source==="TICKER"?"この銘柄の同じサインの記録":"同じ戦略の全銘柄の記録")+'</small>'+
      '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
      (p.flags&&p.flags.length?'<small>'+p.flags.map(esc).join("／")+'</small>':'')+'</div>').join("")+'</div>';
  };
- const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrainPicks(evLast);}).catch(()=>{brainPick=null;renderBrainPicks(evLast);});
+ // OWNER 2026-10-23 「画面の一番上に『注目』欄を常に出し…その日の分は消さずに残す」: the top box on
+ // every tab lists today's new ranking entries and rule ①②④⑤ signals (time, name, rule),
+ // newest first. A failed read keeps the last list of the same day. Display only; no orders.
+ let attentionToday=null;
+ const renderBrainToday=()=>{
+   const box=document.getElementById("attention-rows"),cnt=document.getElementById("attention-count");
+   if(!box||!cnt)return;
+   const jst=new Date(Date.now()+324e5).toISOString().slice(0,10);
+   if(brainPick?.today?.date===jst)attentionToday=brainPick.today;
+   if(attentionToday&&attentionToday.date!==jst)attentionToday=null;
+   const t=attentionToday,list=Array.isArray(t?.attention)?t.attention:[];
+   cnt.textContent=t?"ランキング入り"+(t.new_picks_total??0)+"銘柄・ルールのサイン"+(t.rule_signals_total??0)+"件"+(t.x_topics_total?"・X話題"+t.x_topics_total+"件":"")+"（検証中・実注文には使いません）":"今日の記録 取得待ち";
+   const hm=v=>esc(String(v||"").slice(11,16));
+   const nm=(n,c)=>esc(String(n||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(String(c||"").replace(".T",""))+")";
+   // OWNER 2026-10-23 「保有：青 HOT：緑（ロング）hot：赤（ショート）」, otherwise the plain card frame.
+   // Held = a virtual rule position still open (Brain positions) or a 15:25 carry-over not yet
+   // scored; HOT = the same signal is lit now on a fresh live row.
+   const pos=brainPick?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
+   const posOf=r=>rp.find(p=>p.ticker===r.ticker&&String(p.signal_at)===String(r.captured_at));
+   const liveRows=Array.isArray(evLast?.all_targets)?evLast.all_targets:[];
+   const hotOf=r=>{const x=liveRows.find(y=>y&&y.ticker===r.ticker);return x&&x.signal===r.signal&&window.cockpitMs2RowReady?.(x)===true?(r.signal==="買いサイン"?"hot-long":r.signal==="空売りサイン"?"hot-short":""):"";};
+   const stateText=p=>!p?"":p.status==="OPEN"?"・保有中（仮想）":p.status==="WAITING"?"・約定待ち（仮想）":p.status==="CLOSED"?"・終了 "+esc({STOP:"損切",TARGET:"利確",TIME_EXIT:"時間"}[p.exit]||p.exit||"")+(p.return_pct!=null?" "+(p.return_pct>=0?"+":"")+esc(Number(p.return_pct).toFixed(2))+"%":""):p.status==="NOT_FILLED"?"・約定せず":"";
+   // OWNER 2026-10-27 「保有中とエントリーは明確に分けて、特にエントリータイミングがおれはみたい」: two blocks.
+   // エントリー: every new signal of today with the signal time first, the side, the trigger / target / stop and
+   // when it was (virtually) entered. 保有中: open virtual rule positions and carry-overs only. Display only.
+   const fhm=v=>{const x=String(v||"");return esc(x.length>8?x.slice(11,19):x.slice(0,8));};   // fill_time is HH:MM:SS (seconds kept: entry timing)
+   const sideOf=s=>s==="買いサイン"||s==="LONG"?'<span class="att-side att-long">買い</span>':s==="空売りサイン"||s==="SHORT"?'<span class="att-side att-short">空売り</span>':"";
+   const entryState=p=>!p?"":p.status==="WAITING"?'<span class="att-wait">エントリー待ち（発動価格に届いたら）</span>':p.status==="OPEN"?'<span class="att-in">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"（保有中）</span>":p.status==="CLOSED"?'<span class="att-done">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"→"+stateText(p).replace("・","")+"</span>":p.status==="NOT_FILLED"?'<span class="att-done">約定せず</span>':"";
+   const rows=list.map(r=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
+     return '<div class="attention-row '+cls+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
+   const openRule=rp.filter(p=>p&&p.status==="OPEN").map(p=>'<div class="attention-row att-held"><i>'+fhm(p.fill_time)+'</i><div>'+sideOf(p.signal)+nm(p.name,p.ticker)+' <b>保有中（仮想）'+esc((list.find(r=>r.ticker===p.ticker&&String(r.captured_at)===String(p.signal_at))||{}).label||p.rule||"")+'</b> <em>エントリー '+fhm(p.fill_time)+' @'+esc(p.fill_price)+'・目標 '+esc(p.target)+'・損切 '+esc(p.stop)+'・注文なし</em></div></div>');
+   const held=openRule.concat(on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+sideOf(x.side)+nm(x.name,x.ticker)+' <b>持ち越し（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>'));
+   const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
+   box.innerHTML='<div class="att-sec">エントリー（サインの時刻・新しい順）'+(rows.length?"":"：まだなし")+'</div>'+rows.join("")+'<div class="att-sec att-sec-held">保有中（仮想）'+(held.length?"":"：なし")+'</div>'+held.join("");
+ };
+ // OWNER 2026-10-23 manual Grok notes: listed as handed over (newest note first), with the time
+ // they stay valid. The Brain shows them as flags on its picks; they never change a score.
+ // OWNER 2026-10-23: hand-delivered X topics (Grok) as handed over, newest first, with the time
+ // each stays valid. The Brain shows them as flags on its picks; they never change a score.
+ const renderGrok=()=>{
+   const box=document.getElementById("grok-rows");
+   if(!box||!brainPick)return;
+   const notes=(Array.isArray(brainPick.grok?.notes)?brainPick.grok.notes:[]).filter(n=>n.source==="grok");
+   const hm=v=>esc(String(v||"").slice(11,16));
+   box.innerHTML=notes.length?'<div class="rotation-box"><b>X話題（Grok・手動・監視のみ・判断はブレイン）</b><ol class="sub">'+notes.map(x=>'<li>'+hm(x.posted_at)+' '+esc(x.name?String(x.name).replace(/（[0-9A-Z]{4}）$/,""):"")+'('+esc(x.code)+') <b>'+esc(x.strength)+'・'+esc(x.view)+'</b> '+esc(x.reason)+'（'+hm(x.valid_until)+'まで）'+(x.in_universe?"":"（監視100銘柄の外）")+'</li>').join("")+'</ol></div>'
+     :'<p class="sub">X話題（Grok）：有効なものはありません（Grokの答えをコピーして「3_Grok情報をコクピットへ」を押すと渡せます）</p>';
+ };
+ const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrainPicks(evLast);renderBrainToday();renderGrok();}).catch(()=>{brainPick=null;renderBrainPicks(evLast);renderBrainToday();});
  const evRowHtml=(r,i)=>{
    const x=r.x,s=r.ev,ok=s&&s.status==="OK";
    const rule=ruleFor(x,Date.now());
@@ -356,6 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  ptsPanel.id="pts-morning-pickup";
  ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
  evPanel.after(ptsPanel);
+ {const st=document.createElement("style");st.textContent='.pts-ev-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}.pts-side{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:6px}.pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}.pts-skip{background:#26282c;color:#9aa0a6}.pts-ev{font-weight:700}.pts-ev-plus{color:#35e2ae}.pts-ev-minus{color:#9aa0a6}.pts-ev-basis{display:block;width:100%;color:#8a919a}.pts-card.pts-buy-card{border-color:#35e2ae}.pts-card.pts-short-card{border-color:#ff5a5f}.pts-card.pts-skip-card{opacity:.75}.rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}.ai5-plain{margin-left:6px;color:#9AA0AA;font-size:12px}.tw-rec{margin:6px 0;color:#f5c542;font-weight:700}';document.head.appendChild(st);}
  let ptsView=null,ptsLast={};
  const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
  const ptsMorningRow=(p,rows)=>{
@@ -364,9 +500,24 @@ document.addEventListener("DOMContentLoaded",()=>{
    const same=pre===null?"寄り前気配待ち":(pre>0)===(p.direction==="UP")?"PTSと同じ方向":"PTSと逆方向";
    return {pre,same};
  };
+ // OWNER 2026-10-28 「買い　空売り　期待値　色付け」: side and expected value of a day trade (open -> close, cost
+ // included) for a gap of this size over 3 years, from pts_pickup's ev_* fields. Colours as the attention list.
+ const ptsSide={BUY:["買い","pts-buy"],SHORT:["空売り","pts-short"],SKIP:["見送り","pts-skip"]};
+ const ptsEvHtml=p=>{
+   const s=ptsSide[p.ev_side];
+   if(!s)return '<span class="pts-side pts-skip">期待値 未計算</span>';
+   const pc=v=>Number.isFinite(Number(v))&&v!==null?(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%":"—";
+   const ev=Number(p.ev_pct);
+   const main=p.ev_side==="SKIP"?'<span class="pts-ev pts-ev-minus">期待値 買い '+pc(p.ev_buy_pct)+'・空売り '+pc(p.ev_short_pct)+'</span>':
+     '<span class="pts-ev '+(Number.isFinite(ev)&&ev>0?"pts-ev-plus":"pts-ev-minus")+'">期待値 '+pc(p.ev_pct)+(p.ev_pf!=null?' PF'+esc(p.ev_pf):'')+'</span>';
+   return '<span class="pts-side '+s[1]+'">'+s[0]+'</span>'+main+
+     '<small class="pts-ev-basis">窓'+esc(p.ev_bucket||"")+'で寄った日の 寄り→引け（費用込み・'+esc(p.ev_basis||"")+' '+esc(p.ev_n??"—")+'回）。買い・空売りの札は、260銘柄全体で3年と直近1年の両方がプラス かつ PF1.5以上・30回以上の時だけ（銘柄ごとの成績は30回以上ある時だけ使う）</small>';
+ };
  const ptsRowHtml=(p,rows)=>{
    const m=ptsMorningRow(p,rows);
-   return '<div class="rotation-box"><b>'+esc(p.name||p.ticker)+'｜PTS '+ptsPct(p.pts_gap_pct)+'</b>'+
+   const s=ptsSide[p.ev_side];
+   return '<div class="rotation-box pts-card '+(s?s[1]+"-card":"")+'"><b>'+esc(p.name||p.ticker)+'｜PTS '+ptsPct(p.pts_gap_pct)+'</b>'+
+     '<div class="pts-ev-row">'+ptsEvHtml(p)+'</div>'+
      '<strong>'+esc(m.same)+'</strong>'+
      '<small>PTS '+esc(p.pts_price??"—")+'円（東証終値 '+esc(p.tse_close??"—")+'円）／売買代金 '+esc(Math.round(Number(p.turnover_yen||0)/10000).toLocaleString("ja-JP"))+'万円／気配の幅 '+esc(p.spread_pct)+'%</small>'+
      '<small>寄り前気配 '+(m.pre===null?"—":ptsPct(m.pre))+'／'+esc(p.stance||"")+'／記録 '+esc(String(p.captured_at||"").slice(5,16))+'</small></div>';
@@ -417,8 +568,13 @@ document.addEventListener("DOMContentLoaded",()=>{
    const isStaleCard=x?._stale===true||x?._staticCurrent===true;
    const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
    const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
+   // OWNER 2026-10-29 「AI注目TOP5のカードを全部同じ項目にして」: with _allMetrics every metric is shown ("—" when missing)
+   const mv=v=>v==null&&x&&x._allMetrics===true?"—":v;
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     // OWNER 2026-10-27 「鮮度不明も直して」: the age of the row's own quote time (source_timestamp_at, the time the
+     // Collector saw the price change); the row gate allows 120 s, so older reads as stale.
+     ageSeconds:isStaleCard?undefined:(()=>{const q=Date.parse(String(x.source_timestamp_at||""));return Number.isFinite(q)?Math.max(0,(Date.now()-q)/1000):undefined;})(),staleThresholdSeconds:120,
      freshness:isStaleCard?"stale":undefined,
      freshnessLabel:isStaleCard?"データ停止":undefined,
      failClosed:isStaleCard?"鮮度確認不可":false,
@@ -427,12 +583,12 @@ document.addEventListener("DOMContentLoaded",()=>{
      entry:x.entry_price,stop:x.stop_price,target:x.target1,
      metrics:[
        {label:"時間軸",value:tf||"1m"},
-       {label:"VWAP",value:fmt(x.vwap)},
-       {label:"OR5",value:range(x.or5_low,x.or5_high)},
-       {label:"OR15",value:range(x.or_low,x.or_high)},
-       {label:"EMA 9/20",value:(num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null},
-       {label:"FLOW",value:x.flow_bias==null?null:esc(x.flow_bias)+"%"},
-       {label:"VOLUME",value:x.volume_burst==null?null:esc(x.volume_burst)+"x"}
+       {label:"VWAP",value:mv(fmt(x.vwap))},
+       {label:"OR5",value:mv(range(x.or5_low,x.or5_high))},
+       {label:"OR15",value:mv(range(x.or_low,x.or_high))},
+       {label:"EMA 9/20",value:mv((num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null)},
+       {label:"FLOW",value:mv(x.flow_bias==null?null:esc(x.flow_bias)+"%")},
+       {label:"VOLUME",value:mv(x.volume_burst==null?null:esc(x.volume_burst)+"x")}
      ],
      foot:x.foot||""
    });
@@ -455,18 +611,40 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
  });
  const qs=new URLSearchParams(location.search);
- const requested=qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null);
+ // OWNER 2026-10-23 「場中に画面がころころ変わる」: ?live=1 / ?brain=1 choose the tab only when the
+ // window is first opened; after the periodic refresh the OWNER's tab and scroll stay put.
+ let firstOpen=true;try{firstOpen=sessionStorage.getItem("cockpitOpenedV10")!=="1";sessionStorage.setItem("cockpitOpenedV10","1");}catch(_e){}
+ const requested=!firstOpen?null:(qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null));
  const saved=requested||localStorage.getItem("cockpitTabV5"); const savedTab=saved?document.querySelector('.cockpit-tab[data-tab="'+saved+'"]'):null;
  // a saved tab that is now hidden (removed snapshot) falls back to the default tab
  if(savedTab&&!savedTab.hidden)savedTab.click();
+ // The page still reloads every 15 minutes for the analysis files it reads once, but only after
+ // 2 minutes without the OWNER touching it, and the scroll position comes back.
+ let lastTouch=Date.now();
+ ["pointerdown","keydown","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,()=>{lastTouch=Date.now();},{passive:true}));
+ try{const y=Number(sessionStorage.getItem("cockpitScrollY"));sessionStorage.removeItem("cockpitScrollY");if(y>0)setTimeout(()=>window.scrollTo(0,y),800);}catch(_e){}
+ const quietReload=()=>{
+   if(Date.now()-lastTouch<120000){setTimeout(quietReload,60000);return;}
+   try{sessionStorage.setItem("cockpitScrollY",String(Math.round(window.scrollY)));}catch(_e){}
+   location.reload();
+ };
+ setTimeout(quietReload,900000);
 
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
    if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ 注意";}
  }).catch(()=>{});
- fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+ // OWNER 2026-10-24 「ランプの赤を直して」: the badge read the pinned signals.json (10/19) and stayed red.
+ // It now reads the public feed meta: red only when the feed stopped syncing (30 min) or a file is old.
+ fetch("public_feed_meta.json?t="+Date.now()).then(r=>r.json()).then(m=>{
    const badge=document.getElementById("cockpit-status"); if(!badge)return;
-   const result=cockpitSnapshotHealth(d?.updated_at,Date.now());
+   const files=Object.values(m?.files||{}).filter(f=>f&&f.ok&&f.source_at);
+   const synced=Date.parse(m?.fetched_at||""), old=files.filter(f=>f.stale).length;
+   const newest=files.map(f=>Date.parse(f.source_at)).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+   const ok=Number.isFinite(synced)&&Date.now()-synced<30*60000&&files.length&&!old;
+   const stamp=newest?new Date(newest+324e5).toISOString().slice(5,16).replace("T"," "):"不明";
+   const result=ok?{cls:"status-warn",title:"公開分析は最新（"+stamp+"）・LIVE未検証"}:
+     {cls:"status-error",title:(old?"古い公開分析 "+old+"件":"公開分析の取り込みが止まっています")+"・LIVE未検証"};
    badge.classList.remove("status-ok","status-warn","status-error");
    badge.classList.add(result.cls);
    badge.title=result.title;
@@ -488,6 +666,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 .fp-range{display:flex;flex-direction:column;gap:3px}.fp-range-track{position:relative;height:4px;border-radius:2px;background:linear-gradient(90deg,#ef646b,#5a6472 50%,#3ed5ae)}.fp-range-fill{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #0b1722;box-shadow:0 0 0 1px #0006;transform:translate(-50%,-50%)}.fp-range-labels{display:flex;justify-content:space-between;font-size:10px;color:#8398a7;font-variant-numeric:tabular-nums}.fp-range-empty{padding:2px 0}.fp-range-empty small{color:#5c6874}.focus-chart-wrap,.focus-order{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}#focus-chart{width:100%;height:430px;border:0;display:block}.focus-order{padding:12px;overflow:auto}.focus-symbol{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}.focus-symbol h3{margin:0;color:#fff;font-size:18px}.focus-symbol>b{font-size:21px;color:#63e990}.focus-action{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}.focus-action span,.focus-action small{display:block}.focus-action strong{display:block;font-size:25px;color:#65ef91;margin:4px 0}.focus-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.focus-price-grid>div{background:#101e2a;border-radius:7px;padding:9px}.focus-price-grid span{display:block;color:#9fb0bf}.focus-price-grid b{font-size:17px}.focus-supply{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}.focus-supply b,.focus-supply span{display:block}.focus-rule{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}.focus-empty{padding:28px;text-align:center;font-size:17px}@media(max-width:1100px){.focus-layout{grid-template-columns:240px 1fr}.focus-order{grid-column:1/-1}}@media(max-width:800px){.focus-layout{grid-template-columns:1fr}.focus-order{grid-column:auto}#focus-chart{height:360px}.focus-title{align-items:flex-start;flex-direction:column}}
 </style>
 <link rel="stylesheet" href="theme.css?v=20260923-deeperblack">
+<!-- OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」: tab headings on one short line, slimmer status bar -->
+<style>.pane-intro{padding:18px 4px 14px!important;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.pane-intro>span{display:none}.pane-intro h2{font-size:20px!important;line-height:1.3!important;margin:0!important}.pane-intro p{font-size:12px!important;line-height:1.4!important;margin:0!important}.unified-mode{padding:8px 16px!important;border-radius:14px!important}.unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}.unified-mode small{display:inline;margin-left:8px}.focus-empty{padding:10px 12px!important;font-size:13px!important}.cockpit-tabs{scrollbar-width:auto!important;scrollbar-color:#6b6f78 #1b1d22!important}.ms2-download{display:none!important}</style>
+<!-- OWNER 2026-10-23 「使えないのは外す」: the old V8 LIVE kit download is hidden. The PTS pick-up stays: 「仕事のエクセルファイルを使う時だけとめる」, so V10 may run in the evening and record PTS. -->
+<script>document.addEventListener("DOMContentLoaded",()=>{const t=document.querySelector(".cockpit-tabs");if(!t)return;t.addEventListener("wheel",e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&t.scrollWidth>t.clientWidth){t.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});});</script>
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
@@ -579,7 +761,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
-<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
+<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section><div id="paste-reminder" class="paste-reminder" hidden></div><div id="carry-alert" class="carry-alert" hidden></div><div id="short-rebound-alert" class="short-rebound-alert" hidden></div></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:16em;overflow-y:auto;margin:4px 0 0}.att-sec{font-size:12px;font-weight:700;color:#f5c542;margin:6px 0 2px}.att-sec:first-child{margin-top:0}.att-sec-held{color:#5aa9ff;border-top:1px solid #303033;padding-top:6px}.att-side{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;margin-right:6px;border-radius:6px}.att-long{background:#0d2b23;color:#35e2ae}.att-short{background:#341418;color:#ff5a5f}.att-wait,.att-in,.att-done{display:inline-block;font-size:12px;font-weight:700;margin:0 6px}.att-wait{color:#f5c542}.att-in{color:#35e2ae}.att-done{color:#9aa0a6}.attention-row{display:grid;grid-template-columns:4.8em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
 
 
 
@@ -592,7 +774,15 @@ document.addEventListener("DOMContentLoaded",()=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
    window.cockpitVoiceSetLiveEnabled?.(d.speech_enabled===true);
    const verifiedEl=document.getElementById("unified-mode-verified");
-   if(verifiedEl)verifiedEl.textContent="完全照合 "+(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄（"+(d.updated_at||"更新時刻不明")+"）";
+   // OWNER 2026-10-24 「完全照合の日付」: the public check's counts and time (market_summary.live_check)
+   if(verifiedEl)fetch("market_summary.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>null).then(s=>{
+     const c=s&&s.live_check&&Number.isInteger(s.live_check.verified_count)?s.live_check:d;
+     const at=Date.parse(String(c.updated_at||"").replace(" JST","+09:00").replace(" ","T"));
+     const old=!Number.isFinite(at)||Date.now()-at>24*3600000;
+     verifiedEl.textContent="完全照合 "+(c.verified_count||0)+" / "+(c.expected_count||0)+"銘柄（"+(Number.isFinite(at)?new Date(at+324e5).toISOString().slice(5,16).replace("T"," ").replace("-","/"):"時刻不明")+
+       (c.status?"・"+c.status:"")+(old?"・古い":"")+"）";
+     verifiedEl.classList.toggle("down",old);
+   });
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
  }).catch(()=>{
    window.cockpitLiveSpeechEnabled=false;
@@ -609,6 +799,17 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div id="next-theme-content">海外ニュース・市場反応を確認中です。</div>
 </section>
 
+<style>
+/* OWNER 2026-10-24 「配置バランスがいまいち」: FOCUS controls and notice laid out like the other cards */
+#focus-owner-panel .ec-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 10px}
+#focus-owner-panel .ec-controls label{display:flex;align-items:center;gap:8px;font-weight:700}
+#focus-owner-panel select{min-width:240px;height:34px;padding:4px 10px;background:#111113;color:#e7e9eb;border:1px solid #303033;border-radius:8px}
+#focus-owner-panel .focus-owner-action{height:34px;padding:0 14px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700;cursor:pointer}
+#focus-owner-panel .focus-owner-action:hover{border-color:#4a4d55}
+#focus-owner-panel #focus-owner-status{margin:0 0 10px;padding:10px 14px;border-radius:10px}
+#focus-owner-panel #focus-owner-cards .focus-empty{padding:16px;align-items:flex-start}
+#focus-owner-panel .focus-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}#focus-owner-panel .focus-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}#focus-owner-panel .focus-unpin{align-self:stretch;padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}#focus-owner-panel .focus-unpin:hover{background:#341418}
+</style>
 <section id="focus-owner-panel" class="card wide focus-dashboard" aria-label="OWNER選択・MS2監視">
   <h2>FOCUS｜OWNER指定・最大5銘柄</h2>
   <p class="sub">監視対象は自動で入れ替えません。価格・板・シグナルはMS2の出所と鮮度が確認できた場合だけ表示。実注文禁止。</p>
@@ -658,12 +859,18 @@ document.addEventListener("DOMContentLoaded",()=>{
    const map=new Map(lastAll.filter(x=>validTicker(x?.ticker)).map(x=>[x.ticker,x]));
    target.innerHTML=pinned.map(t=>{
      const row=map.get(t);
+     return '<div class="focus-pin'+(t===selectedCard?' selected':'')+'" data-ticker="'+t+'">'+cardOf(t,row)+'<button type="button" class="focus-unpin" data-unpin="'+t+'">この銘柄を解除</button></div>';
+   }).join("");
+ };
+ // OWNER 2026-10-27 「解除方法はカード選択でできるようにして」: a card click selects it (blue frame, also in the
+ // list above) and each card has its own 解除 button; the list + 選択銘柄を解除 still work.
+ let selectedCard=null;
+ const cardOf=(t,row)=>{
      if(lastVerified&&eventRecent()&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
        return window.renderScalpCard({...row,_stale:false,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
      return window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:row?.name||t,direction:"block",
        failClosed:"MS2入力未認証・鮮度切れ・指定銘柄未取得",freshness:"stale",price:null,
        foot:"監視銘柄の固定は維持。実注文禁止。"});
-   }).join("");
  };
  const rowQuoteReady=row=>{
    // Reuse Collector's existing point-in-time contract; no invented quote_valid/quote_time.
@@ -724,6 +931,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(pinned.length>=5){status.textContent="FOCUSは最大5銘柄。不要な銘柄を解除してください。";return}
    pinned.push(value);save();paint();
  });
+ target.addEventListener("click",e=>{
+   const un=e.target.closest("[data-unpin]");
+   if(un){const t=un.getAttribute("data-unpin");if(!validTicker(t))return;pinned=pinned.filter(x=>x!==t);if(selectedCard===t)selectedCard=null;save();paint();status.textContent=t.replace(/\.T$/,"")+" の監視を解除しました。";return;}
+   const card=e.target.closest(".focus-pin");
+   if(!card)return;
+   const t=card.getAttribute("data-ticker");
+   if(!validTicker(t))return;
+   selectedCard=selectedCard===t?null:t;
+   if(selectedCard&&[...select.options].some(o=>o.value===t))select.value=t;
+   paint();
+ });
  document.getElementById("focus-owner-remove").addEventListener("click",()=>{
    if(!validTicker(select.value))return;
    pinned=pinned.filter(t=>t!==select.value);save();paint();
@@ -781,7 +999,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="overnight-top5" class="card wide scalp-tv">
  <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>OVERNIGHT 5</h2><span>15:25確定 / MS2 RSS</span></div><div class="scalp-tv-legend"><span id="ms2-hold-status">15:00から暫定採点、15:25に銘柄と方向を固定します。</span></div></div>
  <div id="ms2-hold-cards" class="scalp-strip"><div class="focus-empty"><span>15:25確定待ち</span></div></div>
- <h3>持ち越し成績</h3>
+ <h3 class="hold-stats-title">持ち越し成績</h3>
+ <style>.hold-fixed-note{grid-column:1/-1;font-size:13px;color:#9ba3af;padding:2px 2px 8px}.hold-stats-title{font-size:15px;margin:18px 0 8px;color:#e7e9eb}#ms2-hold-stats,#ms2-hold-history{font-size:13px;color:#9ba3af}</style>
  <div id="ms2-hold-stats" class="ms2-live-grid"><div class="focus-empty"><span>翌営業日の大引け後から勝率を記録</span></div></div>
  <div id="ms2-hold-history" class="ms2-live-grid"></div>
 </section>
@@ -798,6 +1017,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>今後30日・売買判断表</h3>
 <div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>次の通知</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="14">取得中...</td></tr></tbody></table></div>
 <h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
+<style>
+/* OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」: the event calendar in the same quiet boxes as the cards;
+   chips are small labels with a colour bar for importance instead of solid colour blocks */
+.event-months{gap:14px!important;grid-template-columns:1fr!important}
+.event-day>*{max-width:100%}
+.event-month{border:1px solid #303033!important;border-radius:14px!important;background:#111113!important}
+.event-month h4{margin:0;padding:12px 14px;font-size:14px;color:#e7e9eb;border-bottom:1px solid #26272b}
+.event-weekdays{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 0;color:#8b9299;font-size:11px;letter-spacing:.08em;text-align:center;border-bottom:1px solid #26272b}
+.event-day{min-height:84px!important;padding:6px!important;border-color:#1e1f23!important;background:#141518}
+.event-day.empty{background:#0c0d0f!important}
+.event-day>strong{display:block;font-size:12px;color:#c9ccd1}
+.event-day.today{outline:1px solid #35e2ae;outline-offset:-1px}
+.event-chip{margin:4px 0 0!important;padding:3px 6px!important;border-radius:6px!important;background:#1a1d22!important;border-left:3px solid #4ea1ff;color:#d7dbe0!important;font-size:10.5px!important;line-height:1.35!important}
+.event-chip{display:block!important;width:auto!important;white-space:normal}
+.event-chip.high{background:#22171a!important;border-left-color:#ff5a5f!important;color:#ffd5d8!important}
+.event-chip.block{background:#221d12!important;border-left-color:#f5c542!important;color:#f3e3b5!important}
+</style>
 <h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
 <div class="steps">
  <div class="step"><b>1　日付を分離</b>発表日・基準日・大引けの需給日・指数反映日を別々に確認。</div>
@@ -805,19 +1041,54 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="step"><b>3　未確定は取引禁止</b>公式日程や対象銘柄を確認できるまで、予想日を売買根拠にしない。</div>
  <div class="step"><b>4　価格で最終確認</b>イベント後もOR15・VWAP・出来高・先物を見て当日の方向を再判定。</div>
 </div></section>
-<section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
+<style>
+/* OWNER 2026-10-24 「あやしいからいらない」「うらでしっかり把握できていればいらない」(world markets) and
+   「これもいらないが、相関性を検査・分析する仕組みがあやしい」(correlations): both sections are off the screen.
+   The data keeps being collected behind the screen; the correlation method was checked
+   (Claudeブレイン\correlation_check.py): only US memory stocks -> Kioxia's opening gap held up. */
+#world-market-live{display:none!important}
+</style>
+<section id="correlation-monitor" class="card wide"><h2>米国の前日 → 東京の寄り（窓）の確かめ</h2>
 <div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
 <label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
 <select id="correlation-anchor" style="min-width:240px;padding:8px;border:1px solid #2c5067;border-radius:7px;background:#0b1720;color:#eaf4fa"><option value="285A.T">キオクシアHD（285A）</option></select></label>
-<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
+<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>窓の相関 20日</th><th>60日</th><th>全期間（前半／後半）</th><th>米国±2%の日 窓が同じ向き</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
 <tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
 <div class="steps">
-<div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
-<div class="step"><b>2　同方向確認</b>正相関銘柄がOR15・VWAP・EMA9/20で同方向なら信頼度を加点。</div>
-<div class="step"><b>3　資金ローテーション</b>任天堂など逆相関候補が反対方向へ動いた場合だけ補強材料。</div>
-<div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
+<div class="step"><b>1　米国の前日 → 寄りの窓</b>米国が±2%以上動いた日は、東京の寄りの窓が同じ向きになりやすい（表の「窓が同じ向き」）。</div>
+<div class="step"><b>2　寄った後には使わない</b>寄った後の値動きとの相関はほぼ0。寄った後はOR15・VWAP・EMA9/20で判断する。</div>
+<div class="step"><b>3　「確認」の条件</b>2年分で、前半・後半とも相関0.30以上、米国±2%の日に窓が同じ向き65%以上。毎日作り直す。</div>
+<div class="step"><b>4　使わなくした関係</b>韓国の前日・任天堂の逆相関・自動で選んだ相関は使わない（理由は表の下）。</div>
 </div>
-<p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<p class="warning"><b>相関は「寄りの窓の向き」の確認だけに使います。</b> 売買の根拠にはしません。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<style>
+/* OWNER 2026-10-24 「キオクシアタブ…綺麗に配置されていない 本当に必要なのだけ表示」: the Kioxia section uses the
+   same boxes as the other cards; the static reference blocks (GU/GD statistics, EMA/VWAP playbook) are off */
+#kioxia-5m-calendar .kio-detail-grid{display:none!important}
+#kioxia-5m-calendar .kio-ms2-orderflow,#kioxia-5m-calendar .kio-supply-panel,#kioxia-5m-calendar .kio-subpanel{background:#111113!important;border:1px solid #303033!important;border-radius:14px!important;padding:14px 16px!important;margin:10px 0!important;box-shadow:none!important}
+#kioxia-5m-calendar .kio-ms2-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 6px}
+#kioxia-5m-calendar .kio-ms2-title span,#kioxia-5m-calendar .kio-supply-head span,#kioxia-5m-calendar .kio-section-head span{display:block;font-size:11px;letter-spacing:.06em;color:#8b9299}
+#kioxia-5m-calendar .kio-ms2-title b,#kioxia-5m-calendar .kio-supply-head b{font-size:16px;color:#e7e9eb}
+#kioxia-5m-calendar .kio-ms2-title strong{font-size:12px;padding:6px 12px;border-radius:999px;background:#1b1d22;border:1px solid #303033;color:#c9ccd1;white-space:nowrap}
+#kioxia-5m-calendar .kio-ms2-grid,#kioxia-5m-calendar .kio-supply-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;gap:6px!important}
+#kioxia-5m-calendar .kio-ms2-grid>div,#kioxia-5m-calendar .kio-supply-grid>div{background:#18191c!important;border:1px solid #26272b!important;border-radius:10px!important;padding:8px 10px!important;min-height:0!important}
+#kioxia-5m-calendar .kio-ms2-grid span,#kioxia-5m-calendar .kio-supply-grid span{display:block;font-size:11px;color:#8b9299}
+#kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b{display:block;font-size:15px;color:#e7e9eb;margin-top:2px}
+#kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small{display:block;font-size:11px;color:#8b9299;margin-top:2px}
+#kioxia-5m-calendar p{font-size:12px;line-height:1.6}
+/* OWNER 2026-10-26 「全体的に色味が他のタブとくらべて薄い」: the KIOXIA boxes were lighter greys (#18191c/#1c1c1e/#242427);
+   same dark tokens as the other tabs' cards (card_system.css): panels #090A0C, boxes #0E1013, border #22252A, text #E8EAED/#9AA0AA */
+#kioxia-5m-calendar .kio-ms2-orderflow,#kioxia-5m-calendar .kio-supply-panel,#kioxia-5m-calendar .kio-subpanel,#kioxia-5m-calendar .kio-live-monitor,#kioxia-5m-calendar .kio-best-analog,#kioxia-5m-calendar .kio-best-chart,#kioxia-5m-calendar .kio-best-detail{background:#090A0C!important;border-color:#22252A!important}
+#kioxia-5m-calendar .kio-ms2-grid>div,#kioxia-5m-calendar .kio-supply-grid>div,#kioxia-5m-calendar .kio-monitor-grid>div,#kioxia-5m-calendar .kio-summary>.kio-metric,#kioxia-5m-calendar .rotation-grid>.rotation-box,#kioxia-5m-calendar .kio-playbook>div,#kioxia-5m-calendar .kio-action-board>div,#kioxia-5m-calendar .kio-gap-row{background:#0E1013!important;border:1px solid #22252A!important}
+#kioxia-5m-calendar .kio-ms2-grid span,#kioxia-5m-calendar .kio-supply-grid span,#kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small,#kioxia-5m-calendar .kio-monitor-grid span,#kioxia-5m-calendar .kio-monitor-grid small{color:#9AA0AA}
+#kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b,#kioxia-5m-calendar .kio-monitor-grid b{color:#E8EAED}
+#kioxia-5m-calendar .kio-ms2-title strong{background:#0E1013;border-color:#22252A}
+#kioxia-5m-calendar .kio-metric>span,#kioxia-5m-calendar .kio-chart-legend>span,#kioxia-5m-calendar .kio-subpanel>p.sub,#kioxia-5m-calendar .kio-monitor-grid span{color:#9AA0AA!important}
+#kioxia-5m-calendar .rotation-box>strong{color:#E8EAED}
+/* OWNER 2026-10-27 含み損益（保有中の仮想カード）: 緑＝含み益、赤＝含み損、灰＝現在値なし */
+.cc-pl{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:6px 0 8px;padding:8px 10px;border-radius:8px;border:1px solid #22252A;background:#0E1013}.cc-pl b{font-size:18px;font-weight:800}.cc-pl small{font-size:11px;color:#9AA0AA}.cc-pl.pl-plus{background:#0d2b23;border-color:#164536}.cc-pl.pl-plus b{color:#35e2ae}.cc-pl.pl-minus{background:#341418;border-color:#4a1f24}.cc-pl.pl-minus b{color:#ff5a5f}.cc-pl.pl-flat b,.cc-pl.pl-none b{color:#9AA0AA;font-size:14px}
+/* OWNER 2026-10-27 「このページいろちがう」: REALTIME 5・テーマ先回りの注意書きの箱とレーダーを他のタブと同じ色に */.tab-pane[data-pane="ms2-live"] .warning,.tab-pane[data-pane="pre-next"] .warning{background:#0E1013;border:1px solid #22252A;color:#9AA0AA}#next-theme-radar{background:#111113!important;border-color:#303033!important}#next-theme-radar h2{color:#F5F5F7!important}.tw-head{margin:0 0 10px;color:#9AA0AA;font-size:13px}.tw-head b{color:#E8EAED;font-size:15px}.tw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.tw-card{background:#0E1013;border:1px solid #22252A;border-radius:10px;padding:10px 12px;color:#E8EAED;font-size:13px}.tw-card .tw-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.tw-card .tw-name{font-size:16px;font-weight:700}.tw-card .tw-role{display:block;color:#9AA0AA;font-size:12px;margin:2px 0 6px}.tw-card .tw-px{font-size:15px;font-weight:700}.tw-card .tw-row{display:flex;flex-wrap:wrap;gap:4px 12px;color:#9AA0AA;font-size:12px}.tw-card .tw-row b{color:#E8EAED;font-weight:600}.tw-up{color:#35e2ae!important}.tw-dn{color:#ff5a5f!important}.tw-card .tw-ev{margin-top:6px;padding:4px 8px;border-radius:6px;background:#090A0C;border:1px solid #22252A;font-size:12px;color:#9AA0AA}.tw-card .tw-ev b{color:#35e2ae}.tw-themes{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.tw-tbtn{padding:6px 10px;border-radius:8px;border:1px solid #22252A;background:#0E1013;color:#E8EAED;font-size:13px;cursor:pointer;text-align:left}.tw-tbtn small{display:block;color:#9AA0AA;font-size:11px}.tw-tbtn.on{border-color:#35e2ae}.tw-lag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:6px;background:#0d2b23;color:#35e2ae;font-size:11px}.tw-score{width:100%;border-collapse:collapse;font-size:12px;color:#E8EAED}.tw-score th,.tw-score td{border-bottom:1px solid #22252A;padding:4px 6px;text-align:right}.tw-score th:first-child,.tw-score td:first-child{text-align:left}/* OWNER 2026-10-27 CONTROLの古い箱は『詳しい状態』を開いた時だけ */.tab-pane[data-pane="control"]>.pane-intro{order:0}#owner-real-order-line{order:1}.tab-pane[data-pane="control"]>.g-panel{order:2}.tab-pane[data-pane="control"]>.g-review-panel{order:2}.g-verdict{margin:4px 0 10px;padding:10px 14px;border:1px solid #4a1f24;border-radius:10px;background:#1c0d10;color:#ffd6d8;font-size:13px;line-height:1.7}.g-verdict b{color:#ff8a8f}.g-verdict ol{margin:6px 0 0;padding-left:20px}.g-decided{margin:4px 0;padding-left:20px;font-size:13px;color:#E8EAED}.g-brain-panel{order:3}.tab-pane[data-pane="control"]>.g-trial-panel{order:3}#owner-detail-status{order:4}.tab-pane[data-pane="control"]>.cc-tab-owner-summary{order:5}.tab-pane[data-pane="control"]>.g-old{order:6}.tab-pane[data-pane="control"]>.cc-strategy-owner-panel{order:7}.tab-pane[data-pane="control"]:not(.g-detail-open)>.cc-tab-owner-summary,.tab-pane[data-pane="control"]:not(.g-detail-open)>.g-old{display:none!important}#owner-real-order-line,#owner-detail-status{grid-column:1/-1}.g-order-line{margin:0;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700}.g-order-off{background:#0d2b23;border:1px solid #164536;color:#35e2ae}.g-order-warn{background:#341418;border:1px solid #4a1f24;color:#ff8a8f}.g-detail{padding:8px 14px;border:1px solid #303033;border-radius:12px;background:#111113}.g-detail summary{cursor:pointer;font-weight:700;color:#9AA0AA}/* OWNER 2026-10-27 成績 */.g-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:4px 0 10px}.g-tile{background:#0E1013;border:1px solid #22252A;border-radius:10px;padding:10px 12px}.g-tile span{display:block;font-size:12px;color:#9AA0AA}.g-tile b{display:block;font-size:26px;font-weight:800;margin:4px 0;color:#E8EAED}.g-tile small{font-size:11px;color:#9AA0AA}.g-tile.g-plus{background:#0d2b23;border-color:#164536}.g-tile.g-plus b{color:#35e2ae}.g-tile.g-minus{background:#341418;border-color:#4a1f24}.g-tile.g-minus b{color:#ff5a5f}.g-h{font-size:14px;margin:12px 0 4px;color:#E8EAED}.g-rows{display:flex;flex-direction:column;gap:3px}.g-row{display:grid;grid-template-columns:minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;align-items:center;gap:8px;padding:5px 8px;background:#0E1013;border:1px solid #22252A;border-radius:8px;font-size:12px;color:#E8EAED}.g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 320px}.g-row.g-row5>b{text-align:right}.g-row>b,.g-row>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.g-kind{font-size:11px;color:#9AA0AA}.g-n{color:#9AA0AA;font-size:11px}.g-today{color:#9AA0AA;font-size:11px}.g-bar{display:block;height:8px;background:#22252A;border-radius:4px;overflow:hidden}.g-bar b{display:block;height:100%}.g-up{background:#35e2ae}.g-dn{background:#ff5a5f}.g-row b.g-plus{color:#35e2ae}.g-row b.g-minus{color:#ff5a5f}.g-row b.g-flat,.g-row b.g-none{color:#9AA0AA}.g-empty,.g-note{font-size:12px;color:#9AA0AA}
+</style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
@@ -906,6 +1177,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>直近25営業日・5分足カレンダー</h3>
 <div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
 <p class="warning"><b>使い方：</b>寄り前は前夜のSanDisk・Micron・SOX・NASDAQ、GU/GD帯、信用需給、公式材料の織り込み段階から仮説を作ります。9:15以降は当日5分足を65%へ引き上げて再計算。類似度60%以上が3日未満なら「見送り」。発動は完成5分足のOR15・VWAP・EMA9/20・出来高・ヒゲ反転の一致が条件で、事前予測だけでは注文しません。</p></section>
+<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考・未検証）</h2>
+<div id="regime-summary-meta" class="sub">取得待ち</div>
+<div class="rotation-grid" id="regime-summary-verdict"><div class="focus-empty">取得待ち</div></div>
+<table><thead><tr><th>指標</th><th>現在値</th><th>前日比</th><th>5日</th><th>20日線から</th><th>20日線／60日線</th></tr></thead>
+<tbody id="regime-summary-rows"><tr><td colspan="6">取得待ち</td></tr></tbody></table>
+<h3>当日資金流入テーマ TOP5</h3>
+<table><thead><tr><th>順位</th><th>テーマ</th><th>強度</th><th>有力銘柄</th></tr></thead><tbody id="regime-summary-themes"><tr><td colspan="4">取得待ち</td></tr></tbody></table>
+<p class="warning"><b>参考：</b>前日引け後の日次データによる判定です。場中の売買サイン・安全ゲート・ブレインの点数・音声には使いません。</p></section>
 <section id="world-market-live" class="card wide"><h2>世界市況リアルタイム・地合い確認</h2>
 <div id="world-market-meta" class="sub">世界の株価リアルタイムチャートを検証中...</div>
 <div class="rotation-grid" id="world-market-cards"><div class="focus-empty">市場データ取得待ち</div></div>
@@ -927,13 +1206,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 
 <section id="speculative-theme-monitor" class="card wide scalp-tv">
- <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>EVENT 5</h2><span>全市場走査 / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
+ <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>急騰・過熱の監視（旧EVENT 5）</h2><span>全市場走査・終値ベース / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
  <div id="speculative-theme-watch" class="scalp-strip"><div class="focus-empty">全市場の仕手化兆候を走査中...</div></div>
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。VWAP・OR5・OR15・EMA・ENTRY/STOP/T1はMS2ライブ対象100銘柄外だと未取得のため「—」表示です。</p></section>
 <section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
 <div id="accumulation-meta" class="sub">全市場の価格・出来高痕跡を走査中...</div>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>総合点</th><th>信用需給</th><th>終値</th><th>5日</th><th>20日</th><th>上昇日/下落日出来高</th><th>OBV</th><th>下落日出来高</th><th>安値切上げ</th><th>発動価格</th><th>損切り</th><th>根拠</th></tr></thead>
-<tbody id="accumulation-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>総合点</th><th>信用需給</th><th>終値</th><th>前日比</th><th>5日</th><th>20日</th><th>上昇日/下落日出来高</th><th>OBV</th><th>下落日出来高</th><th>安値切上げ</th><th>発動価格</th><th>損切り</th><th>根拠</th></tr></thead>
+<tbody id="accumulation-signals"><tr><td colspan="16">全市場を走査中...</td></tr></tbody></table>
 <div class="steps">
 <div class="step"><b>1　吸収</b>下落日ほど出来高が減り、売られても安値を更新しない。</div>
 <div class="step"><b>2　蓄積</b>株価横ばいでもOBV上昇、終値が日中レンジ上側へ偏る。</div>
@@ -969,12 +1248,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
 <p class="warning">TradingView右側の監視リスト名を押す →「リストをインポート」→ ダウンロードしたTXTを選択。日本株はTSE:銘柄コード形式で出力し、重複は自動削除します。</p></section>
 <section id="lower-wick-reversal" class="card wide"><h2>最優先・下ヒゲ吸収反転（次足確認）</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>点数</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 
 
-<section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
+<section id="swing-howto" class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
 <div class="steps">
 <div class="step"><b>1　<span class="pill prep">準備</span>を探す</b>大引け後に一覧を確認。準備は「まだ買わない」の意味です。</div>
 <div class="step"><b>2　IN価格をメモ</b>準備足の高値＋1ティック。翌日からこの価格を監視します。</div>
@@ -1000,7 +1279,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
 <p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
 <section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
-<section class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
+<section id="selection-logic" class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
 
 
 <section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
@@ -1012,7 +1291,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
 
 <!-- WEEKLY_REVIEW_START -->
-<section id="weekly-review" class="panel">
+<!-- OWNER 2026-10-23 夜 「BとCを隠す」: the weekly figures count unclosed trades as wins with no costs; hidden until the generator on main is fixed -->
+<section id="weekly-review" class="panel" hidden>
   <h2>週間振り返り・来週戦略</h2>
   <!-- OWNER 2026-10-21: no baked past results here; trade_control.js fills this from weekly_review.json -->
   <div class="focus-empty">週間振り返り：取得中（weekly_review.json）</div>
@@ -1049,7 +1329,11 @@ const saveTvList = (items, filename) => {
   URL.revokeObjectURL(url);
   status.textContent = symbols.length + "銘柄を保存しました：" + filename;
 };
-fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
+// window.renderScalpCard is created in the DOMContentLoaded handler: a fast answer must wait for
+// it, or the whole block failed into 「取得できませんでした」 (race found 2026-10-23).
+fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(res =>
+  typeof window.renderScalpCard === "function" ? res(d) : document.addEventListener("DOMContentLoaded", () => res(d))
+)).then(d => {
   document.getElementById("signal-meta").textContent =
     d.source + "／走査 " + d.scanned_count.toLocaleString() + "銘柄／準備 " +
     d.signal_count + "銘柄／更新 " + d.updated_at;
@@ -1069,6 +1353,19 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+  // OWNER 2026-10-23 「ここの表示って古くないのか」: ⑧⑨⑩⑪ come from the checkout's signals.json (not fed,
+  // audit 6349440798). Older than 24 hours: marked 古い and not shown (no stale IN / 準備 list).
+  const sigAt = Date.parse(String(d.updated_at || "").replace(" JST", "+09:00").replace(" ", "T"));
+  if (!(Date.now() - sigAt < 864e5)) {
+    // OWNER 2026-10-23 「使えないのは外す」: the two sections are taken off the screen while stale
+    // (a section that holds another section is never hidden as a whole)
+    // OWNER 2026-10-23 夜 「BとCを隠す」 (FOCUS and the fortune panel stay): the same file also feeds
+    // ⑤-E, ⑤-F, the TradingView export, ⑦ and ⑬, so they go with ⑧-⑪
+    ["entered-signals", "prepared-signals", "overnight-long", "overnight-short", "hammer-signals", "long-term-ma-rebound",
+     "tv-watchlist-export", "swing-howto", "selection-logic"].forEach(id => { const sec = document.getElementById(id)?.closest("section"); if (sec && !sec.querySelector("section")) sec.hidden = true; });
+    document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
+    document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
+  }
   // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただしEVENT 5は全市場走査
   // （MS2ライブ100銘柄の外側も含む）が元データのため、VWAP・OR5・OR15・EMA・ENTRY/STOP/T1・
   // FLOWはこのデータソースに存在せず「—」のまま（推測で埋めない）。出来高比(rvol)だけは
@@ -1078,29 +1375,39 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
     const foot = (x.theme||"") + "／" + (x.theme_status||"") + "／" + (x.action||"");
     return window.renderScalpCard({name:x.name,code:x.code,_staticCurrent:true,price:x.close,change_pct:x.ret1,volume_burst:Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null,foot},sv,"日足");
   }).join("");
-  document.getElementById("speculative-theme-watch").innerHTML =
+  if (!window.event5Fed) document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
-  const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
+  // OWNER 2026-10-24 「本当に買い集めなのか…継続監視銘柄で大口が定期的に吸収してるのか」: the list comes from the
+  // fed accumulation_watch.json (latest close) when it is there, with its date; the checkout copy otherwise.
+  window.renderAccumulation = src => {
+  const fedNote = src === window.accFedData ? "（" + String(src.updated_at || "").slice(0, 10) + " 引け後の判定）" : "（古い可能性）";
+  // OWNER 2026-10-28 「色付け　毎日の変化率」: coloured spans (the card adapter keeps a cell's inner HTML, not its class)
+  // and the day's change (前日比) from the last two closes of the fed chart.
+  const gs = (ok, t) => ok == null ? t : "<span class='" + (ok ? "rg-good" : "rg-bad") + "'>" + t + "</span>";
+  const dayChg = x => { const c = (x.chart || []).map(k => Number(k && k.c)).filter(Number.isFinite); return c.length >= 2 && c[c.length - 2] ? (c[c.length - 1] / c[c.length - 2] - 1) * 100 : null; };
+  const accumulation = (src.large_lot_accumulation || []).slice(0, 20).map((x, i) => { const dc = dayChg(x); return (
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
-    (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
-    "</b></td><td><b class='up'>" + x.score + "/100</b></td><td>" +
-    supplyText(x) + "</td><td>" + yen(x.close) + "</td><td class='" +
-    (x.ret5 >= 0 ? "up" : "down") + "'>" + signedPct(x.ret5, 1) +
+    (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + gs(x.phase.includes("上放れ") ? true : null, x.phase) +
+    "</b></td><td><b>" + x.score + "/100（未検証）</b></td><td>" +
+    supplyText(x) + "</td><td>" + yen(x.close) + "</td><td>" + (dc == null ? "—" : gs(dc > 0 ? true : dc < 0 ? false : null, signedPct(dc, 2))) + "</td><td class='" +
+    (x.ret5 >= 0 ? "up" : "down") + "'>" + gs(x.ret5 >= 0, signedPct(x.ret5, 1)) +
     "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" +
-    signedPct(x.ret20, 1) + "</td><td><b>" +
-    Number(x.up_down_volume_ratio).toFixed(2) + "倍</b></td><td class='" +
+    gs(x.ret20 >= 0, signedPct(x.ret20, 1)) + "</td><td><b>" +
+    gs(Number(x.up_down_volume_ratio) >= 1 ? true : null, Number(x.up_down_volume_ratio).toFixed(2) + "倍") + "</b></td><td class='" +
     (x.obv_impulse > 0 ? "up" : "down") + "'>" +
-    Number(x.obv_impulse).toFixed(2) + "</td><td>" +
+    gs(x.obv_impulse > 0, Number(x.obv_impulse).toFixed(2)) + "</td><td>" +
     Number(x.down_volume_ratio).toFixed(2) + "倍</td><td class='" +
     (x.higher_low_pct >= 0 ? "up" : "down") + "'>" +
-    signedPct(x.higher_low_pct, 1) + "</td><td><b>" + yen(x.trigger) +
-    "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
-    x.reason + "</td></tr>").join("");
+    gs(x.higher_low_pct >= 0, signedPct(x.higher_low_pct, 1)) + "</td><td><b>" + yen(x.trigger) +
+    "</b></td><td class='down'>" + gs(false, yen(x.stop)) + "</td><td>" +
+    x.reason + "</td></tr>"); }).join("");
   document.getElementById("accumulation-signals").innerHTML =
-    accumulation || "<tr><td colspan='15'>本日の大口買い集め痕跡の合格銘柄なし。</td></tr>";
+    accumulation || "<tr><td colspan='16'>本日の大口買い集め痕跡の合格銘柄なし。</td></tr>";
   document.getElementById("accumulation-meta").textContent =
-    (d.large_lot_accumulation_note || "価格・出来高痕跡による推定") +
-    "／信用需給更新 " + (d.credit_supply_updated_at || "未取得");
+    (src.large_lot_accumulation_note || "価格・出来高痕跡による推定") + fedNote +
+    "／信用需給更新 " + (src.credit_supply_updated_at || "未取得");
+  };
+  window.renderAccumulation(window.accFedData || d);
   const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
@@ -1127,16 +1434,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
     "</td></tr>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
     longTerm || "<tr><td colspan='15'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
-  const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
-    "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>−" +
-    x.fall_from_10d.toFixed(1) + "%</td><td>" + x.volume_ratio.toFixed(2) +
-    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
-    "</td><td>" + x.reason + "</td></tr>").join("");
-  document.getElementById("daily-reversal-signals").innerHTML =
-    dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
+  if (!window.wickFed) window.renderWickRows?.(d.daily_capitulation_reversals, d.updated_at, false);
   const carryRows = (items, side) => (items || []).slice(0, 5).map((x, i) => {
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
@@ -1188,15 +1486,289 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
-  document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
-  document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  if (!window.event5Fed) document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='16'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
   document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 });
+// OWNER 2026-10-23 「EVENT5もあやしい」: EVENT 5 from the fed event5_watch.json, loaded on its own;
+// the checkout's signals.json list is shown only until (or unless) the fed list answers.
+window.renderEvent5 = rows => {
+    // OWNER 2026-10-24 「古くないか」: EVENT 5 is built from the day's closing data, so each card shows that
+    // close with its date as daily data (not live) instead of hiding everything as FAIL-CLOSED.
+    const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const pct = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+    const html = (rows || []).slice(0, 5).map(x => {
+      const cls = x.phase === "初動候補" ? "long" : x.phase === "資金流入" ? "wait" : "short";
+      const date = String(x.signal_date || "").slice(5).replace("-", "/");
+      return '<article class="cc-card cc-card--' + cls + '"><div class="cc-head"><div class="cc-identity"><span class="cc-company">' + e(x.name) +
+        '</span><span class="cc-symbol">TSE:' + e(x.code) + '</span></div><span class="cc-badge">' + e(x.phase || "警戒") + '</span></div>' +
+        '<div class="cc-metrics-grid"><span>終値（' + e(date) + '）<b>' + (x.close == null ? "—" : Number(x.close).toLocaleString("ja-JP") + "円") + '</b></span>' +
+        '<span>前日比<b class="' + (Number(x.ret1) >= 0 ? "up" : "down") + '">' + pct(x.ret1) + '</b></span>' +
+        '<span>5日<b>' + pct(x.ret5) + '</b></span><span>20日<b>' + pct(x.ret20) + '</b></span>' +
+        '<span>出来高<b>' + (Number.isFinite(Number(x.rvol)) ? Number(x.rvol).toFixed(2) + "倍" : "—") + '</b></span>' +
+        '<span>見方<b>' + e(x.action || "—") + '</b></span></div>' +
+        '<div class="cc-foot">' + e((x.theme || "") + "／" + (x.theme_status || "")) + '／日足（ライブの値段ではありません）</div></article>';
+    }).join("");
+    document.getElementById("speculative-theme-watch").innerHTML =
+      html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
+  };
+// OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: grok_bots.json (public feed, read from
+// Desktop\Claudeブレイン\Grok1号〜3号 on this PC). Reading only; every text is escaped.
+// OWNER 2026-10-24 「注文カード作成。検証中と表示し、成績が出るまでは参考のみ　俺が確認して執行おすから」:
+// when the Brain lights a buy / short on Kioxia (285A), a card in the order of 武蔵's 信用新規→信用返済 (IFO)
+// screen: the OWNER checks it and types it in. Nothing is sent anywhere; real orders stay locked.
+window.buildTradeWatch = () => {
+  const pane = document.querySelector('.tab-pane[data-pane="scalp"]');
+  if (!pane || document.getElementById("trade-watch")) return;
+  const sec = document.createElement("section");
+  sec.id = "trade-watch";
+  sec.className = "card wide";
+  sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
+    "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：キオクシアHD（285A）にサインが出た時だけ出る（検証中・参考のみ。執行は自分で）</li>" +
+    "<li><b>その下の好機レーダーとAIアナリスト注目TOP5</b>：今動いている銘柄と、AIアナリストが注目した期待値の高い5銘柄（入れ替え自由）・今日フォーカスする手法。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
+    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
+  const intro = pane.querySelector(":scope > .pane-intro");
+  if (intro) intro.insertAdjacentElement("afterend", sec); else pane.prepend(sec);
+};
+document.addEventListener("DOMContentLoaded", () => { window.buildTradeWatch(); setTimeout(window.buildTradeWatch, 1500); });
+// OWNER 2026-10-26 「ドル円をMS2から取って連動を出して。表示と記録だけで、サインには使わない」
+window.loadFxLink = () => fetch("market_summary.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(s => {
+  const box = document.getElementById("trade-fx-link");
+  if (!box) return;
+  const f = s && s.fx_link;
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  if (!f || f.state !== "OK") { box.innerHTML = "<div class='fx-link'><b>ドル円との連動（参考）</b><small>まだ記録がありません（MS2のドル円を記録中。表示だけでサインには使いません）</small></div>"; return; }
+  const c = v => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(2);
+  const word = v => v == null ? "データ不足" : v >= 0.5 ? "強く一緒に動く" : v >= 0.25 ? "やや一緒" : v > -0.25 ? "ほぼ無関係" : v > -0.5 ? "やや逆" : "強く逆に動く";
+  box.innerHTML = "<div class='fx-link'><b>ドル円との連動（参考・サインには使わない）</b><small>ドル円 " + e(f.usdjpy) + "（" + e(f.usdjpy_at) + "）・1分ごとの動きの相関。＋は円安で上がる向き</small>" +
+    "<div class='fx-link-grid'>" + (f.peers || []).map(p => "<span>" + e(p.label) + "<i>直近30分 " + c(p.corr_recent) + "（" + word(p.corr_recent) + "）</i><i>今日 " + c(p.corr_today) + "・" + e(p.n_today) + "分</i></span>").join("") + "</div>" +
+    "<small>相関は日によって変わり、0.25くらいは偶然でも出ます。売買の根拠にはしません。</small></div>";
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { setTimeout(window.loadFxLink, 1800); setInterval(window.loadFxLink, 120000); });
+window.ORDER_CARD_CODES = ["285A.T"];
+window.ORDER_CARD_TTL_MS = 180000;
+window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
+window.roundTick = (p, mode) => { const t = window.tseTick(p), k = p / t; return +((mode === "down" ? Math.floor(k) : mode === "up" ? Math.ceil(k) : Math.round(k)) * t).toFixed(1); };
+window.orderCardHtml = (s, generatedMs, nowMs) => {
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const buy = Number(s.side) > 0, entry = Number(s.entry), stop = Number(s.stop), target = Number(s.target);
+  if (![entry, stop, target].every(Number.isFinite) || entry <= 0) return "";
+  const left = Math.max(0, Math.round((generatedMs + window.ORDER_CARD_TTL_MS - nowMs) / 1000));
+  const lim = window.roundTick(entry, buy ? "down" : "up"), tp = window.roundTick(target, buy ? "down" : "up"), sl = window.roundTick(stop, buy ? "down" : "up");
+  const row = (k, v) => "<span>" + k + "<b>" + e(v) + "</b></span>";
+  return "<article class='cc-card cc-card--" + (buy ? "long" : "short") + " order-card'><div class='order-card-warn'>検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）</div>" +
+    "<div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(s.name || s.ticker) + "</span><span class='cc-symbol'>" + e(String(s.ticker || "").replace(".T", "")) + "</span></div><span class='cc-badge'>" + (buy ? "買建" : "売建") + "</span></div>" +
+    "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", "100株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
+    row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
+    row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
+    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回）／" +
+    (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div></article>";
+};
+window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(b => {
+  const pane = document.getElementById("trade-watch-orders");
+  if (!pane) return;
+  let box = document.getElementById("order-card-box");
+  if (!box) {
+    const sec = document.createElement("section");
+    sec.className = "order-card-slot";
+    sec.id = "order-card-section";
+    sec.innerHTML = "<h3>注文カード（検証中・参考のみ）</h3><p class='sub'>ブレインがキオクシアHD（285A）に買い・空売りのサインを出した時だけ、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
+    pane.appendChild(sec);
+    box = document.getElementById("order-card-box");
+  }
+  const gen = Date.parse(String(b?.generated_at || ""));
+  const ok = b && b.real_submit_allowed === false && Number.isFinite(gen) && Date.now() - gen < window.ORDER_CARD_TTL_MS;
+  const sigs = ok ? (b.picks || []).filter(s => window.ORDER_CARD_CODES.includes(String(s.ticker)) && Number(s.side) !== 0) : [];
+  box.innerHTML = sigs.map(s => window.orderCardHtml(s, gen, Date.now())).join("") ||
+    "<div class='focus-empty'>今は注文カードはありません（キオクシアHD（285A）にサインが出た時だけ出ます）</div>";
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
+// OWNER 2026-10-24 「決算日程にGrokをつなぐ」: each stock line of the earnings calendar gets the Grok labels for
+// its code (3号 事前の空気 / 答え合わせ, 2号 判断案) with their dates. Reading only; earnings-calendar.js unchanged.
+window.decorateEarningsWithGrok = () => {
+  const panel = document.getElementById("earnings-calendar-panel");
+  if (!panel) return;
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const cls = l => /当たり|追随|買い/.test(l) ? "good" : /外れ|空売り|警戒/.test(l) ? "bad" : /期待先行/.test(l) ? "warn" : "";
+  panel.querySelectorAll(".ec-item > strong").forEach(s => {
+    const m = /（([0-9][0-9A-Z]{3})）/.exec(s.textContent || "");
+    const tags = m ? (window.grokTags || {})[m[1]] || [] : [];
+    const key = JSON.stringify(tags);
+    if (s.dataset.grokKey === key) return;
+    s.dataset.grokKey = key;
+    s.parentElement.querySelectorAll(":scope > .grok-tags").forEach(x => x.remove());
+    if (!tags.length) return;
+    const div = document.createElement("div");
+    div.className = "grok-tags";
+    div.innerHTML = tags.map(t => "<span class='grok-tag " + cls(t.label) + "'>Grok" + e(t.bot) + "・" + e(t.kind) + "：" + e(t.label) + "（" + e(t.day) + "）</span>").join("");
+    s.insertAdjacentElement("afterend", div);
+  });
+};
+document.addEventListener("DOMContentLoaded", () => {
+  const hook = () => { const p = document.getElementById("earnings-calendar-panel"); if (!p) return setTimeout(hook, 1000);
+    new MutationObserver(() => window.decorateEarningsWithGrok()).observe(p, {childList: true, subtree: true}); window.decorateEarningsWithGrok(); };
+  hook();
+});
+window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(g => {
+  const box = document.getElementById("grok-bots-body");
+  if (!box || typeof window.freshLamp !== "function") { setTimeout(window.loadGrokBots, 700); return; }
+  if (!g || !Array.isArray(g.bots)) { box.innerHTML = "<div class='focus-empty'>Grokの答えはまだありません（5番のボタンで保存すると出ます）</div>"; return; }
+  // OWNER 2026-10-24 「グロック2号まで今はしかいないぞ」: 3号 is shown only once it has a saved answer.
+  g = Object.assign({}, g, {bots: g.bots.filter(b => b.bot !== "Grok3号" || b.file)});
+  window.grokTags = g.tags || {};
+  if (typeof window.decorateEarningsWithGrok === "function") window.decorateEarningsWithGrok();
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // OWNER 2026-10-26 「本文の（2026-10-26 06:53 JST）から日時を読むようにして」: without a 実行日時 line, the answer's own 「（YYYY-MM-DD HH:MM JST）」
+  const runAt = b => { const m = /実行日時：\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.exec(b.text || "") || /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text || ""); const r = m ? window.parseJstMs(m[1]) : NaN; return Number.isFinite(r) ? r : Date.parse(b.saved_at || ""); };
+  const nowP = window.jstParts(Date.now()), offDay = nowP.wd === 0 || nowP.wd === 6 || (nowP.wd === 1 && nowP.min < 480);
+  const lampOf = b => { if (!b.file) return ["gray", "未保存", "5番のボタンで保存すると出ます"]; const at = runAt(b), h = (Date.now() - at) / 3600000, p = window.jstParts(at);
+    if (!Number.isFinite(h)) return ["red", "時刻不明", "答えの時刻が読めません"];
+    if (h <= 14) return ["green", "最新", p.md + " " + p.hm + " の答え"];
+    if (h <= 36 || (offDay && h <= 72)) return ["yellow", "前の答え", p.md + " " + p.hm + " の答え（新しい答えはまだ）"];
+    return ["red", "古い", p.md + " " + p.hm + " の答え（" + Math.round(h) + "時間前）"]; };
+  const lamps = g.bots.map(lampOf), rank = {red: 3, yellow: 2, gray: 1, green: 0};
+  const worst = lamps.filter(l => l[0] !== "gray").sort((a, b) => rank[b[0]] - rank[a[0]])[0];
+  const gl = document.getElementById("grok-lamp");
+  const gsum = (worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]);
+  const tg = document.getElementById("trade-ai-lamp");
+  if (tg) tg.innerHTML = window.freshLamp(...gsum);
+  if (gl) gl.innerHTML = window.freshLamp(...(worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]));
+  const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
+  const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
+  box.innerHTML = g.bots.map(b => {
+    if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "</div>";
+    const h = age(b.saved_at), old = h == null || h > 36;
+    const head = "<b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "<small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
+      (old ? "　<span class='down'>古い（36時間より前）</span>" : "") + "　" + e(b.file) + "</small>";
+    const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
+      // OWNER 2026-10-26 「文字がきれてるとこある」: the badge shows the 判断案 itself; its （note） goes under the card
+      e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(String(c["判断案"] || "—").split("（")[0]) + "</span></div>" +
+      (String(c["判断案"] || "").includes("（") ? "<div class='g2-note'>" + e(String(c["判断案"]).slice(String(c["判断案"]).indexOf("（") + 1).replace(/）$/, "")) + "</div>" : "") +
+      "<div class='cc-metrics-grid'>" +
+      "<span>動きの型<b>" + e(String(c["動きの型"] || "—").split("（")[0]) + "</b></span><span>目安<b>" + e(c["目安の価格帯"] || "—") + "</b></span>" +
+      "<span>無効<b>" + e(c["無効になる条件"] || "—") + "</b></span><span>自信<b>" + e(String(c["自信"] || "—").split("（")[0]) + "</b></span></div>" +
+      "<div class='cc-foot'>決算 " + e(c["決算発表日"] || "—") + "／見直し " + e(c["見直す日"] || "—") + "</div></article>").join("");
+    // 3号: one card per stock with the 期待の強さ bar (-4..+4) and the change from the previous answer
+    const bar = s => { if (s == null) return "<div class='g3-bar none'><span>点数なし（材料不足）</span></div>"; const pct = (Math.max(-4, Math.min(4, s)) + 4) / 8 * 100;
+      return "<div class='g3-bar'><i style='left:" + pct + "%'></i><em>慎重</em><em>期待</em></div>"; };
+    const delta = c => { if (c.score == null || c.prev_score == null) return "<small class='g3-delta'>前回なし</small>"; const d = c.score - c.prev_score;
+      return "<small class='g3-delta " + (d > 0 ? "up" : d < 0 ? "down" : "") + "'>" + (d > 0 ? "▲+" + d : d < 0 ? "▼" + d : "→ 変化なし") + "（前回 " + e(c.prev_day) + " " + (c.prev_score > 0 ? "+" : "") + c.prev_score + "）</small>"; };
+    const g3 = (b.preview_cards || []).map(c => { const mood = String(c.mood || "").split("（")[0];
+      return "<article class='cc-card cc-card--" + (c.score > 0 ? "long" : c.score < 0 ? "short" : "wait") + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(c.name) +
+      "</span></div><span class='cc-badge'>" + e(mood || "—") + "</span></div><div class='g3-score'><b>" + (c.score == null ? "—" : (c.score > 0 ? "+" : "") + c.score) + "</b>" + delta(c) + "</div>" + bar(c.score) +
+      // OWNER 2026-10-24 「決算前の値動きと出来高のヒントをPCで計算して、3号カードの横に出して」
+      (c.pv ? "<div class='g3-pv'><b>値動き・出来高（PC計算 " + e(String(c.pv_at || "").slice(5, 16).replace("T", " ")) + "）</b><div class='g3-pv-nums'>" +
+        [["5日", c.pv.ret5, "%"], ["20日", c.pv.ret20, "%"], ["対日経", c.pv.rel20, "%"], ["出来高", c.pv.vol_ratio, "倍"], ["25日線", c.pv.from_ma25, "%"]]
+          .map(([k, v, u]) => "<span>" + k + "<i>" + (v == null ? "—" : (u === "%" && v > 0 ? "+" : "") + v + u) + "</i></span>").join("") + "</div>" +
+        c.pv.hints.map(h => "<small class='" + e(h.tone) + "'>" + e(h.text) + "</small>").join("") + "</div>" : "") +
+      (c.points ? "<div class='g3-points'>" + [["空気", c.points.mood], ["X", c.points.x], ["証券会社", c.points.broker]].map(([k, v]) => "<span class='" + (v > 0 ? "up" : v < 0 ? "down" : "") + "'>" + k + " " + (v > 0 ? "+" : "") + v + "</span>").join("") + "</div>" : "") +
+      "<div class='cc-metrics-grid'><span>決算<b>" + e(String(c.earnings).split("／")[0]) + "</b></span><span>需給<b>" + e(c.supply) + "</b></span><span>X<b>" + e(String(c.x).split("（")[0]) + "</b></span><span>答え<b>" + e(c.day) + "</b></span></div>" +
+      "<div class='cc-foot'>" + e(String(c.mood || "").replace(/^[^（]*（?/, "").replace(/）$/, "")) + "</div><small class='g3-broker'>証券会社：" + e(String(c.broker || "—").slice(0, 90)) + "</small></article>"; }).join("");
+    // OWNER 2026-10-24 「答え合わせ（確認日ごと）」
+    const checks = b.bot === "Grok3号" ? "<div class='g3-checks'><h3>答え合わせ（確認日ごと）</h3>" + ((b.checks || []).length ? b.checks.map(k =>
+      "<div class='g3-check-day'><b>" + e(k.day) + " 確認</b><small>当たり " + k.hit + "・外れ " + k.miss + "・判定不能 " + k.unknown + "</small><ul>" +
+      k.items.map(i => "<li class='" + (i.verdict === "当たり" ? "up" : i.verdict === "外れ" ? "down" : "") + "'>" + e(i.name) + "：結果 " + e(i.result || "—") + (i.gap ? "・翌日の窓 " + e(i.gap) : "") + "・事前 " + e(i.mood || "—") + " → <b>" + e(i.verdict) + "</b></li>").join("") + "</ul></div>").join("")
+      : "<div class='focus-empty'>まだ答え合わせはありません（決算が出た銘柄から、3号が次の答えで書きます）</div>") + "</div>" : "";
+    return "<div class='rotation-box' style='grid-column:1/-1'>" + head + (cards ? "<div class='scalp-strip'>" + cards + "</div>" : "") +
+      (g3 ? "<div class='g3-note'>期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）＋Xの空気（強気+1／弱気-1）＋証券会社（目標株価の引き上げ+1／引き下げ-1／なし・混在0）。市場の空気の記録で、売買のサインではありません。＋が大きいほど期待が強く、織り込み済みの注意も要ります。値動き・出来高はPCが日足から計算（出来高＝直近5日平均÷その前60日平均、対日経＝20日の騰落率の差）。</div><div class='scalp-strip'>" + g3 + "</div>" : "") + checks +
+      "<details><summary>全文を見る</summary><pre style='white-space:pre-wrap;max-height:420px;overflow:auto'>" + e(b.text) + "</pre></details></div>";
+  }).join("");
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { window.loadGrokBots(); setInterval(window.loadGrokBots, 120000); });
+fetch("accumulation_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(a => {
+  if (!a || !Array.isArray(a.large_lot_accumulation)) return;
+  window.accFedData = a;
+  window.renderAccumulation?.(a);
+}).catch(() => {});
+// OWNER 2026-10-24 「最重要…セリクラとなり反転となるか」: 下ヒゲ吸収反転 from the fed wick_watch.json (the public
+// signals.json of the latest close), with its date shown; the checkout's copy is used only until it answers.
+window.renderWickRows = (rows, at, fed) => {
+  const yen = v => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP");
+  const num = (v, n) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toFixed(n);
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // OWNER 2026-10-28 「色付け」: coloured spans (the card adapter keeps a cell's inner HTML, not its class)
+  const g = t => "<span class='rg-good'>" + t + "</span>", b = t => "<span class='rg-bad'>" + t + "</span>";
+  const html = (rows || []).slice(0, 20).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "</td><td>" + (/確認/.test(x.phase || "") ? g(e(x.phase)) : e(x.phase || "—")) +
+    "</td><td>" + e(x.setup || "—") + "</td><td><b>" + e(x.score) + "/100（未検証）" +
+    "</b></td><td>" + yen(x.close) + "</td><td class='down'>" + (x.fall_from_10d == null ? "—" : b("−" + num(x.fall_from_10d, 1) + "%")) +
+    "</td><td>" + (x.volume_ratio == null ? "—" : Number(x.volume_ratio) >= 1.5 ? g(num(x.volume_ratio, 2) + "倍") : num(x.volume_ratio, 2) + "倍") +
+    "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
+    b(yen(x.stop)) + "</td><td>" + g(yen(x.target1) + "／" + yen(x.target2)) +
+    "</td><td>" + e(x.reason || "") + "<br><small>判定日 " + e(x.signal_date || String(at || "").slice(0, 10)) + (fed ? "" : "（古い可能性）") + "</small></td></tr>").join("");
+  const el = document.getElementById("daily-reversal-signals");
+  if (el) el.innerHTML = html || "<tr><td colspan='12'>" + e(String(at || "").slice(0, 10)) + " のセリクラ反転合格銘柄なし。</td></tr>";
+};
+fetch("wick_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(w => {
+  if (!w || !Array.isArray(w.daily_capitulation_reversals)) return;
+  window.wickFed = true;
+  const go = () => window.renderWickRows(w.daily_capitulation_reversals, w.updated_at, true);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
+}).catch(() => {});
+fetch("event5_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(e5 => {
+  if (!e5 || !Array.isArray(e5.speculative_theme_watch)) return;
+  window.event5Fed = true;
+  const go = () => window.renderEvent5(e5.speculative_theme_watch);
+  if (typeof window.renderScalpCard === "function") go(); else document.addEventListener("DOMContentLoaded", go);
+}).catch(() => {});
 const worldEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// OWNER 2026-10-23: daily 地合い判定 for the 検証・除外 tab (market_summary.json, built by the
+// Brain observer's public feed from the public data.json). Reference only.
+const loadRegimeSummary = () => fetch("market_summary.json?t=" + Date.now()).then(r => r.json()).then(d => {
+  const f = (v, digits) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP", {maximumFractionDigits: digits});
+  const p = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+  const cls = v => Number(v) > 0 ? "up" : Number(v) < 0 ? "down" : "";
+  // OWNER 2026-10-28 「色付け」: the table becomes cards (card_table_adapter.js copies each cell's inner HTML, not its
+  // class), so the colour is a span inside the cell. Good for stocks = green, bad = red; VIX and yields rising is bad.
+  const rg = (good, text) => good == null ? text : "<span class='" + (good ? "rg-good" : "rg-bad") + "'>" + text + "</span>";
+  const sgn = (val, inv) => val == null || !Number.isFinite(Number(val)) || Number(val) === 0 ? null : (Number(val) > 0) !== !!inv;
+  const v = d.verdict || {};
+  document.getElementById("regime-summary-meta").textContent = "データ " + (d.updated_at || "不明") + "（" + (d.phase || "") + "）";
+  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + rg(/^強い/.test(v.label || "") ? true : /^弱い/.test(v.label || "") ? false : null, worldEsc(v.label || "—")) + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い・しきい値は未検証）</span></div>"
+    + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => rg(sgn(x.point), worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）")).join("<br>") || "—") + "</small></div>";
+  // OWNER 2026-10-24: yields (金利) in percentage points: level 4.95%, day -0.19 points
+  const pt = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "pt";
+  const inverse = n => /VIX|金利/.test(n);
+  const trend = (x, inv, upText, downText) => x.ma20 == null || x.ma60 == null ? "—" : rg((x.ma20 > x.ma60) !== inv, x.ma20 > x.ma60 ? upText : downText);
+  document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) => x.unit === "yield" ?
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "%</td><td class='" + cls(x.change_pt) + "'>" + rg(sgn(x.change_pt, true), pt(x.change_pt)) + "</td><td class='" + cls(x.ret5_pt) + "'>" + rg(sgn(x.ret5_pt, true), pt(x.ret5_pt)) + "</td><td class='" + cls(x.from_ma20_pt) + "'>" + rg(sgn(x.from_ma20_pt, true), pt(x.from_ma20_pt)) + "</td><td>" + trend(x, true, "上昇基調", "低下基調") + "</td></tr>" :
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + rg(sgn(x.change_pct, inverse(n)), p(x.change_pct)) + "</td><td class='" + cls(x.ret5) + "'>" + rg(sgn(x.ret5, inverse(n)), p(x.ret5)) + "</td><td class='" + cls(x.from_ma20) + "'>" + rg(sgn(x.from_ma20, inverse(n)), p(x.from_ma20)) + "</td><td>" + trend(x, inverse(n), "上向き", "下向き") + "</td></tr>"
+  ).join("") || "<tr><td colspan='6'>データなし</td></tr>";
+  document.getElementById("regime-summary-themes").innerHTML = (d.themes || []).map((t, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + worldEsc(t.name) + "</td><td class='" + cls(t.score) + "'>" + f(t.score, 1) + "</td><td>" + (t.members || []).map(m => worldEsc(m.name) + " <small>" + rg(sgn(m.change_pct), p(m.change_pct)) + "</small>").join("<br>") + "</td></tr>"
+  ).join("") || "<tr><td colspan='4'>データなし</td></tr>";
+}).catch(() => {
+  document.getElementById("regime-summary-meta").textContent = "地合いデータ未取得（10分ごとに再取得）";
+});
+loadRegimeSummary();
+setInterval(loadRegimeSummary, 600000);
+// OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
+// public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
+// last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
+const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+  "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
+  "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
+const markFeedStale = meta => {
+  const fetched = Date.parse(meta && meta.fetched_at || "");
+  const metaFresh = Number.isFinite(fetched) && Date.now() - fetched <= 30 * 60000;
+  Object.entries(FEED_SECTIONS).forEach(([file, id]) => {
+    const sec = document.getElementById(id);
+    if (!sec) return;
+    let box = sec.querySelector(".feed-stale-banner");
+    const f = metaFresh ? ((meta.files || {})[file] || {}) : {};
+    const stale = !metaFresh || f.ok !== true || f.stale !== false;
+    if (!stale) { if (box) box.remove(); return; }
+    if (!box) { box = document.createElement("p"); box.className = "warning feed-stale-banner"; sec.insertBefore(box, sec.children[1] || null); }
+    box.textContent = "古いデータ：" + (f.source_at ? "更新 " + f.source_at : "更新時刻を確認できません") +
+      (metaFresh ? "" : "（取り込み未確認）") + "。表示可として扱わず、判断に使わないでください。";
+  });
+};
+const loadFeedMeta = () => fetch("public_feed_meta.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null).then(markFeedStale);
+document.addEventListener("DOMContentLoaded", () => { loadFeedMeta(); setInterval(loadFeedMeta, 60000); });
 fetch("world_market.json?t=" + Date.now()).then(r => r.json()).then(d => {
   const rows = Object.values(d.rows || {});
   document.getElementById("world-market-meta").textContent = d.source + "／更新 " + d.updated_at + "／検証 " + d.verified_count + "/" + d.expected_count;
@@ -1252,7 +1824,9 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {
     }
     return "<div class='event-month'><h4>"+year+"年"+month+"月</h4><div class='event-weekdays'><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div><div class='event-days'>"+cells.join("")+"</div></div>";
   }).join("") || "<div class='focus-empty'>カレンダー対象なし</div>";
-  document.getElementById("event-unverified").innerHTML = (d.unverified || []).map(x=>
+  // OWNER 2026-10-23 夜 「BとCを隠す」: a dated event that has already passed is not listed as 未確定
+  const eventToday = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  document.getElementById("event-unverified").innerHTML = (d.unverified || []).filter(x => !/^\d{4}-\d{2}-\d{2}$/.test(String(x.effective_date || "")) || String(x.effective_date) >= eventToday).map(x=>
     "<div class='event-block'><b>"+eventEsc(x.title)+"</b><span>"+eventEsc(x.effective_date)+"</span><small>売買禁止："+eventEsc(x.note)+"</small><a href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>公式確認先</a></div>"
   ).join("") || "<div class='up'>未確定イベントなし</div>";
 }).catch(() => {
@@ -1281,13 +1855,17 @@ fetch("correlations.json?t=" + Date.now()).then(r => r.json()).then(d => {
       x.relation + "<br><small>" + x.expected + "</small></td><td><b class='" +
       (x.state === "確認" ? "up" : x.state === "不成立" ? "down" : "warning") + "'>" +
       x.state + "</b></td><td>" + x.confidence + "/100</td><td>" + corrText(x.corr20) +
-      "</td><td>" + corrText(x.corr60) + "</td><td>" + corrText(x.intraday_corr) +
-      "</td><td>" + lead + "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
+      "</td><td>" + corrText(x.corr60) + "</td><td>" + (x.gap_test ? corrText(x.gap_test.corr_all) + "<br><small>" +
+      corrText(x.gap_test.corr_first_half) + "／" + corrText(x.gap_test.corr_second_half) + "　" + x.gap_test.days + "日（" + (x.gap_test.since || "—") + "〜）</small>" : corrText(x.intraday_corr)) +
+      "</td><td>" + (x.gap_test && x.gap_test.big_same_dir_pct != null ? x.gap_test.big_same_dir_pct + "%<br><small>" + x.gap_test.big_days + "日。寄った後との相関 " + corrText(x.gap_test.corr_after_open) + "</small>" : lead) +
+      "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
       todayText(x.peer_today) + "</td><td><b>" + x.decision + "</b><br><small>" + x.reason +
       "</small></td></tr>";
    }).join("");
-   document.getElementById("correlation-rows").innerHTML = rows ||
-    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>";
+   document.getElementById("correlation-rows").innerHTML = (rows ||
+    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>") +
+    (Array.isArray(d.removed) && d.removed.length ? "<tr><td colspan='12'><b>使わなくした関係</b><br>" + d.removed.map(r =>
+      "<small>" + String(r.relation).replace(/[&<>"']/g, "") + "：" + String(r.reason).replace(/[&<>"']/g, "") + "</small>").join("<br>") + "</td></tr>" : "");
   };
   select.onchange = renderRelations;
   renderRelations();
@@ -1336,8 +1914,11 @@ const kioIndexToClock=i=>{const m=i<=150?540+i:750+(i-151),hh=String(Math.floor(
 let kioChart=null,kioCandleSeries=null,kioForecastSeries=null,kioEmaSeries=null,kioVwapSeries=null,kioPriceLines=[],kioMarkersPrimitive=null;
 function ensureKioChart(){
   if(kioChart||typeof LightweightCharts==="undefined")return kioChart;
-  kioChart=LightweightCharts.createChart(document.getElementById("kio-best-path"),{layout:{background:{color:"transparent"},textColor:"#9bb0bd",fontSize:11},grid:{vertLines:{color:"#1c303c"},horzLines:{color:"#1c303c"}},rightPriceScale:{borderColor:"#233744"},timeScale:{borderColor:"#233744",tickMarkFormatter:t=>kioIndexToClock(Number(t))},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},autoSize:true});
+  kioChart=LightweightCharts.createChart(document.getElementById("kio-best-path"),{layout:{background:{color:"transparent"},textColor:"#9bb0bd",fontSize:11},grid:{vertLines:{color:"#1c303c"},horzLines:{color:"#1c303c"}},rightPriceScale:{borderColor:"#233744"},timeScale:{borderColor:"#233744",tickMarkFormatter:t=>kioIndexToClock(Number(t))},crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{labelVisible:false}},autoSize:true});
   window.kioChart=kioChart;
+  // OWNER 2026-10-26 「なおってない」: the chart's own layout table is not a data table; card_table_adapter.js
+  // turned it into 項目1/項目2 cards and the candles vanished. Marked before the adapter's observer runs.
+  document.querySelectorAll("#kio-best-path table").forEach(t=>t.setAttribute("data-keep-table",""));
   kioForecastSeries=kioChart.addSeries(LightweightCharts.LineSeries,{color:"#f1c75b",lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,priceFormat:{type:"percent",precision:2},lastValueVisible:false,priceLineVisible:false});
   kioCandleSeries=kioChart.addSeries(LightweightCharts.CandlestickSeries,{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b",priceFormat:{type:"percent",precision:2}});
   kioEmaSeries=kioChart.addSeries(LightweightCharts.LineSeries,{color:"#d59bff",lineWidth:2,priceFormat:{type:"percent",precision:2},lastValueVisible:false,priceLineVisible:false});
@@ -1381,6 +1962,18 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={},isRefr
   if(!kioMarkersPrimitive)kioMarkersPrimitive=LightweightCharts.createSeriesMarkers(kioCandleSeries,markers);
   else kioMarkersPrimitive.setMarkers(markers);
 };
+// OWNER 2026-10-23 夜 「BとCを隠す」: a forecast file for another day (or none) shows no forecast;
+// the MS2 / Excel Watcher panels in the same section stay.
+const hideStaleKioxiaForecast = date => {
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (date === today) return;
+  ["kio-decision-panel", "kio-decision-reason", "kio-live-monitor", "kio-best-analog"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+  const h2 = document.querySelector("#kioxia-5m-calendar > h2");
+  if (h2 && h2.firstChild && h2.firstChild.nodeType === 3) h2.firstChild.textContent = "キオクシアHD（285A）板・歩み値・サイン ";
+  const meta = document.getElementById("kioxia-calendar-meta");
+  if (meta) meta.textContent = "予測ファイルが今日の分ではないため、予測は表示しません（" + (date || "日付不明") + "）";
+};
+fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => setTimeout(() => hideStaleKioxiaForecast(d.analysis_date), 0)).catch(() => hideStaleKioxiaForecast(null));
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({stocks:{}})),
@@ -1515,13 +2108,7 @@ document.addEventListener("liveFocusUpdate",e=>{
       window.kioSignalMarkers=window.kioSignalMarkers.slice(-12);
       if(window.kioChartState)kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels,true);
     }
-    let voiceState={};
-    try{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{}")}catch(_e){voiceState={}}
-    const nowMs=Date.now(),sameDirection=voiceState.type===k.signal_type,insideCooldown=sameDirection&&nowMs-Number(voiceState.at||0)<600000;
-    if(k.signal_key!==voiceState.key&&!insideCooldown&&e.detail?.speech_enabled===true){
-      window.cockpitSpeak?.(k.voice_message);
-      localStorage.setItem("kioVoiceSignalState",JSON.stringify({key:k.signal_key,type:k.signal_type,at:nowMs}));
-    }
+    // OWNER 2026-10-22: the KIOXIA signal is shown, not spoken, on the screen.
   }
 });
 </script>
@@ -1592,6 +2179,26 @@ document.addEventListener("DOMContentLoaded",()=>{
    "kio-preopen-stat":"—"
   };
   Object.entries(areas).forEach(([id,v])=>put(id,v));
+  // OWNER 2026-10-24 「持ち越しているはず」: the 15:25 holds were fixed from the day's own record, so they stay
+  // listed while MS2 is not live; only the current price is withheld.
+  // The list is kept and drawn at once on every clear; /brain_pick.json is read again at most once a minute.
+  const drawHolds=on=>{
+   const el=document.getElementById("ms2-hold-cards");
+   if(!el||!Array.isArray(on)||!on.length)return;
+   const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+   const until=e(String(on[0].valid_until||"").replace("next trading day","翌営業日"));
+   el.innerHTML="<div class='hold-fixed-note'>15:25確定の持ち越し（仮想・"+on.length+"銘柄）　現在値はMS2が止まっているため出しません。採点 "+until+"</div>"+
+    on.map(x=>{const buy=x.side==="LONG";return "<article class='cc-card cc-card--"+(buy?"long":"short")+"'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>"+e(x.name)+
+     "</span></div><span class='cc-badge'>"+(buy?"買い":"空売り")+"</span></div><div class='cc-metrics-grid'><span>基準（15:25）<b>"+e(Number(x.reference_price).toLocaleString("ja-JP"))+"円</b></span><span>採点<b>"+until+"</b></span></div></article>";}).join("");
+  };
+  drawHolds(window.__overnightHolds);
+  if(typeof fetch==="function"&&!(Date.now()-(window.__overnightHoldsAt||0)<60000)){
+   window.__overnightHoldsAt=Date.now();
+   fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(b=>{
+    window.__overnightHolds=Array.isArray(b?.positions?.overnight)?b.positions.overnight:[];
+    drawHolds(window.__overnightHolds);
+   }).catch(()=>{});
+  }
   const common=document.getElementById("ms2-common-status");
   if(common){
    const score=common.querySelector(".score"),metrics=common.querySelector(".ms2-metrics");
@@ -1670,6 +2277,12 @@ document.addEventListener("DOMContentLoaded",()=>{
    const controllerHealth=await fetchControllerHealth();
    const controllerForcesFailClosed=!!(controllerHealth&&controllerHealth.runtime&&controllerHealth.runtime.fail_closed===true);
    const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,staleFromAge=d.stale||age>60||age< -5,blocked=window.livePriceBlocked?window.livePriceBlocked(d):"MISSING_PRICE_DIAGNOSTICS",stale=staleFromAge||controllerForcesFailClosed||!!blocked||!screenReady(d);
+   // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるように」: the same fresh rows the screen trusts
+   // (row gate, not stale) are shared with the holdings cards; nothing is shared while the data is stopped.
+   window.cockpitLivePrices=stale?null:{at:Date.now(),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>rowReady(x)).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
+   // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: after the close (no fresh rows) the last price of each row is kept apart,
+   // with the time of the data, so a carried position can be valued at its last price, labelled as such.
+   window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>Number(x.price)>0).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
@@ -1833,4 +2446,553 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadWatcherKioxia(); setInterval(loadWatcherKioxia,3000);
 });
 </script>
-<script src="earnings-calendar.js" defer></script></body></html>
+<script src="earnings-calendar.js" defer></script>
+<style>
+/* OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」: the earnings calendar look is set here, so
+   earnings-calendar.js stays the pinned source. Heat by number of companies, weekend dimmed, today outlined. */
+html body #earnings-calendar-panel .ec-grid{gap:6px;margin:14px 0}
+html body #earnings-calendar-panel .grok-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+.g3-note{font-size:12px;color:#8b9299;margin:8px 0}.g3-score{display:flex;align-items:baseline;gap:10px;margin:6px 0 2px}.g3-score b{font-size:22px;color:#e7e9eb}
+.g3-delta{font-size:12px;color:#9ba3af}.g3-delta.up{color:#35e2ae}.g3-delta.down{color:#ff8a92}
+.g3-bar{position:relative;height:8px;border-radius:999px;margin:6px 0 16px;background:linear-gradient(90deg,#f23645 0%,#3a3b40 50%,#35e2ae 100%)}
+.g3-bar i{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 6px #fff}
+.g3-bar em{position:absolute;top:10px;font-style:normal;font-size:10px;color:#8b9299}.g3-bar em:first-of-type{left:0}.g3-bar em:last-of-type{right:0}
+.g3-bar.none{background:#26272b;height:auto;padding:4px 8px;margin:6px 0 8px}.g3-bar.none span{font-size:11px;color:#8b9299}
+.g3-points{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}.g3-points span{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid #303033;color:#c9ccd1}
+.g3-points span.up{border-color:#1f5444;color:#35e2ae}.g3-points span.down{border-color:#6f2730;color:#ff8a92}
+.g3-broker{display:block;margin-top:6px;font-size:11px;color:#8b9299;line-height:1.5}
+.g3-pv{margin:0 0 8px;padding:6px 8px;border:1px solid #272a30;border-radius:8px;background:#0f1013}.g3-pv>b{display:block;font-size:11px;color:#9ba3af;margin-bottom:4px}
+.g3-pv-nums{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}.g3-pv-nums span{font-size:10px;color:#8b9299;text-align:center}.g3-pv-nums i{display:block;white-space:nowrap;font-style:normal;font-size:11px;color:#e7e9eb;font-weight:700}
+.g3-pv small{display:block;font-size:11px;color:#c9ccd1;line-height:1.5}.g3-pv small.good{color:#35e2ae}.g3-pv small.bad{color:#ff8a92}.g3-pv small.warn{color:#f7c66b}
+.g3-checks{margin-top:14px}.g3-checks h3{font-size:15px;margin:0 0 8px;color:#e7e9eb}.g3-check-day{padding:8px 10px;border:1px solid #272a30;border-radius:8px;margin-bottom:8px}
+.g3-check-day small{margin-left:10px;color:#9ba3af}.g3-check-day ul{margin:6px 0 0 18px;padding:0;font-size:12px;color:#c9ccd1;line-height:1.7}
+.g3-check-day li.up b{color:#35e2ae}.g3-check-day li.down b{color:#ff8a92}
+#unified-mode-verified.down{color:#f7c66b}
+html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #303033;background:#141518;color:#c9ccd1}
+html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
+/* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */
+.tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}
+.gpt-card .gpt-code{display:block;font-size:22px;font-weight:800;color:#e7e9eb;line-height:1.1}.gpt-card .gpt-name{display:block;font-size:15px;font-weight:700;color:#e7e9eb;margin-top:2px}
+.gpt-card .gpt-role-badge{flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;border:1px solid #3a4a6b;color:#8ab4ff;background:#121a2b}.gpt-card .gpt-role-badge.supply_sq{border-color:#6b5426;color:#f7c66b;background:#231c0f}
+.gpt-card .gpt-what{font-size:13px;color:#e7e9eb;margin:10px 0 8px;line-height:1.5;font-weight:700}
+.gpt-card .gpt-supply{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}.gpt-card .gpt-supply span{font-size:11px;color:#9ba3af;text-align:center;border:1px solid #272a30;border-radius:6px;padding:4px 2px}
+.gpt-card .gpt-supply b{display:block;font-size:15px;color:#e7e9eb}.gpt-card .gpt-supply b.up{color:#35e2ae}.gpt-card .gpt-supply b.down{color:#ff8a92}.gpt-card .gpt-asof{display:block;font-size:10px;color:#8b9299;margin-bottom:6px}
+.gpt-card .gpt-more{display:block;font-size:11px;color:#8b9299;margin-top:6px;line-height:1.5}
+.gpt-card .gpt-cond{font-size:12px;line-height:1.5;padding:5px 8px;border-radius:6px;margin:4px 0;color:#e7e9eb}.gpt-card .gpt-cond b{margin-right:6px}
+.gpt-card .gpt-cond.go{background:#0f2a22;border:1px solid #1f5444}.gpt-card .gpt-cond.go b{color:#35e2ae}.gpt-card .gpt-cond.stop{background:#1b1c20;border:1px solid #3a3b40;color:#b8bcc4}.gpt-card .gpt-cond.stop b{color:#9ba3af}
+.gpt-card .cc-foot a{color:#8ab4ff;margin-right:4px}
+#grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal;text-align:center;line-height:1.35}
+#grok-bots-body .cc-identity{min-width:0;flex:1}#grok-bots-body .cc-company{white-space:normal}
+#grok-bots-body .g2-note{font-size:11px;color:#c9ccd1;margin:6px 0 2px;line-height:1.5}
+#trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
+#trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#trade-watch .fx-link{margin-top:10px;padding:8px 12px;border:1px solid #272a30;border-radius:10px;background:#101114}
+#trade-watch .fx-link b{display:block;font-size:13px;color:#e7e9eb}#trade-watch .fx-link small{display:block;font-size:11px;color:#9ba3af;margin:3px 0}
+#trade-watch .fx-link-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}#trade-watch .fx-link-grid span{font-size:12px;color:#c9ccd1;border:1px solid #272a30;border-radius:8px;padding:6px 8px}
+#trade-watch .fx-link-grid i{display:block;font-style:normal;color:#e7e9eb;margin-top:2px}
+#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}
+html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
+html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
+html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
+html body #earnings-calendar-panel .ec-day.ec-h1{background:#13201c}html body #earnings-calendar-panel .ec-day.ec-h2{background:#16302a}
+html body #earnings-calendar-panel .ec-day.ec-h3{background:#1a4136}html body #earnings-calendar-panel .ec-day.ec-h4{background:#1f5444}
+html body #earnings-calendar-panel .ec-day.ec-today{border-color:#35e2ae}
+html body #earnings-calendar-panel .ec-day.active{border:1px solid #e7e9eb;background:#1d1f24}
+html body #earnings-calendar-panel .ec-day small{position:absolute;right:10px;bottom:8px;font-size:12px;font-weight:700;color:#e7e9eb;font-variant-numeric:tabular-nums}
+html body #earnings-calendar-panel .ec-day small i{font-style:normal;font-size:10px;color:#8b9299;margin-left:1px}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ const panel=document.getElementById("earnings-calendar-panel");
+ if(!panel)return;
+ const deco=()=>{
+  const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  panel.querySelectorAll(".ec-day").forEach(b=>{
+   const m=/^(\d{4}-\d\d-\d\d) 決算予定(\d+)件$/.exec(b.getAttribute("aria-label")||"");
+   if(!m)return;
+   const count=Number(m[2]),dow=new Date(m[1]+"T00:00:00").getDay();
+   const heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0;
+   b.classList.toggle("ec-weekend",dow===0||dow===6);
+   for(let i=1;i<=4;i++)b.classList.toggle("ec-h"+i,heat===i);
+   b.classList.toggle("ec-today",m[1]===today);
+   const s=b.querySelector("small");
+   if(s&&!s.querySelector("i")){s.textContent=String(count);const u=document.createElement("i");u.textContent="社";s.appendChild(u);}
+  });
+ };
+ new MutationObserver(deco).observe(panel,{childList:true,subtree:true});
+ deco();
+});
+</script><style>.paste-reminder{margin:0 0 8px;padding:10px 16px;border:1px solid #5a431c;border-radius:14px;background:#2a2110;color:#f5c542;font-size:14px;font-weight:700}.paste-reminder small{display:block;margin-top:2px;color:#e7c98a;font-size:12px;font-weight:400}.paste-reminder.done{border-color:#164536;background:#0d2b23;color:#35e2ae}</style>
+<script>
+// OWNER 2026-10-27 「GTPとGROKのアナリストの回答はおれが朝AIコクピットを起動したら、ここにコピペするやり方にして、忘れてたら
+// 催促して…AIコクピットでも、俺に知らせるようにして（音声でも俺に知らせる）」: on weekdays 08:00-15:30, if today's GPT
+// (PRE-NEXT・需給) or Grok (1号・2号・3号) answers have not reached the cockpit, a banner says which ones are missing and
+// asks to paste them to the PC Claude in the project chat; the voice says it once when it first appears and then
+// every 30 minutes while something is still missing (at most 6 times a day). Display and voice only.
+(()=>{
+  const box=document.getElementById("paste-reminder");
+  if(!box)return;
+  const KEY="cockpitPasteReminderV1";
+  const jst=()=>{const j=new Date(Date.now()+9*3600000);return {day:j.toISOString().slice(0,10),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+  const dayOf=v=>{const t=Date.parse(String(v||"").replace(" ","T")+(/(Z|[+-]\d{2}:?\d{2})$/.test(String(v||""))?"":"+09:00"));return Number.isFinite(t)?new Date(t+9*3600000).toISOString().slice(0,10):"";};
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){return {}}};
+  const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(_){}};
+  async function check(){
+    const now=jst();
+    if(now.wd===0||now.wd===6||now.min<420||now.min>930){box.hidden=true;return;}   // OWNER 2026-10-27: 9時前でも（7:00から）
+    let bp=null,gb=null;
+    try{bp=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    try{gb=await (await fetch("grok_bots.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    // OWNER 2026-10-27 「読めない時は確認できませんと出す」: a failed read is not reported as missing
+    if(!bp||!gb){box.hidden=false;box.className="paste-reminder";box.innerHTML="貼り忘れの確認ができません（"+[!bp?"GPTの答えの記録":"",!gb?"Grokの答えの記録":""].filter(Boolean).join("・")+"を読めません）<small>コクピットが止まっている・起動途中の時に出ます。しばらくしても消えない時はPCのClaudeに知らせてください。</small>";return;}
+    const arrived=(bp&&bp.manual_analysts&&bp.manual_analysts._arrived_today)||{};
+    const missing=[];
+    [["pre_next","GPT PRE-NEXT"],["supply_sq","GPT 需給"]].forEach(([k,label])=>{if(dayOf(arrived[k])!==now.day)missing.push(label);});
+    const bots=Array.isArray(gb&&gb.bots)?gb.bots:[];
+    [["Grok1号","Grok 1号"],["Grok2号","Grok 2号"],["Grok3号","Grok 3号"]].forEach(([k,label])=>{const b=bots.find(x=>x.bot===k);
+      const at=b&&b.saved_at?Date.parse(b.saved_at):NaN,ok=Number.isFinite(at)&&dayOf(b.saved_at)===now.day&&new Date(at+9*3600000).getUTCHours()>=5;if(!ok)missing.push(label);});
+    const st=read();if(st.day!==now.day){st.day=now.day;st.count=0;st.last=0;}
+    if(!missing.length){box.hidden=false;box.className="paste-reminder done";box.innerHTML="今日のGPT・Grokの答えはそろいました";if(st.allSaid!==now.day){st.allSaid=now.day;}write(st);return;}
+    box.hidden=false;box.className="paste-reminder";
+    box.innerHTML="【貼り忘れ】まだ今日の答えが届いていません："+missing.join("・")+"<small>指示文は「アナリスト」タブ。ChatGPT・Grokの答えをコピーして、プロジェクトのチャット（PCのClaude）に貼ってください。PCのClaudeがコクピットに入れます。</small>";
+    if(st.count<6&&Date.now()-(st.last||0)>=30*60000&&typeof window.cockpitSpeak==="function"){
+      // before the open the live-speech gate is off; this one reminder passes it (signals stay silent)
+      const prevLive=window.cockpitLiveSpeechEnabled;if(prevLive===false)window.cockpitLiveSpeechEnabled=true;
+      try{window.cockpitSpeak("アナリストの答えがまだです。"+missing.join("、").replace(/GPT /g,"ジーピーティー ").replace(/Grok /g,"グロック ")+"。チャットのクロードに貼ってください。","CALM");}finally{if(prevLive===false)window.cockpitLiveSpeechEnabled=false;}
+      st.count+=1;st.last=Date.now();
+    }
+    write(st);
+  }
+  check();
+  setInterval(check,60000);
+})();
+</script>
+<style>.ai-top5 .ai5-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}.ai-top5 .ai5-mode{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid #303033;color:#9AA0AA}.ai-top5 .ai5-mode.auto{border-color:#164536;color:#35e2ae}.ai-top5 .ai5-mode.manual{border-color:#5a431c;color:#f5c542}
+.ai-top5 select,.ai-top5 button{height:32px;padding:0 12px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700}
+.ai-top5 .ai5-method{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 10px;padding:10px 12px;border:1px solid #22252A;border-radius:10px;background:#0E1013;font-size:13px;color:#E8EAED}.ai-top5 .ai5-method b{color:#E8EAED;font-weight:600}.ai-top5 .ai5-method .ai5-num{margin-left:10px;color:#35e2ae;font-weight:600}.ai-top5 .ai5-method small{display:block;color:#9AA0AA;font-size:11px;margin-top:2px}
+.ai-top5 .ai5-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}.ai-top5 .ai5-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}.ai-top5 .ai5-src{font-size:11px;color:#9AA0AA}.ai-top5 .ai5-out{padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}/* OWNER 2026-10-29 「ふぞろい」: same height cards, the source line and the button at the bottom */.ai-top5 #ai5-cards{align-items:stretch}.ai-top5 .ai5-pin>.cc-card{flex:1 1 auto}.ai-top5 .ai5-src{min-height:30px}.ai-top5 .ai5-out{margin-top:auto}/* OWNER 2026-10-29 「5枚を1段に並べて」 */.ai-top5 #ai5-cards{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px}.ai-top5 #ai5-cards .cc-card{min-width:0}</style>
+<script>
+// OWNER 2026-10-27 「SCL5いらない、ここをAIアナリストの注目期待値高い順TOP５をデフォルトとして、俺が任意でいれかえる形、
+// あと今日フォーカスする手法も表示」: in the トレード中 tab the SCALP 5 panel is hidden and this panel takes its place.
+// Default (自動): the GPT / Grok analysts' stocks of today that are in the 100 live rows, by the cockpit's recorded EV per
+// stock (signal_ev, n >= 10; no EV after those), then by how many analysts named them; top 5. Any add / remove by the
+// OWNER switches the day to OWNER入れ替え; 「AIのおすすめに戻す」 goes back. 今日フォーカスする手法 = the brain's rules
+// whose forward record (rule_shadow) is 20+ trades with EV > 0 and PF >= 1. Prices only from fresh rows. Display only.
+document.addEventListener("DOMContentLoaded",()=>{
+  const pane=document.querySelector('.tab-pane[data-pane="scalp"]');
+  if(!pane||document.getElementById("ai-top5"))return;
+  document.querySelectorAll(".scalp-tv").forEach(x=>{x.style.display="none";});
+  const sec=document.createElement("section");
+  sec.id="ai-top5";sec.className="card wide ai-top5";
+  sec.innerHTML='<h2>AIアナリスト注目 TOP5（当たり具合の良い順）</h2><div class="ai5-method" id="ai5-method">今日フォーカスする手法を読込中...</div>'+
+    '<div class="ai5-bar"><span class="ai5-mode" id="ai5-mode">—</span><select id="ai5-select"><option value="">入れる銘柄を選ぶ（カードを押すとそのカードと入れ替え）</option></select>'+
+    '<button type="button" id="ai5-add">入れる</button><button type="button" id="ai5-reset">AIのおすすめに戻す</button></div>'+
+    '<div id="ai5-cards" class="cc-grid"><div class="focus-empty">AIアナリストの注目を読込中...</div></div>';
+  pane.appendChild(sec);
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const KEY="cockpitAiTop5V1",valid=t=>typeof t==="string"&&/^[0-9A-Z]{4}\.T$/.test(t);
+  const today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+  const load=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||"{}");return v&&v.day===today()?v:{day:today(),mode:"auto",pinned:[]};}catch(_){return {day:today(),mode:"auto",pinned:[]};}};
+  const save=s=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}};
+  let st=load(),live=[],liveOk=false,auto=[],sources={},evScore=()=>null,hitOf={},hitScore=()=>null,selected=null;
+  const j=async u=>{try{const r=await fetch(u+(u.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}};
+  async function refreshAuto(){
+    const [bp,gb,ev,rs,an]=await Promise.all([j("/brain_pick.json"),j("grok_bots.json"),j("/signal_ev.json"),j("/rule_shadow.json"),j("analyst_scores.json")]);
+    // OWNER 2026-10-27 「アナリストの注目銘柄を当たり具合の良い順に」: each analyst's hit rate so far (GPT: analyst_scores, Grok 3号:
+    // its answer checks); a stock takes the best rate among the analysts who named it; no score yet -> after the scored ones.
+    hitOf={};(Array.isArray(an&&an.analysts)?an.analysts:[]).forEach(a=>{if(a.scored>0&&a.hit_rate_pct!=null)hitOf["GPT"+(a.name==="需給"?"需給":" "+a.name)]={rate:Number(a.hit_rate_pct),n:a.scored};});
+    const g3=(Array.isArray(gb&&gb.bots)?gb.bots:[]).find(b=>b.bot==="Grok3号"),ck=Array.isArray(g3&&g3.checks)?g3.checks:[],h3=ck.reduce((x,c)=>x+(c.hit||0),0),m3=ck.reduce((x,c)=>x+(c.miss||0),0);
+    if(h3+m3>0)hitOf["Grok3号"]={rate:h3/(h3+m3)*100,n:h3+m3};
+    const votes={};sources={};
+    const add=(code,src)=>{const t=String(code||"").trim().toUpperCase()+".T";if(!valid(t))return;votes[t]=(votes[t]||0)+1;(sources[t]=sources[t]||new Set()).add(src);};
+    const ma=(bp&&bp.manual_analysts)||{};
+    Object.entries(ma).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>add(x.code,/^Claude/.test(String(x.reason||""))?"Claude":role==="supply_sq"?"GPT需給":role==="pre_next"?"GPT PRE-NEXT":"GPT"));});
+    const tags=(gb&&gb.tags)||{},d=new Date(Date.now()+9*3600000),md=(d.getUTCMonth()+1)+"/"+d.getUTCDate();
+    Object.entries(tags).forEach(([code,list])=>(Array.isArray(list)?list:[]).forEach(t=>{if(t&&t.day===md)add(code,"Grok"+(t.bot||""));}));
+    const evOf={};
+    Object.entries((ev&&ev.by_strategy_ticker)||{}).forEach(([k,v])=>{const t=k.split("|").pop(),n=Number(v&&v.n)||0,e=Number(v&&v.ev_pct);if(!n||!Number.isFinite(e))return;const a=evOf[t]=evOf[t]||[0,0];a[0]+=n;a[1]+=n*e;});
+    evScore=t=>evOf[t]&&evOf[t][0]>=10?evOf[t][1]/evOf[t][0]:null;
+    const inLive=new Set(live.map(x=>x.ticker));
+    hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);return r.length?r[0]:null;};
+    auto=Object.keys(votes).filter(t=>inLive.has(t)).sort((a,b)=>{const ha=hitScore(a),hb=hitScore(b);if((ha===null)!==(hb===null))return ha===null?1:-1;if(ha&&hb&&hb.rate!==ha.rate)return hb.rate-ha.rate;const ea=evScore(a),eb=evScore(b);if((ea===null)!==(eb===null))return ea===null?1:-1;if(ea!==null&&eb!==ea)return eb-ea;return votes[b]-votes[a];}).slice(0,5);
+    // fewer than 5 analyst stocks in the 100: the rest are the highest recorded EV stocks of the 100 (labelled as such)
+    if(auto.length<5){const fill=[...inLive].filter(t=>!auto.includes(t)&&evScore(t)!==null&&evScore(t)>0).sort((x,y)=>evScore(y)-evScore(x));for(const t of fill){if(auto.length>=5)break;auto.push(t);(sources[t]=sources[t]||new Set()).add("期待値上位（アナリスト注目なし）");}}
+    const m=document.getElementById("ai5-method");
+    if(m){const f=(rs&&rs.forward)||{},lab=k=>String((rs.rules&&rs.rules[k]&&rs.rules[k].label)||(rs.gap_rules&&rs.gap_rules[k]&&rs.gap_rules[k].label)||(k==="BRAIN"?"ブレインの選択":k));
+      const good=Object.entries(f).filter(([k,v])=>Number(v.n)>=20&&Number(v.ev_pct)>0&&Number(v.pf)>=1).sort((a,b)=>Number(b[1].ev_pct)-Number(a[1].ev_pct));
+      // OWNER 2026-10-27 「一番上に今日の手法を1行出して」: the best one only, on one line (the rule behind it in the tooltip)
+      m.title='ブレインの仮想売買の記録（'+(rs&&rs.forward_from||'')+'〜、費用込み）で20回以上・期待値プラス・PF1以上の手法のうち、期待値が一番高いもの。売買の判断はOWNER。';
+      // OWNER 2026-10-29 「わかりにくいから寄り天・より底も追記して」: what the gap rules mean in plain words
+      const plain=k=>/^R3B/.test(k)?"（窓を上に開けたら寄り天を狙って空売り・下に開けたら寄り底を狙って買い）":/^R3A/.test(k)?"（窓を上に開けたら寄りから買い・下に開けたら寄りから空売り＝窓の方向に乗る）":"";
+      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b><span class="ai5-plain">'+esc(plain(good[0][0]))+'</span><span class="ai5-num">1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）</span>':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
+    paint();
+  }
+  function paint(){
+    const list=st.mode==="manual"?st.pinned.filter(valid).slice(0,5):auto;
+    const mode=document.getElementById("ai5-mode");
+    if(mode){mode.className="ai5-mode "+(st.mode==="manual"?"manual":"auto");mode.textContent=st.mode==="manual"?"OWNER入れ替え（今日）":"AIのおすすめ（自動）";}
+    const box=document.getElementById("ai5-cards");if(!box)return;
+    if(!list.length){box.innerHTML='<div class="focus-empty">'+(st.mode==="manual"?"入れた銘柄がありません。":"今日のAIアナリストの注目のうち、監視100銘柄に入っている銘柄がまだありません。")+'</div>';return;}
+    const map=new Map(live.map(x=>[x.ticker,x]));
+    box.innerHTML=list.map(t=>{const row=map.get(t),ok=liveOk&&row&&window.cockpitMs2RowReady?.(row)===true,e=evScore(t);
+      const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,_allMetrics:true,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
+        window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:(row&&row.name)||t,direction:"block",failClosed:"MS2の値が新しくない・未取得",freshness:"stale",price:null,foot:"実注文禁止"});
+      const h=hitScore(t);
+      return '<div class="ai5-pin'+(t===selected?' selected':'')+'" data-pick="'+t+'">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・当たり率（検証中） '+(h?Math.round(h.rate)+'%（'+h.n+'件）':'まだ無し')+'・期待値（検証中） '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");
+  }
+  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{};live=Array.isArray(d.all_targets)?d.all_targets.filter(x=>valid(x&&x.ticker)):[];liveOk=window.cockpitMs2ScreenReady?.(d)===true;
+    const sel=document.getElementById("ai5-select");if(sel&&sel.options.length<=1&&live.length){live.forEach(x=>{const o=document.createElement("option"),code=x.ticker.replace(/\.T$/,""),nm=String(x.name||x.ticker);o.value=x.ticker;o.textContent=code+"　"+(nm.includes(code)?nm.replace("（"+code+"）",""):nm);sel.append(o);});}
+    if(!auto.length)refreshAuto();else paint();});
+  const toManual=()=>{if(st.mode!=="manual"){st={day:today(),mode:"manual",pinned:auto.slice()};}};
+  // OWNER 2026-10-27 「カード選択で入れ替えできるようにして」: a selected card (click) is replaced in place by the chosen stock;
+  // without a selection the stock is added (max 5).
+  document.getElementById("ai5-add").addEventListener("click",()=>{const t=document.getElementById("ai5-select").value;if(!valid(t))return;toManual();if(st.pinned.includes(t))return;
+    const i=selected?st.pinned.indexOf(selected):-1;if(i>=0){st.pinned[i]=t;selected=null;save(st);paint();return;}
+    if(st.pinned.length>=5){alert("5銘柄までです。入れ替えるカードを先に押して選んでください。");return;}st.pinned.push(t);save(st);paint();});
+  document.getElementById("ai5-reset").addEventListener("click",()=>{st={day:today(),mode:"auto",pinned:[]};save(st);paint();});
+  document.getElementById("ai5-cards").addEventListener("click",e=>{const b=e.target.closest("[data-out]");if(b){const t=b.getAttribute("data-out");toManual();st.pinned=st.pinned.filter(x=>x!==t);if(selected===t)selected=null;save(st);paint();return;}
+    const c=e.target.closest("[data-pick]");if(!c)return;const t=c.getAttribute("data-pick");selected=selected===t?null:t;paint();
+    const sel=document.getElementById("ai5-select");if(sel&&selected)sel.focus();});
+  refreshAuto();setInterval(refreshAuto,60000);
+});
+</script>
+<style>.morning-brief{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113;color:#E8EAED;font-size:13px}.morning-brief summary{cursor:pointer;font-weight:700;color:#f5c542}.morning-brief .mb-how{margin:6px 0;padding:8px 10px;border-radius:8px;background:#0E1013;color:#E8EAED;font-size:12px;line-height:1.6}.morning-brief textarea{width:100%;min-height:150px;margin:6px 0;background:#0E1013;color:#E8EAED;border:1px solid #22252A;border-radius:8px;font-size:12px;padding:8px}.morning-brief button{height:30px;padding:0 12px;margin-right:6px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700;cursor:pointer}
+.ec-ai{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0}.ec-ai span{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #303033;color:#c9ccd1}.ec-ai span.bull{border-color:#164536;color:#35e2ae}.ec-ai span.bear{border-color:#4a1f24;color:#ff8a8f}</style>
+<script>
+// OWNER 2026-10-27 「決算銘柄とアナリストをつないで。朝の指示文に今日と明日の決算銘柄を入れて全員に答えさせる、決算銘柄の欄でGPTと
+// Grokの判断を並べて」:
+// (1) a 朝の指示文 box under 注目: today's and the next weekday's earnings of the watched stocks (earnings_calendar.json,
+//     watched=true) as two ready-to-paste texts, one for the GPT analysts (GPT_ANALYST_NOTE_V1 rows) and one for the Grok
+//     bots (GROK_NOTE_V2 rows), so every analyst answers on each of them;
+// (2) every stock line of the earnings calendar lists the GPT rows (brain_pick manual_analysts) and the Grok notes
+//     (brain_pick grok.notes) for its code, next to the existing Grok 2号/3号 tags. Display only.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const jstDay=ms=>new Date(ms+9*3600000).toISOString().slice(0,10);
+  const nextWeekday=day=>{let t=Date.parse(day+"T00:00:00Z");do{t+=86400000;}while([0,6].includes(new Date(t).getUTCDay()));return new Date(t).toISOString().slice(0,10);};
+  const md=d=>Number(d.slice(5,7))+"/"+Number(d.slice(8,10));
+  let bpCache=null,bpAt=0;
+  const brainPick=async()=>{if(bpCache&&Date.now()-bpAt<30000)return bpCache;try{bpCache=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();bpAt=Date.now();}catch(_){}return bpCache;};
+  async function buildBrief(){
+    const box=document.getElementById("morning-brief");if(!box)return;
+    let cal=null;try{cal=await (await fetch("earnings_calendar.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    const today=jstDay(Date.now()),tomorrow=nextWeekday(today);
+    const list=d=>(Array.isArray(cal&&cal.calendar)?cal.calendar:[]).filter(x=>x&&x.watched===true&&x.date===d).map(x=>String(x.name||"").trim()+"（"+x.code+"）");
+    const a=list(today),b=list(tomorrow);
+    const sum=box.querySelector("summary");
+    // OWNER 2026-10-27 「意味がよくわからない」: says what to do in plain words; shown on weekday mornings only (6:00-11:30)
+    // OWNER 2026-10-27 「名前を『決算銘柄の追加指示（GPT・Grokに貼る）』に短く、開いたら使い方を一文…9時から後は畳む」:
+    // open before 9:00, folded once at 9:00 (the OWNER can still open it again by hand).
+    const nowP=new Date(Date.now()+9*3600000),mins=nowP.getUTCHours()*60+nowP.getUTCMinutes(),wd=nowP.getUTCDay();
+    box.hidden=wd===0||wd===6||mins<360||mins>690;
+    const fold=mins<540?"open":"fold";if(box.dataset.fold!==today+fold){box.open=fold==="open";box.dataset.fold=today+fold;}
+    if(!cal){sum.textContent="決算銘柄の追加指示（GPT・Grokに貼る）：決算日程を読めないので作れません";return;}
+    sum.textContent="決算銘柄の追加指示（GPT・Grokに貼る）";
+    box.querySelector(".mb-how").textContent="下の文をコピーしてGPT（PRE-NEXT・需給）とGrok（1〜3号）に貼り、返ってきた答えをPCのClaudeに貼ると、決算日程タブに並びます（今日・明日の決算 "+(a.length+b.length)+"銘柄）。";
+    const head="【今日の追加指示（AIコクピット）"+today+"】\n次のAIコクピット監視銘柄は、今日・明日に決算があります。いつもの答えに加えて、全部の銘柄について見立てを出してください。\n今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし")+"\n";
+    const gpt=head+"答えの最後の GPT_ANALYST_NOTE_V1 のブロックに、1銘柄1行で入れてください（この追加分は5行の上限に数えない）。\n形：役名 | 銘柄コード4文字 | 強気 か 弱気 | 理由（120文字まで。先頭に「決算前」と書く） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\n確かめられない数字は「未確認」と書き、作らない。";
+    const grok=head+"答えの最後に、次のブロックを付けてください（1銘柄1行）。\nGROK_NOTE_V2\n銘柄コード4文字 | 強・中・弱（話題の強さ） | 強気 か 弱気 | 理由（120文字まで。先頭に「決算前」と書く。事実とXの声を分ける） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\nEND\n確かめられない数字は「未確認」と書き、作らない。";
+    box.querySelector("#mb-gpt").value=gpt;box.querySelector("#mb-grok").value=grok;
+  }
+  async function decorate(){
+    const panel=document.getElementById("earnings-calendar-panel");if(!panel)return;
+    const bp=await brainPick();if(!bp||bp.real_submit_allowed!==false)return;
+    const by={};
+    Object.entries(bp.manual_analysts||{}).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>{(by[x.code]=by[x.code]||[]).push({who:/^Claude/.test(String(x.reason||""))?"Claude":"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role==="premarket"?"寄り前":role),view:x.view,reason:x.reason});});});
+    (Array.isArray(bp.grok&&bp.grok.notes)?bp.grok.notes:[]).forEach(x=>{(by[x.code]=by[x.code]||[]).push({who:"Grok",view:x.view||x.stance,reason:x.reason});});
+    panel.querySelectorAll(".ec-item > strong").forEach(s=>{
+      const m=/（([0-9][0-9A-Z]{3})）/.exec(s.textContent||"");const rows=m?by[m[1]]||[]:[];
+      const key=JSON.stringify(rows);if(s.dataset.aiKey===key)return;s.dataset.aiKey=key;
+      s.parentElement.querySelectorAll(":scope > .ec-ai").forEach(x=>x.remove());
+      if(!rows.length)return;
+      const div=document.createElement("div");div.className="ec-ai";
+      div.innerHTML=rows.map(r=>'<span class="'+(r.view==="強気"?"bull":r.view==="弱気"?"bear":"")+'" title="'+esc(r.reason)+'">'+esc(r.who)+"："+esc(r.view)+"・"+esc(String(r.reason||"").slice(0,40))+'</span>').join("");
+      s.insertAdjacentElement("afterend",div);
+    });
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const box=document.getElementById("morning-brief");
+    if(box){box.innerHTML='<summary>朝の指示文を読込中...</summary><p class="mb-how">下の文をコピーしてGPT（PRE-NEXT・需給）とGrok（1〜3号）に貼り、返ってきた答えをPCのClaudeに貼ると、決算日程タブに並びます。</p><p>GPT（PRE-NEXT・需給）用：</p><textarea id="mb-gpt" readonly></textarea><button type="button" data-copy="mb-gpt">GPT用をコピー</button>'+
+      '<p>Grok（1号・2号・3号）用：</p><textarea id="mb-grok" readonly></textarea><button type="button" data-copy="mb-grok">Grok用をコピー</button>';
+      box.addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(!b)return;const t=document.getElementById(b.getAttribute("data-copy"));
+        (navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>{b.textContent="コピーしました";setTimeout(()=>{b.textContent=b.getAttribute("data-copy")==="mb-gpt"?"GPT用をコピー":"Grok用をコピー";},2000);}).catch(()=>{t.select();document.execCommand("copy");});});
+      buildBrief();setInterval(buildBrief,600000);}
+    const hook=()=>{const p=document.getElementById("earnings-calendar-panel");if(!p)return setTimeout(hook,1000);
+      new MutationObserver(()=>decorate()).observe(p,{childList:true,subtree:true});decorate();setInterval(decorate,60000);};
+    hook();
+  });
+})();
+</script>
+<style>.carry-alert{margin:0 0 8px;padding:10px 16px;border:1px solid #1d4f7a;border-radius:14px;background:#0d1d2b;color:#9fd0ff;font-size:14px;font-weight:700}.carry-alert small{display:block;margin-top:3px;color:#9AA0AA;font-size:12px;font-weight:400}.carry-alert .ca-long{color:#35e2ae}.carry-alert .ca-short{color:#ff8a8f}</style>
+<script>
+// OWNER 2026-10-27 「オーバーナイト・スイング・バリュー銘柄を保有する場合は15時25分入ったら音声と各タブで表示してしらせること」:
+// when the brain decides today's carry-over (brain_pick positions.overnight, decided at 15:25), a banner under 注目 (seen
+// on every tab) lists them with the side and the base price until 15:45, and the voice says it once a day. SWING / VALUE
+// have no hold decision in the cockpit yet, so the banner says so instead of guessing. Display and voice only.
+(()=>{
+  const box=document.getElementById("carry-alert");
+  if(!box)return;
+  const KEY="cockpitCarryAlertV1";
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const jst=()=>{const j=new Date(Date.now()+9*3600000);return {day:j.toISOString().slice(0,10),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+  async function check(){
+    const now=jst();
+    if(now.wd===0||now.wd===6||now.min<925||now.min>945){box.hidden=true;return;}
+    let bp=null;try{bp=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    if(!bp||bp.real_submit_allowed!==false){box.hidden=false;box.innerHTML="15:25 持ち越しの判断を確認できません（ブレインの記録を読めません）";return;}
+    const on=(Array.isArray(bp.positions&&bp.positions.overnight)?bp.positions.overnight:[]).filter(p=>String(p.decided_at||"").slice(0,10)===now.day);
+    if(!on.length&&now.min<927){box.hidden=true;return;}   // the decision lands right after 15:25
+    const nm=p=>String(p.name||"").replace(/（[0-9A-Z]{4}）$/,"")+"("+String(p.ticker||"").replace(/\.T$/,"")+")";
+    box.hidden=false;
+    box.innerHTML=(on.length?"15:25 持ち越し（オーバーナイト・仮想）"+on.length+"銘柄："+on.map(p=>'<span class="'+(p.side==="LONG"?"ca-long":"ca-short")+'">'+esc(nm(p))+" "+(p.side==="LONG"?"買い":"空売り")+"（基準 "+esc(p.reference_price)+"）</span>").join("・"):"15:25 持ち越し（オーバーナイト）：今日はありません")+
+      "<small>スイング・バリューは、コクピットにまだ「持ち越す」判断の仕組みがありません（候補の一覧だけ）。仮想の記録で、注文は出しません。</small>";
+    let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
+    if(st.day!==now.day&&typeof window.cockpitSpeak==="function"){
+      const prevLive=window.cockpitLiveSpeechEnabled;if(prevLive===false)window.cockpitLiveSpeechEnabled=true;
+      try{window.cockpitSpeak(on.length?"15時25分。持ち越しは"+on.length+"銘柄。"+on.slice(0,5).map(p=>String(p.name||"").replace(/（[0-9A-Z]{4}）$/,"")+(p.side==="LONG"?" 買い":" 空売り")).join("、")+"。":"15時25分。今日の持ち越しはありません。","CALM");}
+      finally{if(prevLive===false)window.cockpitLiveSpeechEnabled=false;}
+      try{localStorage.setItem(KEY,JSON.stringify({day:now.day}))}catch(_){}
+    }
+  }
+  check();
+  setInterval(check,20000);
+})();
+</script>
+<style>.short-rebound-alert{margin:0 0 8px;padding:10px 16px;border:1px solid #5a4a12;border-radius:14px;background:#221d0a;color:#f5c542;font-size:14px;font-weight:700}.short-rebound-alert small{display:block;margin-top:3px;color:#9AA0AA;font-size:12px;font-weight:400}.short-rebound-alert .sr-row{display:block;margin-top:4px;color:#E8EAED;font-weight:400;font-size:13px}.short-rebound-alert .sr-row b{color:#9AA0AA}.short-rebound-alert .sr-row em{font-style:normal;font-weight:700;color:#ff8a8f}</style>
+<script>
+// OWNER 2026-10-27 「14時以降のショートリバは狙いたい」「ショートリバの初動を検知してほしい」「あがりきったところで、ショートINする」
+// 「ショートリバの2段の合図（初動＝まだ売るな、上がり切り＝ショート候補と損切りの目安）を記録と表示と声だけで作って、その後の動きを
+// 毎日集計して」: the brain detects and records both stages (brain_pick positions.short_rebound, see
+// scripts/v10_positions_live.py). This box lists today's 初動 (まだ売らない) and 上がり切り (ショート候補・損切りの目安＝戻りの高値)
+// with what happened next, says each new one once (at most 8 a day each), and shows the past days' summary.
+// Display and voice only, no order.
+(()=>{
+  const box=document.getElementById("short-rebound-alert");
+  if(!box)return;
+  const KEY="cockpitShortReboundV2";
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pct=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%";
+  const short=v=>String(v||"").replace(/（[0-9A-Z]{4}）$/,"");
+  const nm=r=>short(r.name)+"("+String(r.ticker||"").replace(/\.T$/,"")+")";
+  const hm=v=>esc(String(v||"").slice(11,16)||String(v||"").slice(0,5));
+  async function check(){
+    const j=new Date(Date.now()+9*3600000),day=j.toISOString().slice(0,10),min=j.getUTCHours()*60+j.getUTCMinutes(),wd=j.getUTCDay();
+    if(wd===0||wd===6||min<570||min>935){box.hidden=true;return;}
+    let bp=null;try{bp=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    const sr=bp&&bp.real_submit_allowed===false?bp.positions&&bp.positions.short_rebound:null;
+    box.hidden=false;
+    if(!sr||sr.status==="UNAVAILABLE"||sr.date!==day){box.innerHTML="ショートリバの合図：ブレインの記録を読めません（0件とは扱いません）";return;}
+    const firsts=(Array.isArray(sr.today)?sr.today:[]).slice().reverse(),tops=(Array.isArray(sr.tops_today)?sr.tops_today:[]).slice().reverse();
+    const past=sr.summary_past||{},pt=past.tops||{};
+    box.innerHTML="ショートリバの合図（記録・検証中）：初動 "+(sr.today_count||0)+"回・上がり切り "+tops.length+"回"+
+      tops.slice(0,4).map(t=>'<span class="sr-row sr-top">'+hm(t.top_at)+'　'+esc(nm(t))+'　<em>上がり切り＝ショート候補</em> '+esc(t.price)+'円・損切りの目安 '+esc(t.stop)+'円（戻りの高値）'+
+        (t.stopped_at?'・損切りの目安を超えた（'+esc(String(t.stopped_at).slice(0,5))+'）':'・ここまで '+pct(t.short_pct)+'（売りから見て）')+'</span>').join("")+
+      firsts.slice(0,4).map(r=>'<span class="sr-row">'+hm(r.detected_at)+'　'+esc(nm(r))+'　<b>初動＝まだ売らない</b> '+esc(r.price)+'円 → 戻りの最高 '+pct(r.rebound_pct)+'（'+esc(String(r.peak_at||"").slice(0,5))+'）'+(r.low_broken?'・安値割れ':'')+'</span>').join("")+
+      "<small>初動：高値から4%以上下げてVWAPの下・大きい買いの約定・売り板が薄くなる・安値を3分以上割らない。上がり切り：初動から0.8%以上戻り、3分高値を更新せず、高値から0.3%下げた時（15:00まで）。"+
+      (pt.n?"これまで"+esc(sr.past_days)+"日の上がり切り "+pt.n+"回：売りから見て平均 "+pct(pt.avg_short_pct)+"・勝ち "+pt.win_pct+"%・PF"+esc(pt.pf??"—")+"・損切りの目安に届いた "+pt.stopped_pct+"%（15:20まで・費用なし）。":"")+
+      "売買の合図ではありません。</small>";
+    let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
+    if(st.day!==day)st={day,first:[],top:[]};
+    const say=msg=>{if(typeof window.cockpitSpeak==="function"&&min<=900){try{window.cockpitSpeak(msg,"CALM");}catch(_){}}};
+    for(const r of firsts.slice().reverse()){const k=r.ticker+"|"+r.detected_at;if(st.first.includes(k))continue;st.first.push(k);if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだ売らない。");}
+    for(const t of tops.slice().reverse()){const k=t.ticker+"|"+t.top_at;if(st.top.includes(k))continue;st.top.push(k);if(st.top.length<=8)say("ショートリバ上がり切り。"+short(t.name)+"。ショート候補。損切りの目安、"+t.stop+"円。");}
+    try{localStorage.setItem(KEY,JSON.stringify(st))}catch(_){}
+  }
+  check();
+  setInterval(check,15000);
+})();
+</script>
+<script>
+// OWNER 2026-10-27 「EVENT 5はテーマタブに入れる」: the EVENT 5 tab button stays in the page (tab list kept) but is hidden; a saved
+// EVENT 5 tab opens テーマ instead.
+document.addEventListener("DOMContentLoaded",()=>{
+  const b=document.querySelector('.cockpit-tab[data-tab="event-hot"]');if(!b)return;
+  b.hidden=true;b.style.display="none";
+  if(b.classList.contains("active"))document.querySelector('.cockpit-tab[data-tab="pre-next"]')?.click();
+});
+</script>
+<script>
+// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ、しっかり機能させろ、セキュリティ関連銘柄だして期待値銘柄のカード
+// タブの名称から再考」「テーマ先回りはPCの仕様書を元に、Grok1号は置きかえ、タブ名は『テーマ』」: /theme_watch.json (made on this PC:
+// Grok1号's daily 08:00 themes + the OWNER's themes, Yahoo daily bars, the cockpit's recorded EV, and Grok's score since each
+// theme was first seen). Themes as buttons, the chosen theme's stocks as cards (positive recorded EV, then laggards, then
+// momentum), then the score table. Display only; momentum is not an expected value.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pct=(v,d=1)=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(d)+"%";
+  const cls=v=>Number(v)>0?"tw-up":Number(v)<0?"tw-dn":"";
+  let sec=null,pick=0,last=null;
+  const card=c=>'<article class="tw-card"><div class="tw-top"><span class="tw-name">'+esc(c.name)+'('+esc(c.code)+')'+(c.laggard?'<span class="tw-lag">出遅れ</span>':'')+'</span><span class="tw-px '+cls(c.chg1d)+'">'+esc(Number(c.close).toLocaleString("ja-JP"))+'円 '+pct(c.chg1d,2)+'</span></div>'+
+    '<span class="tw-role">'+esc(c.role||"")+'・'+esc(c.day)+'の終値'+(c.from_base!==undefined?'・見つけてから <b class="'+cls(c.from_base)+'">'+pct(c.from_base)+'</b>':'')+'</span>'+
+    '<div class="tw-row"><span>5日 <b class="'+cls(c.ret5)+'">'+pct(c.ret5)+'</b></span><span>20日 <b class="'+cls(c.ret20)+'">'+pct(c.ret20)+'</b></span><span>日経比20日 <b class="'+cls(c.rel20)+'">'+pct(c.rel20)+'</b></span></div>'+
+    '<div class="tw-row"><span>出来高 <b>'+esc(c.vol_ratio??"—")+'倍</b>（5日÷前60日）</span><span>25日線から <b class="'+cls(c.from_ma25)+'">'+pct(c.from_ma25)+'</b></span><span>半年高値から <b>'+pct(c.from_high)+'</b></span></div>'+
+    '<div class="tw-ev">'+(c.ev?(Number(c.ev.n)>=20?'期待値（コクピットの記録・'+esc(c.ev.n)+'回）：<b class="'+cls(c.ev.ev_pct)+'">'+pct(c.ev.ev_pct,3)+'</b>':'期待値：根拠不足（記録'+esc(c.ev.n)+'回・20回未満）'):'期待値：コクピットの記録なし（監視100銘柄の外）')+'</div></article>';
+  function draw(){
+    const v=last;if(!sec||!v)return;
+    // OWNER 2026-10-27 「24時間より古い答えは順位に入れない」: Grok1's themes older than 24 hours go last, marked
+    const age=v.grok_run_at?(Date.now()-Date.parse(String(v.grok_run_at).replace(" ","T")+":00+09:00"))/3600000:null;
+    const stale=x=>x.source==="Grok1号"&&age!==null&&age>24;
+    const raw=Array.isArray(v.themes)&&v.themes.length?v.themes:(Array.isArray(v.cards)?[{theme:v.theme,why:v.why,cards:v.cards,count:v.count,breadth_up:v.breadth_up,avg_chg1d:v.avg_chg1d,avg_ret5:v.avg_ret5}]:[]);
+    const themes=raw.filter(x=>!stale(x)).concat(raw.filter(stale));
+    if(!themes.length){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマがありません（Grok1号の8:00の答えを貼ると出ます）。</p>';return;}
+    if(pick>=themes.length)pick=0;
+    const t=themes[pick];
+    // OWNER 2026-10-28 「Grok1号の採点は、本命・周辺・出遅れと段階だけでまとめて、20回までは『記録中：本命○/20回』の1行だけ
+    // にして。見出しのカードも直して」: only those groups; under 20 records one line per kind; the table keeps its rows
+    // (data-keep-table, so the card adapter does not turn its header row into a card).
+    const ROLES=["本命","周辺","出遅れ"],STAGES=["芽","初動","加速","過熱","終わりかけ"];
+    const scRows=k=>(v.score&&Array.isArray(v.score[k])?v.score[k]:[]).filter(r=>(k==="role"?ROLES:STAGES).includes(r.group));
+    const scoreHtml=(k,label,order)=>{
+      const rows=scRows(k),maxN={};rows.forEach(r=>{maxN[r.group]=Math.max(maxN[r.group]||0,Number(r.n)||0);});
+      const wait=order.filter(g=>g in maxN&&maxN[g]<20),ready=rows.filter(r=>maxN[r.group]>=20&&Number(r.n)>=20);
+      return (wait.length?'<p class="tw-rec">記録中（'+label+'）：'+wait.map(g=>esc(g)+' '+esc(maxN[g])+'/20回').join("・")+'</p>':'')+
+        (ready.length?'<table class="tw-score" data-keep-table><tr><th>'+label+'</th><th>何日後</th><th>回数</th><th>平均</th><th>日経比の平均</th><th>日経に勝った率</th></tr>'+
+          ready.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.h)+'日</td><td>'+esc(r.n)+'</td><td class="'+cls(r.avg_ret)+'">'+pct(r.avg_ret)+'</td><td class="'+cls(r.avg_vs_n225)+'">'+pct(r.avg_vs_n225)+'</td><td>'+esc(r.win_vs_n225_pct??"—")+'%</td></tr>').join("")+'</table>':'');
+    };
+    const scoreAll=scoreHtml("role","役割",ROLES)+scoreHtml("stage","段階",STAGES);
+    sec.innerHTML='<h2>今のテーマ</h2><div class="tw-themes">'+themes.map((x,i)=>'<button type="button" class="tw-tbtn'+(i===pick?' on':'')+'" data-tw="'+i+'">'+esc(x.theme)+(x.stage?'（'+esc(x.stage)+'）':'')+(stale(x)?'・24時間より古い答え（順位に入れない）':'')+'<small>'+esc(x.count??0)+'銘柄・上げ'+esc(x.breadth_up??0)+'・前日比平均 '+pct(x.avg_chg1d)+'・5日 '+pct(x.avg_ret5)+'</small></button>').join("")+'</div>'+
+      '<p class="tw-head"><b>'+esc(t.theme)+'</b>'+(t.status?'・'+esc(t.status):'')+(t.source?'・'+esc(t.source):'')+(t.first_seen?'・最初に見つけた '+esc(t.first_seen):'')+'<br>'+esc(t.why||"")+(t.next&&t.next!=="なし"?'<br>次に見る日：'+esc(t.next):'')+(Array.isArray(t.check_ng)&&t.check_ng.length?'<br>照合NG（コードが確かめられず表示から外した）：'+t.check_ng.map(esc).join("・"):'')+'</p>'+
+      '<div class="tw-grid">'+(t.cards||[]).map(card).join("")+'</div>'+
+      '<h3 class="g-h">Grok1号の採点（答えた後の最初の値段からの上げ下げ・日経比）</h3>'+
+      (scoreAll||'<p class="g-empty">採点の記録はまだありません。</p>')+
+      '<p class="g-note">採点の基準＝Grok1号が答えた時刻の後の最初の値段（朝8時の答えなら当日の寄り値）。役割（本命・周辺・出遅れ）と段階だけでまとめます。</p>'+
+      '<p class="g-note">期待値と採点は20回以上の時だけ数字を出します（20回未満は根拠不足）。コードと社名が確かめられない銘柄は出しません。声と注文ボタンはありません。</p>'+
+      '<p class="g-note">並び順：期待値プラス → 出遅れ → 勢い。勢い＝5日の上げ＋日経比20日の半分＋出来高の増えで、期待値ではありません。値はYahooの日足（公開データ）。研究段階で、売買の合図ではありません。</p>';
+  }
+  async function render(){
+    const pane=document.querySelector('.tab-pane[data-pane="pre-next"]');if(!pane)return;
+    if(!sec){sec=document.createElement("section");sec.className="card wide";sec.id="theme-watch";
+      const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
+      sec.addEventListener("click",e=>{const b=e.target.closest("[data-tw]");if(b){pick=Number(b.getAttribute("data-tw"))||0;draw();}});}
+    let v=null;try{const r=await fetch("/theme_watch.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){}
+    if(!v||v.real_submit_allowed!==false){sec.innerHTML='<h2>今のテーマ</h2><p class="g-empty">テーマのデータを読めません（V10停止中、またはまだ作っていません）。</p>';return;}
+    last=v;draw();
+    // EVENT 5 (急騰・過熱の監視) right under the theme section, with a mark on the stocks that are in a theme
+    const ev5=document.getElementById("speculative-theme-monitor");
+    if(ev5&&ev5.previousElementSibling!==sec)sec.after(ev5);
+    const codes=new Set([].concat(...(Array.isArray(v.themes)?v.themes:[]).map(x=>(x.cards||[]).map(c=>String(c.code)))));
+    document.querySelectorAll("#speculative-theme-watch .cc-symbol").forEach(el=>{const m=/TSE:([0-9A-Z]{4})/.exec(el.textContent||"");
+      if(m&&codes.has(m[1])&&!el.parentElement.querySelector(".tw-lag"))el.insertAdjacentHTML("afterend",'<span class="tw-lag">テーマ銘柄</span>');});
+  }
+  document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,600000);});
+})();
+</script>
+<style>.an-fold{margin-top:8px}.an-fold summary{cursor:pointer;color:#35e2ae;font-weight:700}.an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:10px}.an-card{background:#0E1013;border:1px solid #22252A;border-radius:12px;padding:12px 14px;color:#E8EAED;font-size:13px}.an-card h3{margin:0 0 4px;font-size:16px}.an-card .an-role{color:#9AA0AA;font-size:12px;margin:0 0 8px}.an-st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px}.an-st.ok{background:#0d2b23;color:#35e2ae}.an-st.wait{background:#341418;color:#ff8a8f}.an-st.unk{background:#22252A;color:#9AA0AA}.an-card ol{margin:6px 0 8px;padding-left:20px;line-height:1.7}.an-card textarea{width:100%;min-height:150px;background:#090A0C;color:#E8EAED;border:1px solid #22252A;border-radius:8px;font-size:12px;padding:8px;box-sizing:border-box}.an-card button{margin-top:6px;padding:5px 12px;border-radius:8px;border:1px solid #303033;background:#111113;color:#E8EAED;cursor:pointer}.an-none{color:#9AA0AA;font-size:12px;margin:6px 0}</style>
+<script>
+// OWNER 2026-10-28 「全てのタブに同じ文言は不要、また各アナリスト用に分けて指示は明確化すること、必要なら各アナリストタブ　コントロールの
+// 次に作成すること」: an 「アナリスト」 tab right after CONTROL. One card per analyst (GPT PRE-NEXT, GPT 需給, Grok1号 テーマ先回り,
+// Grok2号 好決算監視, Grok3号 決算前監視): what it is for, when it runs, whether today's answer has arrived, and its own additional
+// instruction for today (built from the watched stocks' earnings dates) with a copy button. Display only; no orders.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const jst=()=>new Date(Date.now()+9*3600000);
+  const dayStr=d=>d.toISOString().slice(0,10);
+  const md=d=>d.slice(5).replace("-","/");
+  const stepDay=(day,dir)=>{const d=new Date(day+"T00:00:00Z");do{d.setUTCDate(d.getUTCDate()+dir);}while(d.getUTCDay()===0||d.getUTCDay()===6);return dayStr(d);};
+  const dayOf=v=>{const t=Date.parse(String(v||"").replace(" ","T")+(/(Z|[+-]\d{2}:?\d{2})$/.test(String(v||""))?"":"+09:00"));return Number.isFinite(t)?new Date(t+9*3600000).toISOString().slice(0,16).replace("T"," "):"";};
+  async function get(u){try{const r=await fetch(u+(u.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}}
+  // Grok1号 テーマ先回り: its standing task (仕様書_テーマ先回り_Grok1号_20261027.txt 3.); no earnings addition for Grok1
+  const G1_TASK="あなたは日本株の「テーマ先回り」担当のAI（Grok Bot 第1号）です。\n目的：株価が大きく動く前に、これから日本株で物色されそうなテーマと関連銘柄を、いち早く見つけること。\n\n■動かす時刻：毎日8:00に1回（前日の夜〜今朝までの出来事をまとめて見る）\n\n■毎回やること\n1. X・ニュース・公式発表（TDnet、官公庁、海外企業IR、海外報道）から、日本株のテーマになりそうな新しい出来事を探す\n   例：政策・予算（国策）、事件・事故（不正アクセス、災害）、新技術・新製品、海外の大型発表、規制の変更、大型受注\n2. それぞれについて「テーマ名」と「段階」を決める\n   段階：芽（まだ株価が動いていない）／初動（関連の1〜2銘柄が動き始めた）／加速（関連銘柄が広く上げている）／過熱（急騰が続き、出来高が極端）／終わりかけ（材料出尽くし・反落）\n3. 関連する日本株を3〜10銘柄。役割（本命・周辺・出遅れ）を付ける。「まだ動いていない銘柄（出遅れ）」を必ず探す\n4. 前回の報告と同じテーマは「継続」と書き、段階の変化だけを書く\n\n■守ること\n・銘柄コードは4文字（例：4704、285A）。コードが確かめられない銘柄は書かない（推測で書かない）\n・事実（一次情報で確認）とXの声を分ける。一次情報のURLを付ける。確かめられないことは「未確認」\n・株価の数字は書かなくてよい（PC側で取る）\n・売買の勧めはしない\n・テーマは最大5つ。重要な順\n\n■答えの形（最後に必ずこのブロックを付ける。1テーマ1行）\nGROK_THEME_V1\n実行日時：YYYY-MM-DD HH:MM（日本時間）\nテーマ名 | 新規か継続 | 段階 | きっかけ（事実を1行） | 最初に気づいた時刻（YYYY-MM-DD HH:MM） | 一次情報URL（https、無ければ未確認） | Xの盛り上がり（強・中・弱） | 関連銘柄（コード:名前:役割 を ; で区切る） | 次に見る日（決算・発表など、無ければなし）\nEND\n\n例：\nセキュリティ | 継続 | 加速 | 国内企業の不正アクセス開示が続く（Joshin・ユミルリンク等） | 2026-10-24 18:00 | https://www.release.tdnet.info/... | 強 | 4493:サイバーセキュリティクラウド:本命;3042:セキュアヴェイル:周辺;4704:トレンドマイクロ:出遅れ | なし";
+  let pane=null;
+  function mount(){
+    const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
+    if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="analysts"]'))return;
+    pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="analysts";
+    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。答えはプロジェクトのチャット（PCのClaude）に貼ってください。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section>';
+    main.append(pane);
+    const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="analysts";b.type="button";b.textContent="アナリスト";
+    const after=nav.querySelector('.cockpit-tab[data-tab="control"]');
+    if(after&&after.nextSibling)nav.insertBefore(b,after.nextSibling);else nav.prepend(b);
+    b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","analysts");}catch(_){}};
+    pane.addEventListener("click",e=>{const c=e.target.closest("[data-an-copy]");if(!c)return;const t=document.getElementById(c.getAttribute("data-an-copy"));if(!t)return;
+      (navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>{c.textContent="コピーしました";setTimeout(()=>{c.textContent="この指示をコピー";},2000);}).catch(()=>{t.select();document.execCommand("copy");});});
+    try{if(localStorage.getItem("cockpitTabV5")==="analysts")b.click();}catch(_){}
+  }
+  function gptText(role,label,today,tomorrow,a,b,focus,prefix){
+    return "【今日の追加指示（"+label+"）"+today+"】\n"+
+      "次のAIコクピット監視銘柄は、今日・明日に決算があります。いつもの答えに加えて、全部の銘柄について"+focus+"の見立てを出してください。\n"+
+      "今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし")+"\n"+
+      "答えの最後の GPT_ANALYST_NOTE_V1 のブロックに、1銘柄1行で入れてください（この追加分は5行の上限に数えない）。\n"+
+      "形："+role+" | 銘柄コード4文字 | 強気 か 弱気 | 理由（120文字まで。先頭に「"+prefix+"」と書く） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\n"+
+      "確かめられない数字は「未確認」と書き、作らない。";
+  }
+  function grokText(label,head,lists,prefix,ask){
+    return "【今日の追加指示（"+label+"）"+head+"】\n"+lists+"\n"+ask+"\n"+
+      "答えの最後に、次のブロックを付けてください（1銘柄1行）。\nGROK_NOTE_V2\n"+
+      "銘柄コード4文字 | 強・中・弱（話題の強さ） | 強気 か 弱気 | 理由（120文字まで。先頭に「"+prefix+"」と書く。事実とXの声を分ける） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\nEND\n"+
+      "確かめられない数字は「未確認」と書き、作らない。";
+  }
+  async function render(){
+    if(!pane)return;
+    const box=pane.querySelector("#an-cards");
+    const [cal,bp,gb,tw]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json")]);
+    const today=dayStr(jst()),tomorrow=stepDay(today,1),prev=stepDay(today,-1);
+    const list=d=>(Array.isArray(cal&&cal.calendar)?cal.calendar:[]).filter(x=>x&&x.watched===true&&x.date===d).map(x=>String(x.name||"").trim()+"（"+x.code+"）");
+    const a=list(today),b=list(tomorrow),y=list(prev);
+    const arrived=(bp&&bp.manual_analysts&&bp.manual_analysts._arrived_today)||{};
+    const bots=Array.isArray(gb&&gb.bots)?gb.bots:[];
+    const st=(at,known)=>!known?'<span class="an-st unk">確認できません</span>':at&&at.slice(0,10)===today?'<span class="an-st ok">今日の答え 届いた</span>':'<span class="an-st wait">今日の答え まだ</span>';
+    const lastAt=(at,known)=>!known?"読めません":at?at.slice(5,16).replace("-","/"):"まだ一度もありません";
+    const botAt=k=>{const x=bots.find(v=>v.bot===k);return x&&x.saved_at?dayOf(x.saved_at):"";};
+    const g1=tw&&tw.grok_run_at?String(tw.grok_run_at):botAt("Grok1号");
+    const calOk=!!(cal&&Array.isArray(cal.calendar));
+    const calToday="今日（"+md(today)+"）"+(a.join("、")||"なし")+"／明日（"+md(tomorrow)+"）"+(b.join("、")||"なし");
+    const calPrev="前の営業日（"+md(prev)+"）"+(y.join("、")||"なし")+"／今日（"+md(today)+"）"+(a.join("、")||"なし");
+    const cards=[
+      {id:"pre",cal:calToday,name:"GPT PRE-NEXT（ChatGPT）",role:"翌日・当日に動きそうな銘柄を先回りで探す。決算前の銘柄の向きも答える。",when:"朝（ChatGPTの定時タスク）",
+       status:st(dayOf(arrived.pre_next),!!bp),last:lastAt(dayOf(arrived.pre_next),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("PRE-NEXT","PRE-NEXT",today,tomorrow,a,b,"決算前後の値動きの向き","決算前"):""):null},
+      {id:"sup",cal:calToday,name:"GPT 需給（ChatGPT）",role:"信用買い残・売り残・信用倍率・貸借区分・空売り残高から、需給の偏りを見る。",when:"朝（ChatGPTの定時タスク）",
+       status:st(dayOf(arrived.supply_sq),!!bp),last:lastAt(dayOf(arrived.supply_sq),!!bp),paste:"ChatGPTの朝の答えが出たら（コクピットを起動したらすぐ）",text:calOk?(a.length||b.length?gptText("需給","需給",today,tomorrow,a,b,"需給（信用残・空売り・貸借）から見た向き","決算前・需給"):""):null},
+      {id:"g1",name:"Grok1号 テーマ先回り（Grok）",role:"株価が動く前に、これから来るテーマと関連銘柄（本命・周辺・出遅れ）を見つける。答えの最後は GROK_THEME_V1。",when:"毎日8:00に1回",
+       status:st(g1,!!(tw||gb)),last:lastAt(g1,!!(tw||gb)),paste:"毎日8:00の答えが出たら",text:G1_TASK,g1:true},
+      {id:"g2",cal:calPrev,name:"Grok2号 好決算監視（Grok）",role:"決算が出た後の銘柄が、好決算として買われ続けるか、出尽くしで売られるかを、ニュースとXの声で見る。",when:"朝",
+       status:st(botAt("Grok2号"),!!gb),last:lastAt(botAt("Grok2号"),!!gb),paste:"朝の答えが出たら",text:calOk?(y.length||a.length?grokText("Grok2号 好決算監視",today,"前の営業日（"+md(prev)+"）に決算："+(y.join("、")||"なし")+"\n今日（"+md(today)+"）に決算："+(a.join("、")||"なし"),"決算後","決算が出た後の反応（ニュース・Xの声）から、全部の銘柄について見立てを出してください。今日の銘柄は、発表が出たら見てください。"):""):null},
+      {id:"g3",cal:calToday,name:"Grok3号 決算前監視（Grok）",role:"決算の前に、Xの空気・期待の高さ・需給を見て、決算をまたぐ時の向きを見る。",when:"朝と夜",
+       status:st(botAt("Grok3号"),!!gb),last:lastAt(botAt("Grok3号"),!!gb),paste:"朝と夜の答えが出たら",text:calOk?(a.length||b.length?grokText("Grok3号 決算前監視",today,"今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし"),"決算前","決算の前のXの空気・期待の高さから、全部の銘柄について見立てを出してください。"):""):null}
+    ];
+    box.innerHTML=cards.map(c=>'<div class="an-card"><h3>'+esc(c.name)+c.status+'</h3>'+
+      '<p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+'<br><b>答えを貼る時刻</b>：'+esc(c.paste)+'（プロジェクトのチャットのPCのClaudeへ）<br><b>最後の答え</b>：'+esc(c.last)+'</p>'+
+      // OWNER 2026-10-28 「決算の追加指示は②1回だけ入れる方式で…追加指示の箱は『定時タスクに組み込み済み』とたたむ」:
+      // the earnings check now lives at the end of each scheduled task (Claudeブレイン\AI指示文\定時タスク用_決算の追記_20261028.txt),
+      // so nothing has to be pasted daily. The folded box keeps the cockpit's own earnings list to check the answers against.
+      (!c.g1?'<details class="an-fold"><summary>定時タスクに組み込み済み（毎日貼らなくてよい）</summary>'+
+        '<p class="an-none">決算の確認は、朝の定時タスクの最後に入れた「決算の確認」の文で、AIが自分で行います（文：Claudeブレイン\\AI指示文\\定時タスク用_決算の追記_20261028.txt）。監視銘柄が入れ替わったらPCのClaudeが文を作り直します。</p>'+
+        '<p class="an-none">コクピットの決算日程（AIの答えと照らす用）：'+(c.text===null?'決算日程を読めません':esc(c.cal||"対象の決算なし"))+'</p></details>':
+       c.text===null?'<p class="an-none">決算日程を読めないので、今日の追加の指示を作れません。</p>':
+       c.text?'<ol><li>'+(c.g1?'下の指示（テーマ先回り・決算の追加はなし）を、Grok1号のタスク（毎日8:00）に入れておく':'下の今日の指示をコピーして、このアナリストのチャットに貼る')+'</li><li>返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る</li></ol><textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>':
+       '<p class="an-none">'+esc(c.fixed||"今日は追加の指示はありません（対象の決算がない日）。いつもの答えだけ貼ってください。")+'</p>')+'</div>').join("");
+  }
+  document.addEventListener("DOMContentLoaded",()=>{mount();render();setInterval(render,300000);});
+})();
+// OWNER 2026-10-28 「コクピットの仮想売買は、今の①〜⑤も残したまま、デイトレ①②・EP・AIの採用手法を全部足して、手法ごとに
+// 別々に記録して。−3万円の止めも手法ごと。画面には『試験中』として成績だけ出して、合図にはしない。毎日手法ごとの成績を集計して」:
+// a CONTROL panel with each trial method's today and recorded totals (from /trial_methods.json). Display only: no voice,
+// no attention list, no Brain input, no order.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const yen=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Math.round(Number(v)).toLocaleString("ja-JP")+"円";
+  const pc=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%";
+  const col=v=>Number(v)>0?"rg-good":Number(v)<0?"rg-bad":"";
+  let sec=null;
+  async function render(){
+    const pane=document.querySelector('.tab-pane[data-pane="control"]');if(!pane)return;
+    if(!sec){sec=document.createElement("section");sec.className="card wide g-trial-panel";sec.id="trial-methods";pane.append(sec);}
+    let v=null;try{const r=await fetch("/trial_methods.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){}
+    if(!v||v.schema_version!=="100b-v10-trial-methods-v1"||v.real_submit_allowed!==false){
+      sec.innerHTML='<h2>試験中の手法（仮想・成績だけ）</h2><p class="g-empty">試験中の記録を読めません（0件とは扱いません）。</p>';return;}
+    const hist=v.history||{};
+    const rows=(v.today||[]).map(m=>{
+      const tr=m.trades||[],closed=tr.filter(t=>t.status==="CLOSED"),open=tr.filter(t=>t.status==="OPEN");
+      const ty=closed.reduce((a,t)=>a+(Number(t.yen)||0),0),h=hist[m.method]||{};
+      return '<tr><td>'+esc(m.label||m.method)+'</td><td>'+closed.length+'回 <span class="'+col(ty)+'">'+yen(closed.length?ty:null)+'</span>'+(open.length?'・持ち中'+open.length:'')+(m.limit_hit_at?'・<span class="rg-bad">止め（−3万円）'+esc(m.limit_hit_at.slice(0,5))+'</span>':'')+'</td>'+
+        '<td>'+esc(h.days??0)+'日・'+esc(h.n??0)+'回</td><td><span class="'+col(h.mean_pct)+'">'+pc(h.mean_pct)+'</span></td><td>'+esc(h.pf??"—")+'</td><td><span class="'+col(h.yen)+'">'+yen(h.n?h.yen:null)+'</span></td></tr>';}).join("");
+    sec.innerHTML='<h2>試験中の手法（仮想・100株・成績だけ）</h2>'+
+      '<p class="g-note">合図ではありません。声・注目の一覧・ブレイン・注文には使いません。手法ごとに別々に記録し、1日−3万円の止めも手法ごと。①〜⑤とOWNERの決まりの仮想は、上の欄で今までどおり記録しています。</p>'+
+      '<table class="tw-score" data-keep-table><tr><th>手法</th><th>今日</th><th>これまで</th><th>1回平均</th><th>PF</th><th>合計</th></tr>'+(rows||'<tr><td colspan="6">まだありません</td></tr>')+'</table>'+
+      ((v.ai_not_runnable||[]).length?'<p class="g-note">AIの採用手法のうち、コクピットではまだ動かせないもの（PCの実践検証で記録）：'+v.ai_not_runnable.map(esc).join("・")+'</p>':'')+
+      ((v.notes||[]).length?'<p class="g-note">'+v.notes.map(esc).join("<br>")+'</p>':'');
+  }
+  document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,60000);});
+})();
+</script>
+</body></html>

@@ -268,17 +268,36 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.write_state()
         self.assert_nothing_stopped(self.run_stop())
 
-    def test_unrecorded_excel_collector_watcher_survive_valid_stop(self):
-        # Synthetic look-alikes only: a renamed ping.exe and sleep-only scripts.
-        fake_excel = self.root / "EXCEL.EXE"
-        shutil.copyfile(Path(os.environ["SystemRoot"]) / "System32" / "PING.EXE", fake_excel)
-        bystanders = [self.spawn([str(fake_excel), "-n", "120", "127.0.0.1"])]
+    def _bystander_scripts(self):
+        procs = []
         for name in ("MS2_RSS_100_Collector.ps1", "Kioxia_RSS_Live_Watcher.ps1"):
             script = self.root / name
             script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
-            bystanders.append(self.spawn([
+            procs.append(self.spawn([
                 "powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(script),
             ]))
+        return procs
+
+    def test_unrecorded_excel_collector_watcher_survive_valid_stop(self):
+        # Synthetic look-alikes only: a renamed ping.exe and sleep-only scripts.
+        # OWNER 2026-10-22 S3: with an unrecorded Excel running, Safe Stop
+        # refuses and stops nothing; every bystander survives.
+        fake_excel = self.root / "EXCEL.EXE"
+        shutil.copyfile(Path(os.environ["SystemRoot"]) / "System32" / "PING.EXE", fake_excel)
+        bystanders = [self.spawn([str(fake_excel), "-n", "120", "127.0.0.1"])] + self._bystander_scripts()
+        time.sleep(1)
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_OTHER_EXCEL", result.stdout)
+        self.assertTrue(self.state_path.exists(), "evidence deleted on refusal")
+        for proc in [self.controller, self.brain, self.foreign] + bystanders:
+            self.assertIsNone(proc.poll(), "S3: refusal must precede any stop")
+
+    def test_unrecorded_collector_watcher_survive_valid_stop(self):
+        # The original valid stop without another Excel: it succeeds and the
+        # unrecorded look-alikes survive.
+        bystanders = self._bystander_scripts()
         time.sleep(1)
         self.write_state()
         result = self.run_stop()

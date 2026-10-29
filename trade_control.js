@@ -239,6 +239,51 @@
     return cards;
   }
 
+  // OWNER 2026-10-27 「戦略別パフォーマンスをつないで」: the brain's virtual (Shadow) results per rule, from
+  // /rule_shadow.json (recorded signals replayed on recorded MS2 ticks, forward from its forward_from date), next to
+  // each rule's past-data check (前半＝train / 後半＝test). Display only; a failed read shows 未接続, never 0.
+  async function loadRuleShadow(){
+    try{
+      const r=await fetch("/rule_shadow.json?t="+Date.now(),{cache:"no-store"});
+      if(!r.ok)return null;
+      const v=await r.json();
+      return v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false?v:null;
+    }catch(_e){return null;}
+  }
+  function brainRuleHtml(rs){
+    if(!rs||!rs.forward)return metricCard("SHADOW｜ブレインのルール別","未接続",[["取引件数","—"],["期待値","—"]],"ブレインの仮想売買の記録（rule_shadow）を読めません。0件と断定しません。","block");
+    const days=Array.isArray(rs.days)?rs.days:[];
+    const label=k=>k==="BRAIN"?(rs.brain?.label||"ブレインの選択"):(rs.rules?.[k]?.label||rs.gap_rules?.[k]?.label||k);
+    const sgn=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(3)+"%";
+    const exitsText=e=>e?["TARGET","STOP","TIME_EXIT"].filter(k=>e[k]).map(k=>({TARGET:"利確",STOP:"損切",TIME_EXIT:"時間"}[k])+e[k]).join("・")||"—":"—";
+    const order=["BRAIN","R1","R2","R4","R5"].concat(Object.keys(rs.forward).filter(k=>!["BRAIN","R1","R2","R4","R5"].includes(k)).sort());
+    let html=metricCard("SHADOW｜ブレインのルール別（仮想）","つながりました",[
+      ["記録の期間",(rs.forward_from||"—")+"〜"+(days.slice(-1)[0]||"—")],["日数",days.length+"日"],
+      ["ルールの数",Object.keys(rs.forward).length+"個"],["更新",String(rs.generated_at||"—").slice(0,16).replace("T"," ")+" UTC"]
+    ],"記録したサインを、記録した実際の値動きで仮想売買した結果（費用込みの期待値）。お金は動いていません。最大DDはこの記録に無いため出しません。","wait");
+    const ranked=[];
+    for(const k of order){
+      const f=rs.forward[k];if(!f)continue;
+      const bt=rs.rules?.[k]?.backtest||null,n=Number(f.n)||0,ev=Number(f.ev_pct),pf=Number(f.pf);
+      if(n>=20&&Number.isFinite(ev))ranked.push({k,ev});
+      html+=metricCard("SHADOW｜"+label(k),n>=20?"記録N="+n:"N不足（"+n+"回）",[
+        ["取引件数",n+"回"],["1回の期待値",sgn(f.ev_pct)],["勝率",f.win_rate_pct==null?"—":f.win_rate_pct+"%"],
+        ["PF",Number.isFinite(pf)?pf.toFixed(2):"—"],["決済の内訳",exitsText(f.exits)],
+        ["過去データ 前半",bt?.train?sgn(bt.train.ev_pct)+"・PF"+bt.train.pf+"（"+bt.train.n+"回）":"—"],
+        ["過去データ 後半",bt?.test?sgn(bt.test.ev_pct)+"・PF"+bt.test.pf+"（"+bt.test.n+"回）":"—"]
+      ],(rs.rules?.[k]?.record_only?"記録のみ（ブレイン・音声・注文カードに使わない）。":"")+"仮想売買・検証中。実発注の判断には使いません。",
+      n<20?"wait":ev>0&&pf>=1?"long":"short");
+    }
+    if(ranked.length>=2){
+      ranked.sort((a,b)=>b.ev-a.ev);
+      html+=metricCard("SHADOW｜ルールの相対強弱","N≥20",[
+        ["期待値 上位",label(ranked[0].k)+" "+sgn(ranked[0].ev)],["期待値 下位",label(ranked[ranked.length-1].k)+" "+sgn(ranked[ranked.length-1].ev)],
+        ["比べたルール",ranked.length+"個"]
+      ],"20回以上の記録があるルールだけを比べます。費用込み・仮想。日数が少ないので順位は変わります。","wait");
+    }
+    return html;
+  }
+
   function executionHtml(exec,runtime){
     const known=!!exec;
     const realAllowed=exec?.real_submit_allowed===true;
@@ -346,10 +391,14 @@
     });
 
     const strategy=document.getElementById("owner-strategy-performance");
-    if(strategy)strategy.innerHTML=controlPerformanceHtml(audit);
+    if(strategy)strategy.innerHTML=controlPerformanceHtml(audit)+brainRuleHtml(await loadRuleShadow());
+    const brainBox=document.getElementById("owner-brain-rules");
+    if(brainBox)brainBox.innerHTML=brainRuleHtml(await loadRuleShadow());
 
     const health=await loadHealth();
     const exec=health?.execution||null,runtime=health?.runtime||null;
+    const orderLine=document.getElementById("owner-real-order-line");
+    if(orderLine){orderLine.textContent=!exec?"実注文：状態を取得できません（ONとは扱いません）":exec.real_submit_allowed===true?"実注文：ON":"実注文：OFF固定（このコクピットは注文を出しません）";orderLine.className="g-order-line "+(exec&&exec.real_submit_allowed===false?"g-order-off":"g-order-warn");}
     panes.forEach(p=>{
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-execution-control]");
       if(box)box.innerHTML=executionHtml(exec,runtime)+shadowEngineHtml(exec);
@@ -409,22 +458,318 @@
     }
   }
 
+  // OWNER 2026-10-23 夜 「コントロールに保有株をカード表示追加、場中、売買したら保有中」「両方 ただし分けて表示」
+  // 「保有中、保有した銘柄はAIトレード日記のタブ」: separate panels in the AIトレード日記 tab, for what is held now
+  // and what was held and closed today. 実口座: the OWNER's real holdings read by the Collector with the read-only RSS
+  // position lists (this PC only). 仮想: the cockpit's simulated holdings (rule signals, overnight).
+  // Display only; nothing here can place an order.
+  function holdingCard(name,code,badge,metrics,foot,cls,pl){
+    return '<article class="cc-card cc-card--'+cls+'">'+
+      '<div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name||code||"—")+'</span>'+
+      '<span class="cc-symbol">'+esc(code||"")+'</span></div><span class="cc-badge">'+esc(badge)+'</span></div>'+
+      (pl||"")+
+      '<div class="cc-metrics-grid">'+metrics.filter(x=>x&&x[1]!=null).map(x=>'<span>'+esc(x[0])+'<b>'+esc(x[1])+'</b></span>').join("")+'</div>'+
+      (foot?'<div class="cc-foot">'+esc(foot)+'</div>':"")+'</article>';
+  }
+  const yen=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"円";};
+  // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるようにして」: the live price the screen trusts
+  // (window.cockpitLivePrices, fresh rows only, at most 30 s old) against the virtual entry / reference price.
+  // OWNER 2026-10-27: a short is 1 - now / entry, the same formula as the scoring (not entry / now - 1).
+  // No live price -> 「現在値なし」, never an old number. Display only.
+  // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: with lastOk (carried positions), no fresh price -> the last price of
+  // the data (window.cockpitLastPrices, e.g. the close after 15:30), labelled 「最後の値・HH:MM」.
+  function unrealized(code,entry,isShort,lastOk){
+    const lp=window.cockpitLivePrices,e=knownNumber(entry);
+    let now=lp&&Date.now()-lp.at<=30000?Number(lp.rows?.[code]):NaN,tag="";
+    if((!Number.isFinite(now)||now<=0)&&lastOk){const lq=window.cockpitLastPrices;now=Number(lq?.rows?.[code]);if(Number.isFinite(now)&&now>0)tag="（最後の値・"+(lq.asof||"時刻不明")+"）";}
+    if(!Number.isFinite(now)||now<=0||e===null||e<=0)return {cls:"pl-none",text:"含み損益：現在値なし",now:null};
+    const pct=(isShort?1-now/e:now/e-1)*100,sign=pct>0?"+":"";
+    return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%"+tag,now};
+  }
+  function plLine(u){return '<div class="cc-pl '+u.cls+'"><b>'+esc(u.text)+'</b>'+(u.now!==null?'<small>現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}
+  const shares=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"株";};
+  const signedPct=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toFixed(2)+"%";};
+  const openDay=v=>{const s=String(v||"");if(!/^\d{8}$/.test(s))return s||"—";const jst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"");return s===jst?"本日":s.slice(4,6)+"/"+s.slice(6,8);};
+  async function renderHoldings(){
+    const realRoot=document.getElementById("owner-real-holdings");
+    if(realRoot){
+      try{
+        const r=await fetch("/real_positions.json?t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("unavailable");
+        const d=await r.json();
+        const execs=Array.isArray(d.executions_today)?d.executions_today:[];
+        const openedAt=x=>{const e=execs.filter(e=>e.code===x.code&&e.trade==="信用新規"&&e.side===x.side).map(e=>String(e.at||"").slice(11,19)).sort();return e.length?e[0]:null;};
+        const margin=(Array.isArray(d.margin)?d.margin:[]).map(x=>holdingCard(x.name,x.code,"保有中・"+(x.side||"信用"),[
+          ["売買",x.side||"—"],["株数",shares(x.qty)],["建値",yen(x.price)],["時価",yen(x.last)],
+          ["含み損益",money(x.pnl)],["損益率",signedPct(x.pnl_pct)],["建てた時刻",openedAt(x)?"本日 "+openedAt(x):openDay(x.open_date)],["区分",(x.kind||"")+(x.term?"・"+x.term:"")]
+        ],"信用建玉（"+(x.account||"")+"・"+(x.market||"")+"）",String(x.side||"").includes("売")?"short":"long"));
+        const cash=(Array.isArray(d.cash)?d.cash:[]).map(x=>holdingCard(x.name,x.code,"保有中・現物",[
+          ["株数",shares(x.qty)],["平均取得",yen(x.price)],["時価",yen(x.last)],
+          ["含み損益",money(x.pnl)],["損益率",signedPct(x.pnl_pct)]
+        ],"現物（"+(x.account||"")+"）","long"));
+        const state=d.margin_state==="OK"&&d.cash_state==="OK"?"":"（一部取得待ち）";
+        const doneRoot=document.getElementById("owner-real-closed");
+        if(doneRoot){
+          // today's executions per issue: opening and closing sides, average prices and an estimate without costs
+          const byCode={};
+          execs.forEach(e=>{(byCode[e.code]=byCode[e.code]||{name:e.name,code:e.code,open:[],close:[]})[/埋|売付/.test(String(e.side))?"close":"open"].push(e);});
+          const avg=a=>{const q=a.reduce((s,e)=>s+(knownNumber(e.qty)||0),0);return q?{q,p:a.reduce((s,e)=>s+(knownNumber(e.qty)||0)*(knownNumber(e.price)||0),0)/q}:null;};
+          const heldNow=new Set([...(d.margin||[]),...(d.cash||[])].map(x=>x.code));
+          const cards=Object.values(byCode).filter(g=>g.close.length).map(g=>{
+            const o=avg(g.open),c=avg(g.close),short=g.close.some(e=>e.side==="買埋");
+            const est=o&&c?Math.round((c.p-o.p)*Math.min(o.q,c.q)*(short?-1:1)):null;
+            const times=[...g.open,...g.close].map(e=>String(e.at||"").slice(11,19)).sort();
+            return holdingCard(g.name,g.code,heldNow.has(g.code)?"一部保有中":"決済済み",[
+              ["売買",short?"空売り→買い戻し":"買い→売り"],["株数",shares(c?c.q:null)],["建値（平均）",o?yen(Math.round(o.p*10)/10):"—（前日以前）"],
+              ["決済（平均）",c?yen(Math.round(c.p*10)/10):"—"],["損益（概算）",est===null?"—":money(est)],["時刻",times.length?times[0]+"〜"+times[times.length-1]:"—"]
+            ],"本日の約定から（手数料・金利は含まない概算）",est!==null&&est<0?"short":"long");
+          });
+          doneRoot.innerHTML=cards.join("")||'<div class="focus-empty">今日決済した銘柄はありません</div>';
+        }
+        realRoot.innerHTML=(margin.join("")+cash.join(""))||'<div class="focus-empty">保有中の銘柄はありません'+esc(state)+'（'+esc(String(d.updated_at||"").slice(11,19))+' 時点）</div>';
+      }catch(_e){
+        realRoot.innerHTML='<div class="focus-empty">実口座の保有を読めません（V10停止中・MS2未接続・または設定OFF）。古い保有は表示しません。</div>';
+        const doneRoot=document.getElementById("owner-real-closed");
+        if(doneRoot)doneRoot.innerHTML='<div class="focus-empty">実口座の約定を読めません。</div>';
+      }
+    }
+    const virtRoot=document.getElementById("owner-virtual-holdings");
+    if(virtRoot){
+      try{
+        const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("unavailable");
+        const pos=(await r.json())?.positions||{};
+        const rules=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="OPEN").map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"保有中（仮想）",[
+          ["サイン",p.signal||"—"],["ルール",p.rule||"—"],["約定（仮想）",yen(p.fill_price)],["約定時刻",p.fill_time||"—"],
+          ["利確",yen(p.target)],["損切り",yen(p.stop)]
+        ],"ルールのサインの仮想売買（検証中・注文なし）",String(p.signal||"").includes("空売り")?"short":"long",
+          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.fill_price,String(p.signal||"").includes("空売り")))));
+        const overnight=(Array.isArray(pos.overnight)?pos.overnight:[]).map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"持ち越し（仮想）",[
+          ["売買",p.side==="LONG"?"買い":"空売り"],["基準",yen(p.reference_price)],["決定",String(p.decided_at||"").slice(5,16)],
+          ["採点",String(p.valid_until||"").replace("next trading day","翌営業日")]
+        ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short",
+          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.reference_price,p.side!=="LONG",true))));
+        virtRoot.innerHTML=(rules.join("")+overnight.join(""))||'<div class="focus-empty">仮想の保有はありません</div>';
+        const vDone=document.getElementById("owner-virtual-closed");
+        if(vDone){
+          const exitName={TARGET:"利確",STOP:"損切り",TIME_EXIT:"時間で手じまい",CLOSE_EXIT:"引けで手じまい"};
+          const closed=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="CLOSED"&&p.fill_price!=null).map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"決済済み（仮想）",[
+            ["サイン",p.signal||"—"],["ルール",p.rule||"—"],["約定（仮想）",yen(p.fill_price)],["約定時刻",p.fill_time||"—"],
+            ["決済",exitName[p.exit]||p.exit||"—"],["決済値",yen(p.exit_price)],["損益率",signedPct(p.return_pct)]
+          ],"ルールのサインの仮想売買（検証中・注文なし）",knownNumber(p.return_pct)!==null&&Number(p.return_pct)<0?"short":"long"));
+          vDone.innerHTML=closed.join("")||'<div class="focus-empty">今日決済した仮想の売買はありません</div>';
+        }
+      }catch(_e){
+        virtRoot.innerHTML='<div class="focus-empty">仮想の保有を読めません（ブレインの記録が新しくありません）</div>';
+      }
+    }
+  }
+
+  // OWNER 2026-10-27 「AIコクピットの成績が一目で分かるように改修…全体成績、保有銘柄の損益（含み損・益）
+  // 各投資手法別　各アナリスト別　コントロールタブで成績はわかりやすく数字、グラフも良いかも」:
+  // one panel at the top of CONTROL. Real account = the same read-only MS2 lists as the 実口座 cards (estimates,
+  // no costs); cockpit = the brain's virtual trades (today from brain_pick, per rule from rule_shadow); analysts =
+  // analyst_scores.json (GPT) and Grok 3号's answer checks. Bars are plain CSS. Display only, no orders.
+  let glanceRuleShadow=null,glanceRuleShadowAt=0;
+  const gNum=v=>{const n=knownNumber(v);return n===null?null:n;};
+  const gCls=v=>v===null?"g-none":v>0?"g-plus":v<0?"g-minus":"g-flat";
+  const gYen=v=>v===null?"—":(v>0?"+":"")+Math.round(v).toLocaleString("ja-JP")+"円";
+  const gPct=(v,d=2)=>v===null||!Number.isFinite(v)?"—":(v>0?"+":"")+v.toFixed(d)+"%";
+  const gBar=(v,max)=>{if(v===null||!Number.isFinite(v)||!max)return '<i class="g-bar"></i>';const w=Math.max(2,Math.min(100,Math.abs(v)/max*100));return '<i class="g-bar"><b class="'+(v>=0?"g-up":"g-dn")+'" style="width:'+w.toFixed(0)+'%"></b></i>';};
+  const gTile=(title,value,cls,sub)=>'<div class="g-tile '+cls+'"><span>'+esc(title)+'</span><b>'+esc(value)+'</b><small>'+esc(sub)+'</small></div>';
+  async function gJson(url){try{const r=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_e){return null;}}
+  function gHeld(kind,p,entry,short,lastOk){
+    const u=unrealized(String(p.ticker||"").replace(/\.T$/,""),entry,short,lastOk);
+    const e=knownNumber(entry),val=u.now===null||e===null||e<=0?null:(short?1-u.now/e:u.now/e-1)*100;
+    // OWNER 2026-10-27 「仮想の含み損益（持ち越し含む）にも1回100株で計算した円を出して」
+    const yen100=val===null?null:val/100*e*100;
+    return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,yen100,
+      text:u.text.replace("含み損益：","")+(yen100===null?"":"・100株 "+gYen(yen100))};
+  }
+  // OWNER 2026-10-27 過去実績（たたき直し）: /owner_review.json is built on this PC from the OWNER's own CSV exports
+  // (Claudeブレイン\研究スクリプト\owner_review_build.py). Display only; unreadable -> says so, never zero.
+  let ownerReviewAt=0;
+  async function renderOwnerReview(){
+    const root=document.getElementById("owner-history-review");
+    if(!root||Date.now()-ownerReviewAt<600000)return;
+    const rv=await gJson("/owner_review.json");
+    if(!rv||rv.real_submit_allowed!==false||!rv.japan){root.innerHTML='<p class="g-empty">過去実績のファイルを読めません（V10停止中、またはまだ作っていません）。</p>';return;}
+    ownerReviewAt=Date.now();
+    const j=rv.japan,yen=v=>gYen(gNum(v)),man=v=>{const n=gNum(v);return n===null?"—":(n>0?"+":"")+(Math.abs(n)>=10000?(n/10000).toLocaleString("ja-JP",{maximumFractionDigits:0})+"万円":Math.round(n).toLocaleString("ja-JP")+"円");};
+    const ratio=j.avg_loss_yen&&j.avg_win_yen?Math.abs(j.avg_loss_yen/j.avg_win_yen):null;
+    const top3=(j.most_traded||[]).slice(0,3),top3Loss=top3.filter(x=>x.yen<0);
+    const cap=(j.cap_sim||[])[0];
+    const say=[
+      "勝率"+j.win_pct+"%なのに負けている。負けの平均（"+yen(j.avg_loss_yen)+"）が勝ちの平均（"+yen(j.avg_win_yen)+"）の"+(ratio?ratio.toFixed(1):"—")+"倍。勝ちを小さく、負けを大きくしている",
+      "一番悪い20日だけで "+man(j.worst20_yen)+"（損失全体の"+esc(j.worst20_share_pct??"—")+"%）。1回で3万円以上負けた"+j.big_loss_trades+"回が "+man(j.big_loss_yen)+"。それ以外の取引は "+man(j.rest_yen)+" のプラス",
+      top3Loss.length?"一番よく触る銘柄が一番負けている："+top3.map(x=>esc(x.name)+"("+esc(x.code)+") "+x.n+"回 "+man(x.yen)).join("・"):"",
+      rv.owner_statement?"本人の申告：「"+esc(rv.owner_statement.text)+"」（"+esc(rv.owner_statement.note||"")+"）":"",
+      cap?"1日の負けを"+(cap.limit_yen/10000)+"万円で止めていれば "+man(cap.yen)+"（"+cap.days_hit+"日が該当・日の合計で見た目安）":""
+    ].filter(Boolean);
+    const others=Array.isArray(rv.other_accounts)?rv.other_accounts:[],all=[{label:"日本株（楽天）",yen:j.total_yen}].concat(others);
+    const allSum=all.reduce((a,x)=>a+(Number(x.yen)||0),0),aMax=Math.max(1,...all.map(x=>Math.abs(Number(x.yen)||0)));
+    const bars=(list,lab,val,max)=>'<div class="g-rows">'+list.map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(lab(x))+'</span><span class="g-name">'+esc(x._sub||"")+'</span>'+gBar(gNum(val(x)),max)+'<b class="'+gCls(gNum(val(x)))+'">'+yen(val(x))+'</b></div>').join("")+'</div>';
+    const yMax=Math.max(1,...(j.years||[]).map(x=>Math.abs(x.yen))),mMax=Math.max(1,...(j.last12||[]).map(x=>Math.abs(x.yen)));
+    const st=(list)=>'<div class="g-rows">'+(list||[]).map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(x.code)+'</span><span class="g-name">'+esc(x.name)+'・'+x.n+'回・勝率'+x.win_pct+'%</span>'+gBar(x.yen,Math.max(1,...(list||[]).map(y=>Math.abs(y.yen))))+'<b class="'+gCls(x.yen)+'">'+yen(x.yen)+'</b></div>').join("")+'</div>';
+    root.innerHTML=
+      '<div class="g-verdict"><b>たたき直し（数字が言っていること）</b><ol>'+say.map(t=>'<li>'+t+'</li>').join("")+'</ol></div>'+
+      '<div class="g-tiles">'+
+        gTile("日本株の実現損益（"+esc(j.from)+"〜"+esc(j.to)+"）",man(j.total_yen),gCls(j.total_yen),j.trades+"回・取引した日"+j.days+"日（勝ち日"+j.win_days+"）")+
+        gTile("勝率／PF",j.win_pct+"%／"+j.pf,"g-minus","PF1未満＝続けるほど減る")+
+        gTile("平均の勝ち／平均の負け",yen(j.avg_win_yen)+"／"+yen(j.avg_loss_yen),"g-minus","負けが勝ちの"+(ratio?ratio.toFixed(1):"—")+"倍")+
+        gTile("全部の口座の合計",man(allSum),gCls(allSum),"仮想通貨の約300万円は本人の記憶（未確認）")+
+      '</div>'+
+      '<h3 class="g-h">口座別（今後は日本株だけ）</h3>'+bars(all.map(x=>Object.assign({},x,{_sub:x.label})),x=>x.unverified?"未確認":"",x=>x.yen,aMax)+
+      '<h3 class="g-h">日本株　年別</h3>'+bars((j.years||[]).map(x=>Object.assign({},x,{_sub:x.year+"年"})),()=>"",x=>x.yen,yMax)+
+      '<h3 class="g-h">日本株　直近12か月（勝った月 '+j.months_won+'／'+j.months+'か月）</h3>'+bars((j.last12||[]).map(x=>Object.assign({},x,{_sub:x.month})),()=>"",x=>x.yen,mMax)+
+      '<h3 class="g-h">一番悪かった日</h3>'+bars((j.worst_days||[]).map(x=>Object.assign({},x,{_sub:x.date})),()=>"",x=>x.yen,Math.max(1,...(j.worst_days||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">負けが大きい銘柄</h3>'+st(j.worst_stocks)+
+      '<h3 class="g-h">勝てている銘柄</h3>'+st(j.best_stocks)+
+      '<h3 class="g-h">買い・空売り別／曜日別</h3>'+bars((j.sides||[]).map(x=>Object.assign({},x,{_sub:x.label+"・"+x.n+"回"})),()=>"",x=>x.yen,Math.max(1,...(j.sides||[]).map(x=>Math.abs(x.yen))))+
+        bars((j.weekdays||[]).map(x=>Object.assign({},x,{_sub:x.day+"曜・"+x.n+"日"})),()=>"",x=>x.yen,Math.max(1,...(j.weekdays||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">1日の負けの上限を決めていたら（目安）</h3>'+bars((j.cap_sim||[]).map(x=>Object.assign({},x,{_sub:(x.limit_yen/10000)+"万円で止める・"+x.days_hit+"日が該当"})),()=>"",x=>x.yen,Math.max(1,...(j.cap_sim||[]).map(x=>Math.abs(x.yen))))+
+      '<h3 class="g-h">決めたこと</h3><ul class="g-decided">'+(rv.decided||[]).map(t=>'<li>'+esc(t)+'</li>').join("")+'</ul>'+
+      '<p class="g-note">'+esc(rv.source||"")+'。作成 '+esc(String(rv.generated_at||"").slice(0,16).replace("T"," "))+'。過去の数字で、これからも同じになる保証はありません。売買の指示ではありません。</p>';
+  }
+  async function renderGlance(){
+    const root=document.getElementById("owner-performance-glance");
+    if(!root)return;
+    if(!glanceRuleShadow||Date.now()-glanceRuleShadowAt>300000){glanceRuleShadow=await loadRuleShadow();glanceRuleShadowAt=Date.now();}
+    const [bp,acct,an,gb]=await Promise.all([gJson("/brain_pick.json"),gJson("/real_positions.json"),gJson("analyst_scores.json"),gJson("grok_bots.json")]);
+    const rs=glanceRuleShadow,pos=bp?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
+    // real account (estimates from the read-only lists, no costs; the same arithmetic as the 実口座 cards)
+    let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null,realUncalc=0;const realHeld=[],realSide={long:{yen:0,n:0},short:{yen:0,n:0}};
+    if(acct){
+      // OWNER 2026-10-27 「買い→売埋と空売り→買埋を分けて計算して、前日以前の建玉の決済は『未計算○件』と出して」:
+      // long = 買建/買付 opened and 売埋/売付 closed today; short = 売建 opened and 買埋 closed today, per stock.
+      // Only today's opened quantity is matched; a close beyond it (a position opened on an earlier day, whose
+      // entry price is not in today's list) is counted as 未計算 and never guessed.
+      const execs=Array.isArray(acct.executions_today)?acct.executions_today:[],groups={};
+      const dirOf=s=>/^(買建|買付)$/.test(s)?["long","open"]:/^(売埋|売付)$/.test(s)?["long","close"]:/^売建$/.test(s)?["short","open"]:/^買埋$/.test(s)?["short","close"]:null;
+      execs.forEach(e=>{const d=dirOf(String(e.side||"").trim());if(!d)return;const g=groups[e.code+"|"+d[0]]=groups[e.code+"|"+d[0]]||{dir:d[0],open:[],close:[]};g[d[1]].push(e);});
+      const avg=a=>{const q=a.reduce((x,e)=>x+(knownNumber(e.qty)||0),0);return q?{q,p:a.reduce((x,e)=>x+(knownNumber(e.qty)||0)*(knownNumber(e.price)||0),0)/q}:null;};
+      Object.values(groups).filter(g=>g.close.length).forEach(g=>{const o=avg(g.open),c=avg(g.close);
+        if(!c)return;
+        if(!o||c.q>o.q)realUncalc++;                      // part or all of the close is an earlier day's position
+        if(o){const q=Math.min(o.q,c.q),est=(c.p-o.p)*q*(g.dir==="short"?-1:1);
+          realDone+=est;realN++;realSide[g.dir].yen+=est;realSide[g.dir].n++;if(est>0)realWin++;else if(est<0)realLose++;}});
+      [...(Array.isArray(acct.margin)?acct.margin:[]),...(Array.isArray(acct.cash)?acct.cash:[])].forEach(x=>{const v=gNum(x.pnl);if(v!==null)realOpen=(realOpen||0)+v;
+        realHeld.push({kind:"実口座",name:x.name,code:x.code,side:x.side||"現物",val:gNum(x.pnl_pct),text:gYen(v)+"（"+gPct(gNum(x.pnl_pct))+"）"});});
+    }
+    // cockpit virtual: today closed and open (open uses the screen's fresh live price)
+    const closed=rp.filter(p=>p&&p.status==="CLOSED"&&gNum(p.return_pct)!==null);
+    const vSum=closed.reduce((a,p)=>a+Number(p.return_pct),0),vWin=closed.filter(p=>Number(p.return_pct)>0).length;
+    // OWNER 2026-10-27 「金額もいれる」: the same closed trades in yen at 100 shares each (return after cost x fill price x 100)
+    const vYenRows=closed.filter(p=>gNum(p.fill_price)>0),vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);
+    const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
+      .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
+    const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
+    let html='<div class="g-tiles">'+
+      gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
+      gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
+      gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（％は1回ごとの合計・金額は100株ずつの換算、費用込み"+(vYenRows.length<closed.length?"・約定値の無い"+(closed.length-vYenRows.length)+"回は金額に入れず":"")+"）":"今日の仮想決済はまだありません")+
+      gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg)+"／"+gYen(vHeld.reduce((a,x)=>a+(x.yen100||0),0)),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":"・金額は1回100株ずつの合計（持ち越し含む）"))+
+      '</div>';
+    // OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
+    // おれの実際の成績と毎日並べて」: AI side = brain_pick positions.owner_rules (virtual, 100 shares, cost included);
+    // real side = the same read-only estimate as the tile above. Each day's real estimate is kept in this browser only
+    // (localStorage), so a day the screen was not open says 記録なし instead of a number.
+    const own=pos.owner_rules||null,today=String(own?.date||pos.date||"");
+    let realDays={};try{realDays=JSON.parse(localStorage.getItem("cockpitRealDailyV1")||"{}")||{};}catch(_e){realDays={};}
+    if(acct&&today){realDays[today]=Math.round(realDone);try{localStorage.setItem("cockpitRealDailyV1",JSON.stringify(realDays));}catch(_e){}}
+    html+='<h3 class="g-h">AI（あなたのルール）と実口座　毎日の比べ</h3>';
+    if(own&&own.counted){
+      const rowsO=[own].concat(Array.isArray(own.history)?own.history:[]).slice(0,10);
+      const oMax=Math.max(1,...rowsO.map(o=>Math.abs(Number(o.counted?.yen)||0)),...rowsO.map(o=>Math.abs(Number(realDays[o.date])||0)));
+      html+='<p class="g-note">決まり：1回ごとに損切り（無いものは数えない）・1日の負けが3万円に届いたらその後は入らない・ディスコ(6146)・レーザーテック(6920)・キオクシア(285A)は別枠（仮想だけ）。100株で計算・費用込み・お金は動いていません。</p><div class="g-rows">'+
+        rowsO.map(o=>{const c=o.counted||{},r=realDays[o.date],ai=Number(c.yen)||0,rv=r===undefined?null:Number(r);
+          return '<div class="g-row g-row5"><span class="g-kind">'+esc(String(o.date||"").slice(5))+'</span><span class="g-name">AI '+esc(c.n??0)+'回（勝ち'+esc(c.wins??0)+'・負け'+esc(c.losses??0)+(c.open?'・保有中'+esc(c.open):'')+'）'+(o.limit_hit_at?'・上限で停止 '+esc(String(o.limit_hit_at).slice(0,5)):'')+'・別枠 '+gYen(Number(o.virtual_only?.yen)||0)+'</span>'+gBar(ai,oMax)+'<b class="'+gCls(ai)+'">AI '+gYen(ai)+'</b></div>'+
+            '<div class="g-row g-row5"><span class="g-kind"></span><span class="g-name">実口座（概算・手数料なし）</span>'+gBar(rv,oMax)+'<b class="'+gCls(rv)+'">'+(rv===null?'記録なし':'実 '+gYen(rv))+'</b></div>';}).join("")+'</div>';
+    }else html+='<p class="g-empty">AI（あなたのルール）の記録を読めません（V10停止中・新しい版の前）。0円とは扱いません。</p>';
+    // holdings P/L list
+    const holds=realHeld.concat(vHeld).sort((a,b)=>(b.val??-1e9)-(a.val??-1e9)),hMax=Math.max(1,...holds.map(x=>Math.abs(x.val||0)));
+    html+='<h3 class="g-h">保有銘柄の損益（含み）</h3>'+(holds.length?'<div class="g-rows">'+holds.map(x=>'<div class="g-row g-row5"><span class="g-kind">'+esc(x.kind)+'</span><span class="g-name">'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')・'+esc(x.side)+'</span>'+gBar(x.val,hMax)+'<b class="'+gCls(x.val)+'">'+esc(x.text)+'</b></div>').join("")+'</div>':'<p class="g-empty">保有はありません</p>');
+    // per rule (virtual, forward) + today
+    html+='<h3 class="g-h">手法別（ブレインの仮想売買'+(rs?"・"+esc(rs.forward_from||"")+"〜"+esc((rs.days||[]).slice(-1)[0]||""):"")+'・費用込み）</h3>';
+    if(rs&&rs.forward){
+      const keys=["BRAIN","R1","R2","R4","R5"].concat(Object.keys(rs.forward).filter(k=>!["BRAIN","R1","R2","R4","R5"].includes(k)).sort()).filter(k=>rs.forward[k]);
+      const lab=k=>k==="BRAIN"?"ブレインの選択":String(rs.rules?.[k]?.label||rs.gap_rules?.[k]?.label||k).split("・")[0];
+      const eMax=Math.max(0.1,...keys.map(k=>Math.abs(Number(rs.forward[k].ev_pct)||0)));
+      html+='<div class="g-rows">'+keys.map(k=>{const f=rs.forward[k],ev=gNum(f.ev_pct),n=Number(f.n)||0,today=closed.filter(p=>p.rule===k),ts=today.reduce((a,p)=>a+Number(p.return_pct),0);
+        return '<div class="g-row"><span class="g-name">'+esc(lab(k))+'</span><span class="g-n">'+n+'回・勝率'+esc(f.win_rate_pct??"—")+'%・PF'+esc(f.pf??"—")+(n<20?"・N不足":"")+'</span>'+gBar(ev,eMax)+'<b class="'+gCls(ev)+'">1回 '+gPct(ev,3)+'</b><small class="g-today">'+(today.length?"今日 "+today.length+"回 "+gPct(ts):"今日 0回")+'</small></div>';}).join("")+'</div>';
+    }else html+='<p class="g-empty">手法別の記録（rule_shadow）を読めません。0件とは扱いません。</p>';
+    // per analyst
+    html+='<h3 class="g-h">アナリスト別（答えの向きの当たり・費用なし）</h3><div class="g-rows">';
+    const arows=Array.isArray(an?.analysts)?an.analysts:[];
+    html+=arows.length?arows.map(a=>'<div class="g-row"><span class="g-name">GPT '+esc(a.name)+'</span><span class="g-n">答え'+esc(a.answers)+'件（監視'+esc(a.watch)+'）・採点'+esc(a.scored)+'件</span>'+gBar(gNum(a.avg_move_pct),1)+'<b class="'+gCls(gNum(a.avg_move_pct))+'">'+(a.scored?"当たり"+esc(a.hit_rate_pct)+"%・平均"+gPct(gNum(a.avg_move_pct)):"採点待ち")+'</b><small class="g-today"></small></div>').join(""):'<p class="g-empty">GPTアナリストの採点を読めません</p>';
+    const g3=(Array.isArray(gb?.bots)?gb.bots:[]).find(b=>b.bot==="Grok3号"),ck=Array.isArray(g3?.checks)?g3.checks:[];
+    const hit=ck.reduce((a,c)=>a+(c.hit||0),0),miss=ck.reduce((a,c)=>a+(c.miss||0),0),unk=ck.reduce((a,c)=>a+(c.unknown||0),0);
+    html+='<div class="g-row"><span class="g-name">Grok 3号（決算前の空気）</span><span class="g-n">答え合わせ'+(hit+miss+unk)+'件（判定不能'+unk+'）</span>'+gBar(hit+miss?(hit/(hit+miss)*100-50):null,50)+'<b class="'+gCls(hit+miss?hit-miss:null)+'">'+(hit+miss?"当たり"+hit+"／外れ"+miss+"（"+Math.round(hit/(hit+miss)*100)+"%）":"答え合わせ待ち")+'</b><small class="g-today"></small></div>';
+    html+='</div><p class="g-note">実口座はMS2の一覧を読むだけの概算（手数料・金利なし）。仮想はお金が動いていない検証です。売買の判断には使いません。</p>';
+    root.innerHTML=html;
+  }
+
   document.addEventListener("DOMContentLoaded",()=>{
     const control=document.querySelector('.tab-pane[data-pane="control"]');
+    if(control&&!document.getElementById("owner-performance-glance")){
+      const section=document.createElement("section");
+      section.className="card wide g-panel";
+      section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>成績</h2><p>全体・保有銘柄の含み損益・手法別・アナリスト別。</p></div><div id="owner-performance-glance"><div>成績読込中...</div></div>';
+      const intro=control.querySelector(":scope > .pane-intro");
+      if(intro)intro.after(section);else control.prepend(section);
+      // OWNER 2026-10-27 「CONTROLタブの古い箱をたたんで。実注文OFFの1行とブレインのルール別・ブレインの選択は残して、
+      // ほかは『詳しい状態』に入れて押した時だけ開く」: the old boxes stay where the code fills them, and CSS hides them
+      // until 詳しい状態 is opened (the pane is a one-column grid, so `order` sets the visible order). Display only.
+      const line=document.createElement("p");line.id="owner-real-order-line";line.className="g-order-line g-order-warn";line.textContent="実注文：確認中";
+      const brain=document.createElement("section");brain.className="card wide g-brain-panel";
+      brain.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>ブレインのルール別・ブレインの選択（仮想）</h2><p>仮想売買の記録です。お金は動いていません。</p></div><div id="owner-brain-rules" class="cc-grid"><div>読込中...</div></div>';
+      const more=document.createElement("details");more.id="owner-detail-status";more.className="g-detail";
+      more.innerHTML='<summary>詳しい状態（押すと開く）</summary>';
+      more.addEventListener("toggle",()=>control.classList.toggle("g-detail-open",more.open));
+      section.before(line);section.after(brain);brain.after(more);
+      // OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて、おれをたたきなおしてくれ」「必ず後場にまけていた」
+      const review=document.createElement("section");review.className="card wide g-review-panel";
+      review.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>あなたの過去実績（たたき直し）</h2><p>書き出してもらった実現損益CSVから。このPCの中だけのデータです。</p></div><div id="owner-history-review"><div>読込中...</div></div>';
+      section.after(review);
+    }
     if(control&&!document.getElementById("owner-control-overview")){
       const section=document.createElement("section");
-      section.className="card wide";
+      section.className="card wide g-old";
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>取引・建玉・成績</h2><p>実発注、実建玉、Shadow建玉、各タブ成績をここで一括確認します。</p></div><div id="owner-control-overview" class="cc-grid"><div>状態読込中...</div></div>';
       control.appendChild(section);
     }
     if(control&&!document.getElementById("owner-strategy-performance")){
       const section=document.createElement("section");
-      section.className="card wide cc-strategy-owner-panel";
+      section.className="card wide cc-strategy-owner-panel g-old";
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>戦略別パフォーマンス（実績区分・証拠付き）</h2><p>REAL／SHADOW・PAPER／BACKTESTを混同しません。証拠不足は未接続と表示します。</p></div><div id="owner-strategy-performance" class="cc-grid"><div>戦略実績を照合中...</div></div>';
       control.appendChild(section);
     }
+    const journal=document.querySelector('.tab-pane[data-pane="ai-journal"]');
+    if(journal&&!document.getElementById("owner-real-holdings")){
+      const panels=[
+        ["owner-real-holdings","保有中｜実口座（読むだけ）","武蔵などで売買した本当の保有です。MS2 RSSの建玉一覧・保有一覧・約定一覧を読むだけで、注文は出しません。このPCの画面だけに出します。"],
+        ["owner-real-closed","保有した銘柄｜実口座・今日決済","今日の約定一覧から、決済した銘柄をまとめます。損益は手数料・金利を含まない概算です。"],
+        ["owner-virtual-holdings","保有中｜仮想（コクピットの検証）","ルール①②④⑤のサインとオーバーナイトの仮想売買です。お金は動いていません。"],
+        ["owner-virtual-closed","保有した銘柄｜仮想・今日決済","ルールのサインの仮想売買で、今日決済したものです。"]
+      ];
+      const intro=journal.querySelector(":scope > .pane-intro");
+      let after=intro;
+      panels.forEach(([id,title,note])=>{
+        const section=document.createElement("section");
+        section.className="card wide";
+        section.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>'+esc(title)+'</h2><p>'+esc(note)+'</p></div><div id="'+id+'" class="cc-grid"><div>読込中...</div></div>';
+        if(after&&after.parentNode===journal)after.after(section);else journal.prepend(section);
+        after=section;
+      });
+    }
     renderOwnerSummaries();
+    renderHoldings();
     upgradeWeeklyReview();
     setInterval(renderOwnerSummaries,15000);
+    setInterval(renderHoldings,10000);
+    renderGlance();
+    setInterval(renderGlance,10000);
+    renderOwnerReview();
+    setInterval(renderOwnerReview,60000);
   });
 })();

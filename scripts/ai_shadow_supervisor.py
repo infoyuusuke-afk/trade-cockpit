@@ -402,6 +402,7 @@ def _plain_positive_int(value) -> int | None:
 
 
 PARTIAL_MIN_FRESH_PCT = 95.0
+QUOTE_PENDING_MAX = 5   # OWNER 2026-10-26: rows waiting for their first price (特別気配) that do not block the board
 
 
 def assess_board_availability(payload, quote_freshness: dict | None, row_freshness: dict | None,
@@ -454,6 +455,23 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
             reasons.append("UNIVERSE_ROW_UNEXPECTED")
         if declared is not None and declared != expected_count:
             reasons.append("UNIVERSE_DECLARED_MISMATCH")
+    # OWNER 2026-10-26 「特別気配の直し」: the same rule as Get-BoardAvailability — rows missing only
+    # because the stock has no price yet (PRICE_MISSING with the sheet code matching, listed by the
+    # Collector in missing_rows), at most QUOTE_PENDING_MAX, no unexpected row, declared == expected
+    # == present + pending, >= 95% of expected rows FRESH, aggregate_basis FRESH_ROWS_ONLY. Reported,
+    # never used; AVAILABLE_PARTIAL.
+    quote_pending: list[str] = []
+    if (verified and missing and len(missing) <= QUOTE_PENDING_MAX and not unexpected and declared is not None
+            and declared == expected_count and declared == row_count + len(missing)
+            and isinstance(payload, dict) and payload.get("aggregate_basis") == "FRESH_ROWS_ONLY"
+            and isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict) and expected_count
+            and 100.0 * int(row_freshness["state_counts"].get(FRESH) or 0) / expected_count >= PARTIAL_MIN_FRESH_PCT):
+        declared_pending = {m.get("ticker") for m in (payload.get("missing_rows") or []) if isinstance(m, dict)
+                            and m.get("reason") == "PRICE_MISSING" and m.get("sheet_code_matches") is True
+                            and isinstance(m.get("ticker"), str)}
+        if all(t in declared_pending for t in missing):
+            quote_pending = list(missing)
+            reasons = [r for r in reasons if r not in ("UNIVERSE_ROW_MISSING", "UNIVERSE_DECLARED_MISMATCH")]
     unique = sorted(set(reasons))
     if not identity_fresh:
         status = "BLOCKED_IDENTITY_QUOTE"
@@ -480,6 +498,11 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
             partial_rows = True
             partial_reasons = unique
             unique = []
+            status = "AVAILABLE_PARTIAL"
+    if quote_pending:
+        partial_rows = True
+        partial_reasons = sorted(set(partial_reasons) | {"UNIVERSE_QUOTE_PENDING"})
+        if status == "AVAILABLE":
             status = "AVAILABLE_PARTIAL"
     counts = {FRESH: 0, STALE: 0, UNKNOWN: 0, INVALID: 0, "MISSING": len(missing)}
     if isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict):
@@ -510,6 +533,8 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
         "partial_rows": partial_rows,
         "partial_reasons": partial_reasons,
         "partial_min_fresh_pct": PARTIAL_MIN_FRESH_PCT,
+        "quote_pending_count": len(quote_pending),
+        "quote_pending_sample": quote_pending[:10],
         "order_allowed": False,
         "real_submit_allowed": False,
     }
@@ -1494,6 +1519,32 @@ def _plain_int(value) -> int | None:
     return value
 
 
+DOWNTIME_COUNT_FROM = clock_time(9, 0)
+DOWNTIME_COUNT_UNTIL = clock_time(15, 30)
+
+
+def counted_seconds(left: datetime, right: datetime) -> int:
+    """Seconds of [left, right] that count toward downtime and uptime (JST).
+
+    OWNER 2026-10-22 ④ (D-035): time after 15:30 is not counted as downtime.
+    OWNER 2026-10-23: nor is the time before 09:00 (pre-open quotes are never fresh, so the
+    Shadow is paused fail-closed every morning). The lunch break still counts. The
+    incident log itself is unchanged.
+    """
+    if right <= left:
+        return 0
+    lo, hi = left.astimezone(JST), right.astimezone(JST)
+    total = 0.0
+    day = lo.date()
+    while day <= hi.date():
+        a = max(lo, datetime.combine(day, DOWNTIME_COUNT_FROM, JST))
+        b = min(hi, datetime.combine(day, DOWNTIME_COUNT_UNTIL, JST))
+        if b > a:
+            total += (b - a).total_seconds()
+        day += timedelta(days=1)
+    return int(total)
+
+
 def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
     opened = parse_timestamp(incident.get("occurrence_at"), start.tzinfo)
     if opened is None:
@@ -1503,9 +1554,7 @@ def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
         return 0
     left = max(opened, start)
     right = min(closed, end)
-    if right <= left:
-        return 0
-    return int((right - left).total_seconds())
+    return counted_seconds(left, right)
 
 
 def summarize_operations(engine: dict, *, now: datetime) -> dict:
@@ -1516,7 +1565,7 @@ def summarize_operations(engine: dict, *, now: datetime) -> dict:
         if started is None:
             return _empty_window(label)
         begin = max(started, now - timedelta(seconds=seconds))
-        elapsed = int((now - begin).total_seconds())
+        elapsed = counted_seconds(begin, now)
         incidents = [item for item in engine["incidents"] if parse_timestamp(item.get("occurrence_at"), now.tzinfo) and parse_timestamp(item.get("occurrence_at"), now.tzinfo) >= begin]
         downtime = sum(_clip_duration(item, begin, now) for item in engine["incidents"])
         recovered = [item for item in incidents if item.get("recovery_at")]

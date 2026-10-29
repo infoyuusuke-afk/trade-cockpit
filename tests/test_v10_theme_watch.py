@@ -1,0 +1,68 @@
+"""OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ、しっかり機能させろ、セキュリティ関連銘柄だして期待値銘柄のカード
+タブの名称から再考」「このページいろちがう」「TDネット…と朝に気配で確認してくださいは、ききにくいそいらない」. Display and voice only."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _html():
+    return (ROOT / "index.html").read_text(encoding="utf-8")
+
+
+def test_tab_renamed_and_theme_cards_from_the_local_file():
+    html = _html()
+    assert '<button class="cockpit-tab" data-tab="pre-next">テーマ</button>' in html   # OWNER 2026-10-27 「タブ名は『テーマ』」
+    assert 'intros["pre-next"]=["テーマ｜今のテーマと関連銘柄（Grok1号・毎日8:00）"' in html
+    b = html.split("// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ", 1)[1].split("</script>", 1)[0]
+    assert 'fetch("/theme_watch.json?t="' in b and "テーマのデータを読めません" in b
+    assert "期待値：コクピットの記録なし（監視100銘柄の外）" in b and "期待値ではありません" in b
+    assert 'Array.isArray(v.themes)&&v.themes.length?v.themes:' in b and "Grok1号の採点（答えた後の最初の値段からの上げ下げ・日経比）" in b
+    assert "照合NG（コードが確かめられず表示から外した）" in b
+
+
+def test_event5_in_the_theme_tab_rules_of_the_owner():
+    # OWNER 2026-10-27 「EVENT 5はテーマタブに入れる。コード不一致は出さない、20回未満は根拠不足、24時間より古い答えは順位に入れない、声と注文ボタンなし」
+    html = _html()
+    assert 'else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="pre-next";' in html
+    assert "b.hidden=true;b.style.display=\"none\";" in html and "<h2>急騰・過熱の監視（旧EVENT 5）</h2>" in html
+    b = html.split("// OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ", 1)[1].split("</script>", 1)[0]
+    assert "期待値：根拠不足（記録'+esc(c.ev.n)+'回・20回未満）" in b and "記録中（" in b   # OWNER 2026-10-28: the score shows 『記録中：本命○/20回』 below 20
+    assert "const stale=x=>x.source===\"Grok1号\"&&age!==null&&age>24;" in b and "24時間より古い答え（順位に入れない）" in b
+    assert "cockpitSpeak" not in b and "RssOrder" not in b and "<button" not in b.replace('<button type="button" class="tw-tbtn', "")
+
+
+def test_gateway_serves_theme_watch_with_safe_flags_only():
+    ps = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+    body = ps.split("function Get-ThemeWatchView([string]$RuntimeDir) {", 1)[1].split("\nfunction ", 1)[0]
+    assert "'100b-v10-theme-watch-v1'" in body and "$view.real_submit_allowed -ne $false" in body
+    assert "if ($path -eq '/theme_watch.json') {" in ps
+
+
+def test_same_colours_and_shorter_ir_voice():
+    html = _html()
+    assert '.tab-pane[data-pane="ms2-live"] .warning,.tab-pane[data-pane="pre-next"] .warning{background:#0E1013' in html
+    col = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+    assert "TDnet原文と翌朝の気配を確認してください" not in col
+    assert '+$ir.judgement+"。")' in col
+
+
+def test_grok1_score_roles_and_stages_only_with_a_record_line():
+    # OWNER 2026-10-28 「本命・周辺・出遅れと段階だけでまとめて、20回までは『記録中：本命○/20回』の1行だけ…見出しのカードも直して」
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert 'const ROLES=["本命","周辺","出遅れ"],STAGES=["芽","初動","加速","過熱","終わりかけ"];' in html
+    assert "'<p class=\"tw-rec\">記録中（'+label+'）：'+wait.map(g=>esc(g)+' '+esc(maxN[g])+'/20回')" in html
+    assert '<table class="tw-score" data-keep-table>' in html
+    assert "根拠不足（20回未満）</td>" not in html
+
+
+import unittest as _unittest  # noqa: E402
+
+
+class FunctionTests(_unittest.TestCase):
+    """The test_ functions above, run by `python -m unittest` (CI) as well."""
+
+
+for _name, _fn in list(globals().items()):
+    if _name.startswith("test_") and callable(_fn):
+        setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))
+
