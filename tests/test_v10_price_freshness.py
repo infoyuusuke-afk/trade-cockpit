@@ -530,5 +530,61 @@ class SourceContracts(unittest.TestCase):
         self.assertIn("$QuoteFreshness = Get-QuoteFreshness -LiveObj $LiveObj", text)
 
 
+class StatusWriteRetry(unittest.TestCase):
+    """10/30 13:19: os.replace on ai_shadow_status.json raised PermissionError
+    while the Gateway was reading it and the supervisor process died."""
+
+    def _locked(self, failures):
+        real = os.replace
+        calls = {"n": 0}
+
+        def fake(src, dst):
+            calls["n"] += 1
+            if calls["n"] <= failures:
+                raise PermissionError(5, "Access is denied")
+            return real(src, dst)
+        return fake, calls
+
+    def test_replace_retries_until_target_is_free(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "ai_shadow_status.json"
+            fake, calls = self._locked(3)
+            original, sleeper = sup.os.replace, sup.time.sleep
+            sup.os.replace, sup.time.sleep = fake, (lambda _s: None)
+            try:
+                sup._write_json(target, {"state": "RUNNING"})
+            finally:
+                sup.os.replace, sup.time.sleep = original, sleeper
+            self.assertEqual(calls["n"], 4)
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"state": "RUNNING"})
+
+    def test_state_write_still_raises_when_lock_never_clears(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake, _ = self._locked(10 ** 6)
+            original, sleeper = sup.os.replace, sup.time.sleep
+            sup.os.replace, sup.time.sleep = fake, (lambda _s: None)
+            try:
+                with self.assertRaises(PermissionError):
+                    sup._write_json(Path(tmp) / "state.json", {"x": 1})
+            finally:
+                sup.os.replace, sup.time.sleep = original, sleeper
+
+    def test_status_publish_skips_cycle_instead_of_stopping(self):
+        now = datetime(2026, 10, 30, 13, 19, 42, tzinfo=JST)
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = sup.load_engine(Path(tmp) / "data", now=now)
+            target = Path(tmp) / "ai_shadow_status.json"
+            fake, _ = self._locked(10 ** 6)
+            original, sleeper = sup.os.replace, sup.time.sleep
+            sup.os.replace, sup.time.sleep = fake, (lambda _s: None)
+            try:
+                self.assertFalse(sup.publish_status(engine, target, now=now))
+            finally:
+                sup.os.replace, sup.time.sleep = original, sleeper
+            self.assertFalse(target.exists())
+            self.assertTrue(sup.publish_status(engine, target, now=now))
+            self.assertTrue(target.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
