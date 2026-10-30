@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-10-30 07:52:28 JST",
+  "generated_at": "2026-10-30 11:28:09 JST",
   "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。by_strategy/by_regimeはstrategy_schema.py導入(2026-09-17)以降のレコードのみ区分でき、それ以前のレコードはUNTAGGED_LEGACYにまとめている。",
   "by_side": {
     "LONG": {
-      "total_recorded": 298,
-      "resolved_n": 128,
-      "win_rate_pct": 61.7,
+      "total_recorded": 303,
+      "resolved_n": 131,
+      "win_rate_pct": 60.3,
       "win_rate_95ci": [
-        53.1,
-        69.7
+        51.7,
+        68.3
       ],
-      "avg_r": 0.293,
-      "profit_factor": 2.97,
+      "avg_r": 0.271,
+      "profit_factor": 2.69,
       "max_drawdown_r": 4.55,
       "status": "参考値（要検証）",
       "min_n_threshold": 30
     },
     "SHORT": {
-      "total_recorded": 35,
-      "resolved_n": 1,
-      "win_rate_pct": 0.0,
+      "total_recorded": 40,
+      "resolved_n": 3,
+      "win_rate_pct": 66.7,
       "win_rate_95ci": [
-        0.0,
-        79.3
+        20.8,
+        93.9
       ],
-      "avg_r": 0.0,
+      "avg_r": 0.027,
       "profit_factor": Infinity,
       "max_drawdown_r": 0.0,
       "status": "試運転・検証中（サンプル不足）",
@@ -33,28 +33,28 @@
   },
   "by_strategy": {
     "day_rank_long": {
-      "total_recorded": 115,
-      "resolved_n": 78,
-      "win_rate_pct": 71.8,
+      "total_recorded": 120,
+      "resolved_n": 81,
+      "win_rate_pct": 69.1,
       "win_rate_95ci": [
-        61.0,
-        80.6
+        58.4,
+        78.1
       ],
-      "avg_r": 0.445,
-      "profit_factor": 4.53,
+      "avg_r": 0.404,
+      "profit_factor": 3.76,
       "max_drawdown_r": 3.81,
       "status": "参考値（要検証）",
       "min_n_threshold": 30
     },
     "day_short_mvp": {
-      "total_recorded": 33,
-      "resolved_n": 1,
-      "win_rate_pct": 0.0,
+      "total_recorded": 38,
+      "resolved_n": 3,
+      "win_rate_pct": 66.7,
       "win_rate_95ci": [
-        0.0,
-        79.3
+        20.8,
+        93.9
       ],
-      "avg_r": 0.0,
+      "avg_r": 0.027,
       "profit_factor": Infinity,
       "max_drawdown_r": 0.0,
       "status": "試運転・検証中（サンプル不足）",
