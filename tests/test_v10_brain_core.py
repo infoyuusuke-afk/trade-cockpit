@@ -373,6 +373,73 @@ $o | ConvertTo-Json -Compress
                           "notlive": "", "oddstate": "", "missing": "", "broken": ""})
 
 
+class PtsBadgeVoice(unittest.TestCase):
+    """OWNER 2026-10-30: before 9:00, speak only PTS rows whose 買い/空売り badge band matches the pre-open gap."""
+
+    def test_wired_after_gap_voice_once_a_day(self):
+        text = COLLECTOR.read_text(encoding="utf-8-sig")
+        self.assertIn('$ptsPickupPath = Join-Path $PSScriptRoot "pts_pickup_v1.json"', text)
+        self.assertIn("$preopenGapSpoken=$false; $ptsBadgeSpoken=$false", text)
+        call = text.index("$ptsHits=@(Get-PtsBadgeMatches $ptsPickupPath $results (Get-Date))")
+        self.assertLess(text.index("$gapVoiceDoneBeforeCycle=$preopenGapSpoken"), text.index("$inPreopenWindow=("))
+        self.assertIn("if (-not $ptsBadgeSpoken -and $gapVoiceDoneBeforeCycle -and $inPreopenWindow) {", text)
+        block = text[call:call + 1400]
+        self.assertIn("$clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil", block)
+        self.assertIn("注文は武蔵で手動です。", block)
+
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
+    def test_matches_only_same_band_and_fails_silent(self):
+        harness = r"""
+param([string]$Collector, [string]$Dir)
+$t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
+foreach($name in 'Get-PtsGapBand','Get-PtsBadgeMatches'){
+  $fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true))
+  . ([scriptblock]::Create($fn[0].Extent.Text))
+}
+$rows=@(
+ [pscustomobject]@{ticker='285A.T';preopen_gap_pct=-7.5},
+ [pscustomobject]@{ticker='3905.T';preopen_gap_pct=-1.2},
+ [pscustomobject]@{ticker='6525.T';preopen_gap_pct=-2.4},
+ [pscustomobject]@{ticker='4004.T';preopen_gap_pct=$null},
+ [pscustomobject]@{ticker='9984.T';preopen_gap_pct=-25})
+$now=[datetime]'2026-11-02 08:56:00'
+$o=[ordered]@{}
+foreach($n in 'valid','stale_session','same_day','unsafe','stringflag','schema','missing','broken'){
+  $f=Join-Path $Dir ($n+'.json'); if(Test-Path $f){ (Get-Item $f).LastWriteTime=$now.AddMinutes(-3) }
+  $o[$n]=(@(Get-PtsBadgeMatches $f $rows $now) | ForEach-Object { $_.ticker+':'+$_.side }) -join ','
+}
+$old=Join-Path $Dir 'valid.json'; (Get-Item $old).LastWriteTime=$now.AddMinutes(-30)
+$o['old_file']=(@(Get-PtsBadgeMatches $old $rows $now) | ForEach-Object { $_.ticker }) -join ','
+$o['bands']=((-3.5,-3,-2,-1,-0.5,1,2.5,3) | ForEach-Object { [string](Get-PtsGapBand $_) }) -join '|'
+$o | ConvertTo-Json -Compress
+"""
+        rows = [
+            {"ticker": "285A.T", "name": "A", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 1.41},
+            {"ticker": "3905.T", "name": "B", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 1.55},   # quote only -1.2 %
+            {"ticker": "6525.T", "name": "C", "ev_side": "SHORT", "ev_bucket": "−2〜−3%", "ev_pct": 0.65},
+            {"ticker": "4004.T", "name": "D", "ev_side": "BUY", "ev_bucket": "−2〜−3%", "ev_pct": 0.46},     # no quote yet
+            {"ticker": "9984.T", "name": "E", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 0.5},      # split-sized gap
+            {"ticker": "6752.T", "name": "F", "ev_side": "SKIP", "ev_bucket": "+3%以上"},
+        ]
+        good = {"schema_version": "100b-v10-pts-pickup-v1", "real_submit_allowed": False, "trade_instruction": False,
+                "pts_session_date": "2026-10-30", "rows": rows}
+        files = {"valid": good, "stale_session": dict(good, pts_session_date="2026-10-27"),
+                 "same_day": dict(good, pts_session_date="2026-11-02"), "unsafe": dict(good, real_submit_allowed=True),
+                 "stringflag": dict(good, trade_instruction="false"), "schema": dict(good, schema_version="other")}
+        with tempfile.TemporaryDirectory() as d:
+            for name, doc in files.items():
+                (Path(d) / (name + ".json")).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+            (Path(d) / "broken.json").write_text("{not json", encoding="utf-8")
+            h = Path(d) / "h.ps1"
+            h.write_text(harness, encoding="utf-8-sig")
+            p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR),
+                                "-Dir", d], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
+                         {"valid": "285A.T:BUY,6525.T:SHORT", "stale_session": "", "same_day": "", "unsafe": "",
+                          "stringflag": "", "schema": "", "missing": "", "broken": "", "old_file": "",
+                          "bands": "−3%以下|−2〜−3%|−1〜−2%||||+2〜3%|+3%以上"})
+
+
 class JpxMarginPass(unittest.TestCase):
     def test_pins_once_a_day_and_fail_closed(self):
         spec = importlib.util.spec_from_file_location("obs_jpx_under_test", ROOT / "scripts" / "ai_brain_observer.py")

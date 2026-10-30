@@ -2554,6 +2554,48 @@ function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
         return @()
     }
 }
+# OWNER 2026-10-30 「朝の気配が出て、札の条件（窓−3%以下など）が本当にそろった銘柄だけ、9:00前に声で知らせる」:
+# rows of the Brain observer's pts_pickup_v1.json that carry a 買い/空売り badge (ev_side BUY/SHORT) and whose
+# MS2 pre-open gap now falls in the same gap band the badge was computed for (ev_bucket). Watch only, no
+# order. Any problem (missing, stale, unsafe flags, other schema) gives an empty list, i.e. silence.
+function Get-PtsGapBand($Gap) {
+    $g = [double]$Gap
+    if ($g -ge 3) { return '+3%以上' } elseif ($g -ge 2) { return '+2〜3%' } elseif ($g -ge 1) { return '+1〜2%' }
+    elseif ($g -lt -3) { return '−3%以下' } elseif ($g -lt -2) { return '−2〜−3%' } elseif ($g -lt -1) { return '−1〜−2%' }
+    return $null
+}
+function Get-PtsBadgeMatches([string]$Path, $Rows, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return @() }
+        if (($Now - $item.LastWriteTime).TotalMinutes -gt 15) { return @() }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-pts-pickup-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction) { return @() }
+        # the PTS evening must be an earlier day, at most 4 days back (Friday night -> Monday morning)
+        $session = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact([string]$view.pts_session_date, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::None, [ref]$session)) { return @() }
+        $days = ($Now.Date - $session.Date).TotalDays
+        if ($days -lt 1 -or $days -gt 4) { return @() }
+        $out = @()
+        foreach ($p in @($view.rows)) {
+            if ([string]$p.ev_side -notin @('BUY','SHORT')) { continue }
+            $live = @($Rows | Where-Object { [string]$_.ticker -ceq [string]$p.ticker } | Select-Object -First 1)
+            if ($live.Count -eq 0 -or $null -eq $live[0].preopen_gap_pct) { continue }
+            $gap = [double]$live[0].preopen_gap_pct
+            if ($gap -le -20 -or $gap -ge 20) { continue }
+            if ((Get-PtsGapBand $gap) -cne [string]$p.ev_bucket) { continue }
+            $out += [pscustomobject]@{ ticker = [string]$p.ticker; name = [string]$p.name; side = [string]$p.ev_side; gap = $gap
+                                       ev_pct = $p.ev_pct }
+        }
+        return @($out | Sort-Object { -[Math]::Abs([double]$_.gap) } | Select-Object -First 5)
+    } catch {
+        return @()
+    }
+}
 # OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: a stock's first entry into
 # the Brain ranking today, from the same fresh, checked file (the same gates as the rule voice).
 function Get-BrainNewPicks([string]$Path, [datetime]$Now) {
@@ -2629,6 +2671,8 @@ $holdingVoiceMorningDone = $false; $holdingVoiceCloseDone = $false
 $HoldingVoiceMorningFrom = [TimeSpan]::Parse("08:50:00"); $HoldingVoiceMorningUntil = [TimeSpan]::Parse("08:55:00")
 $HoldingVoiceCloseFrom = [TimeSpan]::Parse("15:30:00"); $HoldingVoiceCloseUntil = [TimeSpan]::Parse("15:35:00")
 $preopenGapSpoken = $false
+$ptsBadgeSpoken = $false
+$ptsPickupPath = Join-Path $PSScriptRoot "pts_pickup_v1.json"
 $PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
 $history = @{}
@@ -2707,7 +2751,7 @@ try {
             $activeDay=$now.ToString("yyyy-MM-dd")
             $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $orStart=@{}; $orWaiting=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false; $ptsBadgeSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -4116,6 +4160,7 @@ try {
         # re-checked on the current clock right before speaking (never at or after the open).
         # Inside the window it retries every cycle until the gates pass; a skip is logged
         # once a minute with the reason. With 80-99 covered issues the voice says so.
+        $gapVoiceDoneBeforeCycle=$preopenGapSpoken
         $inPreopenWindow=($now.TimeOfDay -ge $PreopenVoiceFrom -and $now.TimeOfDay -lt $PreopenVoiceUntil)
         if (-not $preopenGapSpoken -and $inPreopenWindow) {
             $preopenReady=($preopenCovered -ge $PreopenMinCoverage -and -not $script:priceSourceMismatch -and $publishLiveValues)
@@ -4138,6 +4183,22 @@ try {
                     }
                     $preopenGapSpoken=$true
                 }
+            }
+        }
+        # OWNER 2026-10-30: the PTS badge voice, once, in a cycle after the 08:55 gap voice (one blocking
+        # read-out per cycle) and still before 08:59:30. Silent when no badge row matches its gap band.
+        if (-not $ptsBadgeSpoken -and $gapVoiceDoneBeforeCycle -and $inPreopenWindow) {
+            $ptsBadgeSpoken=$true
+            $ptsHits=@(Get-PtsBadgeMatches $ptsPickupPath $results (Get-Date))
+            $clock=(Get-Date).TimeOfDay
+            if ($ptsHits.Count -gt 0 -and $clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil) {
+                $names=($ptsHits | ForEach-Object {
+                    $sideText=if($_.side -eq 'BUY'){"買い"}else{"空売り"}
+                    $sign=if($_.gap -ge 0){"プラス"}else{"マイナス"}
+                    $evText=""
+                    if($null -ne $_.ev_pct){ $evText="、期待値"+$(if([double]$_.ev_pct -ge 0){"プラス"}else{"マイナス"})+[Math]::Abs([Math]::Round([double]$_.ev_pct,2))+"パーセント" }
+                    $_.name+"、気配"+$sign+[Math]::Abs([Math]::Round($_.gap,1))+"パーセントで"+$sideText+"の札"+$evText }) -join "。"
+                Invoke-SerializedSpeak $speaker ("PTSの札が気配でもそろった銘柄です。"+$names+"。検証中の数字です。気配は始値ではありません。注文は武蔵で手動です。")
             }
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
