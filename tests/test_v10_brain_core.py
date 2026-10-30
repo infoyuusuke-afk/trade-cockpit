@@ -437,7 +437,7 @@ $o | ConvertTo-Json -Compress
         self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
                          {"valid": "285A.T:BUY,6525.T:SHORT", "stale_session": "", "same_day": "", "unsafe": "",
                           "stringflag": "", "schema": "", "missing": "", "broken": "", "old_file": "",
-                          "bands": "−3%以下|−2〜−3%|−1〜−2%||||+2〜3%|+3%以上"})
+                          "bands": "−3%以下|−2〜−3%|−1〜−2%|||+1〜2%|+2〜3%|+3%以上"})
 
 
 class JpxMarginPass(unittest.TestCase):
