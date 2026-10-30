@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-30T00:33:38.503427+09:00",
+  "updated_at": "2026-10-30T11:08:51.937775+09:00",
   "calendar": [
     {
       "code": "2268",
@@ -3558,14 +3558,16 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "発表済み好材料あり",
+        "label": "警戒材料あり",
         "recent_tags": [
-          "配当変更・内容要確認",
+          "訂正・取消確認",
           "増配",
           "業績修正・方向要確認",
+          "配当変更・内容要確認",
           "決算発表"
         ],
         "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261030560472.pdf",
           "https://www.release.tdnet.info/inbs/140120261029559801.pdf",
           "https://www.release.tdnet.info/inbs/140120261029559193.pdf",
           "https://www.release.tdnet.info/inbs/140120261029559017.pdf"
@@ -7085,9 +7087,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261029558882.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -7964,9 +7970,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261029559355.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -10315,9 +10325,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261029559786.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -10940,9 +10954,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261029560186.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -11944,10 +11962,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1871.0,
-        "return_5d_pct": -4.74,
-        "return_20d_pct": 0.59,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1941.0,
+        "return_5d_pct": -1.12,
+        "return_20d_pct": 3.41,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -11974,9 +11992,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1315.0,
-        "return_5d_pct": -1.57,
-        "return_20d_pct": 3.62,
+        "last_close": 1360.0,
+        "return_5d_pct": -0.29,
+        "return_20d_pct": 9.85,
         "momentum_direction": "中立"
       }
     },
@@ -12004,9 +12022,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2002.0,
-        "return_5d_pct": -3.36,
-        "return_20d_pct": 2.38,
+        "last_close": 2053.0,
+        "return_5d_pct": -2.49,
+        "return_20d_pct": 2.24,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12034,10 +12052,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4180.0,
-        "return_5d_pct": 1.41,
-        "return_20d_pct": 10.35,
-        "momentum_direction": "中立"
+        "last_close": 4096.0,
+        "return_5d_pct": -2.5,
+        "return_20d_pct": 7.56,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12064,10 +12082,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 384.0,
-        "return_5d_pct": -6.11,
-        "return_20d_pct": -7.02,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 391.0,
+        "return_5d_pct": -1.01,
+        "return_20d_pct": -9.28,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -12098,9 +12116,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1400.0,
-        "return_5d_pct": -0.21,
-        "return_20d_pct": -0.71,
+        "last_close": 1401.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -0.21,
         "momentum_direction": "中立"
       }
     },
@@ -12128,10 +12146,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4241.0,
-        "return_5d_pct": 5.45,
-        "return_20d_pct": -0.33,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3850.0,
+        "return_5d_pct": -5.48,
+        "return_20d_pct": -8.31,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12158,9 +12176,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2271.0,
-        "return_5d_pct": -1.52,
-        "return_20d_pct": 0.0,
+        "last_close": 2313.0,
+        "return_5d_pct": -1.7,
+        "return_20d_pct": 2.25,
         "momentum_direction": "中立"
       }
     },
@@ -12188,9 +12206,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2139.0,
-        "return_5d_pct": -2.33,
-        "return_20d_pct": -1.43,
+        "last_close": 2099.0,
+        "return_5d_pct": -5.15,
+        "return_20d_pct": -3.89,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12218,10 +12236,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 672.0,
-        "return_5d_pct": -3.72,
-        "return_20d_pct": -9.19,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 676.0,
+        "return_5d_pct": -1.46,
+        "return_20d_pct": -7.65,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -12248,10 +12266,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2409.0,
-        "return_5d_pct": 1.52,
-        "return_20d_pct": -5.01,
-        "momentum_direction": "中立"
+        "last_close": 2347.0,
+        "return_5d_pct": -2.05,
+        "return_20d_pct": -7.49,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12278,9 +12296,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 588.2,
-        "return_5d_pct": -1.66,
-        "return_20d_pct": 3.12,
+        "last_close": 563.6,
+        "return_5d_pct": -1.12,
+        "return_20d_pct": -2.84,
         "momentum_direction": "中立"
       }
     },
@@ -12308,9 +12326,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2393.5,
-        "return_5d_pct": -0.15,
-        "return_20d_pct": 5.63,
+        "last_close": 2441.5,
+        "return_5d_pct": 1.2,
+        "return_20d_pct": 6.83,
         "momentum_direction": "中立"
       }
     },
@@ -12338,9 +12356,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2674.0,
-        "return_5d_pct": 5.15,
-        "return_20d_pct": 7.3,
+        "last_close": 2765.0,
+        "return_5d_pct": 8.39,
+        "return_20d_pct": 11.09,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12368,9 +12386,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 598.0,
-        "return_5d_pct": -5.83,
-        "return_20d_pct": 2.22,
+        "last_close": 571.0,
+        "return_5d_pct": -4.83,
+        "return_20d_pct": -1.55,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12398,10 +12416,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2028.0,
-        "return_5d_pct": -0.73,
-        "return_20d_pct": 4.0,
-        "momentum_direction": "中立"
+        "last_close": 1953.0,
+        "return_5d_pct": -3.41,
+        "return_20d_pct": 0.31,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12428,9 +12446,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1108.0,
-        "return_5d_pct": -0.63,
-        "return_20d_pct": -4.32,
+        "last_close": 1111.0,
+        "return_5d_pct": -0.54,
+        "return_20d_pct": -3.56,
         "momentum_direction": "中立"
       }
     },
@@ -12458,9 +12476,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1212.0,
-        "return_5d_pct": -0.9,
-        "return_20d_pct": -15.42,
+        "last_close": 1130.0,
+        "return_5d_pct": -1.14,
+        "return_20d_pct": -24.41,
         "momentum_direction": "中立"
       }
     },
@@ -12488,9 +12506,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 12375.0,
-        "return_5d_pct": -0.72,
-        "return_20d_pct": 1.52,
+        "last_close": 12135.0,
+        "return_5d_pct": -0.21,
+        "return_20d_pct": 0.04,
         "momentum_direction": "中立"
       }
     },
@@ -12518,10 +12536,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2637.0,
-        "return_5d_pct": -4.04,
-        "return_20d_pct": -8.34,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2591.0,
+        "return_5d_pct": -1.14,
+        "return_20d_pct": -10.22,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -12548,9 +12566,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1383.0,
-        "return_5d_pct": 0.22,
-        "return_20d_pct": 1.17,
+        "last_close": 1401.0,
+        "return_5d_pct": 1.3,
+        "return_20d_pct": 3.01,
         "momentum_direction": "中立"
       }
     },
@@ -12578,9 +12596,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 79.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -2.47,
+        "last_close": 78.0,
+        "return_5d_pct": 1.3,
+        "return_20d_pct": -4.88,
         "momentum_direction": "中立"
       }
     },
@@ -12608,9 +12626,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 673.0,
-        "return_5d_pct": -3.58,
-        "return_20d_pct": 1.82,
+        "last_close": 671.0,
+        "return_5d_pct": -4.42,
+        "return_20d_pct": 0.0,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12638,9 +12656,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 342.0,
-        "return_5d_pct": -0.29,
-        "return_20d_pct": -2.29,
+        "last_close": 346.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -1.98,
         "momentum_direction": "中立"
       }
     },
@@ -12668,9 +12686,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3566.0,
-        "return_5d_pct": 0.39,
-        "return_20d_pct": -3.23,
+        "last_close": 3428.0,
+        "return_5d_pct": -0.84,
+        "return_20d_pct": -8.05,
         "momentum_direction": "中立"
       }
     },
@@ -12698,10 +12716,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 301.0,
-        "return_5d_pct": 2.73,
-        "return_20d_pct": 2.73,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 293.0,
+        "return_5d_pct": -2.01,
+        "return_20d_pct": 0.0,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12728,9 +12746,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1335.0,
-        "return_5d_pct": -3.96,
-        "return_20d_pct": -8.56,
+        "last_close": 1287.0,
+        "return_5d_pct": -5.44,
+        "return_20d_pct": -13.39,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12758,9 +12776,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1969.0,
-        "return_5d_pct": -0.2,
-        "return_20d_pct": 3.52,
+        "last_close": 1952.0,
+        "return_5d_pct": -0.61,
+        "return_20d_pct": 0.31,
         "momentum_direction": "中立"
       }
     },
@@ -12788,10 +12806,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3695.0,
-        "return_5d_pct": -0.81,
-        "return_20d_pct": 3.65,
-        "momentum_direction": "中立"
+        "last_close": 3415.0,
+        "return_5d_pct": -6.82,
+        "return_20d_pct": -11.53,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -12818,9 +12836,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 660.0,
-        "return_5d_pct": -0.75,
-        "return_20d_pct": -1.64,
+        "last_close": 656.0,
+        "return_5d_pct": 0.15,
+        "return_20d_pct": -1.8,
         "momentum_direction": "中立"
       }
     },
@@ -12848,10 +12866,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2752.0,
-        "return_5d_pct": -2.82,
-        "return_20d_pct": -2.86,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2735.0,
+        "return_5d_pct": -1.94,
+        "return_20d_pct": -5.3,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -12878,9 +12896,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 271.0,
-        "return_5d_pct": 7.54,
-        "return_20d_pct": 5.86,
+        "last_close": 268.0,
+        "return_5d_pct": 9.39,
+        "return_20d_pct": 0.75,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12913,9 +12931,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 712.0,
-        "return_5d_pct": 5.95,
-        "return_20d_pct": 5.48,
+        "last_close": 717.0,
+        "return_5d_pct": 5.44,
+        "return_20d_pct": 6.7,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -12943,9 +12961,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1754.0,
-        "return_5d_pct": 1.3,
-        "return_20d_pct": 1.12,
+        "last_close": 1718.5,
+        "return_5d_pct": 1.63,
+        "return_20d_pct": -1.88,
         "momentum_direction": "中立"
       }
     },
@@ -12973,10 +12991,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1523.5,
-        "return_5d_pct": 1.33,
-        "return_20d_pct": -1.87,
-        "momentum_direction": "中立"
+        "last_close": 1544.5,
+        "return_5d_pct": 2.42,
+        "return_20d_pct": 0.98,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -13003,10 +13021,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2883.5,
-        "return_5d_pct": -4.65,
-        "return_20d_pct": -6.38,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2877.5,
+        "return_5d_pct": -1.62,
+        "return_20d_pct": -8.85,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -13033,9 +13051,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2975.0,
-        "return_5d_pct": -0.22,
-        "return_20d_pct": -3.38,
+        "last_close": 3020.0,
+        "return_5d_pct": 0.1,
+        "return_20d_pct": 0.13,
         "momentum_direction": "中立"
       }
     },
@@ -13063,10 +13081,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2945.5,
-        "return_5d_pct": -0.08,
-        "return_20d_pct": -2.21,
-        "momentum_direction": "中立"
+        "last_close": 3060.0,
+        "return_5d_pct": 2.96,
+        "return_20d_pct": 1.26,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -13093,9 +13111,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1904.0,
-        "return_5d_pct": 0.21,
-        "return_20d_pct": -0.99,
+        "last_close": 1910.0,
+        "return_5d_pct": -0.26,
+        "return_20d_pct": -0.52,
         "momentum_direction": "中立"
       }
     },
@@ -13123,10 +13141,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1201.0,
-        "return_5d_pct": 1.18,
-        "return_20d_pct": 3.27,
-        "momentum_direction": "中立"
+        "last_close": 1189.0,
+        "return_5d_pct": -3.25,
+        "return_20d_pct": 6.73,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -13153,9 +13171,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1635.0,
-        "return_5d_pct": 1.36,
-        "return_20d_pct": -1.03,
+        "last_close": 1618.0,
+        "return_5d_pct": 0.19,
+        "return_20d_pct": -2.53,
         "momentum_direction": "中立"
       }
     },
@@ -13183,10 +13201,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3615.0,
-        "return_5d_pct": -2.3,
-        "return_20d_pct": -4.74,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3685.0,
+        "return_5d_pct": 0.68,
+        "return_20d_pct": -3.28,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -13213,9 +13231,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2657.0,
-        "return_5d_pct": 0.26,
-        "return_20d_pct": -2.32,
+        "last_close": 2653.0,
+        "return_5d_pct": 0.23,
+        "return_20d_pct": -3.07,
         "momentum_direction": "中立"
       }
     },
@@ -22018,9 +22036,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261029559013.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -41524,9 +41546,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認",
+          "一過性損失"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261030560522.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -68583,6 +68610,149 @@
   ],
   "catalysts": [
     {
+      "code": "3190",
+      "name": "ホットマン",
+      "title": "2027年３月期　第２四半期（中間期）決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-10-30T11:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029558882.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8616",
+      "name": "東海東京",
+      "title": "2027年３月期 第２四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-10-30T11:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029560186.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9040",
+      "name": "大宝運",
+      "title": "2027年３月期　第２四半期（中間期）決算短信〔日本基準〕(非連結)",
+      "published_at": "2026-10-30T11:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029559423.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6836",
+      "name": "プラット",
+      "title": "2027年３月期第２四半期（中間期）及び通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-30T10:45:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029559013.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4679",
+      "name": "田谷",
+      "title": "2027年３月期第２四半期決算短信〔日本基準〕(非連結)",
+      "published_at": "2026-10-30T10:40:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029559355.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5386",
+      "name": "鶴弥",
+      "title": "2027年３月期第２四半期（中間期）決算短信〔日本基準〕(非連結)",
+      "published_at": "2026-10-30T10:40:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261030560362.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7774",
+      "name": "Ｇ－Ｊ・ＴＥＣ",
+      "title": "2027年３月期  第２四半期（中間期）決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-10-30T10:30:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029559786.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2874",
+      "name": "ヨコレイ",
+      "title": "特別損失の計上及び2026年9月期通期業績予想の修正並びに役員報酬の自主返上に関するお知らせ",
+      "published_at": "2026-10-30T10:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261030560522.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4507",
+      "name": "塩野義薬",
+      "title": "（訂正・数値データ訂正） 「2027年3月期 業績予想および年間配当予想の修正（増配）に関するお知らせ」の一部訂正について",
+      "published_at": "2026-10-30T10:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261030560472.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "増配",
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7351",
+      "name": "Ｇ－グッドパッチ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-10-30T09:00:00+09:00",
+      "date": "2026-10-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261029559983.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "2612",
       "name": "かどや製油",
       "title": "（株）ITG-Gホールディングスによる公開買付届出書の訂正に伴う「かどや製油（株）の普通株式に対する公開買付けの開始に関するお知らせ」の変更について",
@@ -75153,8 +75323,8 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-11-02",
   "momentum_validation": {
-    "resolved_n": 399,
-    "hit_rate_pct": 38.3,
+    "resolved_n": 525,
+    "hit_rate_pct": 36.6,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
   },
