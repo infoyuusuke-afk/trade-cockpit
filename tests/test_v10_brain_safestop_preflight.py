@@ -41,6 +41,8 @@ class PreflightSafety(unittest.TestCase):
         self.assertLess(ctrl,second)
         self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID',self.stop)
         self.assertIn('SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN',self.stop)
+        self.assertIn('foreach ($attempt in 1..40)',self.stop)
+        self.assertIn('SAFE_STOP_LISTENER port=',self.stop)
         self.assertIn('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT',self.stop)
         self.assertLess(self.stop.index('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT'),
                         self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))

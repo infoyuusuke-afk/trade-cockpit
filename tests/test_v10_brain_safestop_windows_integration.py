@@ -222,10 +222,36 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             result = self.run_stop()
             self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
             self.assertIn("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN", result.stdout)
+            self.assertIn("SAFE_STOP_LISTENER port=28584", result.stdout)
             self.assertTrue(self.state_path.exists(), "state erased with live V10 listener")
             self.assertIsNotNone(self.controller.poll(), "Controller not stopped in synthetic test")
             self.assertIsNotNone(self.brain.poll(), "BRAIN not stopped in synthetic test")
         finally:
+            listener.close()
+
+    def test_listener_that_closes_soon_after_teardown_is_waited_for(self):
+        # A Start-Job bridge child can keep LISTEN for a few seconds after
+        # its wrapper is killed. Safe Stop waits for it instead of retaining
+        # state, and kills nothing it does not own.
+        import threading
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            listener.bind(("127.0.0.1", 28584))
+        except OSError:
+            listener.close()
+            self.skipTest("V10 test port already occupied on Windows runner")
+        listener.listen(1)
+        closer = threading.Timer(4.0, listener.close)
+        closer.start()
+        try:
+            self.write_state()
+            result = self.run_stop()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotIn("LISTEN_PORTS_REMAIN", result.stdout)
+            self.assertFalse(self.state_path.exists())
+        finally:
+            closer.cancel()
             listener.close()
 
     def test_corrupt_state_does_not_kill_any_worker(self):

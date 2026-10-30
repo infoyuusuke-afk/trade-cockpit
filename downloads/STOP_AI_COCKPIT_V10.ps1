@@ -562,10 +562,33 @@ if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridge
 # A worker may outlive its wrapper via a child JSON bridge, or a new
 # listener may bind before teardown ends. Never claim stopped / delete
 # recovery evidence while any of the V10 ports are still in LISTEN.
+# A JSON bridge runs in a Start-Job child powershell.exe. When its wrapper
+# was killed above, the child can keep LISTEN for a few seconds until it
+# sees the broken job pipe and exits on its own. Wait a bounded time for
+# that; nothing is killed here. A listener that is still there afterwards
+# keeps the state and is named so the Owner run can be diagnosed.
 try {
-    $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
-        Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+    $listeners = @()
+    foreach ($attempt in 1..40) {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        if ($listeners.Count -eq 0) { break }
+        Start-Sleep -Milliseconds 500
+    }
     if ($listeners.Count -gt 0) {
+        foreach ($l in $listeners) {
+            $ownerPid = [int]$l.OwningProcess
+            $ownerName = "exited"
+            $ownerParent = 0
+            try {
+                $ownerCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ownerPid) -ErrorAction Stop
+                if ($null -ne $ownerCim) {
+                    $ownerName = [string]$ownerCim.Name
+                    $ownerParent = [int]$ownerCim.ParentProcessId
+                }
+            } catch {}
+            Write-Host ("SAFE_STOP_LISTENER port=" + [int]$l.LocalPort + " pid=" + $ownerPid + " name=" + $ownerName + " parent=" + $ownerParent) -ForegroundColor Red
+        }
         Write-Host "SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state." -ForegroundColor Red
         exit 2
     }
