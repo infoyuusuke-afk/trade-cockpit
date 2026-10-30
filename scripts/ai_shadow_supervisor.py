@@ -1149,11 +1149,27 @@ def _append_jsonl(path: Path, record: dict) -> None:
         os.fsync(handle.fileno())
 
 
+REPLACE_RETRY_DELAYS = (0.05, 0.1, 0.2, 0.4, 0.8)
+
+
+def _replace_with_retry(temporary: Path, path: Path, *, sleep=time.sleep) -> None:
+    # On Windows os.replace raises PermissionError while another process
+    # (the Gateway reading the status) has the target open. Wait briefly
+    # and try again; the last failure is raised to the caller.
+    for delay in REPLACE_RETRY_DELAYS:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError:
+            sleep(delay)
+    os.replace(temporary, path)
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(temporary, path)
+    _replace_with_retry(temporary, path)
 
 
 def _primary_reason(reasons: list[str]) -> str:
@@ -1244,7 +1260,7 @@ def _rewrite_incidents(data_dir: Path, incidents: list[dict]) -> None:
     temporary = path.with_suffix(".jsonl.tmp")
     body = "".join(json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n" for item in incidents)
     temporary.write_text(body, encoding="utf-8")
-    os.replace(temporary, path)
+    _replace_with_retry(temporary, path)
 
 
 def _close_incident(engine: dict, data_dir: Path, *, now: datetime, recovery_mode: str) -> None:
@@ -1687,8 +1703,15 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
     }
 
 
-def publish_status(engine: dict, status_path: Path, *, now: datetime) -> None:
-    _write_json(status_path, status_snapshot(engine, now=now))
+def publish_status(engine: dict, status_path: Path, *, now: datetime) -> bool:
+    # The status file is only a view of state.json and the ledger, which are
+    # already written. If it stays locked past the retries, skip this cycle
+    # instead of stopping the supervisor; the next cycle publishes again.
+    try:
+        _write_json(status_path, status_snapshot(engine, now=now))
+    except PermissionError:
+        return False
+    return True
 
 
 def pid_alive(pid: int) -> bool | None:
