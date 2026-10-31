@@ -29,7 +29,14 @@ def main():
     investor = load("investor_regime.json")
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     errors = []
-    if not all(token in html for token in (
+    # OWNER 2026-10-21 (V10): sections holding only the 2026-09-25 snapshot were removed and
+    # their tabs hidden (SNAPSHOT_ONLY_TABS). Their markers are not required on that page.
+    snapshot_removed = "const SNAPSHOT_ONLY_TABS=" in html
+    removed_markers = {"要人発言イベントスタディ", "FLOW IMPULSE", "市場全体集計から個別銘柄"} if snapshot_removed else set()
+    if snapshot_removed:
+        if '"us-smr"' not in html.split("const SNAPSHOT_ONLY_TABS=", 1)[1].split(";", 1)[0]:
+            errors.append("US-SMR snapshot tab removed but not hidden")
+    elif not all(token in html for token in (
         'data-tab="us-smr"', '"us-smr","investor-regime"', 'id="us-smr-watch"',
         '政府発表済み・個社収益は確認待ち', '監視のみ・自動買い禁止',
         'IHI（7013）／日本製鋼所（5631）', '契約・受注は未確定',
@@ -154,6 +161,8 @@ def main():
     # 音声機能自体（cockpitSpeak・実際の読み上げロジック）は既存マーカーで別途検査済みのため、
     # ここでは操作対象のコントロール自体が存在するかを"data-voice-toggle"で検査する形に更新。
     for marker in ("cockpit-brand", "データ品質ゲート", "リアルタイムTOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "data-voice-toggle", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "kio-breaking-state", "kioxia_breaking_radar.json", "127.0.0.1:28580/live_ms2.json"):
+        if marker in removed_markers:
+            continue
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     if not re.search(r"Ver\.\d+\.\d+", html):
