@@ -8,12 +8,16 @@ verified exchange tick time.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
+import subprocess
+import sys
 import time
+import types
 
 SCHEMA = "ai-brain-observer-1"
 SOURCE = "MarketSpeed II RSS / local PC"
@@ -22,6 +26,57 @@ MAX_INPUT_BYTES = 8_000_000
 MAX_AGE_SECONDS = 60
 ALLOWED = {"OR15_ABOVE_VWAP_WATCH", "OR15_BELOW_VWAP_WATCH"}
 MAX_OBSERVATIONS = 5
+
+# Opt-in Agents SDK research receiver (P0-AGENTS-SDK-V10-BRAIN-INTEGRATION-20261021).
+# Off unless the OWNER sets V10_AGENT_RESEARCH_INBOX (absolute private folder)
+# plus both HMAC keys. When off, nothing below is imported or run and this
+# observer behaves exactly as before. When on, the three modules are loaded
+# only from bytes whose git blob SHA-1 equals the pins below (this file is
+# itself pinned in the V10 release manifest), then the receiver runs in this
+# process at most every 30 s. It writes only to the private inbox, never to the
+# observer status, live data, Excel or any order path.
+AGENT_INBOX_ENV = "V10_AGENT_RESEARCH_INBOX"
+AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
+AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
+AGENT_PACKAGE = "v10_pinned_agent"
+AGENT_RECEIVER_MODULES = (
+    ("agent_sdk_coordination_pilot", "4ed33ef6832c317a672cee42f7c08593996a1c17"),
+    ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
+    ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
+    ("v10_brain_agent_feedback", "0a37d68d9bfb6d4124fbd0e9d583459b82c9775e"),
+)
+AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
+
+# Backtest expected value of the cockpit's own recorded signals (OWNER
+# 2026-10-21). Rebuilt from RuntimeDir/records once per JST day after the close
+# (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
+# serves read-only for the REALTIME 5 ranking. The module is loaded only from
+# bytes whose git blob equals the pin. It never touches live data or orders.
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "0e890b62bed238e4fdf60e5056adc809604c8edc")
+SIGNAL_EV_FILE = "signal_ev_table_v1.json"
+SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
+# Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
+# Collector's PTS records into RuntimeDir/pts_pickup_v1.json (pinned module).
+PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
+PTS_PICKUP_FILE = "pts_pickup_v1.json"
+PTS_PICKUP_INTERVAL = timedelta(minutes=5)
+# Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live
+# signals with the EV table and the rule Shadow, write the top picks to
+# RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
+# records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
+# OWNER 2026-10-22 「全銘柄の信用残はブレインがPCで読む」: once a JST day (and on a failure,
+# again after 30 minutes) the observer fetches JPX 銘柄別信用取引残高 (public PDF, every
+# issue) into RuntimeDir/jpx_margin_all_v1.json for the Brain core. The three modules are
+# loaded only from bytes whose git blob equals the pins (package-relative imports).
+JPX_PACKAGE = "v10_pinned_jpx"
+JPX_MODULES = (
+    ("agent_sdk_public_feed_ingest", "a03ad2aa16996d91eb60f496c04babfbe8f72900"),
+    ("agent_sdk_jpx_margin_ingest", "88b9749795bba809a1d37813f0b1c15468e42074"),
+    ("agent_sdk_jpx_margin_all_ingest", "db10e2d42ff5ae416739824a957f0e945e67c82c"),
+)
+JPX_RETRY = timedelta(minutes=30)
+JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
+BRAIN_CORE_MODULE = ("v10_brain_core", "acda62b942903e76fc4979de437beebc2a91c3be")
 
 
 def _aware(value):
@@ -117,8 +172,15 @@ def analyze(snapshot, *, now, file_modified_at):
             unique.add(sym)
     watch = []
     counts = {name: 0 for name in sorted(ALLOWED)}
+    non_fresh_rows = 0
     if not reasons and isinstance(rows, list):
         for row in rows:
+            # Only a row the Collector judged FRESH this cycle (own quote time,
+            # same day, within 120 s) is observed; a stale, undated or
+            # unknown row is counted and skipped, never read as current.
+            if row.get("aggregate_row_fresh") is not True:
+                non_fresh_rows += 1
+                continue
             price, vwap, high, low = (row.get("price"), row.get("vwap"),
                                       row.get("or_high"), row.get("or_low"))
             # Incomplete OR15 and missing VWAP are not signs.
@@ -142,7 +204,8 @@ def analyze(snapshot, *, now, file_modified_at):
         "exchange_tick_date_verified": False,
         "signal_provenance_verified": False,
         "tested_expectancy_available": False,
-        "observed_rows": len(rows) if status == "OBSERVATION_ONLY" else 0,
+        "observed_rows": len(rows) - non_fresh_rows if status == "OBSERVATION_ONLY" else 0,
+        "non_fresh_rows_skipped": non_fresh_rows if status == "OBSERVATION_ONLY" else 0,
         "watch_counts": counts if status == "OBSERVATION_ONLY" else {name: 0 for name in sorted(ALLOWED)},
         "watch_observations": watch,
     }
@@ -209,6 +272,249 @@ def write_status(path: Path, status: dict):
         temp.unlink(missing_ok=True)
 
 
+def git_blob_sha1(raw: bytes) -> str:
+    """Git blob id of a checked-out file (CRLF from core.autocrlf normalised)."""
+    data = raw.replace(b"\r\n", b"\n")
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def load_agent_receiver(script_dir: Path):
+    """Load the receiver, its two dependencies and the feedback module from pinned bytes only."""
+    package = sys.modules.get(AGENT_PACKAGE)
+    if package is None:
+        package = types.ModuleType(AGENT_PACKAGE)
+        package.__path__ = []
+        sys.modules[AGENT_PACKAGE] = package
+    for name, pin in AGENT_RECEIVER_MODULES:
+        qualified = AGENT_PACKAGE + "." + name
+        if qualified in sys.modules:
+            continue
+        path = script_dir / (name + ".py")
+        raw = path.read_bytes()
+        if git_blob_sha1(raw) != pin:
+            raise RuntimeError("AGENT_RECEIVER_MODULE_PIN_MISMATCH:" + name)
+        module = types.ModuleType(qualified)
+        module.__file__ = str(path)
+        module.__package__ = AGENT_PACKAGE
+        sys.modules[qualified] = module
+        try:
+            exec(compile(raw, str(path), "exec"), module.__dict__)
+        except Exception:
+            del sys.modules[qualified]
+            raise
+        setattr(package, name, module)
+    return sys.modules[AGENT_PACKAGE + ".v10_brain_agent_research_receiver"]
+
+
+def load_pinned_module(script_dir: Path, name: str, pin: str):
+    path = Path(script_dir) / (name + ".py")
+    raw = path.read_bytes()
+    if git_blob_sha1(raw) != pin:
+        raise RuntimeError("PINNED_MODULE_MISMATCH:" + name)
+    module = types.ModuleType("v10_pinned_" + name)
+    module.__file__ = str(path)
+    exec(compile(raw, str(path), "exec"), module.__dict__)
+    return module
+
+
+def signal_ev_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Rebuild the EV table (and rule Shadow) when missing, when it was built on an
+    earlier JST day (the OWNER stops V10 right after the close, so the next morning's
+    start picks up the previous session), and once after 15:35. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    jst = now.astimezone(timezone(timedelta(hours=9)))
+    target = Path(live_path).parent / SIGNAL_EV_FILE
+    after_close = (jst.hour, jst.minute) >= SIGNAL_EV_REBUILD_AFTER_JST
+    built_day = None
+    try:
+        built_day = datetime.fromisoformat(json.loads(target.read_text(encoding="utf-8"))["generated_at"]).astimezone(
+            timezone(timedelta(hours=9))).date().isoformat()
+    except Exception:
+        built_day = None
+    due = (built_day is None or built_day < jst.date().isoformat()
+           or (after_close and state.get("built_after_close_for") != jst.date().isoformat()))
+    if not due or (state.get("next_try") is not None and now < state["next_try"]):
+        return None
+    state["next_try"] = now + timedelta(minutes=10)
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *SIGNAL_EV_MODULE)
+        state["module"] = module
+        table = module.write_table(Path(live_path).parent / "records", target, now=now)
+        if after_close:
+            state["built_after_close_for"] = jst.date().isoformat()
+        summary = {"signal_ev": "BUILT", "days": len(table["days"]), "filled": table["counts"]["filled"]}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"signal_ev": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Rebuild the PTS watch list at most every 5 minutes. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + PTS_PICKUP_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *PTS_PICKUP_MODULE)
+        state["module"] = module
+        view = module.write_pickup(Path(live_path).parent / "records", Path(live_path).parent / PTS_PICKUP_FILE, now=now)
+        summary = {"pts_pickup": "BUILT", "session": view["pts_session_date"], "rows": len(view["rows"])}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"pts_pickup": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def load_pinned_package(script_dir: Path, package_name: str, modules) -> types.ModuleType:
+    """Load modules in order into one package, each only from bytes matching its pin."""
+    package = sys.modules.get(package_name)
+    if package is None:
+        package = types.ModuleType(package_name)
+        package.__path__ = []
+        sys.modules[package_name] = package
+    for name, pin in modules:
+        qualified = package_name + "." + name
+        if qualified in sys.modules:
+            continue
+        path = Path(script_dir) / (name + ".py")
+        raw = path.read_bytes()
+        if git_blob_sha1(raw) != pin:
+            raise RuntimeError("PINNED_MODULE_MISMATCH:" + name)
+        module = types.ModuleType(qualified)
+        module.__file__ = str(path)
+        module.__package__ = package_name
+        sys.modules[qualified] = module
+        try:
+            exec(compile(raw, str(path), "exec"), module.__dict__)
+        except Exception:
+            del sys.modules[qualified]
+            raise
+        setattr(package, name, module)
+    return sys.modules[package_name + "." + modules[-1][0]]
+
+
+def jpx_margin_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Refresh the JPX all-issue margin cache once per JST day. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    jst_day = now.astimezone(timezone(timedelta(hours=9))).date().isoformat()
+    proc = state.get("proc")
+    if proc is None:
+        if state.get("done_for") == jst_day or (state.get("next_try") is not None and now < state["next_try"]):
+            return None
+        state["next_try"] = now + JPX_RETRY
+    try:
+        if state.get("module") is not None:   # injected in tests: in-process
+            cache = state["module"].write_cache(Path(live_path).parent, now=now)
+        elif proc is None:
+            # audit 6327787186: started and left running; this loop never waits for it. Each
+            # pass polls it; at JPX_CHILD_DEADLINE_SECONDS it is killed (the child also exits
+            # on its own deadline).
+            state["proc"] = subprocess.Popen(
+                [sys.executable, "-B", str(Path(__file__).resolve()), "--jpx-cache-once",
+                 str(Path(live_path).parent), "--script-dir", str(Path(script_dir or Path(__file__).resolve().parent))],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            state["started"] = now
+            return None
+        elif proc.poll() is None:
+            if (now - state["started"]).total_seconds() < JPX_CHILD_DEADLINE_SECONDS:
+                return None
+            proc.kill()
+            proc.wait(timeout=5)
+            state["proc"] = None
+            raise subprocess.TimeoutExpired("jpx", JPX_CHILD_DEADLINE_SECONDS)
+        else:
+            out = proc.stdout.read() if proc.stdout else ""
+            state["proc"] = None
+            cache = json.loads((out.strip().splitlines() or ["{}"])[-1])
+            if proc.returncode != 0 or "as_of_date" not in cache:
+                raise RuntimeError(str(cache.get("reason") or "JPX_CHILD_FAILED"))
+        state["done_for"] = jst_day
+        summary = {"jpx_margin_all": "BUILT", "as_of": cache["as_of_date"], "issues": cache["issue_count"],
+                   "dropped": cache["dropped_blocks"]}
+    except subprocess.TimeoutExpired:
+        summary = {"jpx_margin_all": "BLOCKED", "reason": "JPX_CHILD_DEADLINE"}
+        summary["real_submit_allowed"] = False
+        print(json.dumps(summary, sort_keys=True), flush=True)
+        return summary
+    except Exception as exc:  # fail closed: the Brain keeps the weekly ratio
+        text = str(exc)
+        summary = {"jpx_margin_all": "BLOCKED", "reason": text if text.isupper() or text.startswith("PINNED_MODULE_MISMATCH")
+                   else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Pick the top live signals once per observer pass. Never raises; prints only on a change of state."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *BRAIN_CORE_MODULE)
+        state["module"] = module
+        raw = Path(live_path).read_bytes()
+        if len(raw) > MAX_INPUT_BYTES:
+            raise ValueError("INPUT_TOO_LARGE")
+        live = json.loads(raw.decode("utf-8-sig"))
+        attention = None
+        fb_mod = sys.modules.get(AGENT_PACKAGE + ".v10_brain_agent_feedback")
+        inbox = os.environ.get(AGENT_INBOX_ENV, "")
+        if fb_mod is not None and inbox:
+            try:  # specialists' watched issues (research lane); a failure only drops the flag
+                attention = fb_mod.specialist_watch_codes(
+                    inbox, now=now, known_codes=[str(r.get("ticker", "")).replace(".T", "") for r in live.get("all_targets") or []])
+            except Exception:
+                attention = None
+        view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
+                                 attention=attention)
+        summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    if summary != state.get("last"):
+        state["last"] = summary
+        print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
+    """Opt-in: receive signed agent research once per interval. Never raises."""
+    inbox = os.environ.get(AGENT_INBOX_ENV, "")
+    if not inbox:
+        return None
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + AGENT_RECEIVER_INTERVAL
+    try:
+        receiver = state.get("module") or load_agent_receiver(Path(script_dir or Path(__file__).resolve().parent))
+        state["module"] = receiver
+        out = receiver.receive_inbox(inbox, now=now, host_component=AGENT_HOST_COMPONENT)
+        counts = {}
+        for item in out["results"]:
+            counts[item["state"]] = counts.get(item["state"], 0) + 1
+        summary = {"agent_receiver": "PASS", "results": counts, "restored_acks": len(out["restored_acks"])}
+        # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: Brain -> specialist feedback and its
+        # read receipts from the next run (pinned module, same private inbox).
+        try:
+            fb = sys.modules[AGENT_PACKAGE + ".v10_brain_agent_feedback"].process_feedback(inbox, now=now)
+            summary["feedback"] = {"issued": fb["issued"], "delivered": fb["delivered"],
+                                   "rejected_receipts": len(fb["rejected_receipts"])}
+        except Exception as exc:  # the forward direction keeps working
+            text = str(exc)
+            summary["feedback"] = {"state": "BLOCKED", "reason": text if text.startswith(AGENT_KNOWN_REASONS) or
+                                   text.isupper() else type(exc).__name__}
+    except Exception as exc:  # fail closed, keep the observer running
+        text = str(exc)
+        reason = text if text.startswith(AGENT_KNOWN_REASONS) else type(exc).__name__
+        summary = {"agent_receiver": "BLOCKED", "reason": reason}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
     now = now or datetime.now(timezone.utc)
     pid = pid if pid is not None else os.getpid()
@@ -224,8 +530,29 @@ def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
     return status
 
 
+def jpx_cache_once(runtime_dir: str, script_dir: str) -> int:
+    """Child entry: pinned modules, one fetch + parse + cache write, one JSON line out."""
+    import threading
+    killer = threading.Timer(JPX_CHILD_DEADLINE_SECONDS - 5, lambda: os._exit(3))   # the child's own deadline
+    killer.daemon = True
+    killer.start()
+    try:
+        module = load_pinned_package(Path(script_dir), JPX_PACKAGE, JPX_MODULES)
+        cache = module.write_cache(Path(runtime_dir), now=datetime.now(timezone.utc))
+        print(json.dumps({"as_of_date": cache["as_of_date"], "issue_count": cache["issue_count"],
+                          "dropped_blocks": cache["dropped_blocks"]}))
+        return 0
+    except Exception as exc:
+        text = str(exc)
+        print(json.dumps({"reason": text if text.isupper() or text.startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}))
+        return 2
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only independent V10 BRAIN observation processor")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) == 4 and argv[0] == "--jpx-cache-once" and argv[2] == "--script-dir":
+        return jpx_cache_once(argv[1], argv[3])
     parser.add_argument("--live", required=True)
     parser.add_argument("--status", required=True)
     parser.add_argument("--interval", type=float, default=5.0)
@@ -237,8 +564,18 @@ def main(argv=None):
     if args.once:
         run_once(live, status_path)
         return 0
+    agent_state = {}
+    ev_state = {}
+    pts_state = {}
+    brain_state = {}
+    jpx_state = {}
     while True:
         run_once(live, status_path)
+        agent_receiver_pass(agent_state)
+        signal_ev_pass(ev_state, live)
+        pts_pickup_pass(pts_state, live)
+        jpx_margin_pass(jpx_state, live)
+        brain_core_pass(brain_state, live)
         time.sleep(args.interval)
 
 
