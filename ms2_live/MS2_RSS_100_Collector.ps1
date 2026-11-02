@@ -2204,11 +2204,23 @@ function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
 # Research only: on 10/23-11/2 the same shape came 7 times and the price did not go up afterwards (absorb_below_test.py).
 # OWNER 2026-11-02 「直近60秒に新しい約定がある時だけ判断して、同じ約定で2回鳴らさないように」: judged only after new prints
 # came in since the last check and the newest print is within 60 s of now; the prints of a voice are never counted again.
+# OWNER 2026-11-02 (Cursor's review): 1) a "gap" read (the previous window not found) re-lists prints already fed: a gap print whose
+# time|price|volume was fed in the last 600 prints is skipped. 2) prints inside the 5-minute quiet time are marked used, so a big
+# selling held back by the quiet time can never ring later. 3) the read's quotes are the quotes at the read, not at each print: a
+# SELL above the previous print (or a BUY below it) is counted as unknown (tick rule), and "the price did not give way" compares
+# the last print with the first print of the window (exchange prices), not with a quote.
 $Scalp8AbsorbRatio = 4.0
 $script:s8Absorb = @{}
-function Add-Scalp8AbsorbPrint($State, [int]$Sec, [double]$Price, [double]$Vol, [string]$Side, $Bid) {
+function Add-Scalp8AbsorbPrint($State, [int]$Sec, [double]$Price, [double]$Vol, [string]$Side, $Bid, [string]$Key = "", [bool]$Gap = $false) {
+    if ($Key) {
+        if ($Gap -and $State.Keys.Contains($Key)) { return }
+        [void]$State.Keys.Add($Key); $State.KeyQueue.Enqueue($Key)
+        while ($State.KeyQueue.Count -gt 600) { [void]$State.Keys.Remove($State.KeyQueue.Dequeue()) }
+    }
     $b = 0.0
     if ($null -ne $Bid -and "$Bid" -ne "") { try { $b = [double]$Bid } catch { $b = 0.0 } }
+    if ($State.LastPrice -gt 0 -and (($Side -eq "SELL" -and $Price -gt $State.LastPrice) -or ($Side -eq "BUY" -and $Price -lt $State.LastPrice))) { $Side = "MID" }
+    $State.LastPrice = $Price
     $State.Seq++
     $State.Fresh = $true
     [void]$State.Prints.Add([pscustomobject]@{ Seq = $State.Seq; Sec = $Sec; Price = $Price; Vol = $Vol; Side = $Side; Bid = $b })
@@ -2221,7 +2233,7 @@ function Get-Scalp8AbsorbHit($State, [int]$NowSec, [double]$Ratio) {
     $State.Fresh = $false
     $inSession = (($NowSec -ge 32700 -and $NowSec -le 41100) -or ($NowSec -ge 45300 -and $NowSec -le 54900))   # 9:05-11:25, 12:35-15:15
     if (-not $inSession) { return $null }
-    if ($NowSec - $State.LastVoiceSec -lt 300) { return $null }
+    if ($NowSec - $State.LastVoiceSec -lt 300) { $State.UsedSeq = $State.Prints[$State.Prints.Count - 1].Seq; return $null }
     $latest = $State.Prints[$State.Prints.Count - 1].Sec
     if ($latest -lt $NowSec - 60) { return $null }
     $win = @($State.Prints | Where-Object { $_.Sec -gt $latest - 60 -and $_.Seq -gt $State.UsedSeq })
@@ -2233,13 +2245,12 @@ function Get-Scalp8AbsorbHit($State, [int]$NowSec, [double]$Ratio) {
     if ($base -le 0) { return $null }
     $sold = 0.0
     foreach ($x in $win) { if ($x.Side -eq "SELL") { $sold += $x.Vol } }
-    $bid0 = ($win | Where-Object { $_.Bid -gt 0 } | Select-Object -First 1)
-    if ($null -eq $bid0) { return $null }
+    $start = $win[0].Price
     $last = $win[$win.Count - 1].Price
-    if ($sold -lt $Ratio * $base -or $last -lt $bid0.Bid) { return $null }
+    if ($sold -lt $Ratio * $base -or $last -lt $start) { return $null }
     $State.LastVoiceSec = $NowSec
     $State.UsedSeq = $win[$win.Count - 1].Seq
-    return [pscustomobject]@{ Sold = $sold; Base = $base; X = [Math]::Round($sold / $base, 1); Bid0 = $bid0.Bid; Last = $last }
+    return [pscustomobject]@{ Sold = $sold; Base = $base; X = [Math]::Round($sold / $base, 1); Start = $start; Last = $last }
 }
 $scalp8Sheet = $null
 $scalp8Ready = $false
@@ -3131,9 +3142,9 @@ try {
                             $capSec = [int]$s8Now.TimeOfDay.TotalSeconds
                             if ($tSec -ge 32400 -and $tSec -le $capSec + 4) {
                                 if (-not $script:s8Absorb.ContainsKey($code)) {
-                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000; Seq = 0; UsedSeq = 0; Fresh = $false }
+                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000; Seq = 0; UsedSeq = 0; Fresh = $false; LastPrice = 0.0; Keys = [Collections.Generic.HashSet[string]]::new(); KeyQueue = [Collections.Generic.Queue[string]]::new() }
                                 }
-                                Add-Scalp8AbsorbPrint $script:s8Absorb[$code] $tSec ([double]$parts[1]) ([double]$parts[2]) $side $bid
+                                Add-Scalp8AbsorbPrint $script:s8Absorb[$code] $tSec ([double]$parts[1]) ([double]$parts[2]) $side $bid ([string]$newTicks[$k]) ([bool]$diff.Gap)
                             }
                         }
                     }
@@ -3143,10 +3154,10 @@ try {
                             $s8Name = [string](@($stocks | Where-Object { [string]$_.Ticker -eq ($code + ".T") } | Select-Object -First 1).Name)
                             if (-not $s8Name) { $s8Name = $code }
                             $absorbCsv = Join-Path $dayDir "absorb_voice.csv"
-                            Ensure-Csv $absorbCsv "rang_at,ticker,name,sold_into_bid_60s,median_volume_per_minute,times,bid_at_start,last_price,voice"
+                            Ensure-Csv $absorbCsv "rang_at,ticker,name,sold_into_bid_60s,median_volume_per_minute,times,price_at_start,last_price,voice"
                             $voiced = -not $script:priceSourceMismatch
                             Invoke-SerializedSpeak $speaker ($s8Name + "、下で大口が売りを吸収しています。約定で確認しました。未検証です。")
-                            Add-RecordLines $absorbCsv @((@((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"), $code, $s8Name, [string]$hit.Sold, [string]$hit.Base, [string]$hit.X, [string]$hit.Bid0, [string]$hit.Last, $(if ($voiced) { "spoken" } else { "silent_price_mismatch" })) -join ","))
+                            Add-RecordLines $absorbCsv @((@((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"), $code, $s8Name, [string]$hit.Sold, [string]$hit.Base, [string]$hit.X, [string]$hit.Start, [string]$hit.Last, $(if ($voiced) { "spoken" } else { "silent_price_mismatch" })) -join ","))
                         }
                     }
                     $boardVals = @(for ($lv = 1; $lv -le 10; $lv++) { for ($j = 0; $j -lt 4; $j++) { $bv = $s8Data[(2 + $lv), ($c + $j)]; if ($bv -is [double]) { [string]$bv } else { "" } } })
