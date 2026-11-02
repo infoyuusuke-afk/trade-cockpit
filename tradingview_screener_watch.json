@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-02 22:52:45 JST",
+  "updated_at": "2026-11-03 01:30:25 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -3488,22 +3488,6 @@
       "already_watched": true
     },
     {
-      "code": "9506",
-      "name": "Tohoku Electric Power Company, Incorporated",
-      "exchange": "TSE",
-      "price": 1258,
-      "change_pct": -2.36709351959643,
-      "volume": 4411900,
-      "relative_volume": 1.5499657468074268,
-      "atr_pct": 2.5,
-      "vwap": 1266.6666666666667,
-      "high": 1289.5,
-      "low": 1252.5,
-      "market_cap": 643994289688,
-      "sector": "Utilities",
-      "already_watched": true
-    },
-    {
       "code": "485A",
       "name": "PowerX, Inc.",
       "exchange": "TSE",
@@ -3517,6 +3501,22 @@
       "low": 1895,
       "market_cap": 231600870712,
       "sector": "Producer Manufacturing",
+      "already_watched": true
+    },
+    {
+      "code": "9506",
+      "name": "Tohoku Electric Power Company, Incorporated",
+      "exchange": "TSE",
+      "price": 1258,
+      "change_pct": -2.36709351959643,
+      "volume": 4411900,
+      "relative_volume": 1.5499657468074268,
+      "atr_pct": 2.5,
+      "vwap": 1266.6666666666667,
+      "high": 1289.5,
+      "low": 1252.5,
+      "market_cap": 643994289688,
+      "sector": "Utilities",
       "already_watched": true
     },
     {
@@ -6224,22 +6224,6 @@
       "already_watched": false
     },
     {
-      "code": "8714",
-      "name": "Senshu Ikeda Holdings,Inc.",
-      "exchange": "TSE",
-      "price": 877,
-      "change_pct": -4.25764192139738,
-      "volume": 1712500,
-      "relative_volume": 1.0938997125519003,
-      "atr_pct": 4.5,
-      "vwap": 881.3333333333334,
-      "high": 897,
-      "low": 870,
-      "market_cap": 256748610962,
-      "sector": "Finance",
-      "already_watched": false
-    },
-    {
       "code": "6368",
       "name": "Organo Corp.",
       "exchange": "TSE",
@@ -6253,6 +6237,22 @@
       "low": 2132,
       "market_cap": 509499287910,
       "sector": "Producer Manufacturing",
+      "already_watched": false
+    },
+    {
+      "code": "8714",
+      "name": "Senshu Ikeda Holdings,Inc.",
+      "exchange": "TSE",
+      "price": 877,
+      "change_pct": -4.25764192139738,
+      "volume": 1712500,
+      "relative_volume": 1.0938997125519003,
+      "atr_pct": 4.5,
+      "vwap": 881.3333333333334,
+      "high": 897,
+      "low": 870,
+      "market_cap": 256748610962,
+      "sector": "Finance",
       "already_watched": false
     },
     {
