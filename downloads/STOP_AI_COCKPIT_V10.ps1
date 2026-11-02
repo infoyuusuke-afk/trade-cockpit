@@ -578,13 +578,35 @@ Write-SafeStopMarker "stopped_verified"
 # sees the broken job pipe and exits on its own. Wait a bounded time for
 # that; nothing is killed here. A listener that is still there afterwards
 # keeps the state and is named so the Owner run can be diagnosed.
+# OWNER 2026-11-02 (every stop since 10/30 kept the state because 28581 / 28582 stayed in LISTEN with pid=0, the
+# owner process already gone): a listener whose owner is pid 0 is waited for up to 2 minutes and is still an abnormal
+# stop if it remains; a listener with a living owner keeps the 20 s wait above and is abnormal after it, as before.
+# Nothing is killed either way.
+function Get-SafeStopListenerVerdict($Listeners, [int]$ElapsedMs) {
+    $all = @($Listeners)
+    if ($all.Count -eq 0) { return "clear" }
+    $living = @($all | Where-Object { [int]$_.OwningProcess -ne 0 })
+    if ($living.Count -gt 0) {
+        if ($ElapsedMs -ge 20000) { return "fail" }
+        return "wait"
+    }
+    if ($ElapsedMs -ge 120000) { return "fail" }
+    return "wait"
+}
 try {
     $listeners = @()
-    foreach ($attempt in 1..40) {
+    $orphanSeen = $false
+    $portWatch = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
         $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
             Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
-        if ($listeners.Count -eq 0) { break }
+        if (@($listeners | Where-Object { [int]$_.OwningProcess -eq 0 }).Count -gt 0) { $orphanSeen = $true }
+        $verdict = Get-SafeStopListenerVerdict $listeners ([int]$portWatch.ElapsedMilliseconds)
+        if ($verdict -ne "wait") { break }
         Start-Sleep -Milliseconds 500
+    }
+    if ($verdict -eq "clear" -and $orphanSeen) {
+        Write-Host ("SAFE_STOP_VERIFY=ORPHAN_PORT_CLEARED after " + [int]($portWatch.ElapsedMilliseconds / 1000) + "s (owner pid 0).") -ForegroundColor Yellow
     }
     if ($listeners.Count -gt 0) {
         foreach ($l in $listeners) {

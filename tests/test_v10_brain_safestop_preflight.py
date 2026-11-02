@@ -41,7 +41,8 @@ class PreflightSafety(unittest.TestCase):
         self.assertLess(ctrl,second)
         self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID',self.stop)
         self.assertIn('SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN',self.stop)
-        self.assertIn('foreach ($attempt in 1..40)',self.stop)
+        self.assertIn('if ($ElapsedMs -ge 20000) { return "fail" }',self.stop)   # a living owner: 20 s, as before
+        self.assertIn('if ($ElapsedMs -ge 120000) { return "fail" }',self.stop)  # owner pid 0: up to 2 minutes
         self.assertIn('SAFE_STOP_LISTENER port=',self.stop)
         self.assertIn('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT',self.stop)
         self.assertLess(self.stop.index('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT'),
