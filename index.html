@@ -3008,4 +3008,149 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,60000);});
 })();
 </script>
+<script>
+// OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って。板の厚さ・壁と消えた壁・大きな約定・大口吸収の印を、未検証の表示で…
+// 板タブを別にようい」「売り板 赤 買い板緑」「板の厚さのグラフは買い板の割合（%）の1本線にして、50%の線を引き、上は緑・下は赤で塗る。
+// 右に今の買いと売りの割合も書いて」「買い板と売り板の表示を逆」「UNDERとOVERと割合を足して」: /scalp8_board.json (the observer's view of the
+// Collector's SCALP8 board / print records; the board data stays on this PC). Sell on the left (red), buy on the right (green).
+// 10 s or older, or unavailable = gray. Walls, vanished walls and absorb are unverified and never a trade signal. Display only.
+(()=>{
+  const css=`.b8{--b8ask:#E0566B;--b8askbar:rgba(224,86,107,.22);--b8bid:#3DBE7A;--b8bidbar:rgba(61,190,122,.22);--b8wall:#F2C14E;--b8ghost:#B48CF2;--b8ok:#4CC38A;--b8line:#22252A;--b8panel:#0E1013;--b8fg:#E8EAED;--b8mute:#9AA0AA;--b8stale:#5A5F68}
+.b8 h2{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.b8 h2 small{color:var(--b8mute);font-weight:400;font-size:12px}
+.b8-chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--b8line);color:var(--b8mute);white-space:nowrap}
+.b8-chip.uv{border-color:#6B5A24;color:var(--b8wall)}.b8-chip.ab{border-color:#2F6B4F;color:var(--b8ok)}.b8-chip.st{border-color:var(--b8stale);color:var(--b8stale)}
+.b8-legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--b8mute);font-size:11px;margin:6px 0 8px}.b8-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.b8{container-type:inline-size}.b8-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}@container (max-width:820px){.b8-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.b8-card{background:var(--b8panel);border:1px solid var(--b8line);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0;cursor:pointer}
+.b8-card.stale,.b8-box.stale{opacity:.45;filter:grayscale(1)}
+.b8-hd{display:flex;justify-content:space-between;gap:6px;align-items:baseline}.b8-hd b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b8-px{font-family:Consolas,ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:14px}
+.b8-meta{display:flex;gap:6px;flex-wrap:wrap;color:var(--b8mute);font-size:11px}.b8-meta.sp{justify-content:space-between}
+.b8-lad{display:flex;flex-direction:column;gap:1px;font-family:Consolas,ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:11.5px}
+.b8-row{display:grid;grid-template-columns:1fr 64px 1fr;gap:4px;align-items:center;height:17px}
+.b8-row .q{position:relative;height:15px;display:flex;align-items:center;padding:0 4px}.b8-row .q span{position:relative;z-index:1}.b8-row .bar{position:absolute;top:0;bottom:0}
+.b8-row.ask .q.l .bar{right:0;background:var(--b8askbar)}.b8-row.ask .q.l{justify-content:flex-end;color:var(--b8ask)}
+.b8-row.bid .q.r .bar{left:0;background:var(--b8bidbar)}.b8-row.bid .q.r{justify-content:flex-start;color:var(--b8bid)}
+.b8-row .p{text-align:center;color:var(--b8fg)}.b8-row.wall .q .bar{outline:1px solid var(--b8wall)}.b8-row.wall .p::after{content:" 壁";color:var(--b8wall);font-size:10px}
+.b8-ratio{height:6px;border-radius:3px;background:var(--b8bid);overflow:hidden}.b8-ratio i{display:block;height:100%;background:var(--b8ask)}
+.b8-ev{font-size:11px;color:var(--b8mute);display:flex;flex-direction:column;gap:2px;min-width:0}.b8-ev div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b8-ev .g{color:var(--b8ghost)}.b8-ev .w{color:var(--b8ok)}
+.b8-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.b8-tabs button{background:var(--b8panel);color:var(--b8fg);border:1px solid var(--b8line);border-radius:999px;padding:4px 12px;font:inherit;cursor:pointer}
+.b8-tabs button[aria-pressed="true"]{border-color:var(--b8bid);color:var(--b8bid)}
+.b8-big{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:12px}@container (max-width:760px){.b8-big{grid-template-columns:1fr}}
+.b8-big .b8-lad{font-size:12.5px}.b8-big .b8-row{height:20px;grid-template-columns:1fr 78px 1fr}.b8-big .b8-row .q{height:18px}
+.b8-side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.b8-box{background:var(--b8panel);border:1px solid var(--b8line);border-radius:6px;padding:10px;min-width:0}.b8-box h3{margin:0 0 6px;font-size:12px;color:var(--b8mute);font-weight:500}
+.b8-box table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}.b8-box td{padding:3px 6px;border-bottom:1px solid var(--b8line);white-space:nowrap}
+.b8-tw{overflow-x:auto}.b8 svg text{fill:var(--b8mute);font-size:10px}.b8-none{color:var(--b8mute);font-size:12px;padding:8px}`;
+  const st=document.createElement("style");st.textContent=css;document.head.appendChild(st);
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmt=x=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x))?Number(x).toLocaleString("ja-JP"):"—";
+  const nm=s=>String(s.name||s.code).replace(/（[0-9A-Z]{4}）$/,"");
+  const KEY="cockpitBoardStockV1";
+  let view=null,ok=false,pick=null,pane=null,panel=null;
+  try{pick=localStorage.getItem(KEY);}catch(_){}
+  const age=s=>{const t=Date.parse(String(s.board_at||"").replace(" ","T")+"+09:00");return Number.isFinite(t)?Math.max(0,Math.round((Date.now()-t)/1000)):null;};
+  const ageText=a=>a===null?"時刻不明":a<60?a+"秒前":a<3600?Math.floor(a/60)+"分前":Math.floor(a/3600)+"時間前";
+  const isStale=s=>{const a=age(s);return !ok||a===null||a>=10;};
+  function ladder(s,n){
+    const L=(s.levels||[]).slice(0,n),wall=new Set((s.walls||[]).map(w=>w.side+"|"+w.price));
+    const mx=Math.max(1,...L.map(x=>Math.max(x.ask_qty||0,x.bid_qty||0)));
+    let h='<div class="b8-lad"><div class="b8-row" style="font-size:10px"><div style="text-align:right;color:var(--b8ask)">売り</div><div class="p" style="color:var(--b8mute)">値段</div><div style="color:var(--b8bid)">買い</div></div>';
+    for(const x of [...L].reverse())if(x.ask)h+='<div class="b8-row ask'+(wall.has("売り|"+x.ask)?" wall":"")+'"><div class="q l"><i class="bar" style="width:'+((x.ask_qty||0)/mx*100)+'%"></i><span>'+fmt(x.ask_qty)+'</span></div><div class="p">'+fmt(x.ask)+'</div><div></div></div>';
+    for(const x of L)if(x.bid)h+='<div class="b8-row bid'+(wall.has("買い|"+x.bid)?" wall":"")+'"><div></div><div class="p">'+fmt(x.bid)+'</div><div class="q r"><i class="bar" style="width:'+((x.bid_qty||0)/mx*100)+'%"></i><span>'+fmt(x.bid_qty)+'</span></div></div>';
+    return h+'</div>';
+  }
+  function thick(s){
+    const r=s.buy_ratio;if(r===null||r===undefined)return '<div class="b8-meta">上5段の割合 —</div>';
+    return '<div class="b8-meta sp"><span style="color:var(--b8ask)">売り '+(100-Math.round(r*100))+'%（'+fmt(s.ask5)+'株）</span><span style="color:var(--b8bid)">買い '+Math.round(r*100)+'%（'+fmt(s.bid5)+'株）</span></div><div class="b8-ratio"><i style="width:'+((1-r)*100)+'%"></i></div>';
+  }
+  function uo(s){
+    if(s.under_ratio===null||s.under_ratio===undefined)return '<div class="b8-meta">OVER / UNDER —</div>';
+    return '<div class="b8-meta sp"><span style="color:var(--b8ask)">OVER '+fmt(s.over)+'株</span><span>UNDERの割合 '+Math.round(s.under_ratio*100)+'%</span><span style="color:var(--b8bid)">UNDER '+fmt(s.under)+'株</span></div><div class="b8-ratio"><i style="width:'+((1-s.under_ratio)*100)+'%"></i></div>';
+  }
+  const bigText=b=>esc(b.at)+' '+fmt(b.price)+'円 '+fmt(b.qty)+'株 '+esc(b.side);
+  const vanText=v=>esc(v.at)+' '+esc(v.side)+' '+fmt(v.price)+'円 '+fmt(v.qty)+'株 消えた（約定'+fmt(v.traded)+'）';
+  const abText=a=>esc(a.at)+' 下で吸収'+(a.times?'（'+Number(a.times).toFixed(1)+'倍）':'');
+  const ageChip=s=>{const a=age(s);return isStale(s)?'<span class="b8-chip st">'+ageText(a)+'・古い</span>':ageText(a);};
+  function card(s){
+    const ab=(s.absorb||[]).slice(-1)[0],big=(s.big||[]).slice(-1)[0],van=(s.vanished||[]).slice(-1)[0];
+    return '<article class="b8-card'+(isStale(s)?' stale':'')+'" data-b8-code="'+esc(s.code)+'" title="押すと板タブで大きく出します"><div class="b8-hd"><b>'+esc(nm(s))+'('+esc(s.code)+')</b><span class="b8-px">'+fmt(s.last_price)+'</span></div>'+
+      '<div class="b8-meta"><span>スプレッド '+fmt(s.spread)+'円</span><span>'+ageChip(s)+'</span>'+(ab?'<span class="b8-chip ab">吸収・未検証</span>':'')+'</div>'+
+      ladder(s,5)+thick(s)+uo(s)+
+      '<div class="b8-ev"><div>大きな約定 '+(big?bigText(big):'—')+'</div><div class="'+(van?'g':'')+'">消えた壁 '+(van?vanText(van):'なし')+'</div>'+(ab?'<div class="w">'+abText(ab)+'</div>':'')+'</div></article>';
+  }
+  function chart(s){
+    const SES=[[540,690,0],[750,925,150]],W=560,H=130,L=74,R=96,T=10,B=22,tot=325;
+    const pos=hm=>{const m=Number(String(hm).slice(0,2))*60+Number(String(hm).slice(3,5));for(const [a,b,o] of SES)if(m>=a&&m<=b)return o+m-a;return null;};
+    const pts=(s.ratio_hist||[]).map(([hm,r])=>[pos(hm),Math.min(0.75,Math.max(0.25,Number(r)))]).filter(p=>p[0]!==null&&Number.isFinite(p[1]));
+    if(pts.length<2)return '<div class="b8-none">ザラ場の板の記録がまだありません</div>';
+    const x=k=>L+k*(W-L-R)/tot,y=q=>T+(0.75-q)/0.5*(H-T-B),mid=y(0.5);
+    const line=pts.map((p,k)=>(k?"L":"M")+x(p[0]).toFixed(1)+","+y(p[1]).toFixed(1)).join("");
+    const area=line+"L"+x(pts[pts.length-1][0]).toFixed(1)+","+mid+"L"+x(pts[0][0]).toFixed(1)+","+mid+"Z";
+    const last=s.buy_ratio??pts[pts.length-1][1],id="b8c"+String(s.code).replace(/[^0-9A-Za-z]/g,"");
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="買い板の割合の1日の動き"><defs><clipPath id="'+id+'u"><rect x="0" y="0" width="'+W+'" height="'+mid+'"/></clipPath><clipPath id="'+id+'d"><rect x="0" y="'+mid+'" width="'+W+'" height="'+H+'"/></clipPath></defs>'+
+      '<path d="'+area+'" fill="var(--b8bidbar)" clip-path="url(#'+id+'u)"/><path d="'+area+'" fill="var(--b8askbar)" clip-path="url(#'+id+'d)"/>'+
+      '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+mid+'" y2="'+mid+'" stroke="var(--b8mute)" stroke-dasharray="3 3" stroke-width="1"/>'+
+      '<path d="'+line+'" fill="none" stroke="var(--b8fg)" stroke-width="1.4"/>'+
+      '<text x="4" y="'+(y(0.7)+4)+'" style="fill:var(--b8bid)">買い 70%</text><text x="4" y="'+(mid+4)+'">50%</text><text x="4" y="'+(y(0.3)+4)+'" style="fill:var(--b8ask)">買い 30%</text>'+
+      '<text x="'+(x(0)-12)+'" y="'+(H-6)+'">9:00</text><text x="'+(x(150)-30)+'" y="'+(H-6)+'">11:30|12:30</text><text x="'+(x(325)-14)+'" y="'+(H-6)+'">15:25</text>'+
+      '<text x="'+(W-R+10)+'" y="'+(mid-14)+'">今</text><text x="'+(W-R+10)+'" y="'+(mid+2)+'" style="fill:var(--b8bid);font-size:13px">買い '+Math.round(last*100)+'%</text><text x="'+(W-R+10)+'" y="'+(mid+20)+'" style="fill:var(--b8ask);font-size:13px">売り '+(100-Math.round(last*100))+'%</text></svg>';
+  }
+  function renderPanel(){
+    if(!panel)return;const box=panel.querySelector(".b8-grid");
+    if(!view||!(view.stocks||[]).length){box.innerHTML='<div class="b8-none">'+(ok?'SCALP8の板の記録待ち':'板のデータを読めません（灰色）')+'</div>';return;}
+    box.innerHTML=view.stocks.map(card).join("");
+    box.querySelectorAll(".b8-card").forEach(c=>{if(!ok)c.classList.add("stale");});
+  }
+  function renderTab(){
+    if(!pane)return;const tabs=pane.querySelector(".b8-tabs"),big=pane.querySelector(".b8-big");
+    const list=(view&&view.stocks)||[];
+    if(!list.length){tabs.innerHTML="";big.innerHTML='<div class="b8-none">'+(ok?'SCALP8の板の記録待ち':'板のデータを読めません')+'</div>';return;}
+    const s=list.find(x=>x.code===pick)||list[0];
+    tabs.innerHTML=list.map(x=>'<button type="button" data-b8-code="'+esc(x.code)+'" aria-pressed="'+(x===s)+'">'+esc(nm(x))+'('+esc(x.code)+')</button>').join("");
+    const tw=(rows,empty)=>'<div class="b8-tw"><table>'+(rows.length?rows.map(r=>'<tr><td'+(r[1]?' style="color:'+r[1]+'"':'')+'>'+r[0]+'</td></tr>').join(""):'<tr><td>'+empty+'</td></tr>')+'</table></div>';
+    big.innerHTML='<div class="b8-box'+(isStale(s)?' stale':'')+'"><h3>10段の板｜'+esc(nm(s))+'('+esc(s.code)+') '+fmt(s.last_price)+'円・'+ageChip(s)+'</h3>'+ladder(s,10)+
+      '<div class="b8-meta sp" style="margin-top:6px"><span>スプレッド '+fmt(s.spread)+'円</span><span>ふだんの1段 '+fmt(s.usual_level_qty)+'株</span></div>'+thick(s)+
+      '<div class="b8-meta" style="margin-top:8px">板全部の合計（OVER＝売り・UNDER＝買い）</div>'+uo(s)+'</div>'+
+      '<div class="b8-side"><div class="b8-box"><h3>買い板の割合（%）の1日の動き（上5段・50%の線より上＝緑＝買い板が厚い・下＝赤＝売り板が厚い）</h3>'+chart(s)+'</div>'+
+      '<div class="b8-box"><h3>今日の大きな約定（ふだんの10倍以上・向きは推定）</h3>'+tw([...(s.big||[])].reverse().map(b=>[bigText(b)]),"まだなし")+'</div>'+
+      '<div class="b8-box"><h3>壁と消えた壁（未検証・売買の合図ではありません）</h3>'+tw((s.walls||[]).map(w=>['今 '+esc(w.side)+esc(w.level)+'段目 '+fmt(w.price)+'円に壁（ふだんの'+esc(w.x)+'倍）',"var(--b8wall)"]).concat([...(s.vanished||[])].reverse().map(v=>[vanText(v),"var(--b8ghost)"])),"なし")+'</div>'+
+      '<div class="b8-box"><h3>大口吸収（約定で確認・未検証）</h3>'+tw([...(s.absorb||[])].reverse().map(x=>[abText(x),"var(--b8ok)"]),"今日はまだなし")+'</div></div>';
+  }
+  function choose(code){pick=code;try{localStorage.setItem(KEY,code);}catch(_){}renderTab();}
+  function mount(){
+    const scalp=document.querySelector('.tab-pane[data-pane="scalp"]');
+    if(scalp&&!document.getElementById("b8-panel")){
+      panel=document.createElement("section");panel.id="b8-panel";panel.className="card wide b8";
+      panel.innerHTML='<h2>板 SCALP8 <small>8銘柄・数秒ごと更新・押すと板タブで大きく</small> <span class="b8-chip uv">未検証の表示</span></h2>'+
+        '<div class="b8-legend"><span><i style="background:var(--b8ask)"></i>売り板</span><span><i style="background:var(--b8bid)"></i>買い板</span><span><i style="background:var(--b8wall)"></i>壁（ふだんの5倍以上）</span><span><i style="background:var(--b8ghost)"></i>消えた壁（約定せずに8割以上消えた）</span><span><i style="background:var(--b8stale)"></i>10秒以上古い・読めない時は灰色</span><span>上の割合＝上5段・下の割合＝OVER/UNDER（板全部）</span></div>'+
+        '<div class="b8-grid"><div class="b8-none">読込中...</div></div>';
+      scalp.appendChild(panel);
+      panel.addEventListener("click",e=>{const c=e.target.closest("[data-b8-code]");if(!c)return;choose(c.getAttribute("data-b8-code"));document.querySelector('.cockpit-tab[data-tab="board"]')?.click();});
+    }
+    const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
+    if(nav&&main&&!document.querySelector('.cockpit-tab[data-tab="board"]')){
+      pane=document.createElement("div");pane.className="tab-pane b8";pane.dataset.pane="board";
+      pane.innerHTML='<div class="pane-intro"><h2>板｜SCALP8 1銘柄を大きく <span class="b8-chip uv">未検証の表示</span></h2><p>MS2の板と歩み値の記録から出します（PCの中だけ）。壁・消えた壁・大口吸収は未検証で、売買の合図ではありません。</p></div>'+
+        '<section class="card wide"><div class="b8-tabs" role="group" aria-label="銘柄"></div><div class="b8-big"><div class="b8-none">読込中...</div></div></section>';
+      main.append(pane);
+      const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="board";b.type="button";b.textContent="板";
+      const after=nav.querySelector('.cockpit-tab[data-tab="scalp"]');
+      if(after&&after.nextSibling)nav.insertBefore(b,after.nextSibling);else nav.append(b);
+      b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","board");}catch(_){}renderTab();};
+      pane.addEventListener("click",e=>{const c=e.target.closest(".b8-tabs [data-b8-code]");if(c)choose(c.getAttribute("data-b8-code"));});
+      try{if(localStorage.getItem("cockpitTabV5")==="board")b.click();}catch(_){}
+    }
+  }
+  async function load(){
+    if(document.hidden)return;
+    try{const r=await fetch("/scalp8_board.json?t="+Date.now(),{cache:"no-store"});const v=r.ok?await r.json():null;
+      ok=!!(v&&v.schema_version==="100b-v10-scalp8-board-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false);if(ok)view=v;}
+    catch(_){ok=false;}
+    renderPanel();if(pane&&pane.classList.contains("active"))renderTab();
+  }
+  document.addEventListener("DOMContentLoaded",()=>{mount();load();setInterval(load,3000);});
+})();
+</script>
 </body></html>

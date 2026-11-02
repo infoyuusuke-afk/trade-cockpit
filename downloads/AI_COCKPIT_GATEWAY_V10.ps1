@@ -781,6 +781,31 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
+# RuntimeDir\scalp8_board_live_v1.json is written by the Brain observer (scripts10_board_live.py) from the Collector's
+# board / print records and served as-is when its flags are safe. The board data stays on this PC.
+function Get-Scalp8BoardView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'scalp8_board_live_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SCALP8_BOARD_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 2097152) {
+            return (& $fail 'SCALP8_BOARD_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-scalp8-board-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SCALP8_BOARD_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SCALP8_BOARD_UNREADABLE')
+    }
+}
+
 # OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて」: RuntimeDir\owner_review_v1.json is written on
 # this PC from the OWNER's own 実現損益 CSV (never part of the repo). Served as-is when its flags are safe.
 function Get-OwnerReviewView([string]$RuntimeDir) {
@@ -2866,6 +2891,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/scalp8_board.json') {
+                $boardView = Get-Scalp8BoardView $RuntimeDir
+                Send-Response $stream $boardView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$boardView.body))
                 continue
             }
             if ($path -eq '/owner_review.json') {
