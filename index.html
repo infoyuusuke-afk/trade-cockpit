@@ -2484,6 +2484,16 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal;text-align:center;line-height:1.35}
 #grok-bots-body .cc-identity{min-width:0;flex:1}#grok-bots-body .cc-company{white-space:normal}
 #grok-bots-body .g2-note{font-size:11px;color:#c9ccd1;margin:6px 0 2px;line-height:1.5}
+/* OWNER 2026-11-02 「カードの文字がよみにくい」: Grok cards 3 a row (2 / 1 on narrow screens), the name never cut, each field on its own line in larger type */
+#grok-bots-body .scalp-strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:850px){#grok-bots-body .scalp-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#grok-bots-body .scalp-strip{grid-template-columns:1fr}}
+#grok-bots-body .cc-identity .cc-company{white-space:normal;overflow:visible;text-overflow:clip;font-size:14px;line-height:1.35}
+#grok-bots-body .cc-metrics-grid{grid-template-columns:1fr}
+#grok-bots-body .cc-metrics-grid span{font-size:11px;padding:7px 10px}
+#grok-bots-body .cc-metrics-grid b{font-size:13px;line-height:1.6;font-weight:500;margin-top:2px}
+#grok-bots-body .cc-foot{white-space:normal;overflow:visible;font-size:11.5px;line-height:1.55}
+#grok-bots-body .g2-note{font-size:12.5px}
 #trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
 #trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #trade-watch .fx-link{margin-top:10px;padding:8px 12px;border:1px solid #272a30;border-radius:10px;background:#101114}

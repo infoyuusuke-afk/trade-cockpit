@@ -320,3 +320,16 @@ class TradeWatchView(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GrokCardsReadable(unittest.TestCase):
+    """OWNER 2026-11-02 「カードの文字がよみにくい」."""
+
+    def test_grok_cards_three_a_row_fields_stacked_names_not_cut(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for rule in ("#grok-bots-body .scalp-strip{grid-template-columns:repeat(3,minmax(0,1fr))}",
+                     "#grok-bots-body .cc-metrics-grid{grid-template-columns:1fr}",
+                     "#grok-bots-body .cc-identity .cc-company{white-space:normal;overflow:visible;text-overflow:clip;font-size:14px;line-height:1.35}",
+                     "#grok-bots-body .cc-metrics-grid b{font-size:13px;line-height:1.6;font-weight:500;margin-top:2px}",
+                     "#grok-bots-body .cc-foot{white-space:normal;overflow:visible;font-size:11.5px;line-height:1.55}"):
+            self.assertIn(rule, html)
