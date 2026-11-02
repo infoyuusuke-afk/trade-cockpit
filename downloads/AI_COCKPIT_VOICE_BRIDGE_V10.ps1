@@ -103,7 +103,7 @@ function Get-Profile([string]$level){
     switch(($level+"").ToUpperInvariant()){
         "HOT"    { return @{length=1.03;weight=0.70;split=0.35} }
         "DANGER" { return @{length=1.10;weight=0.80;split=0.45} }
-        "WATCH"  { return @{length=1.13;weight=0.50;split=0.50} }
+        "WATCH"  { return @{length=1.25;weight=0.50;split=0.80} }   # OWNER 2026-11-02 「はっきりしゃべらせて」: slower, longer pauses
         default  { return @{length=1.20;weight=0.35;split=0.60} }
     }
 }

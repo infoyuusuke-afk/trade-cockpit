@@ -2441,10 +2441,27 @@ $SbV2SpeakerId = 0
 $SbV2Style = "Neutral"
 $SbV2Length = 1.10
 
+$script:SpeechNameReadings = @(
+    @("DOWA HD（5714）", "ドーワ ホールディングス"), @("GO（581A）", "ゴー"), @("HENNGE（4475）", "ヘンゲ"),
+    @("HOYA（7741）", "ホーヤ"), @("IHI（7013）", "アイエイチアイ"), @("INPEX（1605）", "インペックス"),
+    @("JR東日本（9020）", "ジェイアール東日本"), @("JX金属（5016）", "ジェイエックス金属"), @("KDDI（9433）", "ケーディーディーアイ"),
+    @("KOKUSAI ELECTRIC（6525）", "コクサイ エレクトリック"), @("MS&AD（8725）", "エムエスアンドエーディー"),
+    @("NEC（6701）", "エヌイーシー"), @("NTT（9432）", "エヌティーティー"), @("SCREEN HD（7735）", "スクリーン ホールディングス"),
+    @("SHIFT（3697）", "シフト"), @("SUMCO（3436）", "サムコ"), @("SWCC（5805）", "エスダブリューシーシー"),
+    @("Sansan（4443）", "サンサン"), @("TDK（6762）", "ティーディーケー"), @("THK（6481）", "ティーエイチケー"),
+    @("Terra Drone（278A）", "テラドローン"), @("note（5243）", "ノート"), @("三菱UFJ FG（8306）", "三菱ユーエフジェイ フィナンシャルグループ"),
+    @("キオクシアHD（285A）", "きおくしあ ホールディングス")
+)
+
 function Convert-ToCockpitSpeechText([string]$text) {
     if ([string]::IsNullOrWhiteSpace($text)) { return "" }
     $s = [string]$text
     # 読み間違いを避ける発声用テキスト。表示用文字列には影響させない。
+    # OWNER 2026-11-02 「8時56分の音声が聞きとれない、はっきりしゃべらせて」: names are read without the stock code
+    # in brackets, English names in katakana, and HD / FG in full words.
+    foreach ($pair in $script:SpeechNameReadings) { $s = $s.Replace([string]$pair[0], [string]$pair[1]) }
+    $s = [regex]::Replace($s, '（[0-9][0-9A-Z]{3}）|\([0-9][0-9A-Z]{3}\)', '')
+    $s = $s.Replace("HD", "ホールディングス").Replace("FG", "フィナンシャルグループ")
     $s = $s.Replace("キオクシア","きおくしあ")
     $s = $s.Replace("VWAP","ぶいわっぷ")
     $s = $s.Replace("OR15","おーあーるじゅうご")
@@ -4178,7 +4195,7 @@ try {
                     if ($gapDown.Count -eq 0) {
                         Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"、窓下げ1パーセント以上の銘柄はありません。ルール5の対象候補はなしです。")
                     } else {
-                        $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,1))+"パーセント" }) -join "。"
+                        $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,0))+"パーセント" }) -join "。"
                         Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"窓下げ1パーセント以上、ルール5の対象候補です。"+$names+"。寄った後にルール5のサインが出た時だけ有効です。気配は始値ではありません。")
                     }
                     $preopenGapSpoken=$true
@@ -4196,8 +4213,8 @@ try {
                     $sideText=if($_.side -eq 'BUY'){"買い"}else{"空売り"}
                     $sign=if($_.gap -ge 0){"プラス"}else{"マイナス"}
                     $evText=""
-                    if($null -ne $_.ev_pct){ $evText="、期待値"+$(if([double]$_.ev_pct -ge 0){"プラス"}else{"マイナス"})+[Math]::Abs([Math]::Round([double]$_.ev_pct,2))+"パーセント" }
-                    $_.name+"、気配"+$sign+[Math]::Abs([Math]::Round($_.gap,1))+"パーセントで"+$sideText+"の札"+$evText }) -join "。"
+                    if($null -ne $_.ev_pct){ $evText="、期待値"+$(if([double]$_.ev_pct -ge 0){"プラス"}else{"マイナス"})+[Math]::Abs([Math]::Round([double]$_.ev_pct,1))+"パーセント" }
+                    $_.name+"、気配"+$sign+[Math]::Abs([Math]::Round($_.gap,0))+"パーセントで"+$sideText+"の札"+$evText }) -join "。"
                 Invoke-SerializedSpeak $speaker ("PTSの札が気配でもそろった銘柄です。"+$names+"。検証中の数字です。気配は始値ではありません。注文は武蔵で手動です。")
             }
         }
