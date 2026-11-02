@@ -2204,19 +2204,15 @@ function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
 # Research only: on 10/23-11/2 the same shape came 7 times and the price did not go up afterwards (absorb_below_test.py).
 # OWNER 2026-11-02 「直近60秒に新しい約定がある時だけ判断して、同じ約定で2回鳴らさないように」: judged only after new prints
 # came in since the last check and the newest print is within 60 s of now; the prints of a voice are never counted again.
-# OWNER 2026-11-02 (Cursor's review): 1) a "gap" read (the previous window not found) re-lists prints already fed: a gap print whose
-# time|price|volume was fed in the last 600 prints is skipped. 2) prints inside the 5-minute quiet time are marked used, so a big
+# OWNER 2026-11-02 (Cursor's review): 1) a "gap" read (the previous window not found) re-lists prints already fed.
+# OWNER 2026-11-02 「歩み値の突き合わせに失敗した回（gap）の約定は数えないように」: no print of a gap read is counted. 2) prints inside the 5-minute quiet time are marked used, so a big
 # selling held back by the quiet time can never ring later. 3) the read's quotes are the quotes at the read, not at each print: a
 # SELL above the previous print (or a BUY below it) is counted as unknown (tick rule), and "the price did not give way" compares
 # the last print with the first print of the window (exchange prices), not with a quote.
 $Scalp8AbsorbRatio = 4.0
 $script:s8Absorb = @{}
-function Add-Scalp8AbsorbPrint($State, [int]$Sec, [double]$Price, [double]$Vol, [string]$Side, $Bid, [string]$Key = "", [bool]$Gap = $false) {
-    if ($Key) {
-        if ($Gap -and $State.Keys.Contains($Key)) { return }
-        [void]$State.Keys.Add($Key); $State.KeyQueue.Enqueue($Key)
-        while ($State.KeyQueue.Count -gt 600) { [void]$State.Keys.Remove($State.KeyQueue.Dequeue()) }
-    }
+function Add-Scalp8AbsorbPrint($State, [int]$Sec, [double]$Price, [double]$Vol, [string]$Side, $Bid, [bool]$Gap = $false) {
+    if ($Gap) { return }
     $b = 0.0
     if ($null -ne $Bid -and "$Bid" -ne "") { try { $b = [double]$Bid } catch { $b = 0.0 } }
     if ($State.LastPrice -gt 0 -and (($Side -eq "SELL" -and $Price -gt $State.LastPrice) -or ($Side -eq "BUY" -and $Price -lt $State.LastPrice))) { $Side = "MID" }
@@ -3142,9 +3138,9 @@ try {
                             $capSec = [int]$s8Now.TimeOfDay.TotalSeconds
                             if ($tSec -ge 32400 -and $tSec -le $capSec + 4) {
                                 if (-not $script:s8Absorb.ContainsKey($code)) {
-                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000; Seq = 0; UsedSeq = 0; Fresh = $false; LastPrice = 0.0; Keys = [Collections.Generic.HashSet[string]]::new(); KeyQueue = [Collections.Generic.Queue[string]]::new() }
+                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000; Seq = 0; UsedSeq = 0; Fresh = $false; LastPrice = 0.0 }
                                 }
-                                Add-Scalp8AbsorbPrint $script:s8Absorb[$code] $tSec ([double]$parts[1]) ([double]$parts[2]) $side $bid ([string]$newTicks[$k]) ([bool]$diff.Gap)
+                                Add-Scalp8AbsorbPrint $script:s8Absorb[$code] $tSec ([double]$parts[1]) ([double]$parts[2]) $side $bid ([bool]$diff.Gap)
                             }
                         }
                     }
