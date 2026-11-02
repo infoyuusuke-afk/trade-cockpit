@@ -375,6 +375,15 @@ foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid"
     }
 }
 
+# OWNER 2026-11-02 (start window and log show a normal stop after a Safe Stop; the Safe Stop rules stay unchanged):
+# every check above has passed and stopping starts now; leave a marker so the start window can say the stop was a
+# Safe Stop. Writing it never changes what is stopped or kept, and a failed write is ignored.
+try {
+    $marker = Join-Path $Root "V10_SAFE_STOP_MARKER.json"
+    $markerJson = '{"safe_stop_started_at":"' + (Get-Date).ToString("o") + '","controller_pid":' + [int]$state.controller_pid + '}'
+    [IO.File]::WriteAllText($marker, $markerJson, [Text.UTF8Encoding]::new($false))
+} catch {}
+
 # Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
 # Gateway/Voice/Shadow while Safe Stop is still tearing workers down.
 $controllerVal = $state.PSObject.Properties["controller_pid"]

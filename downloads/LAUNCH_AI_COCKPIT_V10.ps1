@@ -11,6 +11,9 @@ when it returns, writes one RESULT line:
 - NORMAL_STOP: START returned 0, or the runner ended after a Safe Stop (Safe Stop removes
   V10_CONTROLLER_STATE.json only after every component has stopped);
 - ABNORMAL_STOP: anything else (start blocked, runner failure with the state file left).
+OWNER 2026-11-02: when a Safe Stop started during this run (STOP_AI_COCKPIT_V10 leaves V10_SAFE_STOP_MARKER.json
+right before it stops anything), the runner's end is a NORMAL_STOP (reason=SAFE_STOP) in the log, and the window
+shows "stopped by Safe Stop" instead of the runner's BLOCKED / EXIT_FAILURE lines (the log keeps them as they are).
 On ABNORMAL_STOP it shows a message box with the reason and the log path and reads one
 sentence aloud with the Windows speech engine (the cockpit's own voice may be down too).
 The window then closes by itself. Nothing here starts, stops or changes any V10 component.
@@ -20,10 +23,16 @@ with the ANSI code page.
 [CmdletBinding()]
 param([string]$LogDir = "", [string]$StateFile = "C:\AI_Cockpit_OneClick_Starter\V10_CONTROLLER_STATE.json",
       [switch]$NoAlert,   # NoAlert: tests only (no voice, no message box)
-      [int]$StopGraceSeconds = 10, [int]$StopWaitSeconds = 300)
+      [int]$StopGraceSeconds = 10, [int]$StopWaitSeconds = 300,
+      [string]$SafeStopMarker = "C:\AI_Cockpit_OneClick_Starter\V10_SAFE_STOP_MARKER.json")
 $ErrorActionPreference = "Continue"
 function J([string]$s) { return [regex]::Unescape($s) }
 $start = Join-Path $PSScriptRoot "START_AI_COCKPIT_V10.ps1"
+$launchedAt = Get-Date
+function Test-SafeStopThisRun {
+    try { return (Test-Path -LiteralPath $SafeStopMarker) -and ((Get-Item -LiteralPath $SafeStopMarker).LastWriteTime -ge $launchedAt) } catch { return $false }
+}
+$safeStopShown = $false
 $approval = Join-Path $PSScriptRoot "V10_APPROVED_SOURCE.json"
 if ([string]::IsNullOrWhiteSpace($LogDir)) {
     $LogDir = Join-Path ([Environment]::GetFolderPath("Desktop")) ((J "AI\u30b3\u30af\u30d4\u30c3\u30c8") + "\" + (J "\u8d77\u52d5\u8a18\u9332"))
@@ -34,7 +43,11 @@ $utf8 = [Text.UTF8Encoding]::new($true)
 [IO.File]::WriteAllText($log, ("START " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + " " + $start + "`r`n"), $utf8)
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $start -ApprovalFile $approval 2>&1 | ForEach-Object {
     $line = [string]$_
-    Write-Host $line
+    if ($line -match '^(V10_START=BLOCKED|V10_RUNNER_EXIT_FAILURE|RUNTIME_STATE=UNKNOWN_AFTER_RUNNER)$' -and (Test-SafeStopThisRun)) {
+        if (-not $safeStopShown) { Write-Host (J "\u5b89\u5168\u505c\u6b62\u3067\u6b62\u3081\u305f\u305f\u3081\u3001\u8d77\u52d5\u306e\u898b\u5f35\u308a\u304c\u7d42\u308f\u308a\u307e\u3057\u305f\u3002") -ForegroundColor Green; $safeStopShown = $true }
+    } else {
+        Write-Host $line
+    }
     [IO.File]::AppendAllText($log, $line + "`r`n", $utf8)
 }
 $rc = $LASTEXITCODE
@@ -58,6 +71,12 @@ if ($text.Contains("V10_RUNNER_EXIT_FAILURE") -and $stateLeft) {
         $stateLeft = Test-Path -LiteralPath $StateFile
     }
     [IO.File]::AppendAllText($log, ("STOP_WAIT " + [int]((Get-Date) - $waitStart).TotalSeconds + "s state_left=" + $stateLeft + "`r`n"), $utf8)
+}
+if ($rc -ne 0 -and $text.Contains("V10_RUNNER_EXIT_FAILURE") -and (Test-SafeStopThisRun)) {
+    $result = "RESULT=NORMAL_STOP rc=" + $rc + " reason=SAFE_STOP" + $(if ($stateLeft) { " SAFE_STOP_STATE_LEFT" } else { "" })
+    [IO.File]::AppendAllText($log, ("END " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + " " + $result + "`r`n"), $utf8)
+    Write-Host (J "\u5b89\u5168\u505c\u6b62\u3067\u6b63\u5e38\u306b\u6b62\u307e\u308a\u307e\u3057\u305f\u3002") -ForegroundColor Green
+    exit 0
 }
 if ($rc -eq 0 -or ($text.Contains("V10_RUNNER_EXIT_FAILURE") -and -not $stateLeft)) {
     $result = "RESULT=NORMAL_STOP rc=" + $rc
