@@ -2202,23 +2202,29 @@ function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
 # still at or above the best bid at the start of those 60 s (the selling was absorbed, the price did not give way).
 # 9:05-11:25 and 12:35-15:15 only. One voice per stock per 5 minutes. Every voice is logged (records/<day>/absorb_voice.csv).
 # Research only: on 10/23-11/2 the same shape came 7 times and the price did not go up afterwards (absorb_below_test.py).
+# OWNER 2026-11-02 「直近60秒に新しい約定がある時だけ判断して、同じ約定で2回鳴らさないように」: judged only after new prints
+# came in since the last check and the newest print is within 60 s of now; the prints of a voice are never counted again.
 $Scalp8AbsorbRatio = 4.0
 $script:s8Absorb = @{}
 function Add-Scalp8AbsorbPrint($State, [int]$Sec, [double]$Price, [double]$Vol, [string]$Side, $Bid) {
     $b = 0.0
     if ($null -ne $Bid -and "$Bid" -ne "") { try { $b = [double]$Bid } catch { $b = 0.0 } }
-    [void]$State.Prints.Add([pscustomobject]@{ Sec = $Sec; Price = $Price; Vol = $Vol; Side = $Side; Bid = $b })
+    $State.Seq++
+    $State.Fresh = $true
+    [void]$State.Prints.Add([pscustomobject]@{ Seq = $State.Seq; Sec = $Sec; Price = $Price; Vol = $Vol; Side = $Side; Bid = $b })
     $m = [int][Math]::Floor($Sec / 60)
     if ($State.Minutes.ContainsKey($m)) { $State.Minutes[$m] += $Vol } else { $State.Minutes[$m] = $Vol }
     while ($State.Prints.Count -gt 0 -and $State.Prints[0].Sec -lt $Sec - 180) { $State.Prints.RemoveAt(0) }
 }
 function Get-Scalp8AbsorbHit($State, [int]$NowSec, [double]$Ratio) {
-    if ($State.Prints.Count -eq 0) { return $null }
+    if ($State.Prints.Count -eq 0 -or -not $State.Fresh) { return $null }
+    $State.Fresh = $false
     $inSession = (($NowSec -ge 32700 -and $NowSec -le 41100) -or ($NowSec -ge 45300 -and $NowSec -le 54900))   # 9:05-11:25, 12:35-15:15
     if (-not $inSession) { return $null }
     if ($NowSec - $State.LastVoiceSec -lt 300) { return $null }
     $latest = $State.Prints[$State.Prints.Count - 1].Sec
-    $win = @($State.Prints | Where-Object { $_.Sec -gt $latest - 60 })
+    if ($latest -lt $NowSec - 60) { return $null }
+    $win = @($State.Prints | Where-Object { $_.Sec -gt $latest - 60 -and $_.Seq -gt $State.UsedSeq })
     if ($win.Count -eq 0) { return $null }
     $cur = [int][Math]::Floor($latest / 60)
     $done = @($State.Minutes.Keys | Where-Object { $_ -lt $cur } | ForEach-Object { [double]$State.Minutes[$_] } | Sort-Object)
@@ -2232,6 +2238,7 @@ function Get-Scalp8AbsorbHit($State, [int]$NowSec, [double]$Ratio) {
     $last = $win[$win.Count - 1].Price
     if ($sold -lt $Ratio * $base -or $last -lt $bid0.Bid) { return $null }
     $State.LastVoiceSec = $NowSec
+    $State.UsedSeq = $win[$win.Count - 1].Seq
     return [pscustomobject]@{ Sold = $sold; Base = $base; X = [Math]::Round($sold / $base, 1); Bid0 = $bid0.Bid; Last = $last }
 }
 $scalp8Sheet = $null
@@ -3124,7 +3131,7 @@ try {
                             $capSec = [int]$s8Now.TimeOfDay.TotalSeconds
                             if ($tSec -ge 32400 -and $tSec -le $capSec + 4) {
                                 if (-not $script:s8Absorb.ContainsKey($code)) {
-                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000 }
+                                    $script:s8Absorb[$code] = [pscustomobject]@{ Prints = [Collections.ArrayList]::new(); Minutes = @{}; LastVoiceSec = -100000; Seq = 0; UsedSeq = 0; Fresh = $false }
                                 }
                                 Add-Scalp8AbsorbPrint $script:s8Absorb[$code] $tSec ([double]$parts[1]) ([double]$parts[2]) $side $bid
                             }
