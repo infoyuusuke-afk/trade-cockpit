@@ -1639,6 +1639,7 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
   if (gl) gl.innerHTML = window.freshLamp(...(worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]));
   const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
   const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
+  const g2Day = v => { const m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(v || "")); return m ? +m[2] + "/" + +m[3] : String(v || "—").split("（")[0]; };
   box.innerHTML = g.bots.map(b => {
     if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "</div>";
     const h = age(b.saved_at), old = h == null || h > 36;
@@ -1651,7 +1652,8 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
       "<div class='cc-metrics-grid'>" +
       "<span>動きの型<b>" + e(String(c["動きの型"] || "—").split("（")[0]) + "</b></span><span>目安<b>" + e(c["目安の価格帯"] || "—") + "</b></span>" +
       "<span>無効<b>" + e(c["無効になる条件"] || "—") + "</b></span><span>自信<b>" + e(String(c["自信"] || "—").split("（")[0]) + "</b></span></div>" +
-      "<div class='cc-foot'>決算 " + e(c["決算発表日"] || "—") + "／見直し " + e(c["見直す日"] || "—") + "</div></article>").join("");
+      // OWNER 2026-11-02 「決算日と見直し日は小さく1行」: the first date of each, the full text on hover
+      "<div class='cc-foot g2-foot' title='" + e("決算 " + (c["決算発表日"] || "—") + "／見直し " + (c["見直す日"] || "—")) + "'>決算 " + e(g2Day(c["決算発表日"])) + "／見直し " + e(g2Day(c["見直す日"])) + "</div></article>").join("");
     // 3号: one card per stock with the 期待の強さ bar (-4..+4) and the change from the previous answer
     const bar = s => { if (s == null) return "<div class='g3-bar none'><span>点数なし（材料不足）</span></div>"; const pct = (Math.max(-4, Math.min(4, s)) + 4) / 8 * 100;
       return "<div class='g3-bar'><i style='left:" + pct + "%'></i><em>慎重</em><em>期待</em></div>"; };
@@ -2493,6 +2495,7 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #grok-bots-body .cc-metrics-grid span{font-size:11px;padding:7px 10px}
 #grok-bots-body .cc-metrics-grid b{font-size:13px;line-height:1.6;font-weight:500;margin-top:2px}
 #grok-bots-body .cc-foot{white-space:normal;overflow:visible;font-size:11.5px;line-height:1.55}
+#grok-bots-body .cc-foot.g2-foot{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;line-height:1.4}
 #grok-bots-body .g2-note{font-size:12.5px}
 #trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
 #trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}

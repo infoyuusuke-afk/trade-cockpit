@@ -333,3 +333,14 @@ class GrokCardsReadable(unittest.TestCase):
                      "#grok-bots-body .cc-metrics-grid b{font-size:13px;line-height:1.6;font-weight:500;margin-top:2px}",
                      "#grok-bots-body .cc-foot{white-space:normal;overflow:visible;font-size:11.5px;line-height:1.55}"):
             self.assertIn(rule, html)
+
+    def test_grok2_foot_is_one_small_line_with_the_first_dates(self):
+        # OWNER 2026-11-02 「決算日と見直し日は小さく1行。色と順番は今のまま」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("#grok-bots-body .cc-foot.g2-foot{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;line-height:1.4}", html)
+        self.assertIn("const g2Day = v => { const m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(v || \"\")); return m ? +m[2] + \"/\" + +m[3] : String(v || \"—\").split(\"（\")[0]; };", html)
+        block = html.split("const cards = (b.cards || []).map(", 1)[1].split("const bar = s =>", 1)[0]
+        self.assertIn("<div class='cc-foot g2-foot' title='", block)
+        # the order of the fields is unchanged: 動きの型, 目安, 無効, 自信
+        order = [block.index(k) for k in ("<span>動きの型<b>", "<span>目安<b>", "<span>無効<b>", "<span>自信<b>")]
+        self.assertEqual(order, sorted(order))
