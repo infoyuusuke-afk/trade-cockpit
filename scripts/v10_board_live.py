@@ -78,7 +78,7 @@ def _read_new(path, st, key):
 def _stock(st, code):
     return st["stocks"].setdefault(code, {
         "name": code, "levels": None, "board_at": None, "sizes": [], "prev": {}, "walls": {}, "vanished": [],
-        "ratio_hist": {}, "prints": [], "recent": [], "vols": [], "big": [], "big_th": None, "big_th_at": -1,
+        "ratio_hist": {}, "price_hist": {}, "prints": [], "recent": [], "vols": [], "big": [], "big_th": None, "big_th_at": -1,
         "keys": set(), "key_order": [], "last_price": 0.0, "am_open": None, "pm_open": None,
         "over": None, "under": None, "uo_at": None})
 
@@ -114,6 +114,7 @@ def _feed_ticks(st, rows):
         if not _continuous(sk, t):
             continue
         sk["recent"].append((t, p, v))
+        sk["price_hist"]["%02d:%02d" % (t // 3600, t % 3600 // 60)] = p   # the last continuous print of each minute
         while sk["recent"] and sk["recent"][0][0] < t - 120:
             sk["recent"].pop(0)
         bisect.insort(sk["vols"], v)
@@ -240,7 +241,8 @@ def build(runtime, *, now=None, state=None):
             "under_ratio": round(sk["under"] / (sk["under"] + sk["over"]), 3) if sk["over"] is not None and sk["under"] is not None and (sk["under"] + sk["over"]) > 0 else None,
             "usual_level_qty": int(usual) if usual else None, "walls": walls, "vanished": sk["vanished"],
             "big": sk["big"], "big_threshold": int(sk["big_th"]) if sk["big_th"] else None,
-            "absorb": absorb.get(code, [])[-10:], "ratio_hist": sorted(sk["ratio_hist"].items())})
+            "absorb": absorb.get(code, [])[-10:], "ratio_hist": sorted(sk["ratio_hist"].items()),
+            "price_hist": sorted(sk["price_hist"].items())})
     view = {"schema_version": SCHEMA, "generated_at": now.isoformat(timespec="seconds"), "day": day, "stocks": stocks,
             "unverified": True, "note": "表示だけ・未検証。壁・消えた壁・大口吸収は売買の合図ではない",
             "real_submit_allowed": False, "trade_instruction": False}

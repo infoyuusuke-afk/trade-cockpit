@@ -90,6 +90,9 @@ class BoardLive(unittest.TestCase):
         hist = dict(view["stocks"][0]["ratio_hist"])
         self.assertEqual(sorted(hist), ["09:00", "09:01", "09:02", "09:03"])
         self.assertEqual(hist["09:02"], 0.5)
+        prices = dict(view["stocks"][0]["price_hist"])                # the last continuous print of each minute
+        self.assertEqual(sorted(prices), ["09:00", "09:01", "09:02", "09:03"])
+        self.assertEqual(prices["09:03"], 1002)
 
     def test_incremental_and_new_day(self):
         d, st, view = self.build()
@@ -131,6 +134,12 @@ class Wiring(unittest.TestCase):
         block = html.split("// OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って。", 1)[1].split("})();", 1)[0]
         self.assertIn('fetch("/scalp8_board.json?t="+Date.now(),{cache:"no-store"})', block)
         self.assertIn('v.real_submit_allowed===false&&v.trade_instruction===false', block)
+        # OWNER 2026-11-02 「5分ごとの棒…同じ枠に株価の線を重ねて。目盛りは言葉だけ。今の割合の数字はそのまま」
+        chart = block[block.index("  function chart(s){"):block.index("  function renderPanel(){")]
+        for text in ("Math.floor(k/5)", "買い板が厚い", "売り板が厚い", "白い線＝株価", "s.price_hist", "買い '+Math.round(last*100)+'%"):
+            self.assertIn(text, chart)
+        for text in ("買い 70%", "買い 30%", ">50%<"):                    # no numbers on the scale
+            self.assertNotIn(text, chart)
         for text in ("未検証の表示", 'b.textContent="板"', "--b8ask:#E0566B", "--b8bid:#3DBE7A", "OVER", "UNDERの割合", "a>=10"):
             self.assertIn(text, block)
         for banned in ("cockpitSpeak", "speechSynthesis", "RssOrder", "renderAttention", "order("):

@@ -67,7 +67,7 @@ TRIAL_MODULE = ("v10_trial_methods", "6a32aa1f6ed3425931e64c038e95327fb3d34671")
 TRIAL_INTERVAL = timedelta(seconds=60)
 # OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
 # every pass, the SCALP8 board view from the Collector's board / print records (pinned module, display only).
-BOARD_MODULE = ("v10_board_live", "dce0d0535dbbe5c705922fa190d623c7537eba09")
+BOARD_MODULE = ("v10_board_live", "dcdcc5c9c31790ba1dbce6415ccaa6605953d4c8")
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
 # background thread so a slow download never delays the Brain core. Display data only.

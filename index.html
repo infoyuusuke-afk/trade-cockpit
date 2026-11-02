@@ -3081,19 +3081,28 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<div class="b8-ev"><div>大きな約定 '+(big?bigText(big):'—')+'</div><div class="'+(van?'g':'')+'">消えた壁 '+(van?vanText(van):'なし')+'</div>'+(ab?'<div class="w">'+abText(ab)+'</div>':'')+'</div></article>';
   }
   function chart(s){
-    const SES=[[540,690,0],[750,925,150]],W=560,H=130,L=74,R=96,T=10,B=22,tot=325;
+    // OWNER 2026-11-02 「板タブの買い板の割合のグラフを、5分ごとの棒（買い板が厚い時は上に緑、売り板が厚い時は下に赤）にして、
+    // 同じ枠に株価の線を重ねて。目盛りは言葉だけ。今の割合の数字はそのまま」: 5-minute mean of the per-minute buy share as a bar
+    // above (green) or below (red) the middle, the 5-minute closing price as a line on its own scale, labels in words only.
+    const SES=[[540,690,0],[750,925,150]],W=560,H=150,L=74,R=96,T=12,B=22,tot=325;
     const pos=hm=>{const m=Number(String(hm).slice(0,2))*60+Number(String(hm).slice(3,5));for(const [a,b,o] of SES)if(m>=a&&m<=b)return o+m-a;return null;};
-    const pts=(s.ratio_hist||[]).map(([hm,r])=>[pos(hm),Math.min(0.75,Math.max(0.25,Number(r)))]).filter(p=>p[0]!==null&&Number.isFinite(p[1]));
-    if(pts.length<2)return '<div class="b8-none">ザラ場の板の記録がまだありません</div>';
-    const x=k=>L+k*(W-L-R)/tot,y=q=>T+(0.75-q)/0.5*(H-T-B),mid=y(0.5);
-    const line=pts.map((p,k)=>(k?"L":"M")+x(p[0]).toFixed(1)+","+y(p[1]).toFixed(1)).join("");
-    const area=line+"L"+x(pts[pts.length-1][0]).toFixed(1)+","+mid+"L"+x(pts[0][0]).toFixed(1)+","+mid+"Z";
-    const last=s.buy_ratio??pts[pts.length-1][1],id="b8c"+String(s.code).replace(/[^0-9A-Za-z]/g,"");
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="買い板の割合の1日の動き"><defs><clipPath id="'+id+'u"><rect x="0" y="0" width="'+W+'" height="'+mid+'"/></clipPath><clipPath id="'+id+'d"><rect x="0" y="'+mid+'" width="'+W+'" height="'+H+'"/></clipPath></defs>'+
-      '<path d="'+area+'" fill="var(--b8bidbar)" clip-path="url(#'+id+'u)"/><path d="'+area+'" fill="var(--b8askbar)" clip-path="url(#'+id+'d)"/>'+
-      '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+mid+'" y2="'+mid+'" stroke="var(--b8mute)" stroke-dasharray="3 3" stroke-width="1"/>'+
-      '<path d="'+line+'" fill="none" stroke="var(--b8fg)" stroke-width="1.4"/>'+
-      '<text x="4" y="'+(y(0.7)+4)+'" style="fill:var(--b8bid)">買い 70%</text><text x="4" y="'+(mid+4)+'">50%</text><text x="4" y="'+(y(0.3)+4)+'" style="fill:var(--b8ask)">買い 30%</text>'+
+    const rs={},ps={};
+    for(const [hm,r] of (s.ratio_hist||[])){const k=pos(hm),v=Number(r);if(k===null||!Number.isFinite(v))continue;const b=Math.min(64,Math.floor(k/5));(rs[b]=rs[b]||[]).push(v);}
+    for(const [hm,p] of (s.price_hist||[])){const k=pos(hm),v=Number(p);if(k===null||!(v>0))continue;ps[Math.min(64,Math.floor(k/5))]=v;}   // sorted by time: the bucket keeps its last price
+    const bars=Object.keys(rs).map(Number).sort((a,b)=>a-b).map(b=>[b,rs[b].reduce((a,x)=>a+x,0)/rs[b].length-0.5]);
+    if(!bars.length)return '<div class="b8-none">ザラ場の板の記録がまだありません</div>';
+    const x=k=>L+k*(W-L-R)/tot,mid=T+(H-T-B)/2,half=(H-T-B)/2-2,slot=(W-L-R)/65,bw=Math.max(1,slot-1.5);
+    const big=Math.max(0.05,...bars.map(b=>Math.abs(b[1])));
+    const rects=bars.map(([b,d])=>{const h=Math.abs(d)/big*half;return '<rect x="'+(x(b*5)+0.75).toFixed(1)+'" y="'+(d>=0?mid-h:mid).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0.5,h).toFixed(1)+'" fill="'+(d>=0?'var(--b8bid)':'var(--b8ask)')+'" opacity=".75"><title>'+(d>=0?'買い板が厚い':'売り板が厚い')+'</title></rect>';}).join("");
+    const pk=Object.keys(ps).map(Number).sort((a,b)=>a-b),pv=pk.map(k=>ps[k]);
+    let line="";
+    if(pk.length>=2){const lo=Math.min(...pv),hi=Math.max(...pv),span=hi-lo||1,py=v=>T+(hi-v)/span*(H-T-B);
+      line='<path d="'+pk.map((k,i)=>(i?"L":"M")+(x(k*5)+slot/2).toFixed(1)+","+py(ps[k]).toFixed(1)).join("")+'" fill="none" stroke="var(--b8fg)" stroke-width="1.6"/>';}
+    const last=s.buy_ratio??(bars[bars.length-1][1]+0.5);
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="買い板の割合（5分ごと）と株価">'+
+      '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+mid+'" y2="'+mid+'" stroke="var(--b8mute)" stroke-dasharray="3 3" stroke-width="1"/>'+rects+line+
+      '<text x="4" y="'+(T+10)+'" style="fill:var(--b8bid)">買い板が厚い</text><text x="4" y="'+(H-B-2)+'" style="fill:var(--b8ask)">売り板が厚い</text>'+
+      '<text x="4" y="'+(mid+4)+'">白い線＝株価</text>'+
       '<text x="'+(x(0)-12)+'" y="'+(H-6)+'">9:00</text><text x="'+(x(150)-30)+'" y="'+(H-6)+'">11:30|12:30</text><text x="'+(x(325)-14)+'" y="'+(H-6)+'">15:25</text>'+
       '<text x="'+(W-R+10)+'" y="'+(mid-14)+'">今</text><text x="'+(W-R+10)+'" y="'+(mid+2)+'" style="fill:var(--b8bid);font-size:13px">買い '+Math.round(last*100)+'%</text><text x="'+(W-R+10)+'" y="'+(mid+20)+'" style="fill:var(--b8ask);font-size:13px">売り '+(100-Math.round(last*100))+'%</text></svg>';
   }
@@ -3113,7 +3122,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     big.innerHTML='<div class="b8-box'+(isStale(s)?' stale':'')+'"><h3>10段の板｜'+esc(nm(s))+'('+esc(s.code)+') '+fmt(s.last_price)+'円・'+ageChip(s)+'</h3>'+ladder(s,10)+
       '<div class="b8-meta sp" style="margin-top:6px"><span>スプレッド '+fmt(s.spread)+'円</span><span>ふだんの1段 '+fmt(s.usual_level_qty)+'株</span></div>'+thick(s)+
       '<div class="b8-meta" style="margin-top:8px">板全部の合計（OVER＝売り・UNDER＝買い）</div>'+uo(s)+'</div>'+
-      '<div class="b8-side"><div class="b8-box"><h3>買い板の割合（%）の1日の動き（上5段・50%の線より上＝緑＝買い板が厚い・下＝赤＝売り板が厚い）</h3>'+chart(s)+'</div>'+
+      '<div class="b8-side"><div class="b8-box"><h3>買い板の割合（上5段・5分ごと。上に緑＝買い板が厚い・下に赤＝売り板が厚い）と株価</h3>'+chart(s)+'</div>'+
       '<div class="b8-box"><h3>今日の大きな約定（ふだんの10倍以上・向きは推定）</h3>'+tw([...(s.big||[])].reverse().map(b=>[bigText(b)]),"まだなし")+'</div>'+
       '<div class="b8-box"><h3>壁と消えた壁（未検証・売買の合図ではありません）</h3>'+tw((s.walls||[]).map(w=>['今 '+esc(w.side)+esc(w.level)+'段目 '+fmt(w.price)+'円に壁（ふだんの'+esc(w.x)+'倍）',"var(--b8wall)"]).concat([...(s.vanished||[])].reverse().map(v=>[vanText(v),"var(--b8ghost)"])),"なし")+'</div>'+
       '<div class="b8-box"><h3>大口吸収（約定で確認・未検証）</h3>'+tw([...(s.absorb||[])].reverse().map(x=>[abText(x),"var(--b8ok)"]),"今日はまだなし")+'</div></div>';
