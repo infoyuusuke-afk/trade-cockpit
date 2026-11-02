@@ -11,6 +11,16 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 $StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
+# OWNER 2026-11-02 (the start window and log show a normal stop only after a Safe Stop that verified every component
+# and the Excel stopped; a Safe Stop that fails part-way is still an abnormal stop): stage "stopped_verified" is
+# written after those checks pass, "failed" on any later failure, "done" at the end. Writing it never changes what is
+# stopped or kept, and a failed write is ignored.
+function Write-SafeStopMarker([string]$Stage) {
+    try {
+        $json = '{"stage":"' + $Stage + '","at":"' + (Get-Date).ToString("o") + '"}'
+        [IO.File]::WriteAllText((Join-Path $Root "V10_SAFE_STOP_MARKER.json"), $json, [Text.UTF8Encoding]::new($false))
+    } catch {}
+}
 
 if (-not (Test-Path -LiteralPath $StateFile)) {
     Write-Host "No V10 state file found - nothing to stop." -ForegroundColor DarkGray
@@ -375,15 +385,6 @@ foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid"
     }
 }
 
-# OWNER 2026-11-02 (start window and log show a normal stop after a Safe Stop; the Safe Stop rules stay unchanged):
-# every check above has passed and stopping starts now; leave a marker so the start window can say the stop was a
-# Safe Stop. Writing it never changes what is stopped or kept, and a failed write is ignored.
-try {
-    $marker = Join-Path $Root "V10_SAFE_STOP_MARKER.json"
-    $markerJson = '{"safe_stop_started_at":"' + (Get-Date).ToString("o") + '","controller_pid":' + [int]$state.controller_pid + '}'
-    [IO.File]::WriteAllText($marker, $markerJson, [Text.UTF8Encoding]::new($false))
-} catch {}
-
 # Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
 # Gateway/Voice/Shadow while Safe Stop is still tearing workers down.
 $controllerVal = $state.PSObject.Properties["controller_pid"]
@@ -567,6 +568,7 @@ if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridge
     Write-Host "V10 safe stop incomplete; recorded state retained for owner review." -ForegroundColor Red
     exit 2
 }
+Write-SafeStopMarker "stopped_verified"
 
 # A worker may outlive its wrapper via a child JSON bridge, or a new
 # listener may bind before teardown ends. Never claim stopped / delete
@@ -599,10 +601,12 @@ try {
             Write-Host ("SAFE_STOP_LISTENER port=" + [int]$l.LocalPort + " pid=" + $ownerPid + " name=" + $ownerName + " parent=" + $ownerParent) -ForegroundColor Red
         }
         Write-Host "SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state." -ForegroundColor Red
+        Write-SafeStopMarker "failed"
         exit 2
     }
 } catch {
     Write-Host "SAFE_STOP_VERIFY=PORT_AUDIT_FAILED; retained state." -ForegroundColor Red
+    Write-SafeStopMarker "failed"
     exit 2
 }
 foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
@@ -612,6 +616,7 @@ foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
     if ($null -eq $entry -or [int]$entry.Value -le 0) { continue }
     if ($null -ne (Get-Process -Id ([int]$entry.Value) -ErrorAction SilentlyContinue)) {
         Write-Host "SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT; retained state." -ForegroundColor Red
+        Write-SafeStopMarker "failed"
         exit 2
     }
 }
@@ -621,8 +626,10 @@ try {
     if (Test-Path -LiteralPath $StateFile) { throw "STATE_FILE_STILL_PRESENT" }
 } catch {
     Write-Host "V10 state removal failed; cannot report Safe Stop success." -ForegroundColor Red
+    Write-SafeStopMarker "failed"
     exit 2
 }
+Write-SafeStopMarker "done"
 if ($script:ExcelLeftForOtherBooks) {
     Write-Host "AI Cockpit V10 managed processes stopped; the V10 workbook was closed and Excel was left open for the other workbook(s)." -ForegroundColor Green
 } else {

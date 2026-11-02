@@ -61,23 +61,37 @@ class LaunchLog(unittest.TestCase):
 class SafeStopShownAsNormal(unittest.TestCase):
     """OWNER 2026-11-02 「安全停止で止めた時は、起動の窓と記録に正常な停止と出るように直して。止め方の安全の決まりは変えないで」."""
 
-    def test_safe_stop_leaves_the_marker_only_after_its_checks(self):
+    def test_marker_says_stopped_only_after_every_component_and_excel_stopped(self):
+        # OWNER 2026-11-02 「全部の部品とExcelが止まったのを確かめた後の印がある時だけ正常と出して、途中で失敗した時は今までどおり異常」
         stop = (ROOT / "downloads" / "STOP_AI_COCKPIT_V10.ps1").read_text(encoding="utf-8-sig")
-        marker = stop.index('$marker = Join-Path $Root "V10_SAFE_STOP_MARKER.json"')
-        self.assertLess(stop.rindex("no processes stopped", 0, marker), marker)
-        self.assertLess(marker, stop.index("# Stop the supervising RUN/Controller host FIRST."))
-        # the rules after it are unchanged: the state file is still removed only after every check
-        self.assertIn("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state.", stop)
-        self.assertIn("Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop", stop)
+        ok = stop.index('Write-SafeStopMarker "stopped_verified"')
+        # after the Excel clean-up check and the worker / brain / bridge stop check
+        self.assertLess(stop.index("managed Excel cleanup is incomplete."), ok)
+        self.assertLess(stop.index("V10 safe stop incomplete; recorded state retained for owner review."), ok)
+        self.assertEqual(stop.count('Write-SafeStopMarker "stopped_verified"'), 1)
+        # every later failure marks the marker failed before it exits
+        for msg in ("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state.", "SAFE_STOP_VERIFY=PORT_AUDIT_FAILED; retained state.",
+                    "SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT; retained state.", "V10 state removal failed; cannot report Safe Stop success."):
+            i = stop.index(msg)
+            self.assertLess(i, ok + 10 ** 6)
+            self.assertGreater(i, ok)
+            self.assertIn('Write-SafeStopMarker "failed"', stop[i:i + 200])
+        self.assertGreater(stop.index('Write-SafeStopMarker "done"'), stop.index("Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop"))
+        # nothing is written before the stop starts
+        self.assertGreater(ok, stop.index("# Stop the supervising RUN/Controller host FIRST."))
 
     @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
     def test_runner_end_after_a_safe_stop_of_this_run_is_normal(self):
         runner_end = ('Write-Output "V10_START=BLOCKED"' + NL + 'Write-Output "V10_RUNNER_EXIT_FAILURE"' + NL +
                       'Write-Output "RUNTIME_STATE=UNKNOWN_AFTER_RUNNER"' + NL + "exit 2" + NL)
+        mk = lambda stage: "Set-Content -LiteralPath 'MARKER' -Value '{\"stage\":\"" + stage + "\"}'" + NL
         cases = {
-            # Safe Stop started during this run and its clean-up was cut short (state file left)
-            "this_run": ("Set-Content -LiteralPath 'MARKER' -Value '{}'" + NL + runner_end, False, 0,
+            # every component and the Excel were verified stopped, the clean-up after it was cut short (state file left)
+            "this_run": (mk("stopped_verified") + runner_end, False, 0,
                          "RESULT=NORMAL_STOP rc=2 reason=SAFE_STOP SAFE_STOP_STATE_LEFT"),
+            "done": (mk("done") + runner_end, False, 0, "RESULT=NORMAL_STOP rc=2 reason=SAFE_STOP"),
+            # a Safe Stop that failed part-way stays abnormal (alert as before)
+            "failed": (mk("failed") + runner_end, False, 1, "RESULT=ABNORMAL_STOP"),
             # an old marker from an earlier day does not count
             "old_marker": (runner_end, True, 1, "RESULT=ABNORMAL_STOP"),
         }
@@ -88,7 +102,7 @@ class SafeStopShownAsNormal(unittest.TestCase):
                 shutil.copy(LAUNCH, d / "dl" / LAUNCH.name)
                 marker = d / "marker.json"
                 if old:
-                    marker.write_text("{}", encoding="ascii")
+                    marker.write_text('{"stage":"done"}', encoding="ascii")
                     os.utime(marker, (1_600_000_000, 1_600_000_000))
                 (d / "dl" / "START_AI_COCKPIT_V10.ps1").write_text(body.replace("MARKER", str(marker)), encoding="ascii")
                 (d / "dl" / "V10_APPROVED_SOURCE.json").write_text("{}", encoding="ascii")
@@ -101,8 +115,10 @@ class SafeStopShownAsNormal(unittest.TestCase):
                 log = list((d / "logs").glob("*.log"))[0].read_text(encoding="utf-8-sig")
                 self.assertIn(want, log.splitlines()[-1])
                 self.assertIn("V10_START=BLOCKED", log)                      # the log keeps the runner's own lines
-                if name == "this_run":
+                if name in ("this_run", "done"):
                     self.assertNotIn(b"V10_START=BLOCKED", out.stdout)      # the window shows the Safe Stop instead
+                else:
+                    self.assertIn(b"V10_START=BLOCKED", out.stdout)         # a failed or unknown stop shows as before
 
 
 if __name__ == "__main__":

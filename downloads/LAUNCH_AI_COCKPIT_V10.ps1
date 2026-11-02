@@ -11,9 +11,11 @@ when it returns, writes one RESULT line:
 - NORMAL_STOP: START returned 0, or the runner ended after a Safe Stop (Safe Stop removes
   V10_CONTROLLER_STATE.json only after every component has stopped);
 - ABNORMAL_STOP: anything else (start blocked, runner failure with the state file left).
-OWNER 2026-11-02: when a Safe Stop started during this run (STOP_AI_COCKPIT_V10 leaves V10_SAFE_STOP_MARKER.json
-right before it stops anything), the runner's end is a NORMAL_STOP (reason=SAFE_STOP) in the log, and the window
-shows "stopped by Safe Stop" instead of the runner's BLOCKED / EXIT_FAILURE lines (the log keeps them as they are).
+OWNER 2026-11-02: when a Safe Stop of this run verified that every component and the Excel stopped
+(STOP_AI_COCKPIT_V10 writes V10_SAFE_STOP_MARKER.json with stage "stopped_verified", then "done"), the runner's end is a
+NORMAL_STOP (reason=SAFE_STOP) in the log, and the window shows "stopped by Safe Stop" instead of the runner's
+BLOCKED / EXIT_FAILURE lines (the log keeps them as they are). A Safe Stop that failed part-way (stage "failed", or no
+marker) stays an ABNORMAL_STOP with the alert.
 On ABNORMAL_STOP it shows a message box with the reason and the log path and reads one
 sentence aloud with the Windows speech engine (the cockpit's own voice may be down too).
 The window then closes by itself. Nothing here starts, stops or changes any V10 component.
@@ -30,7 +32,12 @@ function J([string]$s) { return [regex]::Unescape($s) }
 $start = Join-Path $PSScriptRoot "START_AI_COCKPIT_V10.ps1"
 $launchedAt = Get-Date
 function Test-SafeStopThisRun {
-    try { return (Test-Path -LiteralPath $SafeStopMarker) -and ((Get-Item -LiteralPath $SafeStopMarker).LastWriteTime -ge $launchedAt) } catch { return $false }
+    try {
+        if (-not (Test-Path -LiteralPath $SafeStopMarker)) { return $false }
+        if ((Get-Item -LiteralPath $SafeStopMarker).LastWriteTime -lt $launchedAt) { return $false }
+        $m = [IO.File]::ReadAllText($SafeStopMarker) | ConvertFrom-Json
+        return @("stopped_verified", "done") -contains [string]$m.stage
+    } catch { return $false }
 }
 $safeStopShown = $false
 $approval = Join-Path $PSScriptRoot "V10_APPROVED_SOURCE.json"
