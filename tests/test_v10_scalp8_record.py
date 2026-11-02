@@ -71,8 +71,13 @@ class Scalp8Static(unittest.TestCase):
         rest = text.replace(setup, "").replace(cycle, "")
         for var in ("$scalp8PrevKeys", "$scalp8PrevBoard", "$s8Data", "$scalp8Codes", "$scalp8Sheet", "scalp8_"):
             self.assertNotIn(var, rest)
+        # OWNER 2026-11-02 「SCALP8の8銘柄で、下で大口が吸収している時に音声で知らせて…未検証と言って」: the one voice allowed in
+        # the cycle is the absorb voice (test_v10_scalp8_absorb_voice.py); nothing else speaks, signals or feeds the brain.
+        absorb_voice = 'Invoke-SerializedSpeak $speaker ($s8Name + "、下で大口が売りを吸収しています。約定で確認しました。未検証です。")'
+        self.assertEqual(cycle.count("Invoke-SerializedSpeak"), 1)
+        self.assertIn(absorb_voice, cycle)
         for gate in ("speak", "Speak", "signal", "brain", "jsonPath"):
-            self.assertNotIn(gate, cycle)
+            self.assertNotIn(gate, cycle.replace(absorb_voice, ""))
 
     def test_failure_suspends_only_this_recorder(self):
         cycle = _cycle(_text())
