@@ -3,6 +3,7 @@ waited for up to 2 minutes and is still an abnormal stop if it remains; a port w
 wait and is abnormal after it, as before. Nothing is killed. Synthetic only."""
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -28,6 +29,18 @@ class OrphanPortWait(unittest.TestCase):
         # still after every component and the Excel were verified stopped, before the state file is removed
         self.assertLess(self.stop.index('Write-SafeStopMarker "stopped_verified"'), self.stop.index("function Get-SafeStopListenerVerdict"))
         self.assertLess(self.stop.index("function Get-SafeStopListenerVerdict"), self.stop.index("Remove-Item -LiteralPath $StateFile -Force"))
+
+    def test_window_says_it_is_waiting(self):
+        # OWNER 2026-11-02 「安全停止でポートを待っている間、窓に待っていると出して」
+        loop = self.stop[self.stop.index("$portWatch = [Diagnostics.Stopwatch]::StartNew()"):self.stop.index("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state.")]
+        said = [s.encode("ascii").decode("unicode_escape") for s in re.findall(r'\[regex\]::Unescape\("([^"]*)"\)', loop)]
+        self.assertIn("ポートが空くのを待っています（持ち主が終わったポートは最大2分）。この窓は閉じないでください。", said)
+        self.assertIn("待っています ", said)
+        self.assertIn('Write-Host ("SAFE_STOP_WAIT=PORTS "', loop)
+        self.assertIn("elseif ($waitSec -ge $lastWaitShown + 10)", loop)                 # every 10 s, not every pass
+        # shown only while waiting: after the clear / fail break, before the sleep
+        self.assertLess(loop.index('if ($verdict -ne "wait") { break }'), loop.index("SAFE_STOP_WAIT=PORTS"))
+        self.assertLess(loop.index("SAFE_STOP_WAIT=PORTS"), loop.index("Start-Sleep -Milliseconds 500"))
 
     @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
     def test_verdicts(self):

@@ -596,6 +596,8 @@ function Get-SafeStopListenerVerdict($Listeners, [int]$ElapsedMs) {
 try {
     $listeners = @()
     $orphanSeen = $false
+    $portWaitShown = $false
+    $lastWaitShown = 0
     $portWatch = [Diagnostics.Stopwatch]::StartNew()
     while ($true) {
         $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
@@ -603,6 +605,17 @@ try {
         if (@($listeners | Where-Object { [int]$_.OwningProcess -eq 0 }).Count -gt 0) { $orphanSeen = $true }
         $verdict = Get-SafeStopListenerVerdict $listeners ([int]$portWatch.ElapsedMilliseconds)
         if ($verdict -ne "wait") { break }
+        # OWNER 2026-11-02: say in the window that Safe Stop is waiting for the ports (it looked frozen for ~90 s)
+        $waitSec = [int]($portWatch.ElapsedMilliseconds / 1000)
+        if (-not $portWaitShown) {
+            $portWaitShown = $true
+            $lastWaitShown = $waitSec
+            Write-Host ("SAFE_STOP_WAIT=PORTS " + ((@($listeners | ForEach-Object { [int]$_.LocalPort }) | Sort-Object -Unique) -join ",")) -ForegroundColor Yellow
+            Write-Host ([regex]::Unescape("\u30dd\u30fc\u30c8\u304c\u7a7a\u304f\u306e\u3092\u5f85\u3063\u3066\u3044\u307e\u3059\uff08\u6301\u3061\u4e3b\u304c\u7d42\u308f\u3063\u305f\u30dd\u30fc\u30c8\u306f\u6700\u59272\u5206\uff09\u3002\u3053\u306e\u7a93\u306f\u9589\u3058\u306a\u3044\u3067\u304f\u3060\u3055\u3044\u3002")) -ForegroundColor Yellow
+        } elseif ($waitSec -ge $lastWaitShown + 10) {
+            $lastWaitShown = $waitSec
+            Write-Host ([regex]::Unescape("\u5f85\u3063\u3066\u3044\u307e\u3059 ") + $waitSec + [regex]::Unescape("\u79d2")) -ForegroundColor Yellow
+        }
         Start-Sleep -Milliseconds 500
     }
     if ($verdict -eq "clear" -and $orphanSeen) {
