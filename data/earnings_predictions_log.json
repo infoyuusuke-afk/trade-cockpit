@@ -6795,7 +6795,10 @@
     "logged_at": "2026-10-29 00:28:30 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -2.07,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "3388",
@@ -7713,7 +7716,10 @@
     "logged_at": "2026-10-29 00:28:46 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -4.88,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "6292",
@@ -8970,7 +8976,10 @@
     "logged_at": "2026-10-29 00:29:11 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.6,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "9325",
@@ -10335,6 +10344,15 @@
     "logged_at": "2026-11-02 10:49:16 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.46,
+    "status": "pending"
+  },
+  {
+    "code": "9799",
+    "name": "旭情報サービス",
+    "target_date": "2026-11-04",
+    "logged_at": "2026-11-03 03:50:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.33,
     "status": "pending"
   }
 ]
