@@ -67,6 +67,10 @@ TRIAL_MODULE = ("v10_trial_methods", "6a32aa1f6ed3425931e64c038e95327fb3d34671")
 TRIAL_INTERVAL = timedelta(seconds=60)
 # OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
 # every pass, the SCALP8 board view from the Collector's board / print records (pinned module, display only).
+# OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: today's realized P&L from the OWNER's Rakuten CSV on this PC,
+# once a minute (pinned module, display only).
+REALIZED_CSV_MODULE = ("v10_realized_csv", "0ffa3b40225764483bb3e89e88283b0cd168a62a")
+REALIZED_CSV_INTERVAL = timedelta(seconds=60)
 BOARD_MODULE = ("v10_board_live", "dcdcc5c9c31790ba1dbce6415ccaa6605953d4c8")
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
@@ -411,6 +415,26 @@ def trial_methods_pass(state: dict, live_path: Path, *, now=None, script_dir=Non
     return summary
 
 
+def realized_csv_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Sum today's rows of the newest Rakuten realized P&L CSV at most every minute; prints only on change. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + REALIZED_CSV_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *REALIZED_CSV_MODULE)
+        state["module"] = module
+        view = module.build(Path(live_path).parent, now=now)
+        summary = {"realized_csv": view["state"]}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"realized_csv": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    if summary != state.get("last_summary"):
+        state["last_summary"] = summary
+        print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def board_live_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     """Rebuild the SCALP8 board view every pass; prints only when the outcome changes. Never raises."""
     now = now or datetime.now(timezone.utc)
@@ -704,6 +728,7 @@ def main(argv=None):
     pts_state = {}
     trial_state = {}
     board_state = {}
+    realized_state = {}
     brain_state = {}
     jpx_state = {}
     feed_state = {}
@@ -714,6 +739,7 @@ def main(argv=None):
         pts_pickup_pass(pts_state, live)
         trial_methods_pass(trial_state, live)
         board_live_pass(board_state, live)
+        realized_csv_pass(realized_state, live)
         jpx_margin_pass(jpx_state, live)
         public_feed_pass(feed_state, live)
         brain_core_pass(brain_state, live)

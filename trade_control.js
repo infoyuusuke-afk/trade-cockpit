@@ -635,7 +635,7 @@
     const root=document.getElementById("owner-performance-glance");
     if(!root)return;
     if(!glanceRuleShadow||Date.now()-glanceRuleShadowAt>300000){glanceRuleShadow=await loadRuleShadow();glanceRuleShadowAt=Date.now();}
-    const [bp,acct,an,gb]=await Promise.all([gJson("/brain_pick.json"),gJson("/real_positions.json"),gJson("analyst_scores.json"),gJson("grok_bots.json")]);
+    const [bp,acct,an,gb,rcsv]=await Promise.all([gJson("/brain_pick.json"),gJson("/real_positions.json"),gJson("analyst_scores.json"),gJson("grok_bots.json"),gJson("/realized_csv.json")]);
     const rs=glanceRuleShadow,pos=bp?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
     // real account (estimates from the read-only lists, no costs; the same arithmetic as the 実口座 cards)
     let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null,realUncalc=0;const realHeld=[],realSide={long:{yen:0,n:0},short:{yen:0,n:0}};
@@ -664,8 +664,15 @@
     const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
+    // OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: when today's Rakuten 実現損益 CSV is on this PC, the tile shows
+    // its total (Rakuten's own numbers, costs included); until then the estimate stays, marked as such.
+    const csvToday=!!(rcsv&&rcsv.schema_version==="100b-v10-realized-csv-v1"&&rcsv.real_submit_allowed===false&&rcsv.state==="OK"&&
+      rcsv.day===new Date(Date.now()+9*3600000).toISOString().slice(0,10)&&Number.isFinite(Number(rcsv.yen)));
+    const csvAt=csvToday?String(rcsv.csv_saved_at||"").slice(11,16):"";
+    const csvWhy=!rcsv||!rcsv.state?"":({NOT_CONFIGURED:"CSVの置き場所が未設定",NO_CSV:"楽天CSVがまだありません",CSV_OLD:"今日の楽天CSVがまだありません",NO_TODAY_ROWS:"楽天CSVに今日の行がありません",FORMAT_UNKNOWN:"楽天CSVの形が読めません",FOLDER_MISSING:"CSVの置き場所がありません"}[rcsv.state]||"");
     let html='<div class="g-tiles">'+
-      gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
+      (csvToday?gTile("実口座 今日の確定損益（楽天CSV）",gYen(rcsv.yen),gCls(rcsv.yen),"買い→売埋 "+gYen(rcsv.long.yen)+"（"+rcsv.long.n+"件）／空売り→買埋 "+gYen(rcsv.short.yen)+"（"+rcsv.short.n+"件）"+(rcsv.other&&rcsv.other.n?"／その他 "+gYen(rcsv.other.yen)+"（"+rcsv.other.n+"件）":"")+"・"+rcsv.n+"件（楽天の計算・費用込み、"+csvAt+"保存のCSV。この後の決済は次のCSVで入ります）"):
+      gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算・楽天の数字とずれます"+(csvWhy?"。"+csvWhy:"")+"）":"V10停止中・MS2未接続・設定OFF"))+
       gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
       gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（％は1回ごとの合計・金額は100株ずつの換算、費用込み"+(vYenRows.length<closed.length?"・約定値の無い"+(closed.length-vYenRows.length)+"回は金額に入れず":"")+"）":"今日の仮想決済はまだありません")+
       gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg)+"／"+gYen(vHeld.reduce((a,x)=>a+(x.yen100||0),0)),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":"・金額は1回100株ずつの合計（持ち越し含む）"))+
