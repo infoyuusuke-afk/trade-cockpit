@@ -781,6 +781,30 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: RuntimeDir\analyst_instructions_v1.json
+# (the OWNER's standing GPT instructions, kept on this PC only, never in the repo) is served as-is when its flags are safe.
+function Get-AnalystInstructionsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'analyst_instructions_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'ANALYST_INSTRUCTIONS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return (& $fail 'ANALYST_INSTRUCTIONS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-analyst-instructions-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'ANALYST_INSTRUCTIONS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'ANALYST_INSTRUCTIONS_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: RuntimeDir\realized_csv_today_v1.json (today's total from the
 # OWNER's Rakuten 実現損益 CSV on this PC, written by the Brain observer) is served as-is when its flags are safe.
 function Get-RealizedCsvView([string]$RuntimeDir) {
@@ -2915,6 +2939,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/analyst_instructions.json') {
+                $instrView = Get-AnalystInstructionsView $RuntimeDir
+                Send-Response $stream $instrView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$instrView.body))
                 continue
             }
             if ($path -eq '/realized_csv.json') {

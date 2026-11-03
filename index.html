@@ -2938,7 +2938,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   async function render(){
     if(!pane)return;
     const box=pane.querySelector("#an-cards");
-    const [cal,bp,gb,tw]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json")]);
+    const [cal,bp,gb,tw,ins]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json"),get("/analyst_instructions.json")]);
+    // OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: the standing instruction of each GPT
+    // analyst, kept on this PC (never in the repo), folded under its card with a copy button.
+    const insOk=!!(ins&&ins.schema_version==="100b-v10-analyst-instructions-v1"&&ins.real_submit_allowed===false&&Array.isArray(ins.items));
+    const insOf=id=>insOk?ins.items.find(x=>x&&x.id===id&&typeof x.text==="string"):null;
+    const baseFold=c=>{if(c.id!=="pre"&&c.id!=="sup")return"";const x=insOf(c.id);
+      return x?'<details class="an-fold"><summary>基本の指示（'+esc(x.version)+'・'+esc(String(x.received||"").slice(5).replace("-","/"))+'受け取り）</summary><p class="an-none">ChatGPTの定時タスクに入れておく指示の全文です。変えた時は新しい文をPCのClaudeに貼ってください。</p><textarea id="an-b-'+c.id+'" readonly>'+esc(x.text)+'</textarea><button type="button" class="an-copy" data-an-copy="an-b-'+c.id+'">この指示をコピー</button></details>':
+        '<details class="an-fold"><summary>基本の指示（読めません）</summary><p class="an-none">PCの指示書を読めません（コクピットが止まっているか、まだ保存されていません）。</p></details>';};
     const today=dayStr(jst()),tomorrow=stepDay(today,1),prev=stepDay(today,-1);
     const list=d=>(Array.isArray(cal&&cal.calendar)?cal.calendar:[]).filter(x=>x&&x.watched===true&&x.date===d).map(x=>String(x.name||"").trim()+"（"+x.code+"）");
     const a=list(today),b=list(tomorrow),y=list(prev);
@@ -2964,7 +2971,7 @@ document.addEventListener("DOMContentLoaded",()=>{
        status:st(botAt("Grok3号"),!!gb),last:lastAt(botAt("Grok3号"),!!gb),paste:"朝と夜の答えが出たら",text:calOk?(a.length||b.length?grokText("Grok3号 決算前監視",today,"今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし"),"決算前","決算の前のXの空気・期待の高さから、全部の銘柄について見立てを出してください。"):""):null}
     ];
     box.innerHTML=cards.map(c=>'<div class="an-card"><h3>'+esc(c.name)+c.status+'</h3>'+
-      '<p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+'<br><b>答えを貼る時刻</b>：'+esc(c.paste)+'（プロジェクトのチャットのPCのClaudeへ）<br><b>最後の答え</b>：'+esc(c.last)+'</p>'+
+      '<p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+'<br><b>答えを貼る時刻</b>：'+esc(c.paste)+'（プロジェクトのチャットのPCのClaudeへ）<br><b>最後の答え</b>：'+esc(c.last)+'</p>'+baseFold(c)+
       // OWNER 2026-10-28 「決算の追加指示は②1回だけ入れる方式で…追加指示の箱は『定時タスクに組み込み済み』とたたむ」:
       // the earnings check now lives at the end of each scheduled task (Claudeブレイン\AI指示文\定時タスク用_決算の追記_20261028.txt),
       // so nothing has to be pasted daily. The folded box keeps the cockpit's own earnings list to check the answers against.
