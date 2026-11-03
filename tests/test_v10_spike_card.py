@@ -22,7 +22,7 @@ class SpikeCard(unittest.TestCase):
         self.assertIn('get("/tdnet_today.json")', self.block)
         self.assertIn('v.schema_version==="100b-v10-tdnet-today-v1"&&v.real_submit_allowed===false', self.block)
         self.assertIn("今日の開示は見つかっていません", self.block)
-        self.assertIn("TDnetの一覧を読めません（理由は未確認）", self.block)
+        self.assertIn("。開示があるかは未確認です", self.block)                              # TDnet unread: no guess
         self.assertIn("今日が決算の予定日です（JPXの予定・時刻は未確認）", self.block)
         self.assertIn('rel="noopener"', self.block)
         for banned in ("RssOrder", "renderAttention", "real_submit_allowed:true"):
