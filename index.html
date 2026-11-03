@@ -3243,11 +3243,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   const pct=v=>(v>0?"+":"")+v.toFixed(2)+"%";
   const nm=s=>String(s||"").replace(/（[0-9A-Z]{4}）$/,"");
   const codeOf=t=>String(t||"").replace(/\.T$/,"");
-  let td=null,tdAt=0,cal=null,calAt=0,bp=null,bpAt=0,sec=null;
+  let td=null,tdAt=0,tdOk=false,tdLastOk="",cal=null,calAt=0,bp=null,bpAt=0,sec=null,lastVoice=0,pending=[];
+  try{tdLastOk=localStorage.getItem(KEY+"TdOk")||"";}catch(_){}
+  const lastOkText=()=>tdLastOk?"最後に読めた時刻 "+(tdLastOk.slice(0,10)===jst().day?"":tdLastOk.slice(5,10).replace("-","/")+" ")+tdLastOk.slice(11,16):"最後に読めた時刻 不明";
   async function get(u){try{const r=await fetch(u+(u.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}}
   async function refresh(){
     const n=Date.now();
-    if(n-tdAt>=60000){tdAt=n;const v=await get("/tdnet_today.json");td=v&&v.schema_version==="100b-v10-tdnet-today-v1"&&v.real_submit_allowed===false?v:null;}
+    if(n-tdAt>=60000){tdAt=n;const v=await get("/tdnet_today.json");td=v&&v.schema_version==="100b-v10-tdnet-today-v1"&&v.real_submit_allowed===false?v:null;
+      // OWNER 2026-11-03 「TDnetの状態が『TDnet確認済み』でない時は『TDnetを読めていません』と出して、声もそう言って。時刻は最後に読めた時刻にして」
+      tdOk=!!(td&&/^TDnet確認済み/.test(String(td.status||"")));
+      if(tdOk)tdLastOk=String(td.last_ok_at||td.fetched_at||"");else if(td&&td.last_ok_at)tdLastOk=String(td.last_ok_at);
+      if(tdLastOk){try{localStorage.setItem(KEY+"TdOk",tdLastOk)}catch(_){}}}
     if(n-calAt>=1800000){calAt=n;cal=await get("earnings_calendar.json");}
     if(n-bpAt>=300000){bpAt=n;const v=await get("/brain_pick.json");bp=v&&v.real_submit_allowed===false?v:null;}
   }
@@ -3264,12 +3270,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   function reasons(row,m,all,ms,day){
     const code=codeOf(row.ticker),out=[];
-    const items=(td&&td.date===day&&Array.isArray(td.items)?td.items:[]).filter(x=>x.code===code).sort((a,b)=>String(b.time).localeCompare(String(a.time)));
+    const items=(tdOk&&td.date===day&&Array.isArray(td.items)?td.items:[]).filter(x=>x.code===code).sort((a,b)=>String(b.time).localeCompare(String(a.time)));
     const mm=t=>Number(String(t).slice(0,2))*60+Number(String(t).slice(3,5)),at=mm(m.at);
     const recent=items.filter(x=>mm(x.time)<=at&&at-mm(x.time)<=60);
     if(recent.length)out.push({k:"開示",t:"直前の開示（TDnet）："+recent.slice(0,2).map(x=>x.time+" "+x.title).join("／"),url:recent[0].url});
     else if(items.length)out.push({k:"開示",t:"今日の開示（直前ではない）："+items.slice(0,2).map(x=>x.time+" "+x.title).join("／"),url:items[0].url});
-    else out.push({k:"開示",t:td?"今日の開示は見つかっていません（TDnet "+String(td.fetched_at||"").slice(11,16)+"時点）":"TDnetの一覧を読めません（理由は未確認）",q:true});
+    else out.push({k:"開示",t:tdOk?"今日の開示は見つかっていません（TDnet "+String(td.last_ok_at||td.fetched_at||"").slice(11,16)+"時点）":"TDnetを読めていません（"+lastOkText()+"）。開示があるかは未確認です",q:true,tdBad:!tdOk});
     const ce=(cal&&Array.isArray(cal.calendar)?cal.calendar:[]).find(x=>x&&String(x.code)===code&&x.date===day);
     if(ce)out.push({k:"決算",t:"今日が決算の予定日です（JPXの予定・時刻は未確認）"});
     const sector=row.sector||"",peers=all.filter(x=>x!==row&&x.sector&&x.sector===sector).map(x=>ms.get(x)).filter(Boolean);
@@ -3279,7 +3285,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const said=[];Object.entries((bp&&bp.manual_analysts)||{}).forEach(([role,rows])=>{if(role.startsWith("_")||!Array.isArray(rows))return;rows.forEach(x=>{if(String(x.code)===code)said.push((/^Claude/.test(String(x.reason||""))?"Claude":"GPT "+(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":role))+" "+(x.view||"")+"「"+String(x.reason||"").slice(0,40)+"」");});});
     (Array.isArray(bp&&bp.grok&&bp.grok.notes)?bp.grok.notes:[]).forEach(x=>{if(String(x.code)===code)said.push("Grok "+(x.view||x.stance||"")+"「"+String(x.reason||"").slice(0,40)+"」");});
     if(said.length)out.push({k:"朝",t:"朝のアナリスト："+said.slice(0,2).join("／")});
-    return {list:out,recent:recent[0]||null};
+    return {list:out,recent:recent[0]||null,tdBad:!tdOk};
   }
   function mount(){
     if(sec)return sec;
@@ -3295,6 +3301,14 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<ul class="sp8-why">'+c.why.map(w=>'<li'+(w.q?' class="q"':'')+'>'+esc(w.t)+'</li>').join("")+'</ul>'+
       '<div class="sp8-links">'+(c.url?'<a href="'+esc(c.url)+'" target="_blank" rel="noopener">開示を見る（TDnet）</a>':'')+'<a href="https://kabutan.jp/stock/news?code='+encodeURIComponent(c.code)+'" target="_blank" rel="noopener">ニュースを見る（株探）</a></div></div>').join(""):'<div class="sp8-none">今日はまだ急変はありません</div>';
   }
+  // OWNER 2026-11-03 「急変が一度にいくつも出た時は、声は1分に1回にまとめて『急変 何銘柄』と一番大きい銘柄だけ言って」
+  function speakPending(){
+    if(!pending.length||Date.now()-lastVoice<60000||typeof window.cockpitSpeak!=="function")return;
+    const top=pending.slice().sort((a,b)=>Math.abs(b.chg)-Math.abs(a.chg))[0],n=pending.length;pending=[];lastVoice=Date.now();
+    const mv=top.name+"、5分で"+(top.chg>0?"プラス":"マイナス")+Math.abs(top.chg).toFixed(1)+"パーセント。";
+    const why=top.tdBad?"ティーディーネットを読めていません。":top.recent?"直前に開示があります。"+String(top.recent.title).slice(0,24)+"。":"開示は見つかっていません。";
+    try{window.cockpitSpeak((n>1?"急変 "+n+"銘柄。一番大きいのは、":"急変。")+mv+why,"WATCH");}catch(_){}
+  }
   async function onUpdate(e){
     const now=jst();let st=read();if(st.day!==now.day)st={day:now.day,cards:[],last:{}};
     render(st);
@@ -3303,7 +3317,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const rows=(Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>window.cockpitMs2RowReady?.(x)===true);
     const ms=new Map();rows.forEach(r=>{const m=measure(r,now.day);if(m)ms.set(r,m);});
     const hits=rows.filter(r=>{const m=ms.get(r);return m&&(Math.abs(m.chg)>=MOVE||(m.volx!=null&&m.volx>=VOLX&&Math.abs(m.chg)>=MOVE_V));});
-    if(!hits.length)return;
+    if(!hits.length){speakPending();return;}
     await refresh();
     for(const r of hits){
       const code=codeOf(r.ticker);if(Date.now()-(st.last[code]||0)<COOL)continue;
@@ -3311,9 +3325,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       st.last[code]=Date.now();
       st.cards.unshift({at:m.at,code,name:nm(r.name),chg:m.chg,volx:m.volx,price:r.price,why:why.list,url:why.recent?why.recent.url:(why.list[0]&&why.list[0].url)||""});
       st.cards=st.cards.slice(0,KEEP);
-      if(typeof window.cockpitSpeak==="function"){try{window.cockpitSpeak("急変。"+nm(r.name)+"、5分で"+(m.chg>0?"プラス":"マイナス")+Math.abs(m.chg).toFixed(1)+"パーセント。"+(why.recent?"直前に開示があります。"+String(why.recent.title).slice(0,24)+"。":"開示は見つかっていません。"),"WATCH");}catch(_){}}
+      pending.push({name:nm(r.name),chg:m.chg,recent:why.recent,tdBad:why.tdBad});
     }
     write(st);render(st);
+    speakPending();
   }
   document.addEventListener("ms2RssUpdate",e=>{onUpdate(e);});
   document.addEventListener("DOMContentLoaded",()=>{const st=read();if(st.day===jst().day)render(st);else render({cards:[]});});

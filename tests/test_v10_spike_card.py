@@ -28,6 +28,20 @@ class SpikeCard(unittest.TestCase):
         for banned in ("RssOrder", "renderAttention", "real_submit_allowed:true"):
             self.assertNotIn(banned, self.block)
 
+    def test_tdnet_not_read_and_voice_once_a_minute(self):
+        # OWNER 2026-11-03 「TDnetの状態が『TDnet確認済み』でない時は『TDnetを読めていません』…時刻は最後に読めた時刻…
+        # 急変が一度にいくつも出た時は、声は1分に1回にまとめて『急変 何銘柄』と一番大きい銘柄だけ言って」
+        self.assertIn('tdOk=!!(td&&/^TDnet確認済み/.test(String(td.status||"")));', self.block)
+        self.assertIn('"TDnetを読めていません（"+lastOkText()+"）。開示があるかは未確認です"', self.block)
+        self.assertIn('"最後に読めた時刻 "', self.block)
+        self.assertIn('ティーディーネットを読めていません。', self.block)
+        self.assertIn("Date.now()-lastVoice<60000", self.block)
+        self.assertIn('(n>1?"急変 "+n+"銘柄。一番大きいのは、":"急変。")', self.block)
+        self.assertIn("sort((a,b)=>Math.abs(b.chg)-Math.abs(a.chg))[0]", self.block)
+        col = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("$tdnetLastOkAt=$now}", col)                                         # set only on a good read
+        self.assertIn("last_ok_at = if ($null -ne $tdnetLastOkAt)", col)
+
     def test_collector_and_gateway(self):
         col = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("schema_version = '100b-v10-tdnet-today-v1'", col)

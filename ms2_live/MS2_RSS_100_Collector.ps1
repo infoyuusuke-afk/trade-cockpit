@@ -2780,6 +2780,7 @@ $lastPtsVoiceAt = Get-Date "2000-01-01"
 $tdnetDisclosures = @()
 $lastTdnetFetchAt = Get-Date "2000-01-01"
 $tdnetStatus = "取得待ち"
+$tdnetLastOkAt = $null   # OWNER 2026-11-03: the 急変 card shows when TDnet was last read successfully
 $lastIrVoiceCodes = @{}
 $irDynamicSlots = @{}
 $lastSnapshotAt = Get-Date "2000-01-01"
@@ -2908,7 +2909,7 @@ try {
         } elseif (($now-$lastTdnetFetchAt).TotalSeconds -ge 120) {
             try {
                 $freshTdnet = @(Get-TdnetDisclosures $now)
-                if($freshTdnet.Count -gt 0){$tdnetDisclosures=$freshTdnet; $tdnetStatus=("TDnet確認済み "+$freshTdnet.Count+"件")}
+                if($freshTdnet.Count -gt 0){$tdnetDisclosures=$freshTdnet; $tdnetStatus=("TDnet確認済み "+$freshTdnet.Count+"件"); $tdnetLastOkAt=$now}
                 else{$tdnetStatus="TDnet取得0件・確認待ち"}
             } catch {
                 $tdnetStatus="TDnet取得失敗・推定禁止"
@@ -2920,6 +2921,7 @@ try {
                 $tdnetView = [ordered]@{
                     schema_version = '100b-v10-tdnet-today-v1'; date = $now.ToString('yyyy-MM-dd'); fetched_at = $now.ToString('yyyy-MM-ddTHH:mm:ss')
                     status = [string]$tdnetStatus
+                    last_ok_at = if ($null -ne $tdnetLastOkAt) { $tdnetLastOkAt.ToString('yyyy-MM-ddTHH:mm:ss') } else { $null }
                     items = @($tdnetDisclosures | Select-Object -First 3000 | ForEach-Object { [ordered]@{ code = [string]$_.code; time = [string]$_.time; title = [string]$_.title; url = [string]$_.url } })
                     real_submit_allowed = $false; trade_instruction = $false
                 }
