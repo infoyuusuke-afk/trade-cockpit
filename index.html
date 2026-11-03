@@ -3169,4 +3169,53 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{mount();load();setInterval(load,3000);});
 })();
 </script>
+<script>
+// OWNER 2026-11-03 「引け後の作業でAIコクピットから音声出る形でしらせて」: on trading days from 15:35 to 16:05, until today's
+// Rakuten realized P&L CSV reaches the cockpit (/realized_csv.json state OK for today), a banner under the paste reminder asks to
+// save it into 取引履歴_CSV (the 対決 material reads it at 16:05), and the voice says it at 15:35 and then every 10 minutes (at most
+// 4 times a day). When it arrives, one short voice line says so. A trading day = today's SCALP8 board records exist. Display and
+// voice only.
+(()=>{
+  const KEY="cockpitCsvReminderV1";
+  const jst=()=>{const j=new Date(Date.now()+9*3600000);return {day:j.toISOString().slice(0,10),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){return {}}};
+  const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(_){}};
+  const say=msg=>{if(typeof window.cockpitSpeak!=="function")return;const prev=window.cockpitLiveSpeechEnabled;if(prev===false)window.cockpitLiveSpeechEnabled=true;
+    try{window.cockpitSpeak(msg,"CALM");}finally{if(prev===false)window.cockpitLiveSpeechEnabled=prev;}};
+  let box=null;
+  function mount(){
+    if(box)return box;
+    const anchor=document.getElementById("paste-reminder");
+    if(!anchor)return null;
+    box=document.createElement("div");box.id="csv-reminder";box.className="paste-reminder";box.hidden=true;
+    anchor.insertAdjacentElement("afterend",box);
+    return box;
+  }
+  async function get(u){try{const r=await fetch(u+"?t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}}
+  async function check(){
+    const b=mount();if(!b)return;
+    const now=jst();
+    if(now.wd===0||now.wd===6||now.min<935||now.min>965){b.hidden=true;return;}   // 15:35-16:05
+    const [sb,rc]=await Promise.all([get("/scalp8_board.json"),get("/realized_csv.json")]);
+    // a trading day = today's SCALP8 board records have continuous-session minutes (none on a holiday)
+    const trading=!!(sb&&sb.day===now.day&&Array.isArray(sb.stocks)&&sb.stocks.some(x=>Array.isArray(x.ratio_hist)&&x.ratio_hist.length>0));
+    if(!trading){b.hidden=true;return;}
+    const st=read();if(st.day!==now.day){st.day=now.day;st.count=0;st.last=0;st.gotSaid=false;}
+    const got=!!(rc&&rc.schema_version==="100b-v10-realized-csv-v1"&&rc.state==="OK"&&rc.day===now.day);
+    if(got){
+      b.hidden=false;b.className="paste-reminder done";b.textContent="今日の楽天CSVを受け取りました（"+String(rc.csv_saved_at||"").slice(11,16)+"保存）";
+      if(!st.gotSaid){st.gotSaid=true;say("楽天の実現損益のCSVを受け取りました。");}
+      write(st);return;
+    }
+    b.hidden=false;b.className="paste-reminder";
+    b.innerHTML="【引け後の作業】楽天の実現損益（当日）をCSVで出して、取引履歴_CSV のフォルダに保存してください<small>16:05に対決の素材が読みます。それまでに保存してください（無い日は概算になります）</small>";
+    if(st.count<4&&Date.now()-(st.last||0)>=10*60000){
+      say("引け後の作業です。楽天の実現損益を、シーエスブイで、取引履歴のフォルダに保存してください。16時5分までにお願いします。");
+      st.count+=1;st.last=Date.now();
+    }
+    write(st);
+  }
+  document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,60000);});
+})();
+</script>
 </body></html>
