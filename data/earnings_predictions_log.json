@@ -6486,7 +6486,10 @@
     "logged_at": "2026-10-29 00:28:24 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 5.16,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.0,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "2208",
@@ -7611,7 +7614,10 @@
     "logged_at": "2026-10-29 00:28:44 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.64,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 1.43,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "6080",
