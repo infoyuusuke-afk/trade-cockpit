@@ -2914,6 +2914,17 @@ try {
                 $tdnetStatus="TDnet取得失敗・推定禁止"
             }
             $lastTdnetFetchAt=$now
+            # OWNER 2026-11-03 「急変カードを作って」: the day's TDnet list (time, code, title, link) for the cockpit's 急変 card.
+            # Display only; a failed write never stops the Collector.
+            try {
+                $tdnetView = [ordered]@{
+                    schema_version = '100b-v10-tdnet-today-v1'; date = $now.ToString('yyyy-MM-dd'); fetched_at = $now.ToString('yyyy-MM-ddTHH:mm:ss')
+                    status = [string]$tdnetStatus
+                    items = @($tdnetDisclosures | Select-Object -First 3000 | ForEach-Object { [ordered]@{ code = [string]$_.code; time = [string]$_.time; title = [string]$_.title; url = [string]$_.url } })
+                    real_submit_allowed = $false; trade_instruction = $false
+                }
+                Write-AtomicUtf8 (Join-Path $PSScriptRoot 'tdnet_today_v1.json') ($tdnetView | ConvertTo-Json -Depth 4 -Compress)
+            } catch {}
 
             # 引け後(15:30以降)の開示のうち好材料判定(スコア>0・非ブロック)の銘柄を、
             # 固定100銘柄リスト外でも動的追跡枠(IR_DYNAMIC_PTS)へ登録する。

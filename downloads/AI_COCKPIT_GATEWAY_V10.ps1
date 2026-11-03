@@ -781,6 +781,30 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-03 「急変カードを作って」: RuntimeDir\tdnet_today_v1.json (the day's TDnet list the Collector already reads every
+# 2 minutes) is served as-is when its flags are safe. Display only.
+function Get-TdnetTodayView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'tdnet_today_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'TDNET_TODAY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 4194304) {
+            return (& $fail 'TDNET_TODAY_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-tdnet-today-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'TDNET_TODAY_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'TDNET_TODAY_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: RuntimeDir\analyst_instructions_v1.json
 # (the OWNER's standing GPT instructions, kept on this PC only, never in the repo) is served as-is when its flags are safe.
 function Get-AnalystInstructionsView([string]$RuntimeDir) {
@@ -2939,6 +2963,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/tdnet_today.json') {
+                $tdView = Get-TdnetTodayView $RuntimeDir
+                Send-Response $stream $tdView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$tdView.body))
                 continue
             }
             if ($path -eq '/analyst_instructions.json') {
