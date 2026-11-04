@@ -781,6 +781,30 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-04 「BNF銘柄もカードタイプで」: RuntimeDir\bnf_candidates_v1.json (written on this PC by the daily BNF screen, never in
+# the repo) is served as-is when its flags are safe. Display only.
+function Get-BnfCandidatesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'bnf_candidates_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'BNF_CANDIDATES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'BNF_CANDIDATES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-bnf-candidates-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'BNF_CANDIDATES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'BNF_CANDIDATES_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-03 「急変カードを作って」: RuntimeDir\tdnet_today_v1.json (the day's TDnet list the Collector already reads every
 # 2 minutes) is served as-is when its flags are safe. Display only.
 function Get-TdnetTodayView([string]$RuntimeDir) {
@@ -2963,6 +2987,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/bnf_candidates.json') {
+                $bnfView = Get-BnfCandidatesView $RuntimeDir
+                Send-Response $stream $bnfView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$bnfView.body))
                 continue
             }
             if ($path -eq '/tdnet_today.json') {

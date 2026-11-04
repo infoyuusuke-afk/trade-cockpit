@@ -3447,4 +3447,37 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
+<script>
+// OWNER 2026-11-04 「BNF銘柄もカードタイプで」: the daily BNF list (close 20 % or more below the 25-day line, 5-day turnover 500M yen or more,
+// written on this PC by the 16:00 screen; /bnf_candidates.json) as cards in the 下ヒゲ tab. The list's own note (2026 result) stays on the
+// screen. Candidates to look at, not a signal: no voice, no order.
+(()=>{
+  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function card(x,at){
+    return window.renderCockpitCard({symbol:String(x.code||""),company:String(x.name||"")+"（"+String(x.code||"")+"）",direction:"long",directionLabel:"BNF候補",
+      freshness:"fresh",freshnessLabel:at,price:x.close,target:x.exit_line==null?null:Math.round(x.exit_line),
+      metrics:[{label:"25日線から",value:x.dev_pct==null?null:num(x.dev_pct)+"%"},{label:"売買代金",value:x.turnover5_oku==null?null:num(x.turnover5_oku)+"億円"},{label:"市場",value:x.market||null}],
+      foot:"手じまいの目安：終値が25日線の−5%以内（TARGET）に戻ったら、または10日目の引け"});
+  }
+  async function load(sec){
+    const box=sec.querySelector(".sw8-body");let d=null;
+    try{const r=await fetch("/bnf_candidates.json?t="+Date.now(),{cache:"no-store"});d=r.ok?await r.json():null;}catch(_){}
+    if(!d||d.schema_version!=="100b-v10-bnf-candidates-v1"||d.real_submit_allowed!==false||typeof window.renderCockpitCard!=="function"){box.innerHTML='<div class="sw8-none">BNF候補を読めません</div>';return;}
+    const hits=Array.isArray(d.hits)?d.hits:[],at=String(d.close_day||"").slice(5).replace("-","/")+"の終値";
+    const old=Date.now()-Date.parse(String(d.close_day||"")+"T15:30:00+09:00")>4*864e5;
+    box.innerHTML=(old?'<p class="warning">古いデータ：'+esc(d.close_day)+'の終値です。判断に使わないでください。</p>':'')+
+      '<p class="sub">'+esc(d.rule)+'／'+esc(at)+'・'+hits.length+'銘柄（'+num(d.checked)+'銘柄を確認）</p>'+
+      '<p class="warning">'+esc(d.note)+'</p>'+
+      (hits.length?'<div class="scalp-strip">'+hits.slice(0,40).map(x=>card(x,at)).join("")+'</div>':'<div class="sw8-none">該当なし</div>');
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const pane=document.querySelector('.tab-pane[data-pane="wick"]');if(!pane)return;
+    const sec=document.createElement("section");sec.id="bnf-cards";sec.className="card wide";
+    sec.innerHTML='<h2>BNF候補</h2><div class="sw8-body"><div class="sw8-none">読込中...</div></div>';
+    const intro=pane.querySelector(".pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
+    load(sec);setInterval(()=>load(sec),600000);
+  });
+})();
+</script>
 </body></html>

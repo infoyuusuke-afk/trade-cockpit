@@ -49,6 +49,20 @@ class SwingCards(unittest.TestCase):
         for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
             self.assertNotIn(banned, block)
 
+    def test_bnf_cards(self):
+        # OWNER 2026-11-04 「BNF銘柄もカードタイプで」
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/bnf_candidates.json') {", gw)
+        self.assertIn("[string]$view.schema_version -cne '100b-v10-bnf-candidates-v1'", gw)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「BNF銘柄もカードタイプで」: the daily BNF list", 1)[1].split("})();", 1)[0]
+        self.assertIn('fetch("/bnf_candidates.json?t="+Date.now()', block)
+        self.assertIn("d.real_submit_allowed!==false", block)
+        self.assertIn('.tab-pane[data-pane="wick"]', block)
+        self.assertIn("esc(d.note)", block)                                  # the 2026 result stays on the screen
+        for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
+            self.assertNotIn(banned, block)
+
     def test_wiring(self):
         import scripts.ai_brain_observer as obs
         name, pin = obs.PUBLIC_FEED_MODULE
