@@ -3183,9 +3183,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 <script>
-// OWNER 2026-11-03 「引け後の作業でAIコクピットから音声出る形でしらせて」: on trading days from 15:35 to 16:05, until today's
+// OWNER 2026-11-03 「引け後の作業でAIコクピットから音声出る形でしらせて」: (moved 2026-11-04 「AIトレード日記を平日16:00に出せるように」) on trading days from 15:31 to 15:45, until today's
 // Rakuten realized P&L CSV reaches the cockpit (/realized_csv.json state OK for today), a banner under the paste reminder asks to
-// save it into 取引履歴_CSV (the 対決 material reads it at 16:05), and the voice says it at 15:35 and then every 10 minutes (at most
+// save it into 取引履歴_CSV (the 対決 material reads it at 15:45), and the voice says it at 15:31 and then every 10 minutes (at most
 // 4 times a day). When it arrives, one short voice line says so. A trading day = today's SCALP8 board records exist. Display and
 // voice only.
 (()=>{
@@ -3208,7 +3208,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   async function check(){
     const b=mount();if(!b)return;
     const now=jst();
-    if(now.wd===0||now.wd===6||now.min<935||now.min>965){b.hidden=true;return;}   // 15:35-16:05
+    if(now.wd===0||now.wd===6||now.min<931||now.min>945){b.hidden=true;return;}   // 15:31-15:45
     const [sb,rc]=await Promise.all([get("/scalp8_board.json"),get("/realized_csv.json")]);
     // a trading day = today's SCALP8 board records have continuous-session minutes (none on a holiday)
     const trading=!!(sb&&sb.day===now.day&&Array.isArray(sb.stocks)&&sb.stocks.some(x=>Array.isArray(x.ratio_hist)&&x.ratio_hist.length>0));
@@ -3221,9 +3221,9 @@ document.addEventListener("DOMContentLoaded",()=>{
       write(st);return;
     }
     b.hidden=false;b.className="paste-reminder";
-    b.innerHTML="【引け後の作業】楽天の実現損益（当日）をCSVで出して、取引履歴_CSV のフォルダに保存してください<small>16:05に対決の素材が読みます。それまでに保存してください（無い日は概算になります）</small>";
+    b.innerHTML="【引け後の作業】楽天の実現損益（当日）をCSVで出して、取引履歴_CSV のフォルダに保存してください<small>15:45に対決の素材が読みます。それまでに保存してください（無い日は概算になります）</small>";
     if(st.count<4&&Date.now()-(st.last||0)>=10*60000){
-      say("引け後の作業です。楽天の実現損益を、シーエスブイで、取引履歴のフォルダに保存してください。16時5分までにお願いします。");
+      say("引け後の作業です。楽天の実現損益を、シーエスブイで、取引履歴のフォルダに保存してください。15時45分までにお願いします。");
       st.count+=1;st.last=Date.now();
     }
     write(st);
