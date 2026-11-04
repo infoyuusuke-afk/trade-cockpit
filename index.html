@@ -3042,7 +3042,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 .b8-ratio{height:6px;border-radius:3px;background:var(--b8bid);overflow:hidden}.b8-ratio i{display:block;height:100%;background:var(--b8ask)}
 .b8-ev{font-size:11px;color:var(--b8mute);display:flex;flex-direction:column;gap:2px;min-width:0}.b8-ev div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b8-ev .g{color:var(--b8ghost)}.b8-ev .w{color:var(--b8ok)}
-.b8-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.b8-tabs button{background:var(--b8panel);color:var(--b8fg);border:1px solid var(--b8line);border-radius:999px;padding:4px 12px;font:inherit;cursor:pointer}
+.tab-pane.b8>section.card{overflow:visible}.b8-tabs{position:sticky;top:42px;z-index:20;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;margin:0 0 10px;padding:6px 0;background:#131722f2}@container (max-width:820px){.b8-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}}.b8-tabs button .n{display:block;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.b8-tabs button .v{display:block;font-size:11px;color:var(--b8mute);white-space:nowrap}.b8-tabs button .k{color:var(--b8wall);margin-right:3px}.b8-keys{color:var(--b8mute);font-size:11.5px;margin:0 0 6px}.b8-allh{margin:14px 0 6px;font-size:13px;font-weight:700}.b8-card.on{border-color:var(--b8bid)}.b8-tabs button{min-width:0;text-align:left;background:var(--b8panel);color:var(--b8fg);border:1px solid var(--b8line);border-radius:6px;padding:4px 6px;font:inherit;cursor:pointer}
 .b8-tabs button[aria-pressed="true"]{border-color:var(--b8bid);color:var(--b8bid)}
 .b8-big{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:12px}@container (max-width:760px){.b8-big{grid-template-columns:1fr}}
 .b8-big .b8-lad{font-size:12.5px}.b8-big .b8-row{height:20px;grid-template-columns:1fr 78px 1fr}.b8-big .b8-row .q{height:18px}
@@ -3053,7 +3053,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   const st=document.createElement("style");st.textContent=css;document.head.appendChild(st);
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const fmt=x=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x))?Number(x).toLocaleString("ja-JP"):"—";
-  const nm=s=>String(s.name||s.code).replace(/（[0-9A-Z]{4}）$/,"");
+  // OWNER 2026-11-04: before 9:00 the UNDER/OVER record that carries the names does not exist yet, so the 8 names are kept here
+  const NAMES={"285A":"キオクシア","6857":"アドバンテスト","8035":"東京エレクトロン","9984":"ソフトバンクG","6981":"村田製作所","4062":"イビデン","6525":"KOKUSAI","6963":"ローム"};
+  const nm=s=>{const n=String(s.name||"").replace(/（[0-9A-Z]{4}）$/,"");return n&&n!==String(s.code)?n:(NAMES[s.code]||String(s.code));};
   const KEY="cockpitBoardStockV1";
   let view=null,ok=false,pick=null,pane=null,panel=null;
   try{pick=localStorage.getItem(KEY);}catch(_){}
@@ -3080,9 +3082,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   const vanText=v=>esc(v.at)+' '+esc(v.side)+' '+fmt(v.price)+'円 '+fmt(v.qty)+'株 消えた（約定'+fmt(v.traded)+'）';
   const abText=a=>esc(a.at)+' 下で吸収'+(a.times?'（'+Number(a.times).toFixed(1)+'倍）':'');
   const ageChip=s=>{const a=age(s);return isStale(s)?'<span class="b8-chip st">'+ageText(a)+'・古い</span>':ageText(a);};
-  function card(s){
+  function card(s,on){
     const ab=(s.absorb||[]).slice(-1)[0],big=(s.big||[]).slice(-1)[0],van=(s.vanished||[]).slice(-1)[0];
-    return '<article class="b8-card'+(isStale(s)?' stale':'')+'" data-b8-code="'+esc(s.code)+'" title="押すと板タブで大きく出します"><div class="b8-hd"><b>'+esc(nm(s))+'('+esc(s.code)+')</b><span class="b8-px">'+fmt(s.last_price)+'</span></div>'+
+    return '<article class="b8-card'+(isStale(s)?' stale':'')+(on===true?' on':'')+'" data-b8-code="'+esc(s.code)+'" title="押すと板タブで大きく出します"><div class="b8-hd"><b>'+esc(nm(s))+'('+esc(s.code)+')</b><span class="b8-px">'+fmt(s.last_price)+'</span></div>'+
       '<div class="b8-meta"><span>スプレッド '+fmt(s.spread)+'円</span><span>'+ageChip(s)+'</span>'+(ab?'<span class="b8-chip ab">吸収・未検証</span>':'')+'</div>'+
       ladder(s,5)+thick(s)+uo(s)+
       '<div class="b8-ev"><div>大きな約定 '+(big?bigText(big):'—')+'</div><div class="'+(van?'g':'')+'">消えた壁 '+(van?vanText(van):'なし')+'</div>'+(ab?'<div class="w">'+abText(ab)+'</div>':'')+'</div></article>';
@@ -3116,7 +3118,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   function renderPanel(){
     if(!panel)return;const box=panel.querySelector(".b8-grid");
     if(!view||!(view.stocks||[]).length){box.innerHTML='<div class="b8-none">'+(ok?'SCALP8の板の記録待ち':'板のデータを読めません（灰色）')+'</div>';return;}
-    box.innerHTML=view.stocks.map(card).join("");
+    box.innerHTML=view.stocks.map(x=>card(x)).join("");
     box.querySelectorAll(".b8-card").forEach(c=>{if(!ok)c.classList.add("stale");});
   }
   function renderTab(){
@@ -3124,7 +3126,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     const list=(view&&view.stocks)||[];
     if(!list.length){tabs.innerHTML="";big.innerHTML='<div class="b8-none">'+(ok?'SCALP8の板の記録待ち':'板のデータを読めません')+'</div>';return;}
     const s=list.find(x=>x.code===pick)||list[0];
-    tabs.innerHTML=list.map(x=>'<button type="button" data-b8-code="'+esc(x.code)+'" aria-pressed="'+(x===s)+'">'+esc(nm(x))+'('+esc(x.code)+')</button>').join("");
+    // OWNER 2026-11-04 「板タブに一緒、銘柄切り替えをもっと簡単に」: the bar stays on screen while scrolling and shows each stock's price and
+    // buy share; keys 1-8 and the left / right arrows switch; the 8 cards sit under the large view and switch it too.
+    tabs.innerHTML=list.map((x,i)=>'<button type="button" data-b8-code="'+esc(x.code)+'" aria-pressed="'+(x===s)+'"><span class="n"><span class="k">'+(i+1)+'</span>'+esc(nm(x))+'</span><span class="v">'+esc(x.code)+' '+fmt(x.last_price)+(x.buy_ratio==null?'':'・買'+Math.round(x.buy_ratio*100)+'%')+'</span></button>').join("");
+    const all=pane.querySelector(".b8-all");if(all)all.innerHTML=list.map(x=>card(x,x===s)).join("");
+    const hdr=document.querySelector(".cockpit-tabs");if(hdr)tabs.style.top=hdr.offsetHeight+"px";
     const tw=(rows,empty)=>'<div class="b8-tw"><table>'+(rows.length?rows.map(r=>'<tr><td'+(r[1]?' style="color:'+r[1]+'"':'')+'>'+r[0]+'</td></tr>').join(""):'<tr><td>'+empty+'</td></tr>')+'</table></div>';
     big.innerHTML='<div class="b8-box'+(isStale(s)?' stale':'')+'"><h3>10段の板｜'+esc(nm(s))+'('+esc(s.code)+') '+fmt(s.last_price)+'円・'+ageChip(s)+'</h3>'+ladder(s,10)+
       '<div class="b8-meta sp" style="margin-top:6px"><span>スプレッド '+fmt(s.spread)+'円</span><span>ふだんの1段 '+fmt(s.usual_level_qty)+'株</span></div>'+thick(s)+
@@ -3149,13 +3155,20 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(nav&&main&&!document.querySelector('.cockpit-tab[data-tab="board"]')){
       pane=document.createElement("div");pane.className="tab-pane b8";pane.dataset.pane="board";
       pane.innerHTML='<div class="pane-intro"><h2>板｜SCALP8 1銘柄を大きく <span class="b8-chip uv">未検証の表示</span></h2><p>MS2の板と歩み値の記録から出します（PCの中だけ）。壁・消えた壁・大口吸収は未検証で、売買の合図ではありません。</p></div>'+
-        '<section class="card wide"><div class="b8-tabs" role="group" aria-label="銘柄"></div><div class="b8-big"><div class="b8-none">読込中...</div></div></section>';
+        '<section class="card wide"><div class="b8-tabs" role="group" aria-label="銘柄"></div><div class="b8-keys">切り替え：上のボタン・数字キー1〜8・左右の矢印キー・下の8枚のカード</div><div class="b8-big"><div class="b8-none">読込中...</div></div><div class="b8-allh">8銘柄の板</div><div class="b8-grid b8-all"></div></section>';
       main.append(pane);
       const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="board";b.type="button";b.textContent="板";
       const after=nav.querySelector('.cockpit-tab[data-tab="scalp"]');
       if(after&&after.nextSibling)nav.insertBefore(b,after.nextSibling);else nav.append(b);
       b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","board");}catch(_){}renderTab();};
-      pane.addEventListener("click",e=>{const c=e.target.closest(".b8-tabs [data-b8-code]");if(c)choose(c.getAttribute("data-b8-code"));});
+      pane.addEventListener("click",e=>{const c=e.target.closest("[data-b8-code]");if(!c)return;choose(c.getAttribute("data-b8-code"));if(c.classList.contains("b8-card"))pane.querySelector(".b8-big").scrollIntoView({block:"center"});});
+      document.addEventListener("keydown",e=>{
+        if(!pane.classList.contains("active")||e.ctrlKey||e.altKey||e.metaKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||""))return;
+        const list=(view&&view.stocks)||[];if(!list.length)return;
+        const now=Math.max(0,list.findIndex(x=>x.code===pick));
+        let i=-1;if(/^[1-8]$/.test(e.key))i=Number(e.key)-1;else if(e.key==="ArrowRight")i=(now+1)%list.length;else if(e.key==="ArrowLeft")i=(now-1+list.length)%list.length;
+        if(i>=0&&i<list.length){e.preventDefault();choose(list[i].code);}
+      });
       try{if(localStorage.getItem("cockpitTabV5")==="board")b.click();}catch(_){}
     }
   }

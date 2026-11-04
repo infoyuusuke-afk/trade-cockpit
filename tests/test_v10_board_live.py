@@ -145,6 +145,20 @@ class Wiring(unittest.TestCase):
         for banned in ("cockpitSpeak", "speechSynthesis", "RssOrder", "renderAttention", "order("):
             self.assertNotIn(banned, block)
 
+    def test_board_tab_switching(self):
+        # OWNER 2026-11-04 「板タブに一緒、銘柄切り替えをもっと簡単に」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('.tab-pane.b8>section.card{overflow:visible}.b8-tabs{position:sticky;', html)  # the bar stays on screen
+        self.assertIn('tabs.style.top=hdr.offsetHeight+"px"', html)
+        self.assertIn('<div class="b8-grid b8-all"></div>', html)                                     # the 8 cards in the 板 tab
+        self.assertIn('list.map(x=>card(x,x===s))', html)
+        self.assertIn('/^[1-8]$/.test(e.key)', html)                                                  # keys 1-8
+        self.assertIn('e.key==="ArrowRight"', html)
+        self.assertIn('e.key==="ArrowLeft"', html)
+        self.assertIn('/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||"")', html)                # typing is left alone
+        self.assertIn('if(!pane.classList.contains("active")', html)                                  # only while the 板 tab is open
+        self.assertIn('"285A":"キオクシア"', html)                                                      # names before the 9:00 record
+
     def test_observer_pass_prints_only_on_change(self):
         import contextlib
         import io
