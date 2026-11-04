@@ -15,7 +15,7 @@ def test_scalp5_hidden_and_panel_in_the_trade_tab():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     assert "const pane=document.querySelector('.tab-pane[data-pane=\"scalp\"]');" in html.split('document.getElementById("ai-top5")', 1)[0][-200:]
     b = _block()
-    assert 'document.querySelectorAll(".scalp-tv").forEach(x=>{x.style.display="none";});' in b
+    assert 'document.querySelectorAll(".scalp-tv:not(#overnight-top5)").forEach(x=>{x.style.display="none";});' in b
     assert "AIアナリスト注目 TOP5（当たり具合の良い順）" in b   # the title changed on 10/27 (当たり具合順); this check had not been run by unittest
 
 

@@ -2594,7 +2594,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   const pane=document.querySelector('.tab-pane[data-pane="scalp"]');
   if(!pane||document.getElementById("ai-top5"))return;
-  document.querySelectorAll(".scalp-tv").forEach(x=>{x.style.display="none";});
+  document.querySelectorAll(".scalp-tv:not(#overnight-top5)").forEach(x=>{x.style.display="none";});   // OWNER 2026-11-04 「オーバーナイト銘柄カードでだして」: the OVERNIGHT 5 cards stay
   const sec=document.createElement("section");
   sec.id="ai-top5";sec.className="card wide ai-top5";
   sec.innerHTML='<h2>AIアナリスト注目 TOP5（当たり具合の良い順）</h2><div class="ai5-method" id="ai5-method">今日フォーカスする手法を読込中...</div>'+
