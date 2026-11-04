@@ -20,6 +20,23 @@ class SwingCards(unittest.TestCase):
         self.assertNotIn("extra", v["overnight_long"][0])
         self.assertEqual((v["real_submit_allowed"], v["trade_instruction"]), (False, False))
 
+    def test_value_view_and_cards(self):
+        # OWNER 2026-11-04 「バリューも」
+        row = {"code": "1111", "name": "テスト（1111）", "score": 90, "close": 100, "supply_phase": "需給未確認", "chart": [{"o": 1}]}
+        v = feed.value_view({"updated_at": "2026-11-04 15:38:01 JST", "monthly_weekly_hammers": [row] * 7, "long_term_ma_rebounds": [],
+                             "long_term_ma_rebounds_unverified": [row]})
+        self.assertEqual(len(v["monthly_weekly_hammers"]), 5)
+        self.assertNotIn("chart", v["long_term_ma_rebounds_unverified"][0])
+        self.assertEqual(v["long_term_ma_rebounds_unverified"][0]["supply_phase"], "需給未確認")
+        self.assertEqual((v["real_submit_allowed"], v["trade_instruction"]), (False, False))
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertEqual(gw.count("'value_watch.json'"), 2)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('"value_watch.json": "value-cards"', html)
+        self.assertIn('fetch("value_watch.json?t="+Date.now()', html)
+        self.assertIn('.tab-pane[data-pane="value"]', html)
+        self.assertIn("50週線／200日線反発（需給未確認）", html)
+
     def test_wiring(self):
         import scripts.ai_brain_observer as obs
         name, pin = obs.PUBLIC_FEED_MODULE

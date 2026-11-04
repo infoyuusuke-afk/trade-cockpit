@@ -1751,7 +1751,7 @@ setInterval(loadRegimeSummary, 600000);
 // OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
 // public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
 // last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
-const FEED_SECTIONS = {"swing_watch.json": "swing-cards", "event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+const FEED_SECTIONS = {"swing_watch.json": "swing-cards", "value_watch.json": "value-cards", "event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
   "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
   "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
 const markFeedStale = meta => {
@@ -3374,7 +3374,32 @@ document.addEventListener("DOMContentLoaded",()=>{
       group("持ち越しLONG候補","発動条件を満たした時だけ",a("overnight_long"),"long","LONG候補",at)+
       group("持ち越しSHORT候補","発動条件を満たした時だけ",a("overnight_short"),"short","SHORT候補",at);
   }
+  // OWNER 2026-11-04 「バリューも」: the same cards for VALUE 5 (value_watch.json). 需給未確認 rows stay marked as such.
+  function vCard(x,label,at){
+    return window.renderCockpitCard({symbol:String(x.code||x.ticker||"").replace(".T",""),company:x.name,direction:"long",directionLabel:label,
+      freshness:"fresh",freshnessLabel:at,price:x.close,entry:x.trigger,stop:x.stop,target:x.target1,
+      metrics:[{label:"点数",value:x.score==null?null:x.score+"/100"},{label:"足",value:x.timeframe||null},{label:"線",value:x.ma_label||x.ma_rebound||null},
+        {label:"出来高比",value:x.volume_ratio==null?null:num(x.volume_ratio)+"倍"},{label:"需給",value:x.supply_phase||null}],
+      foot:(x.status?x.status+"／":"")+String(x.reason||"")+(x.caution?"／"+x.caution:"")});
+  }
+  function vGroup(title,note,rows,label,at){
+    return '<div class="sw8-h">'+title+'<small>'+note+'</small></div>'+(rows.length?'<div class="scalp-strip">'+rows.map(x=>vCard(x,label,at)).join("")+'</div>':'<div class="sw8-none">今日はありません</div>');
+  }
+  async function loadValue(sec){
+    const box=sec.querySelector(".sw8-body");let d=null;
+    try{const r=await fetch("value_watch.json?t="+Date.now(),{cache:"no-store"});d=r.ok?await r.json():null;}catch(_){}
+    if(!d||d.real_submit_allowed!==false||typeof window.renderCockpitCard!=="function"){box.innerHTML='<div class="sw8-none">バリューの候補を読めません（起動から最大10分で届きます）</div>';return;}
+    const at=String(d.updated_at||"").slice(5,16).replace("-","/")+"更新",a=k=>Array.isArray(d[k])?d[k]:[];
+    box.innerHTML=vGroup("月足・週足反転","高値を上抜くまでは準備",a("monthly_weekly_hammers"),"反転",at)+
+      vGroup("50週線／200日線反発（需給確認済み）","反転足の高値を上抜くまで買わない",a("long_term_ma_rebounds"),"反発",at)+
+      vGroup("50週線／200日線反発（需給未確認）","信用需給をまだ確かめていない候補",a("long_term_ma_rebounds_unverified"),"需給未確認",at);
+  }
   document.addEventListener("DOMContentLoaded",()=>{
+    const vp=document.querySelector('.tab-pane[data-pane="value"]');
+    if(vp){const vs=document.createElement("section");vs.id="value-cards";vs.className="card wide";
+      vs.innerHTML='<h2>VALUE 5 候補</h2><p class="sub">引け後の判定です（公開の分析データ）。売買の合図ではありません。</p><div class="sw8-body"><div class="sw8-none">読込中...</div></div>';
+      const vi=vp.querySelector(".pane-intro");if(vi)vi.after(vs);else vp.prepend(vs);
+      loadValue(vs);setInterval(()=>loadValue(vs),600000);}
     const pane=document.querySelector('.tab-pane[data-pane="swing"]');if(!pane)return;
     const sec=document.createElement("section");sec.id="swing-cards";sec.className="card wide";
     sec.innerHTML='<h2>SWING 5 候補</h2><p class="sub">引け後の判定です（公開の分析データ）。売買の合図ではありません。</p><div class="sw8-body"><div class="sw8-none">読込中...</div></div>';

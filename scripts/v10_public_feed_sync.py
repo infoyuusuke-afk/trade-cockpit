@@ -134,6 +134,20 @@ def swing_view(signals: dict) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-11-04 「バリューも」: the 月足・週足反転 and 50週線／200日線反発 lists of the public signals.json, for the VALUE 5 cards.
+VALUE_FILE = "value_watch.json"
+VALUE_FIELDS = ("code", "ticker", "name", "timeframe", "status", "setup", "score", "close", "trigger", "stop", "target1", "target2",
+                "ma_label", "ma_rebound", "volume_ratio", "supply_phase", "reason", "caution", "signal_date")
+
+
+def value_view(signals: dict) -> dict:
+    def rows(key):
+        return [{k: x.get(k) for k in VALUE_FIELDS} for x in (signals.get(key) or [])[:5] if isinstance(x, dict)]
+    return {"updated_at": str(signals.get("updated_at") or ""), "monthly_weekly_hammers": rows("monthly_weekly_hammers"),
+            "long_term_ma_rebounds": rows("long_term_ma_rebounds"), "long_term_ma_rebounds_unverified": rows("long_term_ma_rebounds_unverified"),
+            "real_submit_allowed": False, "trade_instruction": False}
+
+
 # OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: the latest answer of Grok 1号・2号・3号 that the
 # OWNER saved with the 5番 button (Desktop\Claudeブレイン\Grok1号 ... Grok3号). Read only, this PC only;
 # shown for reading, never a score, gate, voice or order.
@@ -749,6 +763,17 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
         files[SWING_FILE] = dict(fresh, ok=True, bytes=(target / SWING_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[SWING_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:
+        if not isinstance(sig, dict):
+            raise ValueError("NO_SIGNALS")
+        view = value_view(sig)
+        fresh = freshness(VALUE_FILE, view, now)
+        temp = target / (VALUE_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / VALUE_FILE)
+        files[VALUE_FILE] = dict(fresh, ok=True, bytes=(target / VALUE_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[VALUE_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     try:
         root = Path(grok_root) if grok_root is not None else grok_default_root()
         if not root.is_dir():
