@@ -3163,15 +3163,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   function choose(code){pick=code;try{localStorage.setItem(KEY,code);}catch(_){}renderTab();}
   function mount(){
-    const scalp=document.querySelector('.tab-pane[data-pane="scalp"]');
-    if(scalp&&!document.getElementById("b8-panel")){
-      panel=document.createElement("section");panel.id="b8-panel";panel.className="card wide b8";
-      panel.innerHTML='<h2>板 SCALP8 <small>8銘柄・数秒ごと更新・押すと板タブで大きく</small> <span class="b8-chip uv">未検証の表示</span></h2>'+
-        '<div class="b8-legend"><span><i style="background:var(--b8ask)"></i>売り板</span><span><i style="background:var(--b8bid)"></i>買い板</span><span><i style="background:var(--b8wall)"></i>壁（ふだんの5倍以上）</span><span><i style="background:var(--b8ghost)"></i>消えた壁（約定せずに8割以上消えた）</span><span><i style="background:var(--b8stale)"></i>10秒以上古い・読めない時は灰色</span><span>上の割合＝上5段・下の割合＝OVER/UNDER（板全部）</span></div>'+
-        '<div class="b8-grid"><div class="b8-none">読込中...</div></div>';
-      scalp.appendChild(panel);
-      panel.addEventListener("click",e=>{const c=e.target.closest("[data-b8-code]");if(!c)return;choose(c.getAttribute("data-b8-code"));document.querySelector('.cockpit-tab[data-tab="board"]')?.click();});
-    }
+    // OWNER 2026-11-05 「トレード中のタブにも8銘柄の板のこったままだぞ」: the 8 boards now live only in the 板 tab.
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(nav&&main&&!document.querySelector('.cockpit-tab[data-tab="board"]')){
       pane=document.createElement("div");pane.className="tab-pane b8";pane.dataset.pane="board";

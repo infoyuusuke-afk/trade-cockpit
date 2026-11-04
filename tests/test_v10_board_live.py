@@ -152,6 +152,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('tabs.style.top=hdr.offsetHeight+"px"', html)
         self.assertIn('<div class="b8-grid b8-all"></div>', html)                                     # the 8 cards in the 板 tab
         self.assertIn('list.map(x=>card(x,x===s))', html)
+        self.assertNotIn('panel.id="b8-panel"', html)                                                 # OWNER 2026-11-05: 板 tab only, not トレード中
         self.assertIn('/^[1-8]$/.test(e.key)', html)                                                  # keys 1-8
         self.assertIn('e.key==="ArrowRight"', html)
         self.assertIn('e.key==="ArrowLeft"', html)
