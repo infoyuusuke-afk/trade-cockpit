@@ -1563,22 +1563,28 @@ window.orderCardCopy = ev => {
   navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "コピーしました"; setTimeout(() => { b.textContent = label; }, 1200); }).catch(() => {});
 };
 window.ORDER_CARD_TTL_MS = 180000;
-window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
-window.roundTick = (p, mode) => { const t = window.tseTick(p), k = p / t; return +((mode === "down" ? Math.floor(k) : mode === "up" ? Math.ceil(k) : Math.round(k)) * t).toFixed(1); };
+// OWNER 2026-11-04 「注文カードの呼値を銘柄ごとに正しい刻みにして、分からない時は粗いほうで丸めて」: JPX's two tick tables. The fine table only for
+// the watch-list codes below (JPX TOPIX500 list of 2026-09-30 checked against the prices recorded on 2026-11-04); any other code takes the
+// coarse table. JPX changes the tick rules from 2027-03-01 (STR), so this list and table must be redone by then.
+window.ORDER_CARD_FINE_TICK = ["1605","1942","1969","2670","2768","285A","3038","3132","3436","3697","3994","4004","4062","4063","4385","4519","4680","4755","5016","5401","5706","5713","5714","5801","5802","5803","5805","6098","6146","6268","6301","6323","6481","6501","6503","6504","6506","6525","6526","6645","6701","6702","6723","6752","6758","6762","6857","6861","6902","6920","6954","6963","6971","6976","6981","6988","7011","7012","7013","7203","7267","7453","7735","7741","7751","7974","8001","8035","8058","8306","8308","8316","8411","8725","8766","9020","9101","9432","9433","9434","9506","9843","9983","9984"];
+window.TSE_TICK_FINE = [[1000,0.1],[3000,0.5],[10000,1],[30000,5],[100000,10],[300000,50],[1000000,100],[3000000,500],[10000000,1000],[30000000,5000],[Infinity,10000]];
+window.TSE_TICK_COARSE = [[3000,1],[5000,5],[30000,10],[50000,50],[300000,100],[500000,500],[3000000,1000],[5000000,5000],[30000000,10000],[50000000,50000],[Infinity,100000]];
+window.tseTick = (p, ticker) => (window.ORDER_CARD_FINE_TICK.includes(String(ticker || "").replace(".T", "")) ? window.TSE_TICK_FINE : window.TSE_TICK_COARSE).find(x => p <= x[0])[1];
+window.roundTick = (p, mode, ticker) => { const t = window.tseTick(p, ticker), k = +(p / t).toFixed(6); return +((mode === "down" ? Math.floor(k) : mode === "up" ? Math.ceil(k) : Math.round(k)) * t).toFixed(1); };
 window.orderCardHtml = (s, generatedMs, nowMs) => {
   const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const buy = Number(s.side) > 0, entry = Number(s.entry), stop = Number(s.stop), target = Number(s.target);
   if (![entry, stop, target].every(Number.isFinite) || entry <= 0) return "";
   const left = Math.max(0, Math.round((generatedMs + window.ORDER_CARD_TTL_MS - nowMs) / 1000));
-  const lim = window.roundTick(entry, buy ? "down" : "up"), tp = window.roundTick(target, buy ? "down" : "up"), sl = window.roundTick(stop, buy ? "down" : "up");
+  const lim = window.roundTick(entry, buy ? "down" : "up", s.ticker), tp = window.roundTick(target, buy ? "down" : "up", s.ticker), sl = window.roundTick(stop, buy ? "down" : "up", s.ticker);
   const row = (k, v) => "<span>" + k + "<b>" + e(v) + "</b></span>";
-  const qty = window.orderCardQty(entry);
-  return "<article class='cc-card cc-card--" + (buy ? "long" : "short") + " order-card'><div class='order-card-warn'>検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）</div>" +
+  const qty = window.orderCardQty(lim);
+  return "<article class='cc-card cc-card--" + (buy ? "long" : "short") + " order-card'>" + (Number(s.forward_n ?? 0) < 20 ? "<div class='order-card-warn'>実績不足（" + e(s.forward_n ?? 0) + "回・20回未満）</div>" : "") + "<div class='order-card-warn'>検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）</div>" +
     "<div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(s.name || s.ticker) + "</span><span class='cc-symbol'>" + e(String(s.ticker || "").replace(".T", "")) + "</span></div><span class='cc-badge'>" + (buy ? "買建" : "売建") + "</span></div>" +
     "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", qty + "株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
     row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
     row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
-    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回）／" +
+    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回" + (Number(s.forward_n ?? 0) < 20 ? "・実績不足" : "") + "）／" +
     (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div>" +
     "<div class='order-card-copy'>" + [["コード", String(s.ticker || "").replace(".T", "")], ["数量", qty], ["指値", lim], ["利確", tp], ["損切り", sl]].map(x => "<button type='button' data-copy='" + e(x[1]) + "'>" + x[0] + " " + e(x[1]) + "</button>").join("") + "</div></article>";
 };

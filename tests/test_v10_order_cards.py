@@ -23,9 +23,25 @@ class OrderCards(unittest.TestCase):
     def test_quantity_follows_the_price(self):
         # OWNER 2026-11-04 「5000円未満200株、あとは100株単位」
         self.assertIn("window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);", self.block)
-        self.assertIn("const qty = window.orderCardQty(entry);", self.block)
+        self.assertIn("const qty = window.orderCardQty(lim);", self.block)                # after rounding
         self.assertIn('row("数量", qty + "株")', self.block)
         self.assertIn('["数量", qty]', self.block)
+
+    def test_tick_tables(self):
+        # OWNER 2026-11-04 「呼値を銘柄ごとに正しい刻みにして、分からない時は粗いほうで丸めて」
+        self.assertIn("window.TSE_TICK_FINE = [[1000,0.1],[3000,0.5],[10000,1],[30000,5],[100000,10],[300000,50]", self.block)
+        self.assertIn("window.TSE_TICK_COARSE = [[3000,1],[5000,5],[30000,10],[50000,50],[300000,100],[500000,500]", self.block)
+        self.assertIn('window.ORDER_CARD_FINE_TICK.includes(String(ticker || "").replace(".T", "")) ? window.TSE_TICK_FINE : window.TSE_TICK_COARSE', self.block)
+        self.assertIn('window.roundTick(entry, buy ? "down" : "up", s.ticker)', self.block)
+        self.assertIn('window.roundTick(stop, buy ? "down" : "up", s.ticker)', self.block)
+        codes = self.block.split("window.ORDER_CARD_FINE_TICK = ", 1)[1].split(";", 1)[0]
+        self.assertIn('"285A"', codes)
+        self.assertNotIn('"186A"', codes)                               # not on the list -> the coarse table
+
+    def test_thin_record_is_marked(self):
+        # OWNER 2026-11-04 「実績20回未満のカードには『実績不足』と出して」
+        self.assertEqual(self.block.count("Number(s.forward_n ?? 0) < 20"), 2)
+        self.assertIn("実績不足（", self.block)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
