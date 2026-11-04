@@ -32,6 +32,8 @@ SOURCES = {
     "nyse": ("NYSE・Holidays & Trading Hours", "https://www.nyse.com/markets/hours-calendars"),
     "cao": ("内閣府・景気統計公表予定", "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html"),
     "us_election": ("U.S. EAC・Election Day", "https://www.eac.gov/voters/election-day-contact-information"),
+    "nvidia": ("NVIDIA・Investor Relations", "https://nvidianews.nvidia.com/news/nvidia-sets-conference-call-for-third-quarter-financial-results-6928873"),
+    "cao_gdp": ("大和総研・7-9月期GDP予測（内閣府11/16公表予定）", "https://www.dir.co.jp/report/research/economics/japan/20261030_026172.html"),
 }
 
 
@@ -137,6 +139,29 @@ def build() -> dict:
         flow="開票の進み方で米株先物・米金利・ドル円・半導体が場中に動く。結果の確定は接戦州で数日以上かかることがある",
         action="開票途中の見通しで方向を決め打ちしない。米先物とドル円を確認",
         note="投票日は法律で11月第1月曜の翌火曜（米国時間）。日本時間では11/4の朝から結果が出始める。"))
+
+    # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」: single-day market movers checked
+    # against their own announcements on 2026-11-04.
+    e.append(event("nvidia-2026-11-18", "エヌビディア決算（米国11/17引け後）", "2026-11-18",
+        "米個別・半導体", "nvidia", time_jst="06:20", impact="高",
+        flow="半導体・AI関連（アドバンテスト・東京エレクトロン・ソフトバンクG・キオクシアなど）の東京寄りに直結",
+        action="前日の半導体持ち越しを縮小。18日の寄りは気配とOR15を確認してから",
+        note="NVIDIA公表：結果は米国11/17 13:20 PT（日本時間11/18 06:20ごろ）、説明会は14:00 PT。"))
+    e.append(event("jp-gdp-2026-11-16", "日本 7-9月期GDP 1次速報", "2026-11-16",
+        "日本経済", "cao_gdp", time_jst="08:50", status="公表予定（民間の記事で確認・内閣府の日程は要確認）", impact="中",
+        flow="日銀12月会合の利上げ観測・円相場・銀行株へ波及",
+        action="寄り前の数値と円相場を確認",
+        note="発表時刻8:50は内閣府の通例。日付は大和総研の記事の『11月16日公表予定』による。"))
+    e.append(event("us-holiday-2026-11-26", "米国市場休場（感謝祭）", "2026-11-26",
+        "米国休場", "nyse", impact="中",
+        flow="翌27日の東京は前夜の米国終値なし。27日の米国は13時までの短縮取引",
+        action="27日朝の米国確認は先物だけ。薄商いの振れを警戒",
+        note="NYSE・NASDAQの2026年休場日。"))
+    e.append(event("us-holiday-2026-12-25", "米国市場休場（クリスマス）", "2026-12-25",
+        "米国休場", "nyse", impact="中",
+        flow="24日の米国は13時までの短縮取引。年末の薄商い",
+        action="年末の持ち越し数量を確認",
+        note="NYSE・NASDAQの2026年休場日。"))
 
     # Monthly SQ: the second Friday.  SQ flow occurs at the opening, not close.
     for month, label in [(9, "メジャーSQ"), (10, "月例SQ"), (11, "月例SQ"), (12, "メジャーSQ")]:
