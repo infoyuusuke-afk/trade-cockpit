@@ -1528,7 +1528,7 @@ window.buildTradeWatch = () => {
   sec.id = "trade-watch";
   sec.className = "card wide";
   sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
-    "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：キオクシアHD（285A）にサインが出た時だけ出る（検証中・参考のみ。執行は自分で）</li>" +
+    "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：期待値がプラスの注目銘柄とキオクシアHD（285A）にサインが出た時に出る（検証中・参考のみ。執行は自分で）</li>" +
     "<li><b>その下の好機レーダーとAIアナリスト注目TOP5</b>：今動いている銘柄と、AIアナリストが注目した期待値の高い5銘柄（入れ替え自由）・今日フォーカスする手法。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
     "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
   const intro = pane.querySelector(":scope > .pane-intro");
@@ -1550,6 +1550,16 @@ window.loadFxLink = () => fetch("market_summary.json?t=" + Date.now()).then(r =>
 }).catch(() => {});
 document.addEventListener("DOMContentLoaded", () => { setTimeout(window.loadFxLink, 1800); setInterval(window.loadFxLink, 120000); });
 window.ORDER_CARD_CODES = ["285A.T"];
+// OWNER 2026-11-04 「いろんな手法で検証して期待値の高い銘柄は注文カードまですぐだせるように　おれの操作はほぼなくす事」: besides 285A, every
+// Brain pick with a positive expected value gets the card (still 検証中, still shown only: real orders stay locked). The コピー buttons put one
+// value on the clipboard for the OWNER's own paste; nothing here reaches the order screen.
+window.orderCardWanted = s => Number(s.side) !== 0 && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0);
+window.orderCardCopy = ev => {
+  const b = ev.target && ev.target.closest ? ev.target.closest("[data-copy]") : null;
+  if (!b || !navigator.clipboard) return;
+  const label = b.textContent;
+  navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "コピーしました"; setTimeout(() => { b.textContent = label; }, 1200); }).catch(() => {});
+};
 window.ORDER_CARD_TTL_MS = 180000;
 window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
 window.roundTick = (p, mode) => { const t = window.tseTick(p), k = p / t; return +((mode === "down" ? Math.floor(k) : mode === "up" ? Math.ceil(k) : Math.round(k)) * t).toFixed(1); };
@@ -1566,7 +1576,8 @@ window.orderCardHtml = (s, generatedMs, nowMs) => {
     row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
     row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
     "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回）／" +
-    (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div></article>";
+    (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div>" +
+    "<div class='order-card-copy'>" + [["コード", String(s.ticker || "").replace(".T", "")], ["指値", lim], ["利確", tp], ["損切り", sl]].map(x => "<button type='button' data-copy='" + e(x[1]) + "'>" + x[0] + " " + e(x[1]) + "</button>").join("") + "</div></article>";
 };
 window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(b => {
   const pane = document.getElementById("trade-watch-orders");
@@ -1576,15 +1587,16 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
     const sec = document.createElement("section");
     sec.className = "order-card-slot";
     sec.id = "order-card-section";
-    sec.innerHTML = "<h3>注文カード（検証中・参考のみ）</h3><p class='sub'>ブレインがキオクシアHD（285A）に買い・空売りのサインを出した時だけ、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
+    sec.innerHTML = "<h3>注文カード（検証中・参考のみ）</h3><p class='sub'>ブレインの注目のうち、期待値がプラスの銘柄とキオクシアHD（285A）に買い・空売りのサインが出た時、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
     pane.appendChild(sec);
     box = document.getElementById("order-card-box");
+    box.addEventListener("click", window.orderCardCopy);
   }
   const gen = Date.parse(String(b?.generated_at || ""));
   const ok = b && b.real_submit_allowed === false && Number.isFinite(gen) && Date.now() - gen < window.ORDER_CARD_TTL_MS;
-  const sigs = ok ? (b.picks || []).filter(s => window.ORDER_CARD_CODES.includes(String(s.ticker)) && Number(s.side) !== 0) : [];
+  const sigs = ok ? (b.picks || []).filter(window.orderCardWanted) : [];
   box.innerHTML = sigs.map(s => window.orderCardHtml(s, gen, Date.now())).join("") ||
-    "<div class='focus-empty'>今は注文カードはありません（キオクシアHD（285A）にサインが出た時だけ出ます）</div>";
+    "<div class='focus-empty'>今は注文カードはありません（ブレインの注目のうち、期待値がプラスの銘柄とキオクシアHD（285A）に出ます）</div>";
 }).catch(() => {});
 document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
 // OWNER 2026-10-24 「決算日程にGrokをつなぐ」: each stock line of the earnings calendar gets the Grok labels for
@@ -2503,7 +2515,7 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #trade-watch .fx-link b{display:block;font-size:13px;color:#e7e9eb}#trade-watch .fx-link small{display:block;font-size:11px;color:#9ba3af;margin:3px 0}
 #trade-watch .fx-link-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}#trade-watch .fx-link-grid span{font-size:12px;color:#c9ccd1;border:1px solid #272a30;border-radius:8px;padding:6px 8px}
 #trade-watch .fx-link-grid i{display:block;font-style:normal;color:#e7e9eb;margin-top:2px}
-#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}
+#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}.order-card-copy{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.order-card-copy button{border:1px solid #33373D;border-radius:6px;background:#15181C;color:#E7E9EB;padding:5px 9px;font-size:12px;cursor:pointer}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
 html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
