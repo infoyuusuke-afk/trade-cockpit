@@ -119,6 +119,21 @@ def accumulation_view(signals: dict) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-11-04 「スイングも一緒」（カードで出す）: the IN / 準備 / 持ち越し候補 lists of the public signals.json, fed like 下ヒゲ, so the
+# SWING 5 tab has fresh data for its cards. signals.json itself stays unfed.
+SWING_FILE = "swing_watch.json"
+SWING_FIELDS = ("code", "ticker", "name", "setup", "score", "close", "trigger", "stop", "target1", "target2", "rvol", "ret20",
+                "reason", "caution", "signal_date")
+
+
+def swing_view(signals: dict) -> dict:
+    def rows(key, n):
+        return [{k: x.get(k) for k in SWING_FIELDS} for x in (signals.get(key) or [])[:n] if isinstance(x, dict)]
+    return {"updated_at": str(signals.get("updated_at") or ""), "entered": rows("entered", 5), "prepared": rows("prepared", 5),
+            "overnight_long": rows("overnight_long", 5), "overnight_short": rows("overnight_short", 5),
+            "real_submit_allowed": False, "trade_instruction": False}
+
+
 # OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: the latest answer of Grok 1号・2号・3号 that the
 # OWNER saved with the 5番 button (Desktop\Claudeブレイン\Grok1号 ... Grok3号). Read only, this PC only;
 # shown for reading, never a score, gate, voice or order.
@@ -723,6 +738,17 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
         files[ACCUMULATION_FILE] = dict(fresh, ok=True, bytes=(target / ACCUMULATION_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[ACCUMULATION_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:
+        if not isinstance(sig, dict):
+            raise ValueError("NO_SIGNALS")
+        view = swing_view(sig)
+        fresh = freshness(SWING_FILE, view, now)
+        temp = target / (SWING_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / SWING_FILE)
+        files[SWING_FILE] = dict(fresh, ok=True, bytes=(target / SWING_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[SWING_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     try:
         root = Path(grok_root) if grok_root is not None else grok_default_root()
         if not root.is_dir():

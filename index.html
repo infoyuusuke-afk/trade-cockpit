@@ -1751,7 +1751,7 @@ setInterval(loadRegimeSummary, 600000);
 // OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
 // public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
 // last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
-const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+const FEED_SECTIONS = {"swing_watch.json": "swing-cards", "event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
   "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
   "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
 const markFeedStale = meta => {
@@ -3345,6 +3345,42 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   document.addEventListener("ms2RssUpdate",e=>{onUpdate(e);});
   document.addEventListener("DOMContentLoaded",()=>{const st=read();if(st.day===jst().day)render(st);else render({cards:[]});});
+})();
+</script>
+<style>.sw8-h{margin:14px 0 6px;font-size:14px;font-weight:700}.sw8-h small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.sw8-none{color:#9AA0AA;font-size:12px;padding:4px 0}</style>
+<script>
+// OWNER 2026-11-04 「オーバーナイト銘柄カードでだして」「スイングも一緒」: the SWING 5 tab shows cards from swing_watch.json (the IN / 準備 /
+// 持ち越し候補 lists of the public signals.json, refreshed by the Brain observer every 10 minutes; the 古い banner comes from FEED_SECTIONS).
+// Candidates after the close, display only: no voice, no order, no signal.
+(()=>{
+  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
+  function card(x,dir,label,at){
+    return window.renderCockpitCard({symbol:String(x.code||x.ticker||"").replace(".T",""),company:x.name,direction:dir,directionLabel:label,
+      freshness:"fresh",freshnessLabel:at,price:x.close,entry:x.trigger,stop:x.stop,target:x.target1,
+      metrics:[{label:"点数",value:x.score==null?null:x.score+"/100"},{label:"形",value:x.setup||null},{label:"利確2",value:num(x.target2)},
+        {label:"出来高比",value:x.rvol==null?null:num(x.rvol)+"倍"},{label:"20日",value:x.ret20==null?null:num(x.ret20)+"%"}],
+      foot:String(x.reason||"")+(x.caution?"／"+x.caution:"")});
+  }
+  function group(title,note,rows,dir,label,at){
+    return '<div class="sw8-h">'+title+'<small>'+note+'</small></div>'+(rows.length?'<div class="scalp-strip">'+rows.map(x=>card(x,dir,label,at)).join("")+'</div>':'<div class="sw8-none">今日はありません</div>');
+  }
+  async function load(sec){
+    const box=sec.querySelector(".sw8-body");let d=null;
+    try{const r=await fetch("swing_watch.json?t="+Date.now(),{cache:"no-store"});d=r.ok?await r.json():null;}catch(_){}
+    if(!d||d.real_submit_allowed!==false||typeof window.renderCockpitCard!=="function"){box.innerHTML='<div class="sw8-none">スイングの候補を読めません（起動から最大10分で届きます）</div>';return;}
+    const at=String(d.updated_at||"").slice(5,16).replace("-","/")+"更新",a=k=>Array.isArray(d[k])?d[k]:[];
+    box.innerHTML=group("本日IN点灯","IN価格を上抜いた銘柄",a("entered"),"long","IN",at)+
+      group("準備 上位5","まだ買わない。IN価格を上抜いた時だけ",a("prepared"),"long","準備",at)+
+      group("持ち越しLONG候補","発動条件を満たした時だけ",a("overnight_long"),"long","LONG候補",at)+
+      group("持ち越しSHORT候補","発動条件を満たした時だけ",a("overnight_short"),"short","SHORT候補",at);
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const pane=document.querySelector('.tab-pane[data-pane="swing"]');if(!pane)return;
+    const sec=document.createElement("section");sec.id="swing-cards";sec.className="card wide";
+    sec.innerHTML='<h2>SWING 5 候補</h2><p class="sub">引け後の判定です（公開の分析データ）。売買の合図ではありません。</p><div class="sw8-body"><div class="sw8-none">読込中...</div></div>';
+    const intro=pane.querySelector(".pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
+    load(sec);setInterval(()=>load(sec),600000);
+  });
 })();
 </script>
 </body></html>

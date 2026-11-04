@@ -75,7 +75,7 @@ BOARD_MODULE = ("v10_board_live", "dcdcc5c9c31790ba1dbce6415ccaa6605953d4c8")
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
 # background thread so a slow download never delays the Brain core. Display data only.
-PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "004f07a62a1e1b84b8a05d51e3bec8a88545dea3")
+PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "f9e95e255d3436f2c93b543f013225ee6b003772")
 PUBLIC_FEED_DIR = "public_feed"
 PUBLIC_FEED_INTERVAL = timedelta(minutes=10)
 # Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live
