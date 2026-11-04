@@ -20,6 +20,13 @@ class OrderCards(unittest.TestCase):
         for banned in ("RssOrder", "RssStockOrder", "sendKeys", "/order", "real_submit_allowed = true", "real_submit_allowed:true"):
             self.assertNotIn(banned, self.block)
 
+    def test_quantity_follows_the_price(self):
+        # OWNER 2026-11-04 「5000円未満200株、あとは100株単位」
+        self.assertIn("window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);", self.block)
+        self.assertIn("const qty = window.orderCardQty(entry);", self.block)
+        self.assertIn('row("数量", qty + "株")', self.block)
+        self.assertIn('["数量", qty]', self.block)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)

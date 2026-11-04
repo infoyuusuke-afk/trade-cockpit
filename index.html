@@ -1554,6 +1554,8 @@ window.ORDER_CARD_CODES = ["285A.T"];
 // Brain pick with a positive expected value gets the card (still 検証中, still shown only: real orders stay locked). The コピー buttons put one
 // value on the clipboard for the OWNER's own paste; nothing here reaches the order screen.
 window.orderCardWanted = s => Number(s.side) !== 0 && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0);
+// OWNER 2026-11-04 「5000円未満200株、あとは100株単位」: the quantity on the card follows the entry price.
+window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);
 window.orderCardCopy = ev => {
   const b = ev.target && ev.target.closest ? ev.target.closest("[data-copy]") : null;
   if (!b || !navigator.clipboard) return;
@@ -1570,14 +1572,15 @@ window.orderCardHtml = (s, generatedMs, nowMs) => {
   const left = Math.max(0, Math.round((generatedMs + window.ORDER_CARD_TTL_MS - nowMs) / 1000));
   const lim = window.roundTick(entry, buy ? "down" : "up"), tp = window.roundTick(target, buy ? "down" : "up"), sl = window.roundTick(stop, buy ? "down" : "up");
   const row = (k, v) => "<span>" + k + "<b>" + e(v) + "</b></span>";
+  const qty = window.orderCardQty(entry);
   return "<article class='cc-card cc-card--" + (buy ? "long" : "short") + " order-card'><div class='order-card-warn'>検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）</div>" +
     "<div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(s.name || s.ticker) + "</span><span class='cc-symbol'>" + e(String(s.ticker || "").replace(".T", "")) + "</span></div><span class='cc-badge'>" + (buy ? "買建" : "売建") + "</span></div>" +
-    "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", "100株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
+    "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", qty + "株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
     row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
     row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
     "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回）／" +
     (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div>" +
-    "<div class='order-card-copy'>" + [["コード", String(s.ticker || "").replace(".T", "")], ["指値", lim], ["利確", tp], ["損切り", sl]].map(x => "<button type='button' data-copy='" + e(x[1]) + "'>" + x[0] + " " + e(x[1]) + "</button>").join("") + "</div></article>";
+    "<div class='order-card-copy'>" + [["コード", String(s.ticker || "").replace(".T", "")], ["数量", qty], ["指値", lim], ["利確", tp], ["損切り", sl]].map(x => "<button type='button' data-copy='" + e(x[1]) + "'>" + x[0] + " " + e(x[1]) + "</button>").join("") + "</div></article>";
 };
 window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(b => {
   const pane = document.getElementById("trade-watch-orders");
