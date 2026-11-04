@@ -63,6 +63,19 @@ class SwingCards(unittest.TestCase):
         for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
             self.assertNotIn(banned, block)
 
+    def test_virtual_trades_table(self):
+        # OWNER 2026-11-04 「どこで売買したところと銘柄を振り返り確認したい」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「どこで売買したところと銘柄を振り返り確認したい」", 1)[1].split("})();", 1)[0]
+        self.assertIn('fetch("/brain_pick.json?t="+Date.now()', block)
+        self.assertIn('b.real_submit_allowed===false', block)
+        self.assertIn('p.status==="CLOSED"', block)
+        self.assertIn("入った時刻", block)
+        self.assertIn("<table data-keep-table>", block)                     # one row per trade, not the card adapter's folded cards
+        self.assertIn('ret/100*f*100', block)                                # the same yen as the 成績 tile
+        for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
+            self.assertNotIn(banned, block)
+
     def test_wiring(self):
         import scripts.ai_brain_observer as obs
         name, pin = obs.PUBLIC_FEED_MODULE

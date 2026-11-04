@@ -3480,4 +3480,35 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
+<style>.vt8 summary{cursor:pointer;font-weight:700;font-size:15px}.vt8 summary small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.vt8-tw{overflow-x:auto;margin-top:8px}.vt8 table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}.vt8 th,.vt8 td{padding:4px 6px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.vt8 th{color:#9AA0AA;font-weight:400}.vt8 td.r,.vt8 th.r{text-align:right}.vt8 .up{color:#3DBE7A}.vt8 .down{color:#E0566B}.vt8-sum{color:#9AA0AA;font-size:12px;margin-top:6px}</style>
+<script>
+// OWNER 2026-11-04 「どこで売買したところと銘柄を振り返り確認したい」: every virtual trade of the day (the Brain's rule positions, /brain_pick.json) in
+// a folded table in CONTROL: when and at what price it went in and out, the stock, the method, the result. Virtual, 100 shares each. Display only.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>v==null||v===""||!Number.isFinite(Number(v))?null:Number(v);
+  const yen=v=>v==null?"—":(v>0?"+":"")+Math.round(v).toLocaleString("ja-JP");
+  const px=v=>v==null?"—":v.toLocaleString("ja-JP",{maximumFractionDigits:1});
+  const RULE={R1:"朝の買い",R2:"弱い日の朝の空売り",R4:"押し目買い",R5:"窓の戻り売り"},EXIT={TARGET:"利確",STOP:"損切り",TIME:"時間"};
+  let sec=null;
+  async function load(){
+    if(!sec)return;
+    let b=null;try{const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});b=r.ok?await r.json():null;}catch(_){}
+    const pos=b&&b.real_submit_allowed===false?b.positions:null,box=sec.querySelector(".vt8-body"),head=sec.querySelector("summary small");
+    if(!pos){box.innerHTML='<div class="vt8-sum">読めません（コクピットが止まっている時は出ません）</div>';head.textContent="";return;}
+    const rows=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="CLOSED").sort((a,c)=>String(a.fill_time||"").localeCompare(String(c.fill_time||"")));
+    let sum=0,win=0;
+    const html=rows.map(p=>{const ret=num(p.return_pct),f=num(p.fill_price),y=ret!=null&&f!=null?ret/100*f*100:null,short=String(p.signal||"").includes("空売り");if(y!=null)sum+=y;if(ret>0)win++;const cls=ret>0?"up":ret<0?"down":"";
+      return '<tr><td>'+esc(String(p.fill_time||"—").slice(0,8))+'</td><td>'+esc(p.name||p.ticker)+'</td><td class="'+(short?"down":"up")+'">'+(short?"空売り":"買い")+'</td><td>'+esc(RULE[p.rule]||p.rule||"—")+'</td><td class="r">'+px(f)+'</td><td>'+esc(String(p.exit_time||"—").slice(0,8))+'</td><td class="r">'+px(num(p.exit_price))+'</td><td>'+esc(EXIT[p.exit]||p.exit||"—")+'</td><td class="r '+cls+'">'+(ret==null?"—":(ret>0?"+":"")+ret.toFixed(2)+"%")+'</td><td class="r '+cls+'">'+yen(y)+'</td></tr>';}).join("");
+    head.textContent=esc(pos.date||"")+"・"+rows.length+"回・勝ち"+win+"・"+yen(sum)+"円（100株ずつの換算・費用込み）";
+    box.innerHTML=rows.length?'<div class="vt8-tw"><table data-keep-table><thead><tr><th>入った時刻</th><th>銘柄</th><th>売買</th><th>手法</th><th class="r">入った値段</th><th>出た時刻</th><th class="r">出た値段</th><th>理由</th><th class="r">損益%</th><th class="r">円</th></tr></thead><tbody>'+html+'</tbody></table></div><div class="vt8-sum">コクピットの仮想売買です。実際の注文ではありません。</div>':'<div class="vt8-sum">今日の決済はまだありません</div>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const pane=document.querySelector('.tab-pane[data-pane="control"]');if(!pane)return;
+    sec=document.createElement("details");sec.id="virtual-trades";sec.className="card wide vt8";sec.style.order="4";
+    sec.innerHTML='<summary>今日の仮想売買の一覧<small></small></summary><div class="vt8-body"><div class="vt8-sum">読込中...</div></div>';
+    pane.appendChild(sec);load();setInterval(load,60000);
+  });
+})();
+</script>
 </body></html>
