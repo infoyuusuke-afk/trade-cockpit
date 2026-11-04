@@ -3408,4 +3408,43 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
+<style>.vd8 h2 small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.vd8-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.vd8-day{display:grid;grid-template-columns:92px 74px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #22252A;border-radius:8px;background:#0E1013;padding:8px 12px;font-size:13px}
+.vd8-day.top{border-color:#E0566B}.vd8-day.today{outline:2px solid #4CC38A}.vd8-date{font-weight:700}.vd8-lv{font-size:12px;font-weight:700;color:#F2C14E}.vd8-day.top .vd8-lv{color:#E0566B}
+.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
+<script>
+// OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」: at the top of the 注意 tab, the next 30 days that hold an
+// impact 高 event (event_calendar.json) or the earnings of a stock that moves the index or the SCALP8 list (earnings_calendar.json).
+// 特に注意 = two or more of these on one day. Only dated, listed facts; how far prices move is not predicted. Display only.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const KEY_STOCKS=["285A","6857","8035","9984","6981","4062","6525","6963","6920","9983","7203","6758"];
+  const WD=["日","月","火","水","木","金","土"];
+  const day0=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+  const add=(d,n)=>new Date(Date.parse(d+"T00:00:00Z")+n*864e5).toISOString().slice(0,10);
+  async function get(u){try{const r=await fetch(u+"?t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}}
+  function pick(ev,cal,today){
+    const end=add(today,30),days={};
+    const at=d=>days[d]=days[d]||[];
+    (Array.isArray(ev&&ev.events)?ev.events:[]).forEach(e=>{if(e&&e.impact==="高"&&e.date>=today&&e.date<=end)at(e.date).push({when:e.time_jst||"",what:e.title});});
+    (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end)at(x.date).push({when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(/確定/.test(String(x.status||""))?"":"・予定")});});
+    return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));
+  }
+  async function load(sec){
+    const box=sec.querySelector(".vd8-list");
+    const [ev,cal]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json")]);
+    if(!ev&&!cal){box.innerHTML='<div class="vd8-none">予定を読めません</div>';return;}
+    const today=day0(),rows=pick(ev,cal,today);
+    box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2;
+      return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div><small>'+esc(i.when)+'</small> '+esc(i.what)+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const cal=document.getElementById("event-calendar");if(!cal||!cal.parentElement)return;
+    const sec=document.createElement("section");sec.id="volatile-days";sec.className="card wide vd8";
+    sec.innerHTML='<h2>大きく動きそうな日<small>これから30日・影響「高」の予定と、指数やSCALP8を動かす銘柄の決算</small></h2><div class="vd8-list"><div class="vd8-none">読込中...</div></div>';
+    cal.parentElement.insertBefore(sec,cal);
+    load(sec);setInterval(()=>load(sec),600000);
+  });
+})();
+</script>
 </body></html>

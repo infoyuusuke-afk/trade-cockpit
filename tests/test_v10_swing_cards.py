@@ -37,6 +37,18 @@ class SwingCards(unittest.TestCase):
         self.assertIn('.tab-pane[data-pane="value"]', html)
         self.assertIn("50週線／200日線反発（需給未確認）", html)
 
+    def test_volatile_days(self):
+        # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「価格が大きく変動しそうな日をしっかりピックアップして表示」", 1)[1].split("})();", 1)[0]
+        self.assertIn('e.impact==="高"', block)
+        self.assertIn("end=add(today,30)", block)
+        self.assertIn('"285A","6857","8035","9984"', block)
+        self.assertIn('top=items.length>=2', block)                         # 特に注意 = two or more on one day
+        self.assertIn('get("event_calendar.json"),get("earnings_calendar.json")', block)
+        for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
+            self.assertNotIn(banned, block)
+
     def test_wiring(self):
         import scripts.ai_brain_observer as obs
         name, pin = obs.PUBLIC_FEED_MODULE
