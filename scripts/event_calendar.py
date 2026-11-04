@@ -31,6 +31,7 @@ SOURCES = {
     "msci": ("MSCI・Index Review", "https://www.msci.com/indexes/index-resources/index-review"),
     "nyse": ("NYSE・Holidays & Trading Hours", "https://www.nyse.com/markets/hours-calendars"),
     "cao": ("内閣府・景気統計公表予定", "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html"),
+    "us_election": ("U.S. EAC・Election Day", "https://www.eac.gov/voters/election-day-contact-information"),
 }
 
 
@@ -128,6 +129,14 @@ def build() -> dict:
         flow="指数・ドル円経由で後場の大型株に短期波及する可能性",
         action="13:55～14:05は新規成行を避け、公表後にOR15・VWAPを再確認",
         note="内閣府の公表予定に基づく。数値の方向は事前断定しない。"))
+
+    # OWNER 2026-11-04 「中間選挙がない」: U.S. federal Election Day is fixed by law (first Tuesday after the first
+    # Monday of November = 2026-11-03 U.S. time). Results arrive during the Tokyo session of 11/4.
+    e.append(event("us-midterm-2026-11-04", "米中間選挙 開票（米国11/3投票）", "2026-11-04",
+        "米政治", "us_election", time_jst="朝～場中", impact="高",
+        flow="開票の進み方で米株先物・米金利・ドル円・半導体が場中に動く。結果の確定は接戦州で数日以上かかることがある",
+        action="開票途中の見通しで方向を決め打ちしない。米先物とドル円を確認",
+        note="投票日は法律で11月第1月曜の翌火曜（米国時間）。日本時間では11/4の朝から結果が出始める。"))
 
     # Monthly SQ: the second Friday.  SQ flow occurs at the opening, not close.
     for month, label in [(9, "メジャーSQ"), (10, "月例SQ"), (11, "月例SQ"), (12, "メジャーSQ")]:
