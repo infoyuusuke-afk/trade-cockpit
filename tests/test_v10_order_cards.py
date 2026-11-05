@@ -166,6 +166,10 @@ class OrderCards(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         self.assertIn("overnight_closed", (root / "trade_control.js").read_text(encoding="utf-8"))
         col = (root / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        # OWNER 2026-11-05 「『当日15:30終値から翌取引日14:00の値段まで（14:00の値段が無い日は終値）』に直して。画面とCollectorの両方」
+        for text in (HTML, col):
+            self.assertIn("当日15:30終値から翌取引日14:00の値段まで（14:00の値段が無い日は終値）", text)
+            self.assertNotIn("翌取引日15:30終値まで", text)
         self.assertIn('"overnight_hold_1400.json"', col)
         self.assertIn("$retClose=($exit1400/$entry-1)*100", col)
         self.assertIn("$retClose=($entry/$exit1400-1)*100", col)
