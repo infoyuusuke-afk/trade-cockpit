@@ -1560,8 +1560,8 @@ window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);
 window.orderCardCopy = ev => {
   const b = ev.target && ev.target.closest ? ev.target.closest("[data-copy]") : null;
   if (!b || !navigator.clipboard) return;
-  const label = b.textContent;
-  navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "コピーしました"; setTimeout(() => { b.textContent = label; }, 1200); }).catch(() => {});
+  const label = b.innerHTML;
+  navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "コピーしました"; setTimeout(() => { b.innerHTML = label; }, 1200); }).catch(() => {});
 };
 window.ORDER_CARD_TTL_MS = 180000;
 // OWNER 2026-11-04 「注文カードの呼値を銘柄ごとに正しい刻みにして、分からない時は粗いほうで丸めて」: JPX's two tick tables. The fine table only for
@@ -1627,7 +1627,7 @@ window.orderLineHtml = (k, v, nowMs) => {
   const qty = window.orderCardQty(lim), code = String(s.ticker || "").replace(".T", ""), left = Math.round((v.at + window.ORDER_CARD_TTL_MS - nowMs) / 1000);
   const btn = (label, val, shown) => "<button type='button' data-copy='" + e(val) + "'>" + label + " <b>" + e(shown) + "</b></button>";
   const thin = !(Number(s.forward_n) >= 20), ev = s.ev_pct != null && Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—";
-  return "<div class='ol " + (buy ? "ol-long" : "ol-short") + (left > 0 ? "" : " ol-old") + "'><span class='ol-side'>" + (buy ? "買建" : "売建") + "</span><b class='ol-name'>" + e(String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(code) + ")</b>" +
+  return "<div class='ol " + (buy ? "ol-long" : "ol-short") + (left > 0 ? "" : " ol-old") + "' data-ol='" + e(k) + "'><span class='ol-side'>" + (buy ? "買建" : "売建") + "</span><b class='ol-name'>" + e(String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(code) + ")</b>" +
     btn("コード", code, code) + btn("数量", qty, qty + "株") + btn("指値", lim, lim.toLocaleString("ja-JP")) + btn("利確", tp, tp.toLocaleString("ja-JP")) + btn("損切", sl, sl.toLocaleString("ja-JP")) +
     "<span class='ol-note'>期待値 " + e(ev) + (thin ? "・<span class='ol-thin'>実績不足</span>" : "") + "・検証中・" + (left > 0 ? "あと" + left + "秒" : "古い（使わない）") + "</span><button type='button' class='ol-x' data-close='" + e(k) + "'>閉じる</button></div>";
 };
@@ -1639,11 +1639,40 @@ window.orderLinesRender = () => {
     slot = document.createElement("div");
     slot.id = "attention-order-card";
     box.insertAdjacentElement("beforebegin", slot);
-    slot.addEventListener("click", ev => { const c = ev.target.closest("[data-close]"); if (c) { held.delete(c.dataset.close); (window.orderCardClosed = window.orderCardClosed || new Set()).add(c.dataset.close); window.orderLinesRender(); return; } window.orderCardCopy(ev); });
+    slot.addEventListener("click", ev => { const c = ev.target.closest("[data-close]"); if (c) { held.delete(c.dataset.close); (window.orderCardClosed = window.orderCardClosed || new Set()).add(c.dataset.close); window.orderLinesRender(); return; }
+      if (ev.target.closest("[data-copy]")) { window.orderCardCopy(ev); return; } const l = ev.target.closest("[data-ol]"); if (l) window.orderBigOpen(l.dataset.ol); });
   }
   const nowMs = Date.now();
   slot.innerHTML = [...held.entries()].sort((x, y) => y[1].at - x[1].at).slice(0, 4).map(([k, v]) => window.orderLineHtml(k, v, nowMs)).join("");
+  window.orderBigRender();
 };
+// OWNER 2026-11-05 「注文カードはクリックするとこんなふうに大きく表示出来るようにして老眼だから、小さいとみえない」: clicking a line (or a rule row in 注目) opens the same values in
+// large type over the screen; each value is still a copy button. 閉じる, Esc or a click outside closes it. Display only.
+window.orderBigOpen = k => { window.orderBigKey = k; window.orderBigRender(); };
+window.orderBigClose = () => { window.orderBigKey = null; const b = document.getElementById("order-big"); if (b) b.remove(); };
+window.orderBigRender = () => {
+  const k = window.orderBigKey, v = k && window.orderCardHeld ? window.orderCardHeld.get(k) : null;
+  if (!k) return;
+  if (!v) { window.orderBigClose(); return; }
+  const s = v.s, e = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const buy = Number(s.side) > 0, up = buy ? "down" : "up", lim = window.roundTick(Number(s.entry), up, s.ticker), tp = window.roundTick(Number(s.target), up, s.ticker), sl = window.roundTick(Number(s.stop), up, s.ticker);
+  const qty = window.orderCardQty(lim), code = String(s.ticker || "").replace(".T", ""), left = Math.round((v.at + window.ORDER_CARD_TTL_MS - Date.now()) / 1000);
+  const thin = !(Number(s.forward_n) >= 20), ev = s.ev_pct != null && Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—";
+  const btn = (label, val, shown) => "<button type='button' data-copy='" + e(val) + "'><span>" + label + "</span><b>" + e(shown) + "</b></button>";
+  let box = document.getElementById("order-big");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "order-big";
+    document.body.appendChild(box);
+    box.addEventListener("click", ev => { if (ev.target === box || ev.target.closest("[data-big-close]")) { window.orderBigClose(); return; } window.orderCardCopy(ev); });
+  }
+  box.innerHTML = "<div class='ob-box " + (buy ? "ob-long" : "ob-short") + (left > 0 ? "" : " ob-old") + "'><div class='ob-head'><span class='ob-side'>" + (buy ? "買建" : "売建") + "</span><b>" + e(String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(code) + ")</b><button type='button' class='ob-x' data-big-close='1'>閉じる</button></div>" +
+    "<div class='ob-grid'>" + btn("コード", code, code) + btn("数量", qty, qty + "株") + btn("指値", lim, lim.toLocaleString("ja-JP") + "円") + btn("利確 " + (buy ? "売埋" : "買埋"), tp, tp.toLocaleString("ja-JP") + "円") + btn("損切 " + (buy ? "売埋" : "買埋"), sl, sl.toLocaleString("ja-JP") + "円") + "</div>" +
+    "<div class='ob-note'>期待値 " + e(ev) + "（実績 " + e(s.forward_n ?? "—") + "回）" + (thin ? "　<span class='ol-thin'>実績不足</span>" : "") + "　" + (left > 0 ? "あと" + left + "秒" : "古い（使わない）") + "</div>" +
+    "<div class='ob-warn'>検証中・参考のみ。このカードは注文を出しません。押すと値がコピーされます</div></div>";
+};
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && window.orderBigKey) window.orderBigClose(); });
+setInterval(() => { if (window.orderBigKey) window.orderBigRender(); }, 1000);
 window.attentionCardOpen = row => {
   const r = (window.attentionCardRows || [])[Number(row.dataset.attI)];
   if (!r) return;
@@ -1651,8 +1680,10 @@ window.attentionCardOpen = row => {
   const s = {ticker: r.ticker, name: r.name, side: r.signal === "買いサイン" ? 1 : -1, entry: r.entry, target: r.target, stop: r.stop,
     signal_bar: String(r.captured_at).slice(11, 19), rule: r.rule, rule_label: r.label, ev_pct: f.ev_pct, forward_n: f.n};
   const held = window.orderCardHeld = window.orderCardHeld || new Map();
-  held.set(r.ticker + "|" + s.signal_bar + "|" + s.side, {s, at, pinned: true});
+  const k = r.ticker + "|" + s.signal_bar + "|" + s.side;
+  held.set(k, {s, at, pinned: true});
   window.orderLinesRender();
+  window.orderBigOpen(k);
 };
 document.addEventListener("click", ev => { const row = ev.target.closest ? ev.target.closest("#attention-rows .att-click") : null; if (row) window.attentionCardOpen(row); });
 document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
@@ -2572,7 +2603,7 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #trade-watch .fx-link b{display:block;font-size:13px;color:#e7e9eb}#trade-watch .fx-link small{display:block;font-size:11px;color:#9ba3af;margin:3px 0}
 #trade-watch .fx-link-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}#trade-watch .fx-link-grid span{font-size:12px;color:#c9ccd1;border:1px solid #272a30;border-radius:8px;padding:6px 8px}
 #trade-watch .fx-link-grid i{display:block;font-style:normal;color:#e7e9eb;margin-top:2px}
-#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}.att-click{cursor:pointer}.att-click:hover{outline:1px solid #4CC38A}.ol{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:5px 8px;margin:0 0 6px;border:1px solid #33373D;border-left:4px solid #9AA0AA;border-radius:6px;background:#15181C;font-size:13px}.ol-long{border-left-color:#3DBE7A}.ol-short{border-left-color:#E0566B}.ol-old{opacity:.5}.ol-side{font-weight:700}.ol-long .ol-side{color:#3DBE7A}.ol-short .ol-side{color:#E0566B}.ol-name{white-space:nowrap}.ol button{border:1px solid #33373D;border-radius:5px;background:#0E1013;color:#E7E9EB;padding:3px 7px;font-size:12px;cursor:pointer}.ol-note{color:#9AA0AA;font-size:12px}.ol-thin{color:#F2C14E;font-weight:700}.ol-x{margin-left:auto}.order-card-copy{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.order-card-copy button{border:1px solid #33373D;border-radius:6px;background:#15181C;color:#E7E9EB;padding:5px 9px;font-size:12px;cursor:pointer}
+#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}.att-click{cursor:pointer}.att-click:hover{outline:1px solid #4CC38A}#order-big{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);padding:16px}.ob-box{width:min(960px,100%);max-height:100%;overflow:auto;background:#0E1013;border:2px solid #33373D;border-left:10px solid #9AA0AA;border-radius:12px;padding:22px 26px;color:#F2F4F6}.ob-long{border-left-color:#3DBE7A}.ob-short{border-left-color:#E0566B}.ob-old{opacity:.6}.ob-head{display:flex;align-items:center;gap:16px;font-size:34px;margin-bottom:18px}.ob-long .ob-side{color:#3DBE7A;font-weight:700}.ob-short .ob-side{color:#E0566B;font-weight:700}.ob-x{margin-left:auto;font-size:20px;padding:8px 18px;border-radius:8px;border:1px solid #4A4F57;background:#15181C;color:#F2F4F6;cursor:pointer}.ob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.ob-grid button{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:14px 18px;border:1px solid #33373D;border-radius:10px;background:#15181C;color:#F2F4F6;cursor:pointer;text-align:left}.ob-grid span{font-size:20px;color:#C4C9D1}.ob-grid b{font-size:40px;line-height:1.15;font-variant-numeric:tabular-nums}.ob-note{font-size:24px;margin-top:16px}.ob-warn{font-size:18px;color:#C4C9D1;margin-top:8px}.ol{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;margin:0 0 6px;border:1px solid #33373D;border-left:4px solid #9AA0AA;border-radius:6px;background:#15181C;font-size:15px;cursor:pointer}.ol-long{border-left-color:#3DBE7A}.ol-short{border-left-color:#E0566B}.ol-old{opacity:.5}.ol-side{font-weight:700}.ol-long .ol-side{color:#3DBE7A}.ol-short .ol-side{color:#E0566B}.ol-name{white-space:nowrap}.ol button{border:1px solid #33373D;border-radius:5px;background:#0E1013;color:#E7E9EB;padding:3px 7px;font-size:14px;cursor:pointer}.ol-note{color:#C4C9D1;font-size:13px}.ol-thin{color:#F2C14E;font-weight:700}.ol-x{margin-left:auto}.order-card-copy{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.order-card-copy button{border:1px solid #33373D;border-radius:6px;background:#15181C;color:#E7E9EB;padding:5px 9px;font-size:12px;cursor:pointer}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
 html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}

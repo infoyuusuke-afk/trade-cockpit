@@ -55,13 +55,26 @@ class OrderCards(unittest.TestCase):
         self.assertIn("""r.kind==="RULE"&&r.target&&r.stop?' att-click" data-att-i="'+i""", HTML)
         self.assertIn('window.attentionCardRows=list;', HTML)
         self.assertIn('ev.target.closest("#attention-rows .att-click")', self.block)
-        self.assertIn('held.set(r.ticker + "|" + s.signal_bar + "|" + s.side, {s, at, pinned: true})', self.block)
+        self.assertIn('held.set(k, {s, at, pinned: true})', self.block)
         # OWNER 2026-11-05 「上の画面で一目でわかる仕組みにして」: the line sits above the list in 注目, on every tab
         self.assertIn('box.insertAdjacentElement("beforebegin", slot)', self.block)
         self.assertIn('window.orderCardQty(lim)', self.block[self.block.index("window.orderLineHtml"):])
         self.assertIn('実績不足', self.block[self.block.index("window.orderLineHtml"):])
         self.assertIn('if (!v.pinned && nowMs - v.at >= window.ORDER_CARD_TTL_MS)', self.block)
         self.assertIn('data-close', self.block)
+
+    def test_big_view(self):
+        # OWNER 2026-11-05 「注文カードはクリックするとこんなふうに大きく表示出来るようにして老眼だから、小さいとみえない」
+        big = self.block[self.block.index("window.orderBigRender = () =>"):]
+        self.assertIn('window.orderBigOpen(l.dataset.ol)', self.block)
+        self.assertIn('window.orderBigOpen(k);', self.block)
+        for label in ('btn("コード"', 'btn("数量"', 'btn("指値"', 'btn("利確 "', 'btn("損切 "'):
+            self.assertIn(label, big)
+        self.assertIn("window.orderCardQty(lim)", big)
+        self.assertIn('ev.key === "Escape"', self.block)
+        self.assertIn(".ob-grid b{font-size:40px", HTML)
+        for banned in ("RssOrder", "RssStockOrder", "real_submit_allowed = true"):
+            self.assertNotIn(banned, big)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
