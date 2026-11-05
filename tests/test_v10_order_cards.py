@@ -155,7 +155,7 @@ class OrderCards(unittest.TestCase):
         self.assertIn("window.cockpitVirtualDay={at:Date.now()", js)
         # OWNER 2026-11-05 「−3万の制限なしで全部数える』に直して」「11/5までの日は旧ルールの数字だと分かるようにする」
         self.assertIn("−3万の制限なしで全部数える", js)
-        self.assertIn("・旧ルール", js)
+        self.assertIn("(o.limit_reference?'':'・旧ルール')", js)   # 「旧ルールの印は日付でなく、記録に『止めていたら』の数字が無い日にだけ」
         self.assertIn("（止めていたら ", js)
         self.assertNotIn("上限で停止", js)
 
