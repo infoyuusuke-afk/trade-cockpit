@@ -147,6 +147,7 @@ class OrderCards(unittest.TestCase):
         block = HTML.split("「仮想売買の今日の損益を、注目の上に1行で出して。", 1)[1].split("})();", 1)[0]
         for text in ("デイ", "オーバーナイト", "スイング", "長期", "−3万到達 ", "そこから", "参考：−3万で止めていたら ", 'box.insertAdjacentElement("beforebegin",el)'):
             self.assertIn(text, block)
+        self.assertIn('(over?" over":total>0?" plus":"")', block)                  # 「プラスの場合は緑」
         self.assertIn('fetch("/hold_track.json?t="+Date.now()', block)
         for banned in ("cockpitSpeak", "RssOrder"):
             self.assertNotIn(banned, block)
