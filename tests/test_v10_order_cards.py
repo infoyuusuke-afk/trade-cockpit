@@ -65,7 +65,7 @@ class OrderCards(unittest.TestCase):
 
     def test_big_view(self):
         # OWNER 2026-11-05 「注文カードはクリックするとこんなふうに大きく表示出来るようにして老眼だから、小さいとみえない」
-        big = self.block[self.block.index("window.orderBigRender = () =>"):]
+        big = self.block[self.block.index("window.orderBigHtml = (k, v, closeAttr) =>"):]
         self.assertIn('window.orderBigOpen(l.dataset.ol)', self.block)
         self.assertIn('window.orderBigOpen(k);', self.block)
         for label in ('btn("コード"', 'btn("数量"', 'btn("指値"', 'btn("利確 "', 'btn("損切 "'):
@@ -75,6 +75,18 @@ class OrderCards(unittest.TestCase):
         self.assertIn(".ob-grid b{font-size:40px", HTML)
         for banned in ("RssOrder", "RssStockOrder", "real_submit_allowed = true"):
             self.assertNotIn(banned, big)
+
+    def test_order_tab(self):
+        # OWNER 2026-11-05 「注文タブつくって、ほかはとりあえずよい」
+        self.assertIn('b.dataset.tab = "order";', self.block)
+        self.assertIn('b.textContent = "注文";', self.block)
+        self.assertIn("""nav.querySelector('.cockpit-tab[data-tab="scalp"]')""", self.block)
+        self.assertIn('window.orderBigHtml(k, v, "data-close=', self.block)
+        self.assertIn('x.r.kind === "RULE" && x.r.target && x.r.stop', self.block)
+        self.assertIn('window.attentionCardOpen(inTab, true)', self.block)
+        pane = self.block[self.block.index("window.orderPaneRender = () =>"):self.block.index("window.orderPaneMount = () =>")]
+        for banned in ("RssOrder", "RssStockOrder", "real_submit_allowed = true"):
+            self.assertNotIn(banned, pane)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
