@@ -1696,7 +1696,7 @@ window.orderPaneRender = () => {
   const e = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const held = window.orderCardHeld = window.orderCardHeld || new Map();
   cards.innerHTML = [...held.entries()].sort((x, y) => y[1].at - x[1].at).slice(0, 4).map(([k, v]) => window.orderBigHtml(k, v, "data-close='" + e(k) + "'")).join("") ||
-    "<div class='ob-none'>今はカードはありません。期待値プラスの注目は自動で出ます。下のサインを押すと、その銘柄のカードが出ます</div>";
+    "<div class='ob-none'>今はカードはありません（期待値プラスの注目は自動で出ます）</div>";
   const list = (window.attentionCardRows || []).filter(r => r.kind === "RULE" && r.target && r.stop && (r.signal === "買いサイン" || r.signal === "空売りサイン") && !window.ORDER_CARD_NO_RULES.includes(String(r.rule)) && Date.now() - Date.parse(String(r.captured_at).replace(" ", "T") + "+09:00") < window.ORDER_CARD_TTL_MS).slice(0, 20);   // OWNER 2026-11-05 「古くなったのはみえなくてよい」
   rows.innerHTML = list.map(r => "<button type='button' class='att-click op-row' data-att-t='" + e(r.ticker) + "' data-att-at='" + e(r.captured_at) + "' data-att-r='" + e(r.rule) + "'><span>" + e(String(r.captured_at).slice(11, 19)) + "</span><b class='" + (r.signal === "買いサイン" ? "op-long'>買建" : "op-short'>売建") + "</b><b>" + e(String(r.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(String(r.ticker || "").replace(".T", "")) + ")</b><span>" + e(r.rule) + "・発動 " + e(r.entry) + "</span></button>").join("") ||
     "<div class='ob-none'>今はサインがありません（180秒以内のサインだけ出します）</div>";
