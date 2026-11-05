@@ -37,6 +37,13 @@ class SwingCards(unittest.TestCase):
         self.assertIn('.tab-pane[data-pane="value"]', html)
         self.assertIn("50週線／200日線反発（需給未確認）", html)
 
+    def test_value_one_card_per_stock(self):
+        # OWNER 2026-11-05 「２こあるぞ」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("function vMerge(rows){", html)
+        self.assertIn("rows=vMerge(rows);", html)
+        self.assertIn('o.timeframe=[o.timeframe,x.timeframe].filter(Boolean).join("・")', html)
+
     def test_volatile_days(self):
         # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」
         html = (ROOT / "index.html").read_text(encoding="utf-8")

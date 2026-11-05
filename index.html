@@ -3523,10 +3523,19 @@ document.addEventListener("DOMContentLoaded",()=>{
     return window.renderCockpitCard({symbol:String(x.code||x.ticker||"").replace(".T",""),company:x.name,direction:"long",directionLabel:label,
       freshness:"fresh",freshnessLabel:at,price:x.close,entry:x.trigger,stop:x.stop,target:x.target1,
       metrics:[{label:"点数",value:x.score==null?null:x.score+"/100"},{label:"足",value:x.timeframe||null},{label:"線",value:x.ma_label||x.ma_rebound||null},
-        {label:"出来高比",value:x.volume_ratio==null?null:num(x.volume_ratio)+"倍"},{label:"需給",value:x.supply_phase||null}],
+        {label:"出来高比",value:x._vr&&x._vr.length?x._vr.join("／"):x.volume_ratio==null?null:num(x.volume_ratio)+"倍"},{label:"需給",value:x.supply_phase||null}],
       foot:(x.status?x.status+"／":"")+String(x.reason||"")+(x.caution?"／"+x.caution:"")});
   }
+  // OWNER 2026-11-05 「２こあるぞ」: a stock that qualifies on both the monthly and the weekly chart is one card; the frames, lines, volume and reasons are put side by side.
+  function vMerge(rows){
+    const by=new Map();
+    rows.forEach(x=>{const k=String(x.code||x.ticker||""),o=by.get(k);if(!o){by.set(k,{...x,_vr:x.volume_ratio==null?[]:[num(x.volume_ratio)+"倍"]});return;}
+      o.timeframe=[o.timeframe,x.timeframe].filter(Boolean).join("・");o.ma_rebound=[o.ma_label||o.ma_rebound,x.ma_label||x.ma_rebound].filter(Boolean).join("／");o.ma_label=null;
+      if(x.volume_ratio!=null)o._vr.push(num(x.volume_ratio)+"倍");o.reason=[o.reason,x.reason].filter(Boolean).join("／");});
+    return [...by.values()];
+  }
   function vGroup(title,note,rows,label,at){
+    rows=vMerge(rows);
     return '<div class="sw8-h">'+title+'<small>'+note+'</small></div>'+(rows.length?'<div class="scalp-strip">'+rows.map(x=>vCard(x,label,at)).join("")+'</div>':'<div class="sw8-none">今日はありません</div>');
   }
   async function loadValue(sec){
