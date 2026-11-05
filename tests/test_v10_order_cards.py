@@ -109,7 +109,7 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「R4(押し目買い)を、注文カードの対象から外しますか　はずすが、記録はつけておいて」
         self.assertIn('window.ORDER_CARD_NO_RULES = ["R4"];', self.block)
         self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(s.rule))', self.block)
-        self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(r.rule))).slice(0, 20)', self.block)
+        self.assertIn('&& !window.ORDER_CARD_NO_RULES.includes(String(r.rule)) && Date.now()', self.block)
 
     def test_short_warning(self):
         # OWNER 2026-11-05 「制度信用でうれないと注意喚起して」
@@ -120,6 +120,10 @@ class OrderCards(unittest.TestCase):
         gw = (Path(__file__).resolve().parents[1] / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("if ($path -eq '/margin_kind.json') {", gw)
         self.assertIn("[string]$view.schema_version -cne '100b-v10-margin-kind-v1'", gw)
+
+    def test_old_signals_are_not_listed(self):
+        # OWNER 2026-11-05 「古くなったのはみえなくてよい」
+        self.assertIn('< window.ORDER_CARD_TTL_MS).slice(0, 20);', self.block)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
