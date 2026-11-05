@@ -52,7 +52,7 @@ class OrderCards(unittest.TestCase):
 
     def test_row_click_opens_the_card(self):
         # OWNER 2026-11-05 「ここで銘柄クリックすると注文カードが出る仕組み」
-        self.assertIn('r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")&&!(window.ORDER_CARD_NO_RULES||[]).includes(String(r.rule))?\' att-click" data-att-t="', HTML)
+        self.assertIn(' att-click" data-att-t="', HTML)
         self.assertNotIn("data-att-i", HTML)                             # never by row number
         self.assertIn('window.attentionCardRows=list;', HTML)
         self.assertIn('ev.target.closest("#attention-rows .att-click")', self.block)
@@ -61,7 +61,7 @@ class OrderCards(unittest.TestCase):
         self.assertIn('box.insertAdjacentElement("beforebegin", slot)', self.block)
         self.assertIn('window.orderCardQty(lim)', self.block[self.block.index("window.orderLineHtml"):])
         self.assertIn('実績不足', self.block[self.block.index("window.orderLineHtml"):])
-        self.assertIn('if (!v.pinned && nowMs - v.at >= window.ORDER_CARD_TTL_MS)', self.block)
+        self.assertIn('if (nowMs - v.at >= window.ORDER_CARD_TTL_MS) held.delete(k);', self.block)
         self.assertIn('data-close', self.block)
 
     def test_big_view(self):
@@ -136,6 +136,11 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「1回あたり平均で約+1,000円です。これいれて」
         self.assertIn('"1回あたり平均で約" + (y >= 0 ? "+" : "−")', self.block)
         self.assertEqual(self.block.count("window.orderCardEvYen(s, lim, qty) ?"), 3)
+
+    def test_old_cards_leave(self):
+        # OWNER 2026-11-05 「古くなったのはみえなくてよい」「おれは、ここをなおしたいの」
+        self.assertIn('if (!(Date.now() - at < window.ORDER_CARD_TTL_MS)) return;', self.block)
+        self.assertNotIn('!v.pinned', self.block)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):

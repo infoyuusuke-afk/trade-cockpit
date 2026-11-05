@@ -429,7 +429,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const sideOf=s=>s==="買いサイン"||s==="LONG"?'<span class="att-side att-long">買い</span>':s==="空売りサイン"||s==="SHORT"?'<span class="att-side att-short">空売り</span>':"";
    const entryState=p=>!p?"":p.status==="WAITING"?'<span class="att-wait">エントリー待ち（発動価格に届いたら）</span>':p.status==="OPEN"?'<span class="att-in">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"（保有中）</span>":p.status==="CLOSED"?'<span class="att-done">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"→"+stateText(p).replace("・","")+"</span>":p.status==="NOT_FILLED"?'<span class="att-done">約定せず</span>':"";
    const rows=list.map((r,i)=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
-     return '<div class="attention-row '+cls+(r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")&&!(window.ORDER_CARD_NO_RULES||[]).includes(String(r.rule))?' att-click" data-att-t="'+esc(r.ticker)+'" data-att-at="'+esc(r.captured_at)+'" data-att-r="'+esc(r.rule)+'':"")+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
+     return '<div class="attention-row '+cls+(r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")&&!(window.ORDER_CARD_NO_RULES||[]).includes(String(r.rule))&&Date.now()-Date.parse(String(r.captured_at).replace(" ","T")+"+09:00")<(window.ORDER_CARD_TTL_MS||180000)?' att-click" data-att-t="'+esc(r.ticker)+'" data-att-at="'+esc(r.captured_at)+'" data-att-r="'+esc(r.rule)+'':"")+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
    const openRule=rp.filter(p=>p&&p.status==="OPEN").map(p=>'<div class="attention-row att-held"><i>'+fhm(p.fill_time)+'</i><div>'+sideOf(p.signal)+nm(p.name,p.ticker)+' <b>保有中（仮想）'+esc((list.find(r=>r.ticker===p.ticker&&String(r.captured_at)===String(p.signal_at))||{}).label||p.rule||"")+'</b> <em>エントリー '+fhm(p.fill_time)+' @'+esc(p.fill_price)+'・目標 '+esc(p.target)+'・損切 '+esc(p.stop)+'・注文なし</em></div></div>');
    const held=openRule.concat(on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+sideOf(x.side)+nm(x.name,x.ticker)+' <b>持ち越し（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>'));
    const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
@@ -1623,7 +1623,7 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
   const held = window.orderCardHeld = window.orderCardHeld || new Map(), nowMs = Date.now();
   if (b && b.real_submit_allowed !== false) held.clear();
   sigs.forEach(s => { const k = s.ticker + "|" + s.signal_bar + "|" + s.side; if (!held.has(k) && !(window.orderCardClosed && window.orderCardClosed.has(k))) held.set(k, {s, at: nowMs}); });
-  held.forEach((v, k) => { if (!v.pinned && nowMs - v.at >= window.ORDER_CARD_TTL_MS) held.delete(k); });
+  held.forEach((v, k) => { if (nowMs - v.at >= window.ORDER_CARD_TTL_MS) held.delete(k); });   // OWNER 2026-11-05 「古くなったのはみえなくてよい」「おれは、ここをなおしたいの」
   window.orderLinesRender();
   box.innerHTML = [...held.values()].sort((x, y) => y.at - x.at).slice(0, 6).map(v => window.orderCardHtml(v.s, v.at, nowMs)).join("") ||
     "<div class='focus-empty'>今は注文カードはありません（ブレインの注目のうち、期待値がプラスの銘柄とキオクシアHD（285A）に出ます）</div>";
@@ -1742,6 +1742,7 @@ window.attentionCardOpen = (row, stayInTab) => {
   const r = (window.attentionCardRows || []).find(x => x.ticker === row.dataset.attT && String(x.captured_at) === row.dataset.attAt && String(x.rule) === row.dataset.attR);
   if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン") || window.ORDER_CARD_NO_RULES.includes(String(r.rule))) return;
   const f = window.attentionCardStat ? window.attentionCardStat(r.rule) : {}, at = Date.parse(String(r.captured_at).replace(" ", "T") + "+09:00");
+  if (!(Date.now() - at < window.ORDER_CARD_TTL_MS)) return;
   const s = {ticker: r.ticker, name: r.name, side: r.signal === "買いサイン" ? 1 : -1, entry: r.entry, target: r.target, stop: r.stop,
     signal_bar: String(r.captured_at).slice(11, 19), rule: r.rule, rule_label: r.label, ev_pct: f.ev_pct, forward_n: f.n};
   const held = window.orderCardHeld = window.orderCardHeld || new Map();
