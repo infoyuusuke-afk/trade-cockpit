@@ -2503,7 +2503,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     return window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
    }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
-   if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日終値基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。"});
+   if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日14:00基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。"});
    const recent=Array.isArray(hs.recent)?hs.recent:[];
    if(holdHistory)holdHistory.innerHTML=recent.length?recent.slice(0,5).map(x=>window.renderCockpitCard({
     symbol:String(x.ticker||"").replace(".T",""),
@@ -3765,7 +3765,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     let el=document.getElementById("virt-day-line");
     if(!el){el=document.createElement("div");el.id="virt-day-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
     const now=jst(),sw=part("swing",now.day),lg=part("value",now.day);
-    const done=v.dayDone+sw.done+lg.done,open=v.dayOpen+v.onOpen+sw.open+lg.open,total=done+open,lim=v.limit;
+    const done=v.dayDone+(v.onDone||0)+sw.done+lg.done,open=v.dayOpen+v.onOpen+sw.open+lg.open,total=done+open,lim=v.limit;
     let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")||{};}catch(_){}
     if(st.day!==now.day)st={day:now.day};
     if(total<lim&&!st.hit){st.hit=now.hm;try{localStorage.setItem(KEY,JSON.stringify(st));}catch(_){}}
@@ -3773,7 +3773,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const g=(name,d,o)=>'<span><span class="g">'+name+'</span> <span class="'+cls(d)+'">確定 '+yen(d)+'</span> <span class="'+cls(o)+'">含み '+yen(o)+'</span></span>';
     el.className="vd-line"+(over?" over":total>0?" plus":"");   // OWNER 2026-11-05 「プラスの場合は緑」
     el.innerHTML='<span>仮想 今日 <b class="'+cls(total)+'">'+yen(total)+'</b> <span class="g">（確定 '+yen(done)+'・含み '+yen(open)+'）</span></span>'+
-      g("デイ",v.dayDone,v.dayOpen)+'<span><span class="g">オーバーナイト</span> <span class="'+cls(v.onOpen)+'">含み '+yen(v.onOpen)+'</span></span>'+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
+      g("デイ",v.dayDone,v.dayOpen)+g("オーバーナイト",v.onDone||0,v.onOpen)+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
       (hit?'<span class="vd-mark">−3万到達 '+hit+'、そこから'+yen(total-lim)+'</span>':'')+
       (v.ref&&v.ref.hit_at?'<span class="vd-ref">参考：−3万で止めていたら '+(v.ref.n||0)+'回 '+yen(v.ref.yen||0)+'</span>':'');
   }

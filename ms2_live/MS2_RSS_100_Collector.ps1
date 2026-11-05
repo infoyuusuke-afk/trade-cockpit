@@ -4057,8 +4057,22 @@ try {
         }
 
         # 次にコレクターが稼働した取引日の大引け後、方向別の終値損益とMFE/MAEを採点する。
+        # OWNER 2026-11-05 「持ち越しは翌日14:00の値段を仮想の手じまいとして確定に入れて…OVERNIGHT 5の持ち越し成績も14:00で計算する」: the first loop from 14:00 keeps each waiting hold's
+        # price in records\<day>\overnight_hold_1400.json (one source for the stats below and for v10_positions_live.py).
+        $hold1400Path=Join-Path (Join-Path $dataRoot $activeDay) "overnight_hold_1400.json"
+        if($now.TimeOfDay -ge [TimeSpan]::Parse("14:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("14:10:00") -and -not (Test-Path -LiteralPath $hold1400Path)){
+            $hold1400=[ordered]@{}
+            foreach($record in $holdHistory|Where-Object{$_.status -eq "翌日検証待ち" -and $_.decision_date -lt $activeDay}){
+                $live=$results|Where-Object{$_.ticker -eq $record.ticker}|Select-Object -First 1
+                if($null -eq $live){continue}
+                $px=Get-SafeNumber $live.price 0.01 10000000
+                if($null -ne $px){$hold1400[[string]$record.ticker]=[Math]::Round($px,2)}
+            }
+            if($hold1400.Count -gt 0){Write-AtomicUtf8 $hold1400Path (([pscustomobject]@{at=$now.ToString("HH:mm:ss");prices=$hold1400})|ConvertTo-Json -Depth 4)}
+        }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:30:00")){
             $auditChanged=$false
+            $hold1400Saved=$null;try{if(Test-Path -LiteralPath $hold1400Path){$hold1400Saved=(Get-Content -Raw -Encoding UTF8 $hold1400Path|ConvertFrom-Json).prices}}catch{}
             try{$actualFills=@(Import-Csv -Encoding UTF8 $actualFillsPath)}catch{$actualFills=@()}
             try{$auditV2=@(Import-Csv -Encoding UTF8 $auditV2Path)}catch{$auditV2=@()}
             foreach($record in $holdHistory|Where-Object{$_.status -eq "翌日検証待ち" -and $_.decision_date -lt $activeDay}){
@@ -4068,8 +4082,10 @@ try {
                 $open=Get-SafeNumber $live.open_price 0.01 10000000; $close=Get-SafeNumber $live.price 0.01 10000000
                 $high=Get-SafeNumber $live.day_high 0.01 10000000; $low=Get-SafeNumber $live.day_low 0.01 10000000
                 if($null -eq $open -or $null -eq $close -or $null -eq $high -or $null -eq $low){continue}
-                if($record.side -eq "LONG"){$retOpen=($open/$entry-1)*100;$retClose=($close/$entry-1)*100;$mfe=($high/$entry-1)*100;$mae=($low/$entry-1)*100}
-                else{$retOpen=($entry/$open-1)*100;$retClose=($entry/$close-1)*100;$mfe=($entry/$low-1)*100;$mae=($entry/$high-1)*100}
+                $exit1400=if($null -ne $hold1400Saved){Get-SafeNumber $hold1400Saved.($record.ticker) 0.01 10000000}else{$null}
+                if($null -eq $exit1400){$exit1400=$close}   # no 14:00 price (V10 was stopped): the close
+                if($record.side -eq "LONG"){$retOpen=($open/$entry-1)*100;$retClose=($exit1400/$entry-1)*100;$mfe=($high/$entry-1)*100;$mae=($low/$entry-1)*100}
+                else{$retOpen=($entry/$open-1)*100;$retClose=($entry/$exit1400-1)*100;$mfe=($entry/$low-1)*100;$mae=($entry/$high-1)*100}
                 $record.evaluation_date=$activeDay;$record.next_open=[Math]::Round($open,2);$record.next_close=[Math]::Round($close,2);$record.next_high=[Math]::Round($high,2);$record.next_low=[Math]::Round($low,2)
                 $record.return_open_pct=[Math]::Round($retOpen,2);$record.return_close_pct=[Math]::Round($retClose,2);$record.mfe_pct=[Math]::Round($mfe,2);$record.mae_pct=[Math]::Round($mae,2)
                 $record.result=if($retClose -gt 0){"勝ち"}elseif($retClose -lt 0){"負け"}else{"引分"};$record.status="検証済み";$auditChanged=$true
@@ -4140,7 +4156,7 @@ try {
             '<article class="pick '+$holdCls+'"><div class="head"><span>'+ (Escape-Html $_.hold_signal) +'</span><b>'+ (Escape-Html $_.name) +' ('+ (Escape-Html $_.ticker) +')</b><strong>'+([string]$_.hold_score)+'</strong></div><div class="price">'+([string]$(if($null -ne $_.reference_price_1525){$_.reference_price_1525}else{$_.price}))+'円</div><div class="metrics"><span>現在値/VWAP<br><b>'+([string]$_.price)+' / '+([string]$_.vwap)+'</b></span><span>後場OR上維持<br><b>'+([string]$_.pm_above_minutes)+'分</b></span><span>後場OR下維持<br><b>'+([string]$_.pm_below_minutes)+'分</b></span><span>日中位置<br><b>'+([string]$_.close_location_pct)+'%</b></span><span>地合い<br><b>'+ (Escape-Html $_.market_state) +'</b></span></div><small>'+$(if($holdFinalized){'15:25候補固定。15:30終値取得後、翌取引日引けで採点します。'}else{'暫定候補。15:25までは注文しません。'})+'</small></article>'
         }) -join "`n"}
         $statPct={param($v) if($null -eq $v){'—'}else{([string]$v)+'%'}}
-        $holdStatsCard='<article class="pick watch"><div class="head"><span>翌日終値基準</span><b>持ち越し成績</b><strong>'+([string]$holdStats.samples)+'件</strong></div><div class="metrics"><span>累積勝率<br><b>'+(& $statPct $holdStats.win_rate)+'</b></span><span>平均損益<br><b>'+(& $statPct $holdStats.avg_return_pct)+'</b></span><span>LONG勝率<br><b>'+(& $statPct $holdStats.long_win_rate)+' ('+([string]$holdStats.long_samples)+'件)</b></span><span>SHORT勝率<br><b>'+(& $statPct $holdStats.short_win_rate)+' ('+([string]$holdStats.short_samples)+'件)</b></span></div><small>当日15:30終値から翌取引日15:30終値まで。MFE・MAEもCSVへ保存。</small></article>'
+        $holdStatsCard='<article class="pick watch"><div class="head"><span>翌日14:00基準</span><b>持ち越し成績</b><strong>'+([string]$holdStats.samples)+'件</strong></div><div class="metrics"><span>累積勝率<br><b>'+(& $statPct $holdStats.win_rate)+'</b></span><span>平均損益<br><b>'+(& $statPct $holdStats.avg_return_pct)+'</b></span><span>LONG勝率<br><b>'+(& $statPct $holdStats.long_win_rate)+' ('+([string]$holdStats.long_samples)+'件)</b></span><span>SHORT勝率<br><b>'+(& $statPct $holdStats.short_win_rate)+' ('+([string]$holdStats.short_samples)+'件)</b></span></div><small>当日15:30終値から翌取引日15:30終値まで。MFE・MAEもCSVへ保存。</small></article>'
         $holdRecentCards=@($holdStats.recent|Select-Object -First 5|ForEach-Object{
             $resultCls=if($_.result -eq '勝ち'){'buy'}elseif($_.result -eq '負け'){'sell'}else{'watch'}
             '<article class="pick '+$resultCls+'"><div class="head"><span>'+ (Escape-Html $_.result) +'</span><b>'+ (Escape-Html $_.name) +' ('+ (Escape-Html $_.ticker) +')</b><strong>'+([string]$_.return_close_pct)+'%</strong></div><small>'+ (Escape-Html $_.decision_date) +' '+ (Escape-Html $_.side) +' → '+ (Escape-Html $_.evaluation_date) +' / MFE '+([string]$_.mfe_pct)+'%・MAE '+([string]$_.mae_pct)+'%</small></article>'

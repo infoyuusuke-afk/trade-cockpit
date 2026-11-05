@@ -159,6 +159,17 @@ class OrderCards(unittest.TestCase):
         self.assertIn("（止めていたら ", js)
         self.assertNotIn("上限で停止", js)
 
+    def test_overnight_exit_at_1400(self):
+        # OWNER 2026-11-05 「持ち越しは翌日14:00の値段を仮想の手じまいとして確定に入れて、注目の上の1行にも足す。OVERNIGHT 5の持ち越し成績も14:00で計算する」
+        self.assertIn('g("オーバーナイト",v.onDone||0,v.onOpen)', HTML)
+        self.assertIn('const done=v.dayDone+(v.onDone||0)+sw.done+lg.done', HTML)
+        root = Path(__file__).resolve().parents[1]
+        self.assertIn("overnight_closed", (root / "trade_control.js").read_text(encoding="utf-8"))
+        col = (root / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('"overnight_hold_1400.json"', col)
+        self.assertIn("$retClose=($exit1400/$entry-1)*100", col)
+        self.assertIn("$retClose=($entry/$exit1400-1)*100", col)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)

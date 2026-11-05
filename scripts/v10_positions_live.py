@@ -33,7 +33,8 @@ OUT_FILE = "positions_live_v1.json"
 RULE_SIGNALS_FILE = "brain_rule_signals.csv"
 OVERNIGHT_FILE = "overnight_hold_final.csv"
 TICKS_FILE = "ticks.csv"
-OVERNIGHT_SCORED_AT = "14:00"   # OWNER 2026-11-05 「13時から14時とし一番良い時間を記録し続ける」 (was 15:30; the Collector's 持ち越し成績 stays on the next close)
+OVERNIGHT_SCORED_AT = "14:00"   # OWNER 2026-11-05 「13時から14時とし一番良い時間を記録し続ける」 (was 15:30)
+OVERNIGHT_EXIT_FILE = "overnight_hold_1400.json"   # the Collector's 14:00 prices
 MAX_READ_BYTES = 64 * 1024 * 1024
 # OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
 # おれの実際の成績と毎日並べて」: the OWNER's rules are applied to today's rule trades as a second, virtual tally
@@ -139,6 +140,22 @@ def _previous_day_dir(records: Path, today: str):
         if (Path(records) / name / OVERNIGHT_FILE).is_file():
             return Path(records) / name
     return None
+
+
+def _overnight_closed(day_dir: Path, holds: list[dict]) -> list[dict]:
+    """OWNER 2026-11-05 「持ち越しは翌日14:00の値段を仮想の手じまいとして確定に入れて」: the previous day's holds at the Collector's 14:00 price (100 shares, no cost). Virtual only."""
+    try:
+        prices = json.loads((day_dir / OVERNIGHT_EXIT_FILE).read_text(encoding="utf-8-sig")).get("prices") or {}
+    except (OSError, ValueError):
+        return []
+    out = []
+    for h in holds:
+        entry, leave = _num(h.get("reference_price")), _num(prices.get(h.get("ticker")))
+        if not entry or not leave:
+            continue
+        sign = 1 if h.get("side") == "LONG" else -1
+        out.append(dict(h, exit_price=leave, exit_time="14:00", pct=round(sign * (leave / entry - 1) * 100, 2), yen=round(sign * (leave - entry) * OWNER_SHARES)))
+    return out
 
 
 def _overnight(day_dir: Path, *, valid_until: str) -> list[dict]:
@@ -503,12 +520,14 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                                "exit_price": got.get("exit_price") if status == "CLOSED" else None,
                                "exit_time": got.get("exit_time") if status == "CLOSED" else None,
                                "return_pct": round(got["return_pct"], 3) if status == "CLOSED" and got.get("return_pct") is not None else None})
-    overnight = []
+    overnight, overnight_closed = [], []
     prev = _previous_day_dir(records, today)
     # OWNER 2026-10-24 「持ち越しているはず」: on Saturday and Sunday Friday's holds are still held; they are
     # scored at Monday's close (exchange holidays are not known here).
     weekend = local.weekday() >= 5
-    if prev is not None and (hm < OVERNIGHT_SCORED_AT or weekend):   # carry-over, scored at the next session's close
+    if prev is not None and not weekend and hm >= OVERNIGHT_SCORED_AT:
+        overnight_closed = _overnight_closed(day_dir, _overnight(prev, valid_until=today + " " + OVERNIGHT_SCORED_AT))
+    if prev is not None and (hm < OVERNIGHT_SCORED_AT or weekend):   # carry-over, out at 14:00 the next session
         scored_on = today if not weekend else (local.date() + timedelta(days=7 - local.weekday())).isoformat()
         overnight = _overnight(prev, valid_until=scored_on + " " + OVERNIGHT_SCORED_AT)
     if (day_dir / OVERNIGHT_FILE).is_file():               # fixed at 15:25 today, held into the next day
@@ -525,7 +544,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     owner = dict(owner, history=_owner_history(records, today))
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
-            "owner_rules": owner, "short_rebound": rebound,
+            "owner_rules": owner, "short_rebound": rebound, "overnight_closed": overnight_closed,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}

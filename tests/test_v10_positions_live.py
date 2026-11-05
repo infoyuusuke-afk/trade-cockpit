@@ -134,5 +134,16 @@ class Positions(unittest.TestCase):
         self.assertFalse(view["real_submit_allowed"])
 
 
+class OvernightExit(unittest.TestCase):
+    def test_the_14_00_price_closes_the_hold(self):
+        # OWNER 2026-11-05 「持ち越しは翌日14:00の値段を仮想の手じまいとして確定に入れて」
+        d = Path(tempfile.mkdtemp(prefix="v10-on-"))
+        self.addCleanup(shutil.rmtree, d, True)
+        (d / pos.OVERNIGHT_EXIT_FILE).write_text(json.dumps({"at": "14:00:04", "prices": {"A.T": 1100.0, "B.T": 900.0}}), encoding="utf-8")
+        got = pos._overnight_closed(d, [{"ticker": "A.T", "side": "LONG", "reference_price": "1000"}, {"ticker": "B.T", "side": "SHORT", "reference_price": "1000"},
+                                        {"ticker": "C.T", "side": "LONG", "reference_price": "1000"}])
+        self.assertEqual([(x["ticker"], x["yen"], x["pct"]) for x in got], [("A.T", 10000, 10.0), ("B.T", 10000, 10.0)])
+
+
 if __name__ == "__main__":
     unittest.main()
