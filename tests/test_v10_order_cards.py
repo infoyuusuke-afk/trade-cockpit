@@ -125,6 +125,13 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「古くなったのはみえなくてよい」
         self.assertIn('< window.ORDER_CARD_TTL_MS).slice(0, 20);', self.block)
 
+    def test_valid_card_stands_out(self):
+        # OWNER 2026-11-05 「これも、有効な場合はもっとわかりやすく」
+        self.assertIn("<span class='ob-valid'>有効 あと", self.block)
+        self.assertIn("<span class='ol-valid'>有効 あと", self.block)
+        self.assertIn('(left > 0 ? " ob-live" : " ob-old")', self.block)
+        self.assertIn(".ob-live.ob-long{border-color:#3DBE7A", HTML)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)
