@@ -52,7 +52,8 @@ class OrderCards(unittest.TestCase):
 
     def test_row_click_opens_the_card(self):
         # OWNER 2026-11-05 「ここで銘柄クリックすると注文カードが出る仕組み」
-        self.assertIn("""r.kind==="RULE"&&r.target&&r.stop?' att-click" data-att-i="'+i""", HTML)
+        self.assertIn('r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")?\' att-click" data-att-t="', HTML)
+        self.assertNotIn("data-att-i", HTML)                             # never by row number
         self.assertIn('window.attentionCardRows=list;', HTML)
         self.assertIn('ev.target.closest("#attention-rows .att-click")', self.block)
         self.assertIn('held.set(k, {s, at, pinned: true})', self.block)
@@ -82,11 +83,27 @@ class OrderCards(unittest.TestCase):
         self.assertIn('b.textContent = "注文";', self.block)
         self.assertIn("""nav.querySelector('.cockpit-tab[data-tab="scalp"]')""", self.block)
         self.assertIn('window.orderBigHtml(k, v, "data-close=', self.block)
-        self.assertIn('x.r.kind === "RULE" && x.r.target && x.r.stop', self.block)
+        self.assertIn('r.kind === "RULE" && r.target && r.stop && (r.signal === "買いサイン" || r.signal === "空売りサイン")', self.block)
         self.assertIn('window.attentionCardOpen(inTab, true)', self.block)
         pane = self.block[self.block.index("window.orderPaneRender = () =>"):self.block.index("window.orderPaneMount = () =>")]
         for banned in ("RssOrder", "RssStockOrder", "real_submit_allowed = true"):
             self.assertNotIn(banned, pane)
+
+    def test_row_is_found_by_stock_and_time(self):
+        # OWNER 2026-11-05 「押した行の銘柄と時刻でカードを探すようにして、隣の行のカードが出ないようにして」
+        self.assertIn("x.ticker === row.dataset.attT && String(x.captured_at) === row.dataset.attAt", self.block)
+        # 「買いか空売りか分からない合図にはカードを出さないで」
+        self.assertIn('if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン")) return;', self.block)
+
+    def test_old_card_has_no_copy_buttons(self):
+        # OWNER 2026-11-05 「古くなったカードはコピーボタンを消して」
+        self.assertEqual(self.block.count("const btn = (label, val, shown) => left > 0 ?"), 2)
+        self.assertIn("(left <= 0 ? \"\" : \"<div class='order-card-copy'>\"", self.block)
+
+    def test_order_tab_hides_the_boxes(self):
+        # OWNER 2026-11-05 「注文タブを開いている時は、貼り忘れとショートリバの箱を隠して、カードを上に詰めて」
+        self.assertIn('document.body.classList.toggle("order-open"', self.block)
+        self.assertIn("body.order-open #paste-reminder,body.order-open #short-rebound-alert", HTML)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
