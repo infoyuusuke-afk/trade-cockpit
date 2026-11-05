@@ -786,6 +786,29 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
 # OWNER 2026-11-05 「場中は特に時間まで記載」: RuntimeDir\earnings_times_v1.json (written on this PC, never in the repo): the last earnings time of the key
 # stocks. Served as-is when its flags are safe. Display only.
 # OWNER 2026-11-05 「制度信用でうれないと注意喚起して」: RuntimeDir\margin_kind_v1.json (JPX's public list, written on this PC). Served as-is when its flags are safe.
+# OWNER 2026-11-05 「スイング保有と長期保有も出して」: RuntimeDir\hold_track_v1.json (virtual holds, written on this PC, no account data). Served as-is when its flags are safe.
+function Get-HoldTrackView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'hold_track_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'HOLD_TRACK_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'HOLD_TRACK_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-hold-track-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'HOLD_TRACK_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'HOLD_TRACK_UNREADABLE')
+    }
+}
+
 function Get-MarginKindView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
     try {
@@ -3034,6 +3057,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/hold_track.json') {
+                $holdView = Get-HoldTrackView $RuntimeDir
+                Send-Response $stream $holdView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$holdView.body))
                 continue
             }
             if ($path -eq '/margin_kind.json') {

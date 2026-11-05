@@ -3698,4 +3698,43 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,5000);});
 })();
 </script>
+<style>.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}</style>
+<script>
+// OWNER 2026-11-05 「スイング保有と長期保有も出して」: at the top of the SWING 5 and VALUE 5 tabs, the virtual holds of hold_track.py (/hold_track.json): open holds as cards, waiting candidates and the last closed holds as lines.
+// Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no voice, no order.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>v==null||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
+  const sgn=v=>(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%";
+  function card(o,label){
+    return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:Number(o.pct)>=0?"long":"short",directionLabel:label,freshness:"fresh",freshnessLabel:String(o.last_day||"").slice(5).replace("-","/")+"の終値",price:o.last,entry:o.entry,stop:o.stop,target:o.target,
+      metrics:[{label:"損益",value:sgn(o.pct)},{label:"100株",value:(Number(o.pct)>=0?"+":"")+num((o.last-o.entry)*100)+"円"},{label:"日数",value:o.days+"日目"},{label:"入った日",value:String(o.entry_day||"").slice(5).replace("-","/")}],
+      foot:"仮想の保有。実口座とは関係ありません（費用なし）"});
+  }
+  function body(st,label,limit){
+    const open=st.open||[],pend=Object.values(st.pending||{}),closed=(st.closed||[]).slice(-5).reverse(),all=st.closed||[];
+    const win=all.filter(x=>x.pct>0).length;
+    return '<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
+      (open.length?'<div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
+      (pend.length?'<p class="ht8-sum">IN待ち：'+pend.map(x=>esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(x.code)+") "+num(x.trigger)+"円").join("／")+'</p>':'')+
+      (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り</th><th>出</th><th>結果</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(String(x.entry_day).slice(5))+' '+num(x.entry)+'</td><td>'+esc(String(x.exit_day).slice(5))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
+  }
+  async function load(){
+    let d=null;try{const r=await fetch("/hold_track.json?t="+Date.now(),{cache:"no-store"});d=r.ok?await r.json():null;}catch(_){}
+    [["swing","ht8-swing","スイング保有"],["value","ht8-value","長期保有"]].forEach(([k,id,label])=>{
+      const box=document.getElementById(id);if(!box)return;
+      box.querySelector(".ht8-body").innerHTML=d&&d.real_submit_allowed===false&&d[k]?body(d[k],label,k==="swing"?20:60):'<div class="ht8-none">保有の記録を読めません（毎日16:00の検証のあとに作られます）</div>';
+    });
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    [["swing","ht8-swing","スイング保有（仮想）"],["value","ht8-value","長期保有（仮想）"]].forEach(([k,id,title])=>{
+      const pane=document.querySelector('.tab-pane[data-pane="'+k+'"]');if(!pane)return;
+      const sec=document.createElement("section");sec.id=id;sec.className="card wide ht8";
+      sec.innerHTML='<h2>'+title+'</h2><div class="ht8-body"><div class="ht8-none">読込中...</div></div>';
+      const intro=pane.querySelector(".pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
+    });
+    load();setInterval(load,600000);
+  });
+})();
+</script>
 </body></html>

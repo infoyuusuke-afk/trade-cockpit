@@ -53,6 +53,19 @@ class SwingCards(unittest.TestCase):
         self.assertIn("if(done===day)return;", block)                    # once a day
         self.assertIn("wd===0||wd===6", block)
 
+    def test_virtual_holds(self):
+        # OWNER 2026-11-05 「スイング保有と長期保有も出して」
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/hold_track.json') {", gw)
+        self.assertIn("[string]$view.schema_version -cne '100b-v10-hold-track-v1'", gw)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「スイング保有と長期保有も出して」", 1)[1].split("})();", 1)[0]
+        self.assertIn('fetch("/hold_track.json?t="+Date.now()', block)
+        self.assertIn("d.real_submit_allowed===false", block)
+        self.assertIn("実口座とは関係ありません", block)
+        for banned in ("cockpitSpeak", "RssOrder", "renderAttention", "real_positions"):
+            self.assertNotIn(banned, block)
+
     def test_volatile_days(self):
         # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
