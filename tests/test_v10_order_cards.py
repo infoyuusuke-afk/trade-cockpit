@@ -153,6 +153,11 @@ class OrderCards(unittest.TestCase):
             self.assertNotIn(banned, block)
         js = (Path(__file__).resolve().parents[1] / "trade_control.js").read_text(encoding="utf-8")
         self.assertIn("window.cockpitVirtualDay={at:Date.now()", js)
+        # OWNER 2026-11-05 「−3万の制限なしで全部数える』に直して」「11/5までの日は旧ルールの数字だと分かるようにする」
+        self.assertIn("−3万の制限なしで全部数える", js)
+        self.assertIn("・旧ルール", js)
+        self.assertIn("（止めていたら ", js)
+        self.assertNotIn("上限で停止", js)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):

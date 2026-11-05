@@ -691,9 +691,9 @@
     if(own&&own.counted){
       const rowsO=[own].concat(Array.isArray(own.history)?own.history:[]).slice(0,10);
       const oMax=Math.max(1,...rowsO.map(o=>Math.abs(Number(o.counted?.yen)||0)),...rowsO.map(o=>Math.abs(Number(realDays[o.date])||0)));
-      html+='<p class="g-note">決まり：1回ごとに損切り（無いものは数えない）・1日の負けが3万円に届いたらその後は入らない・ディスコ(6146)・レーザーテック(6920)・キオクシア(285A)は別枠（仮想だけ）。100株で計算・費用込み・お金は動いていません。</p><div class="g-rows">'+
+      html+='<p class="g-note">決まり：1回ごとに損切り（無いものは数えない）・−3万の制限なしで全部数える（11/5までの日は旧ルール＝−3万で見送りの数字）・ディスコ(6146)・レーザーテック(6920)・キオクシア(285A)は別枠（仮想だけ）。100株で計算・費用込み・お金は動いていません。</p><div class="g-rows">'+
         rowsO.map(o=>{const c=o.counted||{},r=realDays[o.date],ai=Number(c.yen)||0,rv=r===undefined?null:Number(r);
-          return '<div class="g-row g-row5"><span class="g-kind">'+esc(String(o.date||"").slice(5))+'</span><span class="g-name">AI '+esc(c.n??0)+'回（勝ち'+esc(c.wins??0)+'・負け'+esc(c.losses??0)+(c.open?'・保有中'+esc(c.open):'')+'）'+(o.limit_hit_at?'・上限で停止 '+esc(String(o.limit_hit_at).slice(0,5)):'')+'・別枠 '+gYen(Number(o.virtual_only?.yen)||0)+'</span>'+gBar(ai,oMax)+'<b class="'+gCls(ai)+'">AI '+gYen(ai)+'</b></div>'+
+          return '<div class="g-row g-row5"><span class="g-kind">'+esc(String(o.date||"").slice(5))+'</span><span class="g-name">AI '+esc(c.n??0)+'回（勝ち'+esc(c.wins??0)+'・負け'+esc(c.losses??0)+(c.open?'・保有中'+esc(c.open):'')+'）'+(String(o.date||"")<="2026-11-05"?'・旧ルール':'')+(o.limit_hit_at?'・−3万到達 '+esc(String(o.limit_hit_at).slice(0,5))+(o.limit_reference?'（止めていたら '+esc(o.limit_reference.n??0)+'回 '+gYen(Number(o.limit_reference.yen)||0)+'）':''):'')+'・別枠 '+gYen(Number(o.virtual_only?.yen)||0)+'</span>'+gBar(ai,oMax)+'<b class="'+gCls(ai)+'">AI '+gYen(ai)+'</b></div>'+
             '<div class="g-row g-row5"><span class="g-kind"></span><span class="g-name">実口座（概算・手数料なし）</span>'+gBar(rv,oMax)+'<b class="'+gCls(rv)+'">'+(rv===null?'記録なし':'実 '+gYen(rv))+'</b></div>';}).join("")+'</div>';
     }else html+='<p class="g-empty">AI（あなたのルール）の記録を読めません（V10停止中・新しい版の前）。0円とは扱いません。</p>';
     // holdings P/L list
