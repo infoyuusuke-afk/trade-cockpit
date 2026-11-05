@@ -783,6 +783,30 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
 
 # OWNER 2026-11-04 「BNF銘柄もカードタイプで」: RuntimeDir\bnf_candidates_v1.json (written on this PC by the daily BNF screen, never in
 # the repo) is served as-is when its flags are safe. Display only.
+# OWNER 2026-11-05 「場中は特に時間まで記載」: RuntimeDir\earnings_times_v1.json (written on this PC, never in the repo): the last earnings time of the key
+# stocks. Served as-is when its flags are safe. Display only.
+function Get-EarningsTimesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'earnings_times_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'EARNINGS_TIMES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'EARNINGS_TIMES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-earnings-times-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'EARNINGS_TIMES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'EARNINGS_TIMES_UNREADABLE')
+    }
+}
+
 function Get-BnfCandidatesView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
     try {
@@ -2987,6 +3011,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/earnings_times.json') {
+                $timesView = Get-EarningsTimesView $RuntimeDir
+                Send-Response $stream $timesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$timesView.body))
                 continue
             }
             if ($path -eq '/bnf_candidates.json') {

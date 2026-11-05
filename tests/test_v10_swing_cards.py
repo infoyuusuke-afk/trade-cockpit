@@ -49,6 +49,18 @@ class SwingCards(unittest.TestCase):
         for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
             self.assertNotIn(banned, block)
 
+    def test_earnings_times(self):
+        # OWNER 2026-11-05 「場中は特に時間まで記載」
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/earnings_times.json') {", gw)
+        self.assertIn("[string]$view.schema_version -cne '100b-v10-earnings-times-v1'", gw)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「場中は特に時間まで記載」", 1)[1].split("})();", 1)[0]
+        self.assertIn('hm<"11:30"?"前場":hm<"12:30"?"昼休み":hm<"15:30"?"後場":"引け後"', block)
+        self.assertIn('"前回の時刻 不明"', block)
+        self.assertIn('get("/earnings_times.json")', block)
+        self.assertIn('p==="前場"||p==="後場"', block)
+
     def test_bnf_cards(self):
         # OWNER 2026-11-04 「BNF銘柄もカードタイプで」
         gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")

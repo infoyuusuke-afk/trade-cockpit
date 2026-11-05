@@ -3555,7 +3555,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>.vd8 h2 small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.vd8-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .vd8-day{display:grid;grid-template-columns:92px 74px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #22252A;border-radius:8px;background:#0E1013;padding:8px 12px;font-size:13px}
 .vd8-day.top{border-color:#E0566B}.vd8-day.today{outline:2px solid #4CC38A}.vd8-date{font-weight:700}.vd8-lv{font-size:12px;font-weight:700;color:#F2C14E}.vd8-day.top .vd8-lv{color:#E0566B}
-.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
+.vd8-t{color:#C4C9D1;font-size:13px;margin-left:6px}.vd8-t.hot{color:#E0566B;font-weight:700}.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
 <script>
 // OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」: at the top of the 注意 tab, the next 30 days that hold an
 // impact 高 event (event_calendar.json) or the earnings of a stock that moves the index or the SCALP8 list (earnings_calendar.json).
@@ -3567,20 +3567,26 @@ document.addEventListener("DOMContentLoaded",()=>{
   const day0=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
   const add=(d,n)=>new Date(Date.parse(d+"T00:00:00Z")+n*864e5).toISOString().slice(0,10);
   async function get(u){try{const r=await fetch(u+"?t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_){return null;}}
-  function pick(ev,cal,today){
+  // OWNER 2026-11-05 「場中は特に時間まで記載」: the last earnings time as a guide (the next time is not known), marked when it fell in the session.
+  const part=hm=>hm<"09:00"?"寄り前":hm<"11:30"?"前場":hm<"12:30"?"昼休み":hm<"15:30"?"後場":"引け後";
+  function timeNote(times,code){const t=times&&times.stocks&&times.stocks[code],at=t&&String(t.last_at||"");
+    if(!at)return {note:"前回の時刻 不明",hot:false};
+    const hm=at.slice(11,16),p=part(hm),m=Number(at.slice(5,7)),d=Number(at.slice(8,10));
+    return {note:"前回 "+m+"/"+d+" "+hm+"・"+p+(p==="前場"||p==="後場"?"（場中）":""),hot:p==="前場"||p==="後場"};}
+  function pick(ev,cal,today,times){
     const end=add(today,30),days={};
     const at=d=>days[d]=days[d]||[];
     (Array.isArray(ev&&ev.events)?ev.events:[]).forEach(e=>{if(e&&e.impact==="高"&&e.date>=today&&e.date<=end)at(e.date).push({when:e.time_jst||"",what:e.title});});
-    (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end)at(x.date).push({when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(/確定/.test(String(x.status||""))?"":"・予定")});});
+    (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end)at(x.date).push({...timeNote(times,String(x.code)),when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(/確定/.test(String(x.status||""))?"":"・予定")});});
     return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));
   }
   async function load(sec){
     const box=sec.querySelector(".vd8-list");
-    const [ev,cal]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json")]);
+    const [ev,cal,times]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json"),get("/earnings_times.json")]);
     if(!ev&&!cal){box.innerHTML='<div class="vd8-none">予定を読めません</div>';return;}
-    const today=day0(),rows=pick(ev,cal,today);
+    const today=day0(),rows=pick(ev,cal,today,times);
     box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2;
-      return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div><small>'+esc(i.when)+'</small> '+esc(i.what)+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
+      return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div><small>'+esc(i.when)+'</small> '+esc(i.what)+(i.note?' <span class="vd8-t'+(i.hot?' hot':'')+'">'+esc(i.note)+'</span>':'')+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
   }
   document.addEventListener("DOMContentLoaded",()=>{
     const cal=document.getElementById("event-calendar");if(!cal||!cal.parentElement)return;
