@@ -3794,7 +3794,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const clean=x=>String(x??"").replace(/[<>&"']/g,""),hits=g&&g.stop||[];
     if(!band){band=document.createElement("div");band.id="stop-loss-band";band.style.cssText="position:sticky;top:0;z-index:9999;background:#C62828;color:#fff;font-size:20px;font-weight:800;padding:8px 12px;text-align:center;display:none";document.body.prepend(band);}
     band.style.display=hits.length?"block":"none";
-    band.innerHTML=hits.map(h=>'損切り　'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)).join("<br>");
+    band.innerHTML=hits.map(h=>'損切り　'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)+((g.hedged||[]).some(x=>String(x.code)===String(h.code))?'（両建て・声なし）':'')).join("<br>");
     let el=document.getElementById("real-guard-line");
     if(!el){el=document.createElement("div");el.id="real-guard-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
     if(!g){el.className="vd-line";el.textContent="実口座 今日の負け枠：読めません（V10停止中・MS2未接続・設定OFF）";return;}

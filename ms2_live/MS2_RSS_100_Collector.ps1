@@ -3259,7 +3259,10 @@ try {
                 # OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: speaks only; it cannot close anything. In session, at most every 12 s.
                 $slClock = (Get-Date).TimeOfDay
                 $slInSession = ($slClock -ge [TimeSpan]"09:00:00" -and $slClock -lt [TimeSpan]"11:30:00") -or ($slClock -ge [TimeSpan]"12:30:00" -and $slClock -lt [TimeSpan]"15:30:00")
-                if ($slInSession -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 }).Count -gt 0) {
+                # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして。両建てでない建玉は今のまま声も出す」: hedged = the same rule as the screen (short and long or cash in one code).
+                $slShort = @($rpMarginRows | Where-Object { ([string]$_.side).Contains("売") } | ForEach-Object { [string]$_.code })
+                $slLong = @(@($rpMarginRows | Where-Object { -not ([string]$_.side).Contains("売") }) + @($rpCashRows) | ForEach-Object { [string]$_.code })
+                if ($slInSession -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) }).Count -gt 0) {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
                 }

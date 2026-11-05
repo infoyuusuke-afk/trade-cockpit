@@ -190,6 +190,9 @@ class OrderCards(unittest.TestCase):
         col = (Path(__file__).resolve().parents[1] / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
         self.assertIn('Invoke-SerializedSpeak $speaker "損切り"', col)
         self.assertIn("[double]$_.pnl -le -10000", col)
+        # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして」
+        self.assertIn("-not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code)", col)
+        self.assertIn("（両建て・声なし）", HTML)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
