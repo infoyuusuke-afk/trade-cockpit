@@ -428,12 +428,13 @@ document.addEventListener("DOMContentLoaded",()=>{
    const fhm=v=>{const x=String(v||"");return esc(x.length>8?x.slice(11,19):x.slice(0,8));};   // fill_time is HH:MM:SS (seconds kept: entry timing)
    const sideOf=s=>s==="買いサイン"||s==="LONG"?'<span class="att-side att-long">買い</span>':s==="空売りサイン"||s==="SHORT"?'<span class="att-side att-short">空売り</span>':"";
    const entryState=p=>!p?"":p.status==="WAITING"?'<span class="att-wait">エントリー待ち（発動価格に届いたら）</span>':p.status==="OPEN"?'<span class="att-in">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"（保有中）</span>":p.status==="CLOSED"?'<span class="att-done">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"→"+stateText(p).replace("・","")+"</span>":p.status==="NOT_FILLED"?'<span class="att-done">約定せず</span>':"";
-   const rows=list.map(r=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
-     return '<div class="attention-row '+cls+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
+   const rows=list.map((r,i)=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
+     return '<div class="attention-row '+cls+(r.kind==="RULE"&&r.target&&r.stop?' att-click" data-att-i="'+i:"")+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
    const openRule=rp.filter(p=>p&&p.status==="OPEN").map(p=>'<div class="attention-row att-held"><i>'+fhm(p.fill_time)+'</i><div>'+sideOf(p.signal)+nm(p.name,p.ticker)+' <b>保有中（仮想）'+esc((list.find(r=>r.ticker===p.ticker&&String(r.captured_at)===String(p.signal_at))||{}).label||p.rule||"")+'</b> <em>エントリー '+fhm(p.fill_time)+' @'+esc(p.fill_price)+'・目標 '+esc(p.target)+'・損切 '+esc(p.stop)+'・注文なし</em></div></div>');
    const held=openRule.concat(on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+sideOf(x.side)+nm(x.name,x.ticker)+' <b>持ち越し（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>'));
    const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
    box.innerHTML='<div class="att-sec">エントリー（サインの時刻・新しい順）'+(rows.length?"":"：まだなし")+'</div>'+rows.join("")+'<div class="att-sec att-sec-held">保有中（仮想）'+(held.length?"":"：なし")+'</div>'+held.join("");
+   window.attentionCardRows=list;window.attentionCardStat=k=>ruleShadow?.forward?.[k]||{};
  };
  // OWNER 2026-10-23 manual Grok notes: listed as handed over (newest note first), with the time
  // they stay valid. The Brain shows them as flags on its picks; they never change a score.
@@ -1613,6 +1614,24 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
   box.innerHTML = [...held.values()].sort((x, y) => y.at - x.at).slice(0, 6).map(v => window.orderCardHtml(v.s, v.at, nowMs)).join("") ||
     "<div class='focus-empty'>今は注文カードはありません（ブレインの注目のうち、期待値がプラスの銘柄とキオクシアHD（285A）に出ます）</div>";
 }).catch(() => {});
+// OWNER 2026-11-05 「ここで銘柄クリックすると注文カードが出る仕組み」: a rule signal's row in 注目 opens its card under the list. Same card, same rounding and
+// quantity; 180 s run from the signal's own time, so an old row says 古くなりました. The rule's forward record gives the 期待値 and 実績 lines. Display only.
+window.attentionCardOpen = row => {
+  const r = (window.attentionCardRows || [])[Number(row.dataset.attI)], box = document.getElementById("attention-rows");
+  if (!r || !box) return;
+  let slot = document.getElementById("attention-order-card");
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.id = "attention-order-card";
+    box.insertAdjacentElement("afterend", slot);
+    slot.addEventListener("click", ev => { if (ev.target.closest("[data-close]")) { slot.innerHTML = ""; return; } window.orderCardCopy(ev); });
+  }
+  const f = window.attentionCardStat ? window.attentionCardStat(r.rule) : {}, at = Date.parse(String(r.captured_at).replace(" ", "T") + "+09:00");
+  const s = {ticker: r.ticker, name: r.name, side: r.signal === "買いサイン" ? 1 : -1, entry: r.entry, target: r.target, stop: r.stop,
+    signal_bar: String(r.captured_at).slice(11, 19), rule: r.rule, rule_label: r.label, ev_pct: f.ev_pct, forward_n: f.n};
+  slot.innerHTML = "<div class='order-card-copy'><button type='button' data-close='1'>閉じる</button></div>" + window.orderCardHtml(s, at, Date.now());
+};
+document.addEventListener("click", ev => { const row = ev.target.closest ? ev.target.closest("#attention-rows .att-click") : null; if (row) window.attentionCardOpen(row); });
 document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
 // OWNER 2026-10-24 「決算日程にGrokをつなぐ」: each stock line of the earnings calendar gets the Grok labels for
 // its code (3号 事前の空気 / 答え合わせ, 2号 判断案) with their dates. Reading only; earnings-calendar.js unchanged.
@@ -2530,7 +2549,7 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #trade-watch .fx-link b{display:block;font-size:13px;color:#e7e9eb}#trade-watch .fx-link small{display:block;font-size:11px;color:#9ba3af;margin:3px 0}
 #trade-watch .fx-link-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}#trade-watch .fx-link-grid span{font-size:12px;color:#c9ccd1;border:1px solid #272a30;border-radius:8px;padding:6px 8px}
 #trade-watch .fx-link-grid i{display:block;font-style:normal;color:#e7e9eb;margin-top:2px}
-#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}.order-card-copy{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.order-card-copy button{border:1px solid #33373D;border-radius:6px;background:#15181C;color:#E7E9EB;padding:5px 9px;font-size:12px;cursor:pointer}
+#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}.att-click{cursor:pointer}.att-click:hover{outline:1px solid #4CC38A}#attention-order-card{margin-top:8px}.order-card-copy{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.order-card-copy button{border:1px solid #33373D;border-radius:6px;background:#15181C;color:#E7E9EB;padding:5px 9px;font-size:12px;cursor:pointer}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
 html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}

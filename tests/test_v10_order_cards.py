@@ -50,6 +50,14 @@ class OrderCards(unittest.TestCase):
         self.assertIn('window.orderCardHtml(v.s, v.at, nowMs)', self.block)
         self.assertIn('if (b && b.real_submit_allowed !== false) held.clear();', self.block)
 
+    def test_row_click_opens_the_card(self):
+        # OWNER 2026-11-05 「ここで銘柄クリックすると注文カードが出る仕組み」
+        self.assertIn("""r.kind==="RULE"&&r.target&&r.stop?' att-click" data-att-i="'+i""", HTML)
+        self.assertIn('window.attentionCardRows=list;', HTML)
+        self.assertIn('ev.target.closest("#attention-rows .att-click")', self.block)
+        self.assertIn('window.orderCardHtml(s, at, Date.now())', self.block)
+        self.assertIn('data-close', self.block)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)
