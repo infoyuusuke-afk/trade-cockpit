@@ -3682,4 +3682,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
+<script>
+// OWNER 2026-11-05 「15時25分にAIコクピットの画面はここに切り替えてほしい」: on weekdays, once a day at 15:25 (the holds are fixed at 15:25:02-05), the screen moves to the OVERNIGHT 5 tab. After that the tabs stay where the OWNER puts them.
+(()=>{
+  const KEY="cockpitOvernightSwitchV1";
+  function check(){
+    const j=new Date(Date.now()+9*3600000),hm=j.toISOString().slice(11,19),day=j.toISOString().slice(0,10),wd=j.getUTCDay();
+    if(wd===0||wd===6||hm<"15:25:10"||hm>"15:26:30")return;
+    let done=null;try{done=localStorage.getItem(KEY);}catch(_){}
+    if(done===day)return;
+    const b=document.querySelector('.cockpit-tab[data-tab="overnight"]');if(!b)return;
+    try{localStorage.setItem(KEY,day);}catch(_){}
+    b.click();window.scrollTo(0,0);
+  }
+  document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,5000);});
+})();
+</script>
 </body></html>

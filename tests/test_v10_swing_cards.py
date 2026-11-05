@@ -44,6 +44,15 @@ class SwingCards(unittest.TestCase):
         self.assertIn("rows=vMerge(rows);", html)
         self.assertIn('o.timeframe=[o.timeframe,x.timeframe].filter(Boolean).join("・")', html)
 
+    def test_overnight_tab_at_1525(self):
+        # OWNER 2026-11-05 「15時25分にAIコクピットの画面はここに切り替えてほしい」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「15時25分にAIコクピットの画面はここに切り替えてほしい」", 1)[1].split("})();", 1)[0]
+        self.assertIn('hm<"15:25:10"||hm>"15:26:30"', block)
+        self.assertIn(""".cockpit-tab[data-tab="overnight"]""", block)
+        self.assertIn("if(done===day)return;", block)                    # once a day
+        self.assertIn("wd===0||wd===6", block)
+
     def test_volatile_days(self):
         # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
