@@ -130,7 +130,7 @@ class OrderCards(unittest.TestCase):
         self.assertIn("<span class='ob-valid'>有効 あと", self.block)
         self.assertIn("<span class='ol-valid'>有効 あと", self.block)
         self.assertIn('(left > 0 ? " ob-live" : " ob-old")', self.block)
-        self.assertIn(".ob-live.ob-long{border-color:#3DBE7A", HTML)
+        self.assertIn(".ob-live.ob-long{border-color:var(--cc-long)", HTML)
 
     def test_expected_yen(self):
         # OWNER 2026-11-05 「1回あたり平均で約+1,000円です。これいれて」
