@@ -10,7 +10,7 @@ class OrderCards(unittest.TestCase):
         self.block = HTML[HTML.index("window.ORDER_CARD_CODES"):HTML.index("window.loadGrokBots = () =>")]
 
     def test_positive_ev_picks_and_285a(self):
-        self.assertIn('Number(s.side) !== 0 && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0)', self.block)
+        self.assertIn('(window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0)', self.block)
         self.assertIn("(b.picks || []).filter(window.orderCardWanted)", self.block)
 
     def test_card_stays_display_only(self):
@@ -52,7 +52,7 @@ class OrderCards(unittest.TestCase):
 
     def test_row_click_opens_the_card(self):
         # OWNER 2026-11-05 「ここで銘柄クリックすると注文カードが出る仕組み」
-        self.assertIn('r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")?\' att-click" data-att-t="', HTML)
+        self.assertIn('r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")&&!(window.ORDER_CARD_NO_RULES||[]).includes(String(r.rule))?\' att-click" data-att-t="', HTML)
         self.assertNotIn("data-att-i", HTML)                             # never by row number
         self.assertIn('window.attentionCardRows=list;', HTML)
         self.assertIn('ev.target.closest("#attention-rows .att-click")', self.block)
@@ -93,7 +93,7 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「押した行の銘柄と時刻でカードを探すようにして、隣の行のカードが出ないようにして」
         self.assertIn("x.ticker === row.dataset.attT && String(x.captured_at) === row.dataset.attAt", self.block)
         # 「買いか空売りか分からない合図にはカードを出さないで」
-        self.assertIn('if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン")) return;', self.block)
+        self.assertIn('if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン") || window.ORDER_CARD_NO_RULES.includes(String(r.rule))) return;', self.block)
 
     def test_old_card_has_no_copy_buttons(self):
         # OWNER 2026-11-05 「古くなったカードはコピーボタンを消して」
@@ -104,6 +104,12 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「注文タブを開いている時は、貼り忘れとショートリバの箱を隠して、カードを上に詰めて」
         self.assertIn('document.body.classList.toggle("order-open"', self.block)
         self.assertIn("body.order-open #paste-reminder,body.order-open #short-rebound-alert", HTML)
+
+    def test_r4_has_no_card(self):
+        # OWNER 2026-11-05 「R4(押し目買い)を、注文カードの対象から外しますか　はずすが、記録はつけておいて」
+        self.assertIn('window.ORDER_CARD_NO_RULES = ["R4"];', self.block)
+        self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(s.rule))', self.block)
+        self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(r.rule))).slice(0, 20)', self.block)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):

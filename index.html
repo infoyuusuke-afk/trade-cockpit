@@ -429,7 +429,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const sideOf=s=>s==="買いサイン"||s==="LONG"?'<span class="att-side att-long">買い</span>':s==="空売りサイン"||s==="SHORT"?'<span class="att-side att-short">空売り</span>':"";
    const entryState=p=>!p?"":p.status==="WAITING"?'<span class="att-wait">エントリー待ち（発動価格に届いたら）</span>':p.status==="OPEN"?'<span class="att-in">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"（保有中）</span>":p.status==="CLOSED"?'<span class="att-done">エントリー '+fhm(p.fill_time)+" @"+esc(p.fill_price)+"→"+stateText(p).replace("・","")+"</span>":p.status==="NOT_FILLED"?'<span class="att-done">約定せず</span>':"";
    const rows=list.map((r,i)=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
-     return '<div class="attention-row '+cls+(r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")?' att-click" data-att-t="'+esc(r.ticker)+'" data-att-at="'+esc(r.captured_at)+'" data-att-r="'+esc(r.rule)+'':"")+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
+     return '<div class="attention-row '+cls+(r.kind==="RULE"&&r.target&&r.stop&&(r.signal==="買いサイン"||r.signal==="空売りサイン")&&!(window.ORDER_CARD_NO_RULES||[]).includes(String(r.rule))?' att-click" data-att-t="'+esc(r.ticker)+'" data-att-at="'+esc(r.captured_at)+'" data-att-r="'+esc(r.rule)+'':"")+'"><i>'+fhm(r.captured_at)+'</i><div>'+sideOf(r.signal)+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> '+entryState(p)+'<em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>';});
    const openRule=rp.filter(p=>p&&p.status==="OPEN").map(p=>'<div class="attention-row att-held"><i>'+fhm(p.fill_time)+'</i><div>'+sideOf(p.signal)+nm(p.name,p.ticker)+' <b>保有中（仮想）'+esc((list.find(r=>r.ticker===p.ticker&&String(r.captured_at)===String(p.signal_at))||{}).label||p.rule||"")+'</b> <em>エントリー '+fhm(p.fill_time)+' @'+esc(p.fill_price)+'・目標 '+esc(p.target)+'・損切 '+esc(p.stop)+'・注文なし</em></div></div>');
    const held=openRule.concat(on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+sideOf(x.side)+nm(x.name,x.ticker)+' <b>持ち越し（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>'));
    const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
@@ -1554,7 +1554,9 @@ window.ORDER_CARD_CODES = ["285A.T"];
 // OWNER 2026-11-04 「いろんな手法で検証して期待値の高い銘柄は注文カードまですぐだせるように　おれの操作はほぼなくす事」: besides 285A, every
 // Brain pick with a positive expected value gets the card (still 検証中, still shown only: real orders stay locked). The コピー buttons put one
 // value on the clipboard for the OWNER's own paste; nothing here reaches the order screen.
-window.orderCardWanted = s => Number(s.side) !== 0 && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0);
+// OWNER 2026-11-05 「R4(押し目買い)を、注文カードの対象から外しますか　はずすが、記録はつけておいて」: no card for R4 anywhere; its signals stay in 注目 and in the virtual record.
+window.ORDER_CARD_NO_RULES = ["R4"];
+window.orderCardWanted = s => Number(s.side) !== 0 && !window.ORDER_CARD_NO_RULES.includes(String(s.rule)) && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0);
 // OWNER 2026-11-04 「5000円未満200株、あとは100株単位」: the quantity on the card follows the entry price.
 window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);
 window.orderCardCopy = ev => {
@@ -1684,7 +1686,7 @@ window.orderPaneRender = () => {
   const held = window.orderCardHeld = window.orderCardHeld || new Map();
   cards.innerHTML = [...held.entries()].sort((x, y) => y[1].at - x[1].at).slice(0, 4).map(([k, v]) => window.orderBigHtml(k, v, "data-close='" + e(k) + "'")).join("") ||
     "<div class='ob-none'>今はカードはありません。期待値プラスの注目は自動で出ます。下のサインを押すと、その銘柄のカードが出ます</div>";
-  const list = (window.attentionCardRows || []).filter(r => r.kind === "RULE" && r.target && r.stop && (r.signal === "買いサイン" || r.signal === "空売りサイン")).slice(0, 20);
+  const list = (window.attentionCardRows || []).filter(r => r.kind === "RULE" && r.target && r.stop && (r.signal === "買いサイン" || r.signal === "空売りサイン") && !window.ORDER_CARD_NO_RULES.includes(String(r.rule))).slice(0, 20);
   rows.innerHTML = list.map(r => "<button type='button' class='att-click op-row' data-att-t='" + e(r.ticker) + "' data-att-at='" + e(r.captured_at) + "' data-att-r='" + e(r.rule) + "'><span>" + e(String(r.captured_at).slice(11, 19)) + "</span><b class='" + (r.signal === "買いサイン" ? "op-long'>買建" : "op-short'>売建") + "</b><b>" + e(String(r.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(String(r.ticker || "").replace(".T", "")) + ")</b><span>" + e(r.rule) + "・発動 " + e(r.entry) + "</span></button>").join("") ||
     "<div class='ob-none'>今日のサインはまだありません</div>";
 };
@@ -1727,7 +1729,7 @@ setInterval(() => { if (window.orderBigKey) window.orderBigRender(); }, 1000);
 window.attentionCardOpen = (row, stayInTab) => {
   // OWNER 2026-11-05 「押した行の銘柄と時刻でカードを探す…隣の行のカードが出ないように」「買いか空売りか分からない合図にはカードを出さないで」
   const r = (window.attentionCardRows || []).find(x => x.ticker === row.dataset.attT && String(x.captured_at) === row.dataset.attAt && String(x.rule) === row.dataset.attR);
-  if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン")) return;
+  if (!r || (r.signal !== "買いサイン" && r.signal !== "空売りサイン") || window.ORDER_CARD_NO_RULES.includes(String(r.rule))) return;
   const f = window.attentionCardStat ? window.attentionCardStat(r.rule) : {}, at = Date.parse(String(r.captured_at).replace(" ", "T") + "+09:00");
   const s = {ticker: r.ticker, name: r.name, side: r.signal === "買いサイン" ? 1 : -1, entry: r.entry, target: r.target, stop: r.stop,
     signal_bar: String(r.captured_at).slice(11, 19), rule: r.rule, rule_label: r.label, ev_pct: f.ev_pct, forward_n: f.n};
