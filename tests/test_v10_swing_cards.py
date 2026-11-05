@@ -90,6 +90,15 @@ class SwingCards(unittest.TestCase):
         self.assertIn('get("/earnings_times.json")', block)
         self.assertIn('p==="前場"||p==="後場"', block)
 
+    def test_earnings_done_time(self):
+        # OWNER 2026-11-05 「決算が発表済みの銘柄は『予定』でなく『発表済み 13:55』のように時刻を出して」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('note:"発表済み "+hm', html)
+        self.assertIn('/決算短信/.test(String(y.title||""))&&!/訂正/.test(String(y.title||""))', html)
+        self.assertIn('get("/tdnet_today.json")', html)
+        self.assertIn('dn||/確定/.test(String(x.status||""))?"":"・予定"', html)
+        self.assertIn(".vd8-date{font-weight:700;white-space:nowrap}", html)
+
     def test_bnf_cards(self):
         # OWNER 2026-11-04 「BNF銘柄もカードタイプで」
         gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")

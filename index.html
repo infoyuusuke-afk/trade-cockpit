@@ -3593,18 +3593,21 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!at)return {note:"前回の時刻 不明",hot:false};
     const hm=at.slice(11,16),p=part(hm),m=Number(at.slice(5,7)),d=Number(at.slice(8,10));
     return {note:"前回 "+m+"/"+d+" "+hm+"・"+p+(p==="前場"||p==="後場"?"（場中）":""),hot:p==="前場"||p==="後場"};}
-  function pick(ev,cal,today,times){
+  // OWNER 2026-11-05 「決算が発表済みの銘柄は『予定』でなく『発表済み 13:55』のように時刻を出して」: today's TDnet list (/tdnet_today.json) gives the real time of the 決算短信.
+  function doneNote(td,today,code){const it=td&&td.date===today&&Array.isArray(td.items)?td.items.find(y=>String(y.code)===code&&/決算短信/.test(String(y.title||""))&&!/訂正/.test(String(y.title||""))):null;
+    if(!it)return null;const hm=String(it.time||""),p=part(hm);return {note:"発表済み "+hm+"・"+p+(p==="前場"||p==="後場"?"（場中）":""),hot:p==="前場"||p==="後場",done:true};}
+  function pick(ev,cal,today,times,td){
     const end=add(today,30),days={};
     const at=d=>days[d]=days[d]||[];
     (Array.isArray(ev&&ev.events)?ev.events:[]).forEach(e=>{if(e&&e.impact==="高"&&e.date>=today&&e.date<=end)at(e.date).push({when:e.time_jst||"",what:e.title});});
-    (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end)at(x.date).push({...timeNote(times,String(x.code)),when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(/確定/.test(String(x.status||""))?"":"・予定")});});
+    (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end){const dn=x.date===today?doneNote(td,today,String(x.code)):null;at(x.date).push({...(dn||timeNote(times,String(x.code))),when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(dn||/確定/.test(String(x.status||""))?"":"・予定")});}});
     return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));
   }
   async function load(sec){
     const box=sec.querySelector(".vd8-list");
-    const [ev,cal,times]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json"),get("/earnings_times.json")]);
+    const [ev,cal,times,td]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json"),get("/earnings_times.json"),get("/tdnet_today.json")]);
     if(!ev&&!cal){box.innerHTML='<div class="vd8-none">予定を読めません</div>';return;}
-    const today=day0(),rows=pick(ev,cal,today,times);
+    const today=day0(),rows=pick(ev,cal,today,times,td);
     box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2;
       return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div><small>'+esc(i.when)+'</small> '+esc(i.what)+(i.note?' <span class="vd8-t'+(i.hot?' hot':'')+'">'+esc(i.note)+'</span>':'')+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
   }
