@@ -3607,7 +3607,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   function card(x,at){
     return window.renderCockpitCard({symbol:String(x.code||""),company:String(x.name||"")+"（"+String(x.code||"")+"）",direction:"long",directionLabel:"BNF候補",
       freshness:"fresh",freshnessLabel:at,price:x.close,target:x.exit_line==null?null:Math.round(x.exit_line),
-      metrics:[{label:"25日線から",value:x.dev_pct==null?null:num(x.dev_pct)+"%"},{label:"売買代金",value:x.turnover5_oku==null?null:num(x.turnover5_oku)+"億円"},{label:"市場",value:x.market||null}],
+      metrics:[{label:"期待値（過去）",value:x.ev_pct==null?"条件の成績なし":x.ev_minus?"マイナス "+num(x.ev_raw_pct)+"%（"+x.ev_n+"回）":(x.ev_pct>0?"+":"")+num(x.ev_pct)+"%（"+x.ev_n+"回"+(x.ev_n<30?"・実績不足":"")+"）"},{label:"25日線から",value:x.dev_pct==null?null:num(x.dev_pct)+"%"},{label:"売買代金",value:x.turnover5_oku==null?null:num(x.turnover5_oku)+"億円"},{label:"市場",value:x.market||null}],
       foot:"手じまいの目安：終値が25日線の−5%以内（TARGET）に戻ったら、または10日目の引け"});
   }
   async function load(sec){
@@ -3617,6 +3617,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const hits=Array.isArray(d.hits)?d.hits:[],at=String(d.close_day||"").slice(5).replace("-","/")+"の終値";
     const old=Date.now()-Date.parse(String(d.close_day||"")+"T15:30:00+09:00")>4*864e5;
     box.innerHTML=(old?'<p class="warning">古いデータ：'+esc(d.close_day)+'の終値です。判断に使わないでください。</p>':'')+
+      '<p class="sub">期待値の順（下げの深さ・売買代金・市場ごとの過去3年の成績。同じ期間の成績で、将来の成績ではありません）</p>'+
       '<p class="sub">'+esc(d.rule)+'／'+esc(at)+'・'+hits.length+'銘柄（'+num(d.checked)+'銘柄を確認）</p>'+
       '<p class="warning">'+esc(d.note)+'</p>'+
       (hits.length?'<div class="scalp-strip">'+hits.slice(0,40).map(x=>card(x,at)).join("")+'</div>':'<div class="sw8-none">該当なし</div>');

@@ -75,6 +75,15 @@ class SwingCards(unittest.TestCase):
         for banned in ("cockpitSpeak", "RssOrder", "renderAttention"):
             self.assertNotIn(banned, block)
 
+    def test_bnf_cards_show_the_past_result(self):
+        # OWNER 2026-11-05 「期待値の順に並べて。期待値がマイナスの条件は『マイナス』と出して」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「BNF銘柄もカードタイプで」: the daily BNF list", 1)[1].split("})();", 1)[0]
+        self.assertIn('x.ev_minus?"マイナス "+num(x.ev_raw_pct)', block)
+        self.assertIn('x.ev_n<30?"・実績不足"', block)
+        self.assertIn('"条件の成績なし"', block)
+        self.assertIn("将来の成績ではありません", block)
+
     def test_virtual_trades_table(self):
         # OWNER 2026-11-04 「どこで売買したところと銘柄を振り返り確認したい」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
