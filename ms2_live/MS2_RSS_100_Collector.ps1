@@ -2334,6 +2334,7 @@ $realPosConfigPath = Join-Path $PSScriptRoot "real_positions_config.json"
 $realPosFile = Join-Path $PSScriptRoot "real_positions_v1.json"
 $realPosLatched = $false
 $realPosEvery = 5            # loops between reads (about 6 to 10 s)
+$stopLossVoiceAt = [datetime]::MinValue
 $realPosRows = 300           # rows kept for each list
 $realPosMarginTop = 1        # formula cell; header on the next row, positions after it
 $realPosCashTop = 310
@@ -3255,6 +3256,13 @@ try {
                     trade_instruction = $false
                 }
                 Write-AtomicUtf8 $realPosFile ($rpView | ConvertTo-Json -Depth 5)
+                # OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: speaks only; it cannot close anything. In session, at most every 12 s.
+                $slClock = (Get-Date).TimeOfDay
+                $slInSession = ($slClock -ge [TimeSpan]"09:00:00" -and $slClock -lt [TimeSpan]"11:30:00") -or ($slClock -ge [TimeSpan]"12:30:00" -and $slClock -lt [TimeSpan]"15:30:00")
+                if ($slInSession -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 }).Count -gt 0) {
+                    $stopLossVoiceAt = Get-Date
+                    Invoke-SerializedSpeak $speaker "損切り"
+                }
             } catch {
                 $realPosReady = $false
                 $realPosSheet = $null

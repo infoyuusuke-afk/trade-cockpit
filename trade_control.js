@@ -638,7 +638,7 @@
     const [bp,acct,an,gb,rcsv]=await Promise.all([gJson("/brain_pick.json"),gJson("/real_positions.json"),gJson("analyst_scores.json"),gJson("grok_bots.json"),gJson("/realized_csv.json")]);
     const rs=glanceRuleShadow,pos=bp?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
     // real account (estimates from the read-only lists, no costs; the same arithmetic as the 実口座 cards)
-    let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null,realUncalc=0;const realHeld=[],realSide={long:{yen:0,n:0},short:{yen:0,n:0}};
+    let realDone=0,realWin=0,realLose=0,realN=0,realOpen=null,realUncalc=0,marginDone=0;const realHeld=[],realSide={long:{yen:0,n:0},short:{yen:0,n:0}};
     if(acct){
       // OWNER 2026-10-27 「買い→売埋と空売り→買埋を分けて計算して、前日以前の建玉の決済は『未計算○件』と出して」:
       // long = 買建/買付 opened and 売埋/売付 closed today; short = 売建 opened and 買埋 closed today, per stock.
@@ -648,6 +648,8 @@
       const dirOf=s=>/^(買建|買付)$/.test(s)?["long","open"]:/^(売埋|売付)$/.test(s)?["long","close"]:/^売建$/.test(s)?["short","open"]:/^買埋$/.test(s)?["short","close"]:null;
       execs.forEach(e=>{const d=dirOf(String(e.side||"").trim());if(!d)return;const g=groups[e.code+"|"+d[0]]=groups[e.code+"|"+d[0]]||{dir:d[0],open:[],close:[]};g[d[1]].push(e);});
       const avg=a=>{const q=a.reduce((x,e)=>x+(knownNumber(e.qty)||0),0);return q?{q,p:a.reduce((x,e)=>x+(knownNumber(e.qty)||0)*(knownNumber(e.price)||0),0)/q}:null;};
+      // margin only (買建→売埋 / 売建→買埋), today's opened quantity: the OWNER's day-loss room
+      Object.values(groups).forEach(g=>{const o=avg(g.open.filter(e=>/建/.test(String(e.side)))),c=avg(g.close.filter(e=>/埋/.test(String(e.side))));if(o&&c)marginDone+=(c.p-o.p)*Math.min(o.q,c.q)*(g.dir==="short"?-1:1);});
       Object.values(groups).filter(g=>g.close.length).forEach(g=>{const o=avg(g.open),c=avg(g.close);
         if(!c)return;
         if(!o||c.q>o.q)realUncalc++;                      // part or all of the close is an earlier day's position
@@ -672,11 +674,13 @@
     const csvToday=!!(rcsv&&rcsv.schema_version==="100b-v10-realized-csv-v1"&&rcsv.real_submit_allowed===false&&rcsv.state==="OK"&&
       rcsv.day===new Date(Date.now()+9*3600000).toISOString().slice(0,10)&&Number.isFinite(Number(rcsv.yen)));
     // OWNER 2026-11-05 「まずは２と３」: 両建ての警告と、新しく入る時のその日の負けの残り枠。Read-only, on this PC's screen only; nothing here can send an order.
-    // done = the live estimate; the saved CSV stops at its save time, so it is used only when it is worse.
-    window.cockpitRealGuard=acct?(()=>{const by={};
-      [...(Array.isArray(acct.margin)?acct.margin:[]).map(x=>({x,short:String(x.side||"").includes("売")})),...(Array.isArray(acct.cash)?acct.cash:[]).map(x=>({x,short:false}))].forEach(({x,short})=>{
+    // OWNER 2026-11-05 「負けの残り枠は、今日入った信用の建玉だけで計算して。現物と持ち越しの含み損は枠に入れず、横に別で出す」; the same list drives the −1万 band.
+    window.cockpitRealGuard=acct?(()=>{const by={},margin=Array.isArray(acct.margin)?acct.margin:[],cash=Array.isArray(acct.cash)?acct.cash:[];
+      const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10).replace(/-/g,""),isToday=x=>String(x.open_date||"").replace(/\D/g,"")===today,sum=a=>a.reduce((t,x)=>t+(gNum(x.pnl)||0),0);
+      [...margin.map(x=>({x,short:String(x.side||"").includes("売")})),...cash.map(x=>({x,short:false}))].forEach(({x,short})=>{
         const g=by[x.code]=by[x.code]||{code:x.code,name:x.name,long:0,short:0,pnl:0};g[short?"short":"long"]+=gNum(x.qty)||0;g.pnl+=gNum(x.pnl)||0;});
-      return {at:Date.now(),done:csvToday&&Number(rcsv.yen)<realDone?Number(rcsv.yen):realDone,open:realOpen||0,uncalc:realUncalc,limit:-30000,hedged:Object.values(by).filter(g=>g.long>0&&g.short>0)};})():null;
+      return {at:Date.now(),done:marginDone,open:sum(margin.filter(isToday)),carry:sum(margin.filter(x=>!isToday(x))),cash:sum(cash),limit:-30000,hedged:Object.values(by).filter(g=>g.long>0&&g.short>0),
+        stop:margin.filter(x=>gNum(x.pnl)!==null&&gNum(x.pnl)<=-10000).map(x=>({code:x.code,name:x.name,side:x.side,pnl:gNum(x.pnl)}))};})():null;
     const csvAt=csvToday?String(rcsv.csv_saved_at||"").slice(11,16):"";
     const csvWhy=!rcsv||!rcsv.state?"":({NOT_CONFIGURED:"CSVの置き場所が未設定",NO_CSV:"楽天CSVがまだありません",CSV_OLD:"今日の楽天CSVがまだありません",NO_TODAY_ROWS:"楽天CSVに今日の行がありません",FORMAT_UNKNOWN:"楽天CSVの形が読めません",FOLDER_MISSING:"CSVの置き場所がありません"}[rcsv.state]||"");
     let html='<div class="g-tiles">'+

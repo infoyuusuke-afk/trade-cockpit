@@ -182,6 +182,14 @@ class OrderCards(unittest.TestCase):
         src = (Path(__file__).resolve().parents[1] / "trade_control.js").read_text(encoding="utf-8")
         self.assertIn("window.cockpitRealGuard=acct?", src)
         self.assertIn("hedged:Object.values(by).filter(g=>g.long>0&&g.short>0)", src)
+        # OWNER 2026-11-05 「負けの残り枠は、今日入った信用の建玉だけで計算して…」「含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」
+        self.assertIn("done:marginDone,open:sum(margin.filter(isToday))", src)
+        self.assertIn("gNum(x.pnl)<=-10000", src)
+        self.assertIn("別枠 持ち越し含み", HTML)
+        self.assertIn('"stop-loss-band"', HTML)
+        col = (Path(__file__).resolve().parents[1] / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('Invoke-SerializedSpeak $speaker "損切り"', col)
+        self.assertIn("[double]$_.pnl -le -10000", col)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):

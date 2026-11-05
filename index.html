@@ -3789,13 +3789,19 @@ document.addEventListener("DOMContentLoaded",()=>{
   function renderGuard(){
     const box=document.getElementById("attention-box"),g=window.realGuardFresh?.();
     if(!box)return;
+    // OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: the band is here, the voice in the Collector. Nothing here can close a position.
+    let band=document.getElementById("stop-loss-band");
+    const clean=x=>String(x??"").replace(/[<>&"']/g,""),hits=g&&g.stop||[];
+    if(!band){band=document.createElement("div");band.id="stop-loss-band";band.style.cssText="position:sticky;top:0;z-index:9999;background:#C62828;color:#fff;font-size:20px;font-weight:800;padding:8px 12px;text-align:center;display:none";document.body.prepend(band);}
+    band.style.display=hits.length?"block":"none";
+    band.innerHTML=hits.map(h=>'損切り　'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)).join("<br>");
     let el=document.getElementById("real-guard-line");
     if(!el){el=document.createElement("div");el.id="real-guard-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
     if(!g){el.className="vd-line";el.textContent="実口座 今日の負け枠：読めません（V10停止中・MS2未接続・設定OFF）";return;}
     const room=window.realGuardRoom(g),hedged=g.hedged||[];
     el.className="vd-line"+(room<=0||hedged.length?" over":"");
-    el.innerHTML='<span>実口座 今日の負け枠 <b class="'+cls(room)+'">'+(room>0?'残り '+yen(room):'なし（−3万に到達）')+'</b> <span class="g">（確定 '+yen(g.done)+'・含み '+yen(g.open)+'／上限 −3万）</span></span>'+
-      (g.uncalc?'<span class="g">前日までの建玉の決済 '+g.uncalc+'件は確定に入っていません</span>':'')+
+    el.innerHTML='<span>実口座 今日の負け枠 <b class="'+cls(room)+'">'+(room>0?'残り '+yen(room):'なし（−3万に到達）')+'</b> <span class="g">（今日の信用 確定 '+yen(g.done)+'・含み '+yen(g.open)+'／上限 −3万）</span></span>'+
+      '<span class="g">別枠 持ち越し含み '+yen(g.carry)+'・現物含み '+yen(g.cash)+'</span>'+
       hedged.map(h=>'<span class="vd-mark">両建て中 '+String(h.name||"").replace(/[<>&"']/g,"")+'('+String(h.code||"").replace(/[<>&"']/g,"")+') 買'+h.long+'株・売'+h.short+'株 含み '+yen(h.pnl)+'</span>').join("");
   }
   document.addEventListener("DOMContentLoaded",()=>{loadHolds();setInterval(loadHolds,600000);setInterval(()=>{render();renderGuard();},3000);});
