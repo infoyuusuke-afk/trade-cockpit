@@ -142,6 +142,17 @@ class OrderCards(unittest.TestCase):
         self.assertIn('if (!(Date.now() - at < window.ORDER_CARD_TTL_MS)) return;', self.block)
         self.assertNotIn('!v.pinned', self.block)
 
+    def test_virtual_day_line(self):
+        # OWNER 2026-11-05 「仮想売買の今日の損益を、注目の上に1行で出して」
+        block = HTML.split("「仮想売買の今日の損益を、注目の上に1行で出して。", 1)[1].split("})();", 1)[0]
+        for text in ("デイ", "オーバーナイト", "スイング", "長期", "−3万到達 ", "そこから", "参考：−3万で止めていたら ", 'box.insertAdjacentElement("beforebegin",el)'):
+            self.assertIn(text, block)
+        self.assertIn('fetch("/hold_track.json?t="+Date.now()', block)
+        for banned in ("cockpitSpeak", "RssOrder"):
+            self.assertNotIn(banned, block)
+        js = (Path(__file__).resolve().parents[1] / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("window.cockpitVirtualDay={at:Date.now()", js)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)

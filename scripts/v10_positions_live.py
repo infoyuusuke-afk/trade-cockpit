@@ -386,13 +386,27 @@ def _short_rebound(day_dir: Path, records: Path, today: str, state: dict) -> dic
             "past_days": len({str(r.get("detected_at"))[:10] for r in past})}
 
 
+def _first_hit(rows: list[dict], limit: float, upto: str | None = None) -> str | None:
+    """The exit time at which the closed trades of rows first add up to limit or less (trades closing in the same second count together)."""
+    total, last = 0, None
+    done = sorted((str(r["exit_time"]), r["yen"]) for r in rows if r.get("yen") is not None and r.get("exit_time"))
+    for i, (t, y) in enumerate(done):
+        if upto is not None and t > upto:
+            return None
+        total += y
+        if (i + 1 == len(done) or done[i + 1][0] != t) and total <= limit:
+            return t
+    return last
+
+
 def owner_rules(rule_positions: list[dict], day: str) -> dict:
-    """Today's rule trades under the OWNER's rules (virtual, 100 shares, yen after the replay's cost)."""
+    """Today's rule trades under the OWNER's rules (virtual, 100 shares, yen after the replay's cost).
+    OWNER 2026-11-05 「仮想売買の−3万で新規を見送る仕組みは外して、制限なしで記録する」: every trade is counted. limit_reference is what the day would have
+    been if nothing was entered after the first time the closed loss reached the limit (the same count as the 対決 / diary material). Virtual only."""
     filled = sorted((p for p in rule_positions if p.get("status") in ("OPEN", "CLOSED") and p.get("fill_time")),
                     key=lambda p: str(p.get("fill_time")))
     counted, apart = [], []
-    no_stop = skipped = 0
-    limit_hit_at = None
+    no_stop = 0
     for p in filled:
         code = str(p.get("ticker") or "").replace(".T", "")
         stop, fill = _num(p.get("stop")), _num(p.get("fill_price"))
@@ -407,20 +421,22 @@ def owner_rules(rule_positions: list[dict], day: str) -> dict:
         if code in OWNER_VIRTUAL_ONLY:
             apart.append(row)
             continue
-        closed_before = sum(r["yen"] for r in counted if r["yen"] is not None and r["exit_time"]
-                            and str(r["exit_time"]) <= str(p.get("fill_time")))
-        if closed_before <= OWNER_DAILY_LIMIT_YEN:
-            skipped += 1
-            limit_hit_at = limit_hit_at or str(p.get("fill_time"))
-            continue
         counted.append(row)
 
     def tally(rows):
         closed = [r["yen"] for r in rows if r["yen"] is not None]
         return {"n": len(rows), "closed": len(closed), "open": sum(1 for r in rows if r["status"] == "OPEN"),
                 "wins": sum(1 for y in closed if y > 0), "losses": sum(1 for y in closed if y < 0), "yen": sum(closed)}
+    kept, skipped = [], 0
+    for r in counted:
+        if _first_hit(kept, OWNER_DAILY_LIMIT_YEN, str(r.get("fill_time"))) is not None:
+            skipped += 1
+        else:
+            kept.append(r)
+    limit_hit_at = _first_hit(kept, OWNER_DAILY_LIMIT_YEN)
     return {"date": day, "shares": OWNER_SHARES, "daily_limit_yen": OWNER_DAILY_LIMIT_YEN,
             "virtual_only_codes": list(OWNER_VIRTUAL_ONLY), "counted": tally(counted), "virtual_only": tally(apart),
+            "limit_reference": dict(tally(kept), hit_at=limit_hit_at, skipped=skipped),
             "no_stop": no_stop, "skipped_after_limit": skipped, "limit_hit_at": limit_hit_at,
             "trades": counted + [dict(r, virtual_only=True) for r in apart]}
 
@@ -437,7 +453,7 @@ def _owner_history(records: Path, today: str) -> list[dict]:
             v = json.loads((Path(records) / name / OWNER_RULES_FILE).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        out.append({k: v.get(k) for k in ("date", "counted", "virtual_only", "skipped_after_limit", "limit_hit_at")})
+        out.append({k: v.get(k) for k in ("date", "counted", "virtual_only", "skipped_after_limit", "limit_hit_at", "limit_reference")})
         if len(out) >= OWNER_HISTORY_DAYS:
             break
     return out

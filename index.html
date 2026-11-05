@@ -3743,4 +3743,41 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
+<style>.vd-line{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 8px;padding:6px 12px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-bg-card);color:var(--cc-text-primary);font-size:13px}.vd-line b{font-size:16px;font-variant-numeric:tabular-nums}.vd-line .up{color:var(--cc-long)}.vd-line .dn{color:var(--cc-short)}.vd-line .g{color:var(--cc-text-secondary)}.vd-line.over{border-color:var(--cc-short);background:var(--cc-short-bg)}.vd-mark{color:var(--cc-short);font-weight:700}.vd-ref{color:var(--cc-text-secondary);margin-left:auto}</style>
+<script>
+// OWNER 2026-11-05 「仮想売買の今日の損益を、注目の上に1行で出して。デイ・オーバーナイト・スイング・長期を手法のグループごとに並べ、確定と含み損益の合計を出す。合計が−3万円を下回ったら赤くして
+// 『−3万到達 HH:MM、そこから＋/−N円』と印を出す。合計は止めずに全部数える。横に参考で『−3万で止めていたら N回 ±N円』も出す」: virtual only, 100 shares. デイ・オーバーナイト from trade_control.js, スイング・長期 from
+// /hold_track.json (updated after the 16:00 run). The reach time is kept in this browser for the day. Display only: no voice, no order.
+(()=>{
+  const KEY="cockpitVirtualLimitV1";
+  const yen=v=>(v>0?"+":v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString("ja-JP")+"円";
+  const cls=v=>v>0?"up":v<0?"dn":"g";
+  const jst=()=>{const j=new Date(Date.now()+9*3600000).toISOString();return {day:j.slice(0,10),hm:j.slice(11,16)};};
+  let holds=null;
+  async function loadHolds(){try{const r=await fetch("/hold_track.json?t="+Date.now(),{cache:"no-store"});const d=r.ok?await r.json():null;holds=d&&d.real_submit_allowed===false?d:null;}catch(_){holds=null;}}
+  function part(k,day){
+    const st=holds&&holds[k];if(!st)return {done:0,open:0};
+    return {done:(st.closed||[]).filter(x=>x.exit_day===day).reduce((a,x)=>a+(x.exit-x.entry)*100,0),open:(st.open||[]).reduce((a,x)=>a+(x.last-x.entry)*100,0)};
+  }
+  function render(){
+    const box=document.getElementById("attention-box"),v=window.cockpitVirtualDay;
+    if(!box||!v)return;
+    let el=document.getElementById("virt-day-line");
+    if(!el){el=document.createElement("div");el.id="virt-day-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
+    const now=jst(),sw=part("swing",now.day),lg=part("value",now.day);
+    const done=v.dayDone+sw.done+lg.done,open=v.dayOpen+v.onOpen+sw.open+lg.open,total=done+open,lim=v.limit;
+    let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")||{};}catch(_){}
+    if(st.day!==now.day)st={day:now.day};
+    if(total<lim&&!st.hit){st.hit=now.hm;try{localStorage.setItem(KEY,JSON.stringify(st));}catch(_){}}
+    const hit=st.hit||(v.ref&&v.ref.hit_at?String(v.ref.hit_at).slice(0,5):null),over=total<lim;
+    const g=(name,d,o)=>'<span><span class="g">'+name+'</span> <span class="'+cls(d)+'">確定 '+yen(d)+'</span> <span class="'+cls(o)+'">含み '+yen(o)+'</span></span>';
+    el.className="vd-line"+(over?" over":"");
+    el.innerHTML='<span>仮想 今日 <b class="'+cls(total)+'">'+yen(total)+'</b> <span class="g">（確定 '+yen(done)+'・含み '+yen(open)+'）</span></span>'+
+      g("デイ",v.dayDone,v.dayOpen)+'<span><span class="g">オーバーナイト</span> <span class="'+cls(v.onOpen)+'">含み '+yen(v.onOpen)+'</span></span>'+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
+      (hit?'<span class="vd-mark">−3万到達 '+hit+'、そこから'+yen(total-lim)+'</span>':'')+
+      (v.ref&&v.ref.hit_at?'<span class="vd-ref">参考：−3万で止めていたら '+(v.ref.n||0)+'回 '+yen(v.ref.yen||0)+'</span>':'');
+  }
+  document.addEventListener("DOMContentLoaded",()=>{loadHolds();setInterval(loadHolds,600000);setInterval(render,3000);});
+})();
+</script>
 </body></html>

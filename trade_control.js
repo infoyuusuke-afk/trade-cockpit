@@ -664,6 +664,9 @@
     const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
+    // OWNER 2026-11-05 「仮想売買の今日の損益を、注目の上に1行で出して」: the figures for that line (virtual, 100 shares)
+    window.cockpitVirtualDay={at:Date.now(),dayDone:vYen,dayN:closed.length,dayOpen:vHeld.filter(x=>x.kind==="仮想").reduce((a,x)=>a+(x.yen100||0),0),dayOpenN:vHeld.filter(x=>x.kind==="仮想").length,
+      onOpen:vHeld.filter(x=>x.kind==="仮想・持越").reduce((a,x)=>a+(x.yen100||0),0),onN:vHeld.filter(x=>x.kind==="仮想・持越").length,ref:pos.owner_rules?.limit_reference||null,limit:Number(pos.owner_rules?.daily_limit_yen)||-30000};
     // OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: when today's Rakuten 実現損益 CSV is on this PC, the tile shows
     // its total (Rakuten's own numbers, costs included); until then the estimate stays, marked as such.
     const csvToday=!!(rcsv&&rcsv.schema_version==="100b-v10-realized-csv-v1"&&rcsv.real_submit_allowed===false&&rcsv.state==="OK"&&
