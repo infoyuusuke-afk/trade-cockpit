@@ -174,6 +174,15 @@ class OrderCards(unittest.TestCase):
         self.assertIn("$retClose=($exit1400/$entry-1)*100", col)
         self.assertIn("$retClose=($entry/$exit1400-1)*100", col)
 
+    def test_real_guard_is_display_only(self):
+        # OWNER 2026-11-05 「まずは２と３」：両建ての警告と、新しく入る時のその日の負けの残り枠
+        self.assertIn("window.realGuardRoom = g => g.done + Math.min(g.open, 0) - g.limit", HTML)
+        self.assertIn("window.realGuardCardHtml(s.ticker, buy)", HTML)
+        self.assertIn("両建て中", HTML)
+        src = (Path(__file__).resolve().parents[1] / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("window.cockpitRealGuard=acct?", src)
+        self.assertIn("hedged:Object.values(by).filter(g=>g.long>0&&g.short>0)", src)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)

@@ -671,6 +671,12 @@
     // its total (Rakuten's own numbers, costs included); until then the estimate stays, marked as such.
     const csvToday=!!(rcsv&&rcsv.schema_version==="100b-v10-realized-csv-v1"&&rcsv.real_submit_allowed===false&&rcsv.state==="OK"&&
       rcsv.day===new Date(Date.now()+9*3600000).toISOString().slice(0,10)&&Number.isFinite(Number(rcsv.yen)));
+    // OWNER 2026-11-05 「まずは２と３」: 両建ての警告と、新しく入る時のその日の負けの残り枠。Read-only, on this PC's screen only; nothing here can send an order.
+    // done = the live estimate; the saved CSV stops at its save time, so it is used only when it is worse.
+    window.cockpitRealGuard=acct?(()=>{const by={};
+      [...(Array.isArray(acct.margin)?acct.margin:[]).map(x=>({x,short:String(x.side||"").includes("売")})),...(Array.isArray(acct.cash)?acct.cash:[]).map(x=>({x,short:false}))].forEach(({x,short})=>{
+        const g=by[x.code]=by[x.code]||{code:x.code,name:x.name,long:0,short:0,pnl:0};g[short?"short":"long"]+=gNum(x.qty)||0;g.pnl+=gNum(x.pnl)||0;});
+      return {at:Date.now(),done:csvToday&&Number(rcsv.yen)<realDone?Number(rcsv.yen):realDone,open:realOpen||0,uncalc:realUncalc,limit:-30000,hedged:Object.values(by).filter(g=>g.long>0&&g.short>0)};})():null;
     const csvAt=csvToday?String(rcsv.csv_saved_at||"").slice(11,16):"";
     const csvWhy=!rcsv||!rcsv.state?"":({NOT_CONFIGURED:"CSVの置き場所が未設定",NO_CSV:"楽天CSVがまだありません",CSV_OLD:"今日の楽天CSVがまだありません",NO_TODAY_ROWS:"楽天CSVに今日の行がありません",FORMAT_UNKNOWN:"楽天CSVの形が読めません",FOLDER_MISSING:"CSVの置き場所がありません"}[rcsv.state]||"");
     let html='<div class="g-tiles">'+
