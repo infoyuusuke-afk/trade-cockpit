@@ -1604,7 +1604,13 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
   const gen = Date.parse(String(b?.generated_at || ""));
   const ok = b && b.real_submit_allowed === false && Number.isFinite(gen) && Date.now() - gen < window.ORDER_CARD_TTL_MS;
   const sigs = ok ? (b.picks || []).filter(window.orderCardWanted) : [];
-  box.innerHTML = sigs.map(s => window.orderCardHtml(s, gen, Date.now())).join("") ||
+  // OWNER 2026-11-05 「注文カードでないぞ」: a pick is lit only for a moment, so its card stays for ORDER_CARD_TTL_MS from the moment it was first seen
+  // (newest first, six at most). A file that does not say real_submit_allowed=false clears everything.
+  const held = window.orderCardHeld = window.orderCardHeld || new Map(), nowMs = Date.now();
+  if (b && b.real_submit_allowed !== false) held.clear();
+  sigs.forEach(s => { const k = s.ticker + "|" + s.signal_bar + "|" + s.side; if (!held.has(k)) held.set(k, {s, at: nowMs}); });
+  held.forEach((v, k) => { if (nowMs - v.at >= window.ORDER_CARD_TTL_MS) held.delete(k); });
+  box.innerHTML = [...held.values()].sort((x, y) => y.at - x.at).slice(0, 6).map(v => window.orderCardHtml(v.s, v.at, nowMs)).join("") ||
     "<div class='focus-empty'>今は注文カードはありません（ブレインの注目のうち、期待値がプラスの銘柄とキオクシアHD（285A）に出ます）</div>";
 }).catch(() => {});
 document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });

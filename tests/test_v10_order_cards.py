@@ -43,6 +43,13 @@ class OrderCards(unittest.TestCase):
         self.assertEqual(self.block.count("Number(s.forward_n ?? 0) < 20"), 2)
         self.assertIn("実績不足（", self.block)
 
+    def test_card_is_held_after_the_pick_goes(self):
+        # OWNER 2026-11-05 「注文カードでないぞ」
+        self.assertIn('held.set(k, {s, at: nowMs})', self.block)
+        self.assertIn('nowMs - v.at >= window.ORDER_CARD_TTL_MS', self.block)
+        self.assertIn('window.orderCardHtml(v.s, v.at, nowMs)', self.block)
+        self.assertIn('if (b && b.real_submit_allowed !== false) held.clear();', self.block)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)
