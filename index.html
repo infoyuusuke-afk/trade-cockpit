@@ -1567,6 +1567,8 @@ window.marginNote = ticker => {
 document.addEventListener("DOMContentLoaded", () => { window.loadMarginKinds(); setInterval(window.loadMarginKinds, 3600000); });
 window.orderCardWanted = s => Number(s.side) !== 0 && !window.ORDER_CARD_NO_RULES.includes(String(s.rule)) && (window.ORDER_CARD_CODES.includes(String(s.ticker)) || Number(s.ev_pct) > 0);
 // OWNER 2026-11-04 「5000円未満200株、あとは100株単位」: the quantity on the card follows the entry price.
+// OWNER 2026-11-05 「1回あたり平均で約+1,000円です。これいれて」: the expected value also in yen for this card's quantity and limit price, to the nearest 100 yen.
+window.orderCardEvYen = (s, lim, qty) => { if (s.ev_pct == null || !Number.isFinite(Number(s.ev_pct))) return ""; const y = Math.round(Number(s.ev_pct) / 100 * lim * qty / 100) * 100; return "1回あたり平均で約" + (y >= 0 ? "+" : "−") + Math.abs(y).toLocaleString("ja-JP") + "円"; };
 window.orderCardQty = price => (Number(price) < 5000 ? 200 : 100);
 window.orderCardCopy = ev => {
   const b = ev.target && ev.target.closest ? ev.target.closest("[data-copy]") : null;
@@ -1596,7 +1598,7 @@ window.orderCardHtml = (s, generatedMs, nowMs) => {
     "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", qty + "株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
     row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
     row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
-    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回" + (Number(s.forward_n ?? 0) < 20 ? "・実績不足" : "") + "）／" +
+    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + (window.orderCardEvYen(s, lim, qty) ? "・" + e(window.orderCardEvYen(s, lim, qty)) : "") + "（実績 " + e(s.forward_n ?? 0) + "回" + (Number(s.forward_n ?? 0) < 20 ? "・実績不足" : "") + "）／" +
     (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div>" +
     (left <= 0 ? "" : "<div class='order-card-copy'>" + [["コード", String(s.ticker || "").replace(".T", "")], ["数量", qty], ["指値", lim], ["利確", tp], ["損切り", sl]].map(x => "<button type='button' data-copy='" + e(x[1]) + "'>" + x[0] + " " + e(x[1]) + "</button>").join("") + "</div>") + "</article>";
 };
@@ -1640,7 +1642,7 @@ window.orderLineHtml = (k, v, nowMs) => {
   const thin = !(Number(s.forward_n) >= 20), ev = s.ev_pct != null && Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—";
   return "<div class='ol " + (buy ? "ol-long" : "ol-short") + (left > 0 ? " ol-live" : " ol-old") + "' data-ol='" + e(k) + "'><span class='ol-side'>" + (buy ? "買建" : "売建") + "</span><b class='ol-name'>" + e(String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(code) + ")</b>" +
     btn("コード", code, code) + btn("数量", qty, qty + "株") + btn("指値", lim, lim.toLocaleString("ja-JP")) + btn("利確", tp, tp.toLocaleString("ja-JP")) + btn("損切", sl, sl.toLocaleString("ja-JP")) +
-    (!buy && window.marginNote(s.ticker) ? "<span class='ol-ng'>" + e(window.marginNote(s.ticker)) + "</span>" : "") + "<span class='ol-note'>期待値 " + e(ev) + (thin ? "・<span class='ol-thin'>実績不足</span>" : "") + "・検証中" + (left > 0 ? "" : "・古い（使わない）") + "</span>" + (left > 0 ? "<span class='ol-valid'>有効 あと" + left + "秒</span>" : "") + "<button type='button' class='ol-x' data-close='" + e(k) + "'>閉じる</button></div>";
+    (!buy && window.marginNote(s.ticker) ? "<span class='ol-ng'>" + e(window.marginNote(s.ticker)) + "</span>" : "") + "<span class='ol-note'>期待値 " + e(ev) + (window.orderCardEvYen(s, lim, qty) ? "（" + e(window.orderCardEvYen(s, lim, qty)) + "）" : "") + (thin ? "・<span class='ol-thin'>実績不足</span>" : "") + "・検証中" + (left > 0 ? "" : "・古い（使わない）") + "</span>" + (left > 0 ? "<span class='ol-valid'>有効 あと" + left + "秒</span>" : "") + "<button type='button' class='ol-x' data-close='" + e(k) + "'>閉じる</button></div>";
 };
 window.orderLinesRender = () => {
   const box = document.getElementById("attention-rows"), held = window.orderCardHeld = window.orderCardHeld || new Map();
@@ -1670,7 +1672,7 @@ window.orderBigHtml = (k, v, closeAttr) => {
   const btn = (label, val, shown) => left > 0 ? "<button type='button' data-copy='" + e(val) + "'><span>" + label + "</span><b>" + e(shown) + "</b></button>" : "<div class='ob-off'><span>" + label + "</span><b>" + e(shown) + "</b></div>";
   return "<div class='ob-box " + (buy ? "ob-long" : "ob-short") + (left > 0 ? " ob-live" : " ob-old") + "'><div class='ob-head'><span class='ob-side'>" + (buy ? "買建" : "売建") + "</span><b>" + e(String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(code) + ")</b>" + (left > 0 ? "<span class='ob-valid'>有効 あと" + left + "秒</span>" : "") + "<button type='button' class='ob-x' " + closeAttr + ">閉じる</button></div>" +
     "<div class='ob-grid'>" + btn("コード", code, code) + btn("数量", qty, qty + "株") + btn("指値", lim, lim.toLocaleString("ja-JP") + "円") + btn("利確 " + (buy ? "売埋" : "買埋"), tp, tp.toLocaleString("ja-JP") + "円") + btn("損切 " + (buy ? "売埋" : "買埋"), sl, sl.toLocaleString("ja-JP") + "円") + "</div>" +
-    (!buy && window.marginNote(s.ticker) ? "<div class='ob-ng'>" + e(window.marginNote(s.ticker)) + "</div>" : "") + "<div class='ob-note'>期待値 " + e(ev) + "（実績 " + e(s.forward_n ?? "—") + "回）" + (thin ? "　<span class='ol-thin'>実績不足</span>" : "") + (left > 0 ? "" : "　古い（使わない）") + "</div>" +
+    (!buy && window.marginNote(s.ticker) ? "<div class='ob-ng'>" + e(window.marginNote(s.ticker)) + "</div>" : "") + "<div class='ob-note'>期待値 " + e(ev) + (window.orderCardEvYen(s, lim, qty) ? "・" + e(window.orderCardEvYen(s, lim, qty)) : "") + "（実績 " + e(s.forward_n ?? "—") + "回）" + (thin ? "　<span class='ol-thin'>実績不足</span>" : "") + (left > 0 ? "" : "　古い（使わない）") + "</div>" +
     "<div class='ob-warn'>検証中・参考のみ。このカードは注文を出しません。" + (left > 0 ? "押すと値がコピーされます" : "古いのでコピーできません") + "</div></div>";
 };
 window.orderBigRender = () => {

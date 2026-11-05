@@ -132,6 +132,11 @@ class OrderCards(unittest.TestCase):
         self.assertIn('(left > 0 ? " ob-live" : " ob-old")', self.block)
         self.assertIn(".ob-live.ob-long{border-color:#3DBE7A", HTML)
 
+    def test_expected_yen(self):
+        # OWNER 2026-11-05 「1回あたり平均で約+1,000円です。これいれて」
+        self.assertIn('"1回あたり平均で約" + (y >= 0 ? "+" : "−")', self.block)
+        self.assertEqual(self.block.count("window.orderCardEvYen(s, lim, qty) ?"), 3)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)
