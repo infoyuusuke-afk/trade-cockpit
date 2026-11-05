@@ -785,6 +785,29 @@ function Get-TrialMethodsView([string]$RuntimeDir) {
 # the repo) is served as-is when its flags are safe. Display only.
 # OWNER 2026-11-05 「場中は特に時間まで記載」: RuntimeDir\earnings_times_v1.json (written on this PC, never in the repo): the last earnings time of the key
 # stocks. Served as-is when its flags are safe. Display only.
+# OWNER 2026-11-05 「制度信用でうれないと注意喚起して」: RuntimeDir\margin_kind_v1.json (JPX's public list, written on this PC). Served as-is when its flags are safe.
+function Get-MarginKindView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'margin_kind_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'MARGIN_KIND_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'MARGIN_KIND_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-margin-kind-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'MARGIN_KIND_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'MARGIN_KIND_UNREADABLE')
+    }
+}
+
 function Get-EarningsTimesView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
     try {
@@ -3011,6 +3034,11 @@ try {
             if ($path -eq '/trial_methods.json') {
                 $trialView = Get-TrialMethodsView $RuntimeDir
                 Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/margin_kind.json') {
+                $marginView = Get-MarginKindView $RuntimeDir
+                Send-Response $stream $marginView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$marginView.body))
                 continue
             }
             if ($path -eq '/earnings_times.json') {

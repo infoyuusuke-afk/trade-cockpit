@@ -111,6 +111,16 @@ class OrderCards(unittest.TestCase):
         self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(s.rule))', self.block)
         self.assertIn('!window.ORDER_CARD_NO_RULES.includes(String(r.rule))).slice(0, 20)', self.block)
 
+    def test_short_warning(self):
+        # OWNER 2026-11-05 「制度信用でうれないと注意喚起して」
+        self.assertIn('k === "貸借銘柄" ? "" : k ? "制度信用では売れません（"', self.block)
+        self.assertIn('"貸借か確認できません。楽天の画面で確認"', self.block)
+        self.assertEqual(self.block.count("!buy && window.marginNote(s.ticker)"), 3)
+        self.assertIn('window.marginNote?.(x.ticker)', HTML)
+        gw = (Path(__file__).resolve().parents[1] / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/margin_kind.json') {", gw)
+        self.assertIn("[string]$view.schema_version -cne '100b-v10-margin-kind-v1'", gw)
+
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
             self.assertIn(label, self.block)
