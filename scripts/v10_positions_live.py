@@ -33,7 +33,7 @@ OUT_FILE = "positions_live_v1.json"
 RULE_SIGNALS_FILE = "brain_rule_signals.csv"
 OVERNIGHT_FILE = "overnight_hold_final.csv"
 TICKS_FILE = "ticks.csv"
-OVERNIGHT_SCORED_AT = "15:30"
+OVERNIGHT_SCORED_AT = "14:00"   # OWNER 2026-11-05 「13時から14時とし一番良い時間を記録し続ける」 (was 15:30; the Collector's 持ち越し成績 stays on the next close)
 MAX_READ_BYTES = 64 * 1024 * 1024
 # OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
 # おれの実際の成績と毎日並べて」: the OWNER's rules are applied to today's rule trades as a second, virtual tally

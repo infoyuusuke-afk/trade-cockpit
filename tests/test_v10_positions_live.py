@@ -79,7 +79,7 @@ class Positions(unittest.TestCase):
                     "hold_signal": "持ち越しロング確定", "reference_price_1525": "7981"}])
         for day, hm in ((24, "03:40"), (24, "16:00"), (25, "20:00"), (26, "10:00")):
             got = pos.build(self.tmp, now=at(day, hm), ev=ev, rules=ev.RULES, state={})["overnight"]
-            self.assertEqual([(x["ticker"], x["valid_until"]) for x in got], [("5713.T", "2026-10-26 15:30")], (day, hm))
+            self.assertEqual([(x["ticker"], x["valid_until"]) for x in got], [("5713.T", "2026-10-26 14:00")], (day, hm))
         self.assertEqual(pos.build(self.tmp, now=at(26, "15:31"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
 
     def test_header_only_weekend_file_does_not_hide_friday_holds(self):
@@ -91,7 +91,7 @@ class Positions(unittest.TestCase):
         write_csv(self.tmp / "records" / "2026-10-24" / pos.OVERNIGHT_FILE, fields, [])
         write_csv(self.tmp / "records" / "2026-10-26" / pos.OVERNIGHT_FILE, fields, [])
         got = pos.build(self.tmp, now=at(26, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"]
-        self.assertEqual([(x["ticker"], x["side"], x["valid_until"]) for x in got], [("9432.T", "SHORT", "2026-10-26 15:30")])
+        self.assertEqual([(x["ticker"], x["side"], x["valid_until"]) for x in got], [("9432.T", "SHORT", "2026-10-26 14:00")])
         # only Saturday / Sunday folders are skipped: a weekday with a header-only file means no holds
         write_csv(self.tmp / "records" / "2026-10-27" / pos.OVERNIGHT_FILE, fields, [])
         self.assertEqual(pos.build(self.tmp, now=at(28, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
