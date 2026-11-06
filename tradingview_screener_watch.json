@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-06 22:16:38 JST",
+  "updated_at": "2026-11-06 23:34:11 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4368,22 +4368,6 @@
       "already_watched": true
     },
     {
-      "code": "7936",
-      "name": "Asics Corporation",
-      "exchange": "TSE",
-      "price": 4858,
-      "change_pct": -5.980259338107219,
-      "volume": 5341500,
-      "relative_volume": 1.0868061348644722,
-      "atr_pct": 3.68,
-      "vwap": 4891,
-      "high": 5028,
-      "low": 4787,
-      "market_cap": 3260742181213,
-      "sector": "Consumer Non-Durables",
-      "already_watched": false
-    },
-    {
       "code": "6988",
       "name": "Nitto Denko Corp.",
       "exchange": "TSE",
@@ -4398,6 +4382,22 @@
       "market_cap": 2157416548828.0002,
       "sector": "Electronic Technology",
       "already_watched": true
+    },
+    {
+      "code": "7936",
+      "name": "Asics Corporation",
+      "exchange": "TSE",
+      "price": 4858,
+      "change_pct": -5.980259338107219,
+      "volume": 5341500,
+      "relative_volume": 1.0868061348644722,
+      "atr_pct": 3.68,
+      "vwap": 4891,
+      "high": 5028,
+      "low": 4787,
+      "market_cap": 3260742181213,
+      "sector": "Consumer Non-Durables",
+      "already_watched": false
     },
     {
       "code": "7453",
