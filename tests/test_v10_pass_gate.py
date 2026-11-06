@@ -22,45 +22,56 @@ def good(n=80):
 
 class FourConditions(unittest.TestCase):
     def test_a_good_method_passes(self):
-        got = gate.evaluate(good())
+        got = gate.evaluate(good(), random_time_share=.99)
         self.assertTrue(got["passed"], got)
         self.assertEqual(got["label"], "合格")
         self.assertEqual(got["failed"], [])
 
     def test_only_count_fails(self):
-        got = gate.evaluate(good()[:29])
+        got = gate.evaluate(good()[:29], random_time_share=.99)
         self.assertFalse(got["passed"])
         self.assertEqual(got["failed"], ["count"])
 
     def test_thirty_closed_is_enough(self):
-        self.assertTrue(gate.evaluate(good(30))["checks"]["count"])
-
-    def test_only_mean_fails_because_of_cost(self):
-        # gross is fine; the cost takes the mean below zero
-        trades = [dict(t, cost_pct=0.0) for t in good()]
-        mean = gate.evaluate(trades)["mean_net_pct"]
-        got = gate.evaluate([dict(t, cost_pct=mean + .01) for t in trades])
-        self.assertFalse(got["checks"]["mean"])
-        self.assertIn("mean", got["failed"])
+        got = gate.evaluate(good(30), random_time_share=.99)
         self.assertTrue(got["checks"]["count"])
+        self.assertEqual(got["failed"], [])
+
+    def test_mean_cannot_fail_alone(self):
+        # the two halves hold every trade, so both above zero means the whole is above zero:
+        # when the mean fails, the periods fail with it, and no example can fail the mean alone
+        trades = good()
+        mean = gate.evaluate(trades)["mean_net_pct"]
+        got = gate.evaluate([dict(x, cost_pct=mean + .01) for x in trades], random_time_share=.99)
+        self.assertFalse(got["checks"]["mean"])
+        self.assertFalse(got["checks"]["periods"])
+        self.assertEqual(got["failed"], ["mean", "periods"])
 
     def test_only_random_fails(self):
-        # above zero in both halves but no better than a coin
+        got = gate.evaluate(good(), random_time_share=.94)
+        self.assertEqual(got["failed"], ["random"])
+
+    def test_random_untested_cannot_pass(self):
+        # OWNER 2026-11-07: the swapped direction is no longer a condition, and the four conditions are not loosened
+        got = gate.evaluate(good())
+        self.assertEqual(got["failed"], ["random"])
+        self.assertFalse(got["passed"])
+        self.assertFalse(got["random_tested"])
+        self.assertGreater(got["direction_share"], .95)
+
+    def test_direction_share_does_not_decide(self):
         d = days(20)
         rng = random.Random(3)
         trades = [trade(d[i % 20], rng.choice((12.0, -11.8))) for i in range(40)]
-        while True:
-            got = gate.evaluate(trades)
-            if got["checks"]["mean"] and got["checks"]["periods"]:
-                break
-            trades = [trade(d[i % 20], rng.choice((12.0, -11.8))) for i in range(40)]
-        self.assertEqual(got["failed"], ["random"])
+        got = gate.evaluate(trades, random_time_share=.99)
+        self.assertLess(got["direction_share"], .95)
+        self.assertTrue(got["checks"]["random"])
 
     def test_only_periods_fails(self):
         d = days(20)
         trades = [trade(d[i], 2.0 + i % 3 * .1) for i in range(10) for _ in range(5)]
         trades += [trade(d[i], -.1) for i in range(10, 20) for _ in range(5)]
-        got = gate.evaluate(trades)
+        got = gate.evaluate(trades, random_time_share=.99)
         self.assertEqual(got["failed"], ["periods"], got)
 
     def test_periods_need_both_halves(self):

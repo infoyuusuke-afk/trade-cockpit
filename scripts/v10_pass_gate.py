@@ -5,8 +5,10 @@ OWNER 2026-11-06 「合格の4条件を、一つの関数（一つの門）に�
   1 count   : at least 30 closed trades. An open trade or a marked-to-market value is never counted.
   2 mean    : the mean after cost is above zero. Cost = commission + slippage (at least one tick
               on each side) + interest or stock-lending fee.
-  3 random  : a permutation test beats chance at 95%. Each trade's direction is swapped at random
-              (cost stays), and the real mean must beat at least 95% of those means.
+  3 random  : OWNER 2026-11-07 「ランダム比較：向きの入れ替えは残すが、合格の条件には使わない」: the method's mean must beat
+              at least 95% of random entry times on the same day and stock. That test does not exist yet, so a caller
+              passes random_time_share; until then this condition fails and nothing can be 合格. The swapped-direction
+              share is still reported as direction_share, and is not a condition.
   4 periods : the mean after cost is above zero in the first half and in the second half of the days.
 
 A trade is a dict: status, day, side (1 or -1), gross_pct (signed for the trade), price, and cost_pct
@@ -75,29 +77,30 @@ def permutation_share(trades: list[dict], seed: int = 20261106, rounds: int = PE
     return beaten / rounds
 
 
-def split_by_day(trades: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Two halves of the trading days, the earlier half smaller when the count is odd."""
-    days = sorted({str(t["day"]) for t in trades})
+def split_by_day(trades: list[dict], calendar: list[str] | None = None) -> tuple[list[dict], list[dict]]:
+    """Two halves of the days, the earlier half smaller when the count is odd. The days are the trades' own days,
+    or the shared calendar when one is given (the way the 11/6 check cut every rule at the same day)."""
+    days = sorted(set(calendar) if calendar else {str(t["day"]) for t in trades})
     cut = days[len(days) // 2] if len(days) > 1 else None
     if cut is None:
         return list(trades), []
     return [t for t in trades if str(t["day"]) < cut], [t for t in trades if str(t["day"]) >= cut]
 
 
-def evaluate(trades: list[dict]) -> dict:
+def evaluate(trades: list[dict], *, random_time_share: float | None = None, calendar: list[str] | None = None) -> dict:
     closed = closed_trades(trades)
     invalid = sum(not _valid(t) for t in closed)
     usable = [t for t in closed if _valid(t)]
     values = [net_pct(t) for t in usable]
     mean = sum(values) / len(values) if values else None
-    first, second = split_by_day(usable)
+    first, second = split_by_day(usable, calendar)
     avg = lambda part: sum(net_pct(t) for t in part) / len(part) if part else None
     a, b = avg(first), avg(second)
-    share = permutation_share(usable)
+    direction = permutation_share(usable)
     checks = {
         "count": len(usable) >= MIN_CLOSED and invalid == 0,
         "mean": mean is not None and mean > 0,
-        "random": share >= CONFIDENCE,
+        "random": random_time_share is not None and random_time_share >= CONFIDENCE,
         "periods": a is not None and b is not None and a > 0 and b > 0,
     }
     failed = [k for k, ok in checks.items() if not ok]
@@ -106,6 +109,6 @@ def evaluate(trades: list[dict]) -> dict:
         "closed": len(closed), "open_ignored": len(trades) - len(closed), "invalid": invalid,
         "mean_net_pct": None if mean is None else round(mean, 4), "pf_net": profit_factor(values),
         "win_pct": round(100 * sum(v > 0 for v in values) / len(values), 1) if values else None,
-        "random_share": round(share, 4), "first_half": {"n": len(first), "mean_net_pct": None if a is None else round(a, 4)},
+        "random_time_share": random_time_share, "random_tested": random_time_share is not None, "direction_share": round(direction, 4), "first_half": {"n": len(first), "mean_net_pct": None if a is None else round(a, 4)},
         "second_half": {"n": len(second), "mean_net_pct": None if b is None else round(b, 4)},
     }
