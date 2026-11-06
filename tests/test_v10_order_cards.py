@@ -73,7 +73,7 @@ class OrderCards(unittest.TestCase):
             self.assertIn(label, big)
         self.assertIn("window.orderCardQty(lim)", big)
         self.assertIn('ev.key === "Escape"', self.block)
-        self.assertIn(".ob-grid b{font-size:40px", HTML)
+        self.assertIn(".ob-grid b{font-size:20px", HTML)   # OWNER 2026-11-06 「半分くらいのサイズで一回つくって」
         for banned in ("RssOrder", "RssStockOrder", "real_submit_allowed = true"):
             self.assertNotIn(banned, big)
 
