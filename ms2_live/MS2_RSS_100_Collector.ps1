@@ -2423,6 +2423,12 @@ function Get-RealPosNumber($Value) {
 $realPosSheet = $null
 $realPosReady = $false
 $realPosSeq = 0
+# OWNER 2026-11-06 「口座の読み取りが失敗しても、再起動を待たずに少し置いて自動で読み直して。読めない状態が1分続いたら、声と赤い表示で『口座が読めていません』と知らせる」
+$realPosFailCount = 0
+$realPosRetryAt = [datetime]::MinValue
+$realPosLastOkAt = Get-Date
+$accountReadFailSeconds = 0
+$accountReadVoiceAt = [datetime]::MinValue
 if ($null -eq (Get-RealPosConfig)) {
     Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
 } else {
@@ -3235,8 +3241,9 @@ try {
             Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
         $realPosSeq++
-        if ($realPosReady -and $null -ne $realPosSheet -and ($realPosSeq % $realPosEvery) -eq 1) {
+        if ($realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt) {
             try {
+                if ($null -eq $realPosSheet) { $realPosSheet = Invoke-ExcelCom -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") } }
                 $rpLast = $realPosExecTop + $realPosRows + 2
                 $rpPacket = Invoke-ExcelCom -Label "実保有取得" -Action {
                     [pscustomobject]@{ Data = $realPosSheet.Range($realPosSheet.Cells.Item(1, 1), $realPosSheet.Cells.Item($rpLast, 20)).Value2 }
@@ -3286,6 +3293,8 @@ try {
                     trade_instruction = $false
                 }
                 Write-AtomicUtf8 $realPosFile ($rpView | ConvertTo-Json -Depth 5)
+                $realPosLastOkAt = Get-Date
+                $realPosFailCount = 0
                 # OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: speaks only; it cannot close anything. In session, at most every 12 s.
                 $slClock = (Get-Date).TimeOfDay
                 $slInSession = ($slClock -ge [TimeSpan]"09:00:00" -and $slClock -lt [TimeSpan]"11:30:00") -or ($slClock -ge [TimeSpan]"12:30:00" -and $slClock -lt [TimeSpan]"15:30:00")
@@ -3297,9 +3306,26 @@ try {
                     Invoke-SerializedSpeak $speaker "損切り"
                 }
             } catch {
-                $realPosReady = $false
                 $realPosSheet = $null
-                Write-Host "[REAL_POS] WARN / READ FAILED - reader suspended, Collector continues" -ForegroundColor DarkYellow
+                $realPosFailCount++
+                $realPosRetryAt = (Get-Date).AddSeconds(15)
+                $rpReason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
+                if ($rpReason.Length -gt 200) { $rpReason = $rpReason.Substring(0, 200) }
+                try {
+                    $rpErrCsv = Join-Path $dayDir "account_read_errors.csv"
+                    Ensure-Csv $rpErrCsv "captured_at,fail_count,reason"
+                    Add-RecordLines $rpErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$realPosFailCount + "," + $rpReason))
+                } catch { }
+                Write-Host ("[REAL_POS] WARN / READ FAILED - retry in 15s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
+            }
+        }
+        # Speaks only; it cannot do anything to the account. In session, once a minute.
+        $accountReadFailSeconds = $(if ($realPosReady -or $null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
+        if ($accountReadFailSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
+            $arClock = (Get-Date).TimeOfDay
+            if (($arClock -ge [TimeSpan]"09:00:00" -and $arClock -lt [TimeSpan]"11:30:00") -or ($arClock -ge [TimeSpan]"12:30:00" -and $arClock -lt [TimeSpan]"15:30:00")) {
+                $accountReadVoiceAt = Get-Date
+                Invoke-SerializedSpeak $speaker "口座が読めていません"
             }
         }
         $script:preopenIdentitySpare = $null
@@ -3721,6 +3747,7 @@ try {
             source_timezone = "Asia/Tokyo"
             updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
             symbol = $identityQuote.symbol
+            account_read_fail_seconds = $accountReadFailSeconds
             identity_primary = [string]$script:IdentityTicker
             identity_fallback_active = ($null -ne $identityFallback)
             identity_fallback_reason = $(if ($null -ne $identityFallback) { "PRIMARY_UNTRADED" } else { "" })

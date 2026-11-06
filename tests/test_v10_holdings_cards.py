@@ -53,10 +53,17 @@ class ReadOnly(unittest.TestCase):
         self.assertNotIn("realPos", rest)
         self.assertNotIn("real_positions", rest)
 
-    def test_failure_suspends_only_this_reader(self):
+    def test_failure_stops_only_this_read_and_is_retried(self):
+        # OWNER 2026-11-06 「口座の読み取りが失敗しても、再起動を待たずに少し置いて自動で読み直して。読めない状態が1分続いたら、声と赤い表示で『口座が読めていません』と知らせる」
         _, cycle = _blocks(_collector())
-        self.assertIn('Write-Host "[REAL_POS] WARN / READ FAILED - reader suspended, Collector continues"', cycle)
+        self.assertIn('[REAL_POS] WARN / READ FAILED - retry in 15s (', cycle)
         self.assertNotIn("throw", cycle)
+        self.assertIn("-and (Get-Date) -ge $realPosRetryAt) {", cycle)
+        self.assertIn('Join-Path $dayDir "account_read_errors.csv"', cycle)
+        self.assertNotIn("$realPosReady = $false\n                $realPosSheet", cycle)
+        self.assertIn('Invoke-SerializedSpeak $speaker "口座が読めていません"', cycle)
+        self.assertIn("account_read_fail_seconds = $accountReadFailSeconds", _collector())
+        self.assertIn("口座が読めていません（", (ROOT / "index.html").read_text(encoding="utf-8"))
 
     @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
     def test_block_parser(self):
