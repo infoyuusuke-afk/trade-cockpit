@@ -199,11 +199,11 @@ class OrderCards(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         col = (root / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
         gate = (root / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
-        self.assertIn('$script:IdentityFallbackTickers = @("8035.T", "6857.T")', col)
+        self.assertIn('$script:IdentityFallbackTickers = @("9432.T", "7203.T")', col)
         self.assertIn("$Primary.untraded -ne $true) { return $null }", col)
         self.assertIn("Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $row.source_timestamp_at", col)
         for text in (col, gate):
-            self.assertIn('$allowed = $(if ($FallbackActive) { @($identity, "8035.T", "6857.T") } else { @($identity) })', text)
+            self.assertIn('$allowed = $(if ($FallbackActive) { @($identity, "9432.T", "7203.T") } else { @($identity) })', text)
             self.assertIn("($diag.identity_fallback_active -eq $true)", text)
         self.assertIn("値段の本物確認：", HTML)
 

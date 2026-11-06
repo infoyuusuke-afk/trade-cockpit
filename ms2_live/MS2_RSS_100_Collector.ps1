@@ -65,8 +65,9 @@ function Get-SheetSymbolCode($table, [int]$row) {
 }
 
 $script:IdentityTicker = "285A.T"
-# OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄（東京エレクトロン8035、だめならアドバンテスト6857）でして。どれも約定が無い時や古い時は、今と同じく止める。鮮度の基準は変えない」
-$script:IdentityFallbackTickers = @("8035.T", "6857.T")
+# OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄…でして。どれも約定が無い時や古い時は、今と同じく止める。鮮度の基準は変えない」「キオクシア寄らなきゃ半導体以外の業種バリューじゃなきゃ一緒」:
+# 9432 and 7203 opened within 09:03 on every recorded day; 8035 / 6857 opened at 09:24 on 2026-11-06, only three minutes before 285A.
+$script:IdentityFallbackTickers = @("9432.T", "7203.T")
 $script:preopenIdentitySpare = $null
 # The identity row this loop when its sheet code is the identity ticker but it
 # has no current price (no trade yet). Its own state, not a symbol mismatch.
@@ -397,8 +398,8 @@ function Get-PublishedWorkbookGate {
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
     $identity = "285A.T"
-    # OWNER 2026-11-06: 8035 / 6857 prove the source only while the Collector declares that 285A has no trade yet.
-    $allowed = $(if ($FallbackActive) { @($identity, "8035.T", "6857.T") } else { @($identity) })
+    # OWNER 2026-11-06: 9432 / 7203 prove the source only while the Collector declares that 285A has no trade yet.
+    $allowed = $(if ($FallbackActive) { @($identity, "9432.T", "7203.T") } else { @($identity) })
     if ($allowed -cnotcontains [string]$Symbol) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
@@ -941,9 +942,9 @@ function Invoke-WorkbookIdentitySelfTest {
     if ($otherBook -notmatch "WRONG_SOURCE_WORKBOOK") { throw "other workbook must fail closed even when controller is true" }
     $wrongSymbol = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected)
     if ($wrongSymbol -notmatch "WRONG_SYMBOL_MAPPING") { throw "proved workbook with 8035 must fail closed" }
-    $fallbackGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected) $true
-    if (-not [string]::IsNullOrWhiteSpace($fallbackGate)) { throw "declared fallback 8035 must pass" }
-    $otherGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "7203.T" $true (Get-WorkbookPublicationId $expected) $true
+    $fallbackGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "9432.T" $true (Get-WorkbookPublicationId $expected) $true
+    if (-not [string]::IsNullOrWhiteSpace($fallbackGate)) { throw "declared fallback 9432 must pass" }
+    $otherGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected) $true
     if ($otherGate -notmatch "WRONG_SYMBOL_MAPPING") { throw "only the listed fallback symbols may pass" }
     $init = Get-WorkbookIdentityInitialization
     $probe = Start-Job -InitializationScript $init -ScriptBlock {
