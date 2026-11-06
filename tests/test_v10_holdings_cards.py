@@ -56,7 +56,12 @@ class ReadOnly(unittest.TestCase):
     def test_failure_stops_only_this_read_and_is_retried(self):
         # OWNER 2026-11-06 「口座の読み取りが失敗しても、再起動を待たずに少し置いて自動で読み直して。読めない状態が1分続いたら、声と赤い表示で『口座が読めていません』と知らせる」
         _, cycle = _blocks(_collector())
-        self.assertIn('[REAL_POS] WARN / READ FAILED - retry in 15s (', cycle)
+        self.assertIn('[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (', cycle)
+        # OWNER 2026-11-06 「1回の待ち時間を板の読み取りと同じ短さ（約2秒）…失敗が続いたら15秒、30秒、1分と間隔を広げて最長5分…読めたら元に戻す」
+        self.assertIn('$rpPacket = Invoke-ExcelCom -Retries 8 -Label "実保有取得"', cycle)
+        self.assertIn('Invoke-ExcelCom -Retries 8 -Label "実保有シート確認"', cycle)
+        self.assertIn("$rpWait = Get-AccountRetrySeconds $realPosFailCount", cycle)
+        self.assertIn("$realPosFailCount = 0\n                $realPosRetryAt = [datetime]::MinValue", cycle)
         self.assertNotIn("throw", cycle)
         self.assertIn("-and (Get-Date) -ge $realPosRetryAt) {", cycle)
         self.assertIn('Join-Path $dayDir "account_read_errors.csv"', cycle)
@@ -64,6 +69,22 @@ class ReadOnly(unittest.TestCase):
         self.assertIn('Invoke-SerializedSpeak $speaker "口座が読めていません"', cycle)
         self.assertIn("account_read_fail_seconds = $accountReadFailSeconds", _collector())
         self.assertIn("口座が読めていません（", (ROOT / "index.html").read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
+    def test_retry_wait_grows_to_five_minutes(self):
+        harness = r"""
+param([string]$Collector)
+$t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
+$fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-AccountRetrySeconds'},$true))
+. ([scriptblock]::Create($fn[0].Extent.Text))
+(@(0,1,2,3,4,5,6,7,20) | ForEach-Object { Get-AccountRetrySeconds $_ }) -join ','
+"""
+        with tempfile.TemporaryDirectory() as d:
+            h = Path(d) / "h.ps1"
+            h.write_text(harness, encoding="utf-8-sig")
+            p = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR)],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "0,15,30,60,120,240,300,300,300")
 
     @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
     def test_block_parser(self):

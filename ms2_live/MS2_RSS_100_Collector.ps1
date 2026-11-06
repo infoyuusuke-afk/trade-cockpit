@@ -2413,6 +2413,11 @@ function Get-RealPosDate($Value) {
     if ($m.Success) { return ("{0}/{1:D2}/{2:D2}" -f $m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value) }
     return ""
 }
+function Get-AccountRetrySeconds([int]$FailCount) {
+    # OWNER 2026-11-06 「失敗が続いたら15秒、30秒、1分と間隔を広げて最長5分にする。読めたら元に戻す」
+    if ($FailCount -lt 1) { return 0 }
+    return [int][Math]::Min(300, 15 * [Math]::Pow(2, $FailCount - 1))
+}
 function Get-RealPosNumber($Value) {
     if ($Value -is [double]) { return $Value }
     $t = ([string]$Value) -replace '[,\s円株%]', ''
@@ -3243,9 +3248,10 @@ try {
         $realPosSeq++
         if ($realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt) {
             try {
-                if ($null -eq $realPosSheet) { $realPosSheet = Invoke-ExcelCom -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") } }
+                # OWNER 2026-11-06 「1回の待ち時間を板の読み取りと同じ短さ（約2秒）にして」: 8 tries of 250 ms instead of the default 60 s, so a busy Excel does not hold the loop
+                if ($null -eq $realPosSheet) { $realPosSheet = Invoke-ExcelCom -Retries 8 -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") } }
                 $rpLast = $realPosExecTop + $realPosRows + 2
-                $rpPacket = Invoke-ExcelCom -Label "実保有取得" -Action {
+                $rpPacket = Invoke-ExcelCom -Retries 8 -Label "実保有取得" -Action {
                     [pscustomobject]@{ Data = $realPosSheet.Range($realPosSheet.Cells.Item(1, 1), $realPosSheet.Cells.Item($rpLast, 20)).Value2 }
                 }
                 $rpData = $rpPacket.Data
@@ -3295,6 +3301,7 @@ try {
                 Write-AtomicUtf8 $realPosFile ($rpView | ConvertTo-Json -Depth 5)
                 $realPosLastOkAt = Get-Date
                 $realPosFailCount = 0
+                $realPosRetryAt = [datetime]::MinValue
                 # OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: speaks only; it cannot close anything. In session, at most every 12 s.
                 $slClock = (Get-Date).TimeOfDay
                 $slInSession = ($slClock -ge [TimeSpan]"09:00:00" -and $slClock -lt [TimeSpan]"11:30:00") -or ($slClock -ge [TimeSpan]"12:30:00" -and $slClock -lt [TimeSpan]"15:30:00")
@@ -3308,15 +3315,16 @@ try {
             } catch {
                 $realPosSheet = $null
                 $realPosFailCount++
-                $realPosRetryAt = (Get-Date).AddSeconds(15)
+                $rpWait = Get-AccountRetrySeconds $realPosFailCount
+                $realPosRetryAt = (Get-Date).AddSeconds($rpWait)
                 $rpReason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
                 if ($rpReason.Length -gt 200) { $rpReason = $rpReason.Substring(0, 200) }
                 try {
                     $rpErrCsv = Join-Path $dayDir "account_read_errors.csv"
-                    Ensure-Csv $rpErrCsv "captured_at,fail_count,reason"
-                    Add-RecordLines $rpErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$realPosFailCount + "," + $rpReason))
+                    Ensure-Csv $rpErrCsv "captured_at,fail_count,retry_after_s,reason"
+                    Add-RecordLines $rpErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$realPosFailCount + "," + [string]$rpWait + "," + $rpReason))
                 } catch { }
-                Write-Host ("[REAL_POS] WARN / READ FAILED - retry in 15s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
+                Write-Host ("[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
             }
         }
         # Speaks only; it cannot do anything to the account. In session, once a minute.
