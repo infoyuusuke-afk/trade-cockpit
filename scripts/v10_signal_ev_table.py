@@ -247,7 +247,11 @@ R4_BACKTEST = {"train": {"n": 188, "ev_pct": 0.111, "pf": 1.63}, "test": {"n": 9
 R5_BACKTEST = {"train": {"n": 24, "ev_pct": 0.15, "pf": 1.75}, "test": {"n": 44, "ev_pct": 0.387, "pf": 4.19}}
 RULES_FORWARD_FROM = "2026-10-22"
 RULES = {
+    # OWNER 2026-10-26 「ルール①を記録だけにして、1銘柄1日1回を入れて」: since 2026-10-16 the rule lost
+    # (records 9/19..10/15 PF1.44, 10/16..10/26 PF0.65). It is still replayed and shown, but never scored,
+    # picked, spoken or put on an order card; one filled trade per stock per day.
     "R1": {"label": "① 買い 9:15〜10:00・目標2倍・損切り2倍", "side": 1, "from": "09:15", "to": "10:00",
+           "record_only": True, "once_per_ticker_day": True,
            "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
            "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
            "backtest": {"train": {"n": 102, "ev_pct": 0.097, "pf": 1.39}, "test": {"n": 54, "ev_pct": 0.096, "pf": 1.51}}},
@@ -427,9 +431,11 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         with open(sig_path, newline="", encoding="utf-8-sig") as f:
             signals = list(csv.DictReader(f))
         for key, rule in RULES.items():
-            open_until = {}
+            open_until, traded = {}, set()
             for s in signals:
                 if not rule_matches(rule, s, context):
+                    continue
+                if rule.get("once_per_ticker_day") and s.get("ticker", "") in traded:
                     continue
                 setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
                 stamp = str(s.get("captured_at", ""))[11:19]
@@ -440,6 +446,7 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
                 if not got or got.get("state") != "FILLED":
                     continue
                 open_until[setup] = got["exit_time"]
+                traded.add(s.get("ticker", ""))
                 trades[key].append(dict(got, day=day, ticker=s.get("ticker", ""), name=s.get("name", ""),
                                         signal_at=s.get("captured_at", "")))
     return {

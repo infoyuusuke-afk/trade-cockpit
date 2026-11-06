@@ -397,21 +397,22 @@ class PaidAttemptGate(unittest.TestCase):
             pilot.reserve_billable_attempt(ledger, first, "fingerprint-a", now=NOW)
             with self.assertRaisesRegex(pilot.Blocked, "BILLABLE_REPLAY_BLOCKED"):
                 pilot.reserve_billable_attempt(ledger, first, "fingerprint-a", now=NOW)
-            for index in range(2, 9):
+            runs = pilot.PAID_TOTAL_LEDGER_CENTS // pilot.PAID_RESERVED_CENTS_PER_RUN
+            for index in range(2, runs + 1):
                 pilot.reserve_billable_attempt(
                     ledger, f"budgeted_run_{index:05d}", f"fingerprint-{index}",
                     now=NOW + timedelta(days=index)
                 )
             with self.assertRaisesRegex(pilot.Blocked, "LOCAL_BUDGET_RESERVATION_EXHAUSTED"):
-                pilot.reserve_billable_attempt(ledger, "budgeted_run_00009", "fingerprint-9",
-                                               now=NOW + timedelta(days=30))
+                pilot.reserve_billable_attempt(ledger, "budgeted_run_09999", "fingerprint-x",
+                                               now=NOW + timedelta(days=runs + 30))
             with closing(sqlite3.connect(ledger)) as conn:
                 self.assertEqual(
                     conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0],
                     pilot.PAID_TOTAL_LEDGER_CENTS
                 )
                 self.assertEqual(
-                    conn.execute("SELECT COUNT(*) FROM paid_attempts").fetchone()[0], 8
+                    conn.execute("SELECT COUNT(*) FROM paid_attempts").fetchone()[0], runs
                 )
 
     def test_daily_cap_and_same_slot_block_double_charging(self):
@@ -442,7 +443,8 @@ class PaidAttemptGate(unittest.TestCase):
                 conn.execute("INSERT INTO paid_attempts VALUES ('old_run_0001','fp',100,'ATTEMPT_RESERVED','x')")
             pilot.reserve_billable_attempt(ledger, "new_run_00001", "fp", slot_key="k", now=NOW)
             with closing(sqlite3.connect(ledger)) as conn:
-                self.assertEqual(conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0], 200)
+                self.assertEqual(conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0],
+                                 100 + pilot.PAID_RESERVED_CENTS_PER_RUN)
 
     def test_billable_without_ledger_fails_before_network(self):
         with tempfile.TemporaryDirectory() as td:
