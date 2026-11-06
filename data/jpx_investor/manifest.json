@@ -317,5 +317,27 @@
     "sha256": "9b3e78e2a1d558e9871c6f2db837e64e08299a26428e7481cc6cd3d04ddc71cc",
     "source_url": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt000002jyxl-att/Tousi_DV_W_20261019_20261023.csv",
     "local_file": "data/jpx_investor/derivative_2026-10-23_9b3e78e2a1d5.csv"
+  },
+  {
+    "dataset": "equity",
+    "period_start": "2026-10-26",
+    "period_end": "2026-10-30",
+    "retrieved_at": "2026-11-06T15:35:43+09:00",
+    "published_confirmed_at": "2026-11-06T15:35:43+09:00",
+    "revision": 1,
+    "sha256": "82db4cfeb6695e995b7b4ada04a15e37783776536304cf08bb0e4eaf1d37ead3",
+    "source_url": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/t13vrt000002kesf-att/stock_1_w_20261026_20261030.xlsx",
+    "local_file": "data/jpx_investor/equity_2026-10-30_82db4cfeb669.xlsx"
+  },
+  {
+    "dataset": "derivative",
+    "period_start": "2026-10-26",
+    "period_end": "2026-10-30",
+    "retrieved_at": "2026-11-06T15:35:43+09:00",
+    "published_confirmed_at": "2026-11-06T15:35:43+09:00",
+    "revision": 1,
+    "sha256": "d37f9276bc44609e6e160654e2c3f03ac089b17767364f49219c1e12ad8249bf",
+    "source_url": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt000002kdsk-att/Tousi_DV_W_20261026_20261030.csv",
+    "local_file": "data/jpx_investor/derivative_2026-10-30_d37f9276bc44.csv"
   }
 ]
