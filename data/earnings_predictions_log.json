@@ -10746,7 +10746,10 @@
     "logged_at": "2026-11-04 01:35:26 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -3.35,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "1898",
@@ -11643,7 +11646,10 @@
     "logged_at": "2026-11-04 01:35:44 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -7.93,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "6073",
@@ -16413,6 +16419,15 @@
     "logged_at": "2026-11-06 01:51:57 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.56,
+    "status": "pending"
+  },
+  {
+    "code": "9049",
+    "name": "京福電気鉄道",
+    "target_date": "2026-11-09",
+    "logged_at": "2026-11-07 01:19:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.77,
     "status": "pending"
   }
 ]
