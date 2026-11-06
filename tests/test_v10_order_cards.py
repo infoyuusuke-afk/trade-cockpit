@@ -180,7 +180,7 @@ class OrderCards(unittest.TestCase):
         self.assertIn("window.realGuardCardHtml(s.ticker, buy)", HTML)
         self.assertIn("両建て中", HTML)
         src = (Path(__file__).resolve().parents[1] / "trade_control.js").read_text(encoding="utf-8")
-        self.assertIn("window.cockpitRealGuard=acct?", src)
+        self.assertIn("window.cockpitRealGuard=acct&&acct.margin_state", src)
         self.assertIn("hedged:Object.values(by).filter(g=>g.long>0&&g.short>0)", src)
         # OWNER 2026-11-05 「負けの残り枠は、今日入った信用の建玉だけで計算して…」「含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」
         self.assertIn("done:marginDone,open:sum(margin.filter(isToday))", src)

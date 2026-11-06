@@ -62,6 +62,17 @@ class ReadOnly(unittest.TestCase):
         self.assertIn('Invoke-ExcelCom -Retries 8 -Label "実保有シート確認"', cycle)
         self.assertIn("$rpWait = Get-AccountRetrySeconds $realPosFailCount", cycle)
         self.assertIn("$realPosFailCount = 0\n                $realPosRetryAt = [datetime]::MinValue", cycle)
+        # OWNER 2026-11-07 「口座の一覧が空（NOT_READY）のときは成功にせず、負け枠は『読めません』…起動時の失敗も周回で読み直す」
+        self.assertIn("if (-not (Test-AccountListsReady $rpMargin $rpExec)) {", cycle)
+        self.assertLess(cycle.index("Test-AccountListsReady $rpMargin $rpExec"), cycle.index("Write-AtomicUtf8 $realPosFile"))
+        self.assertLess(cycle.index("Write-AtomicUtf8 $realPosFile"), cycle.index("if ($rpFail) {"))
+        self.assertIn("$realPosSheet = Initialize-RealPosSheet -Retries 8", cycle)
+        self.assertIn("$realPosSetupFailed = $true", _blocks(_collector())[0])
+        js = CONTROL_JS.read_text(encoding="utf-8")
+        self.assertIn('window.cockpitRealGuard=acct&&acct.margin_state==="OK"&&acct.executions_state==="OK"?', js)
+        page = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("!(Number(window.cockpitAccountFailSeconds) >= 60) ? g : null", page)
+        self.assertIn("読めません（口座が読めていません）", page)
         self.assertNotIn("throw", cycle)
         self.assertIn("-and (Get-Date) -ge $realPosRetryAt) {", cycle)
         self.assertIn('Join-Path $dayDir "account_read_errors.csv"', cycle)
@@ -69,6 +80,23 @@ class ReadOnly(unittest.TestCase):
         self.assertIn('Invoke-SerializedSpeak $speaker "口座が読めていません"', cycle)
         self.assertIn("account_read_fail_seconds = $accountReadFailSeconds", _collector())
         self.assertIn("口座が読めていません（", (ROOT / "index.html").read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
+    def test_lists_ready_only_with_their_headers(self):
+        harness = r"""
+param([string]$Collector)
+$t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
+$fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-AccountListsReady'},$true))
+. ([scriptblock]::Create($fn[0].Extent.Text))
+$empty=@()
+(Test-AccountListsReady $null $null),(Test-AccountListsReady $null $empty),(Test-AccountListsReady $empty $null),(Test-AccountListsReady $empty $empty),(Test-AccountListsReady @(1) $empty) -join ','
+"""
+        with tempfile.TemporaryDirectory() as d:
+            h = Path(d) / "h.ps1"
+            h.write_text(harness, encoding="utf-8-sig")
+            p = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR)],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "False,False,False,True,True")
 
     @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
     def test_retry_wait_grows_to_five_minutes(self):

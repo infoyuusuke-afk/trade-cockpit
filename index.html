@@ -1665,7 +1665,7 @@ window.orderLinesRender = () => {
 window.orderBigOpen = k => { window.orderBigKey = k; window.orderBigRender(); };
 window.orderBigClose = () => { window.orderBigKey = null; const b = document.getElementById("order-big"); if (b) b.remove(); };
 // OWNER 2026-11-05 「まずは２と３」: the room left before the day's −3万 (確定＋含み損) and 両建て, from window.cockpitRealGuard (trade_control.js). Display only.
-window.realGuardFresh = () => { const g = window.cockpitRealGuard; return g && Date.now() - g.at < 180000 ? g : null; };
+window.realGuardFresh = () => { const g = window.cockpitRealGuard; return g && Date.now() - g.at < 180000 && !(Number(window.cockpitAccountFailSeconds) >= 60) ? g : null; };   // OWNER 2026-11-07: the red band and a number never show together
 window.realGuardRoom = g => g.done + Math.min(g.open, 0) - g.limit;
 window.realGuardCardHtml = (ticker, buy) => {
   const g = window.realGuardFresh(), yen = v => Math.round(v).toLocaleString("ja-JP") + "円";
@@ -3800,7 +3800,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     band.innerHTML=(acctDown?['口座が読めていません（'+Math.floor(window.cockpitAccountFailSeconds/60)+'分）']:[]).concat(hits.map(h=>'損切り　'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)+((g.hedged||[]).some(x=>String(x.code)===String(h.code))?'（両建て・声なし）':''))).join("<br>");
     let el=document.getElementById("real-guard-line");
     if(!el){el=document.createElement("div");el.id="real-guard-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
-    if(!g){el.className="vd-line";el.textContent="実口座 今日の負け枠：読めません（V10停止中・MS2未接続・設定OFF）";return;}
+    if(!g){el.className=acctDown?"vd-line over":"vd-line";el.textContent="実口座 今日の負け枠："+(acctDown?"読めません（口座が読めていません）":"読めません（V10停止中・MS2未接続・設定OFF）");return;}
     const room=window.realGuardRoom(g),hedged=g.hedged||[];
     el.className="vd-line"+(room<=0||hedged.length?" over":"");
     el.innerHTML='<span>実口座 今日の負け枠 <b class="'+cls(room)+'">'+(room>0?'残り '+yen(room):'なし（−3万に到達）')+'</b> <span class="g">（今日の信用 確定 '+yen(g.done)+'・含み '+yen(g.open)+'／上限 −3万）</span></span>'+

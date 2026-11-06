@@ -676,7 +676,8 @@
       rcsv.day===new Date(Date.now()+9*3600000).toISOString().slice(0,10)&&Number.isFinite(Number(rcsv.yen)));
     // OWNER 2026-11-05 「まずは２と３」: 両建ての警告と、新しく入る時のその日の負けの残り枠。Read-only, on this PC's screen only; nothing here can send an order.
     // OWNER 2026-11-05 「負けの残り枠は、今日入った信用の建玉だけで計算して。現物と持ち越しの含み損は枠に入れず、横に別で出す」; the same list drives the −1万 band.
-    window.cockpitRealGuard=acct?(()=>{const by={},margin=Array.isArray(acct.margin)?acct.margin:[],cash=Array.isArray(acct.cash)?acct.cash:[];
+    // OWNER 2026-11-07 「負け枠は『読めません』にして数字を出さない」: a list that was not read is not a zero
+    window.cockpitRealGuard=acct&&acct.margin_state==="OK"&&acct.executions_state==="OK"?(()=>{const by={},margin=Array.isArray(acct.margin)?acct.margin:[],cash=Array.isArray(acct.cash)?acct.cash:[];
       const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10).replace(/-/g,""),isToday=x=>String(x.open_date||"").replace(/\D/g,"")===today,sum=a=>a.reduce((t,x)=>t+(gNum(x.pnl)||0),0);
       [...margin.map(x=>({x,short:String(x.side||"").includes("売")})),...cash.map(x=>({x,short:false}))].forEach(({x,short})=>{
         const g=by[x.code]=by[x.code]||{code:x.code,name:x.name,long:0,short:0,pnl:0};g[short?"short":"long"]+=gNum(x.qty)||0;g.pnl+=gNum(x.pnl)||0;});

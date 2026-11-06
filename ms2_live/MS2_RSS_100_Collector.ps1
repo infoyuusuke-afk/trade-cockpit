@@ -2418,6 +2418,11 @@ function Get-AccountRetrySeconds([int]$FailCount) {
     if ($FailCount -lt 1) { return 0 }
     return [int][Math]::Min(300, 15 * [Math]::Pow(2, $FailCount - 1))
 }
+function Test-AccountListsReady($Margin, $Executions) {
+    # OWNER 2026-11-07 「口座の一覧が空（NOT_READY）のときは成功にせず」: no header means the list was not read.
+    # A list with its header and no rows is a real empty list (@()), which is ready.
+    return ($null -ne $Margin -and $null -ne $Executions)
+}
 function Get-RealPosNumber($Value) {
     if ($Value -is [double]) { return $Value }
     $t = ([string]$Value) -replace '[,\s円株%]', ''
@@ -2428,9 +2433,28 @@ function Get-RealPosNumber($Value) {
 $realPosSheet = $null
 $realPosReady = $false
 $realPosSeq = 0
+function Initialize-RealPosSheet([int]$Retries = 240) {
+    try {
+        $sheet = Invoke-ExcelCom -Retries $Retries -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") }
+    } catch {
+        $sheet = $null
+    }
+    if ($null -eq $sheet) {
+        # Added for this session only (Safe Stop closes the workbook without saving).
+        $sheet = Invoke-ExcelCom -Retries $Retries -Label "実保有シート作成" -Action { $book.Worksheets.Add() }
+        Invoke-ExcelCom -Retries $Retries -Label "実保有シート命名" -Action { $sheet.Name = "REAL_POS" } | Out-Null
+    }
+    # read-only list functions only (all issues, all accounts, all margin kinds and sides)
+    Invoke-ExcelCom -Retries $Retries -Label "信用建玉一覧式設定" -Action { $sheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
+    Invoke-ExcelCom -Retries $Retries -Label "現物保有一覧式設定" -Action { $sheet.Cells.Item($realPosCashTop, 1).FormulaLocal = '=RssPositionList(,,"A")' } | Out-Null
+    Invoke-ExcelCom -Retries $Retries -Label "約定一覧式設定" -Action { $sheet.Cells.Item($realPosExecTop, 1).FormulaLocal = '=RssExecutionList(,0,,"A",0,0)' } | Out-Null
+    Invoke-ExcelCom -Retries $Retries -Label "実保有シート非表示" -Action { $sheet.Visible = 0 } | Out-Null
+    return $sheet
+}
 # OWNER 2026-11-06 「口座の読み取りが失敗しても、再起動を待たずに少し置いて自動で読み直して。読めない状態が1分続いたら、声と赤い表示で『口座が読めていません』と知らせる」
 $realPosFailCount = 0
 $realPosRetryAt = [datetime]::MinValue
+$realPosSetupFailed = $false
 $realPosLastOkAt = Get-Date
 $accountReadFailSeconds = 0
 $accountReadVoiceAt = [datetime]::MinValue
@@ -2438,27 +2462,14 @@ if ($null -eq (Get-RealPosConfig)) {
     Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
 } else {
     try {
-        try {
-            $realPosSheet = Invoke-ExcelCom -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") }
-        } catch {
-            $realPosSheet = $null
-        }
-        if ($null -eq $realPosSheet) {
-            # Added for this session only (Safe Stop closes the workbook without saving).
-            $realPosSheet = Invoke-ExcelCom -Label "実保有シート作成" -Action { $book.Worksheets.Add() }
-            Invoke-ExcelCom -Label "実保有シート命名" -Action { $realPosSheet.Name = "REAL_POS" } | Out-Null
-        }
-        # read-only list functions only (all issues, all accounts, all margin kinds and sides)
-        Invoke-ExcelCom -Label "信用建玉一覧式設定" -Action { $realPosSheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
-        Invoke-ExcelCom -Label "現物保有一覧式設定" -Action { $realPosSheet.Cells.Item($realPosCashTop, 1).FormulaLocal = '=RssPositionList(,,"A")' } | Out-Null
-        Invoke-ExcelCom -Label "約定一覧式設定" -Action { $realPosSheet.Cells.Item($realPosExecTop, 1).FormulaLocal = '=RssExecutionList(,0,,"A",0,0)' } | Out-Null
-        Invoke-ExcelCom -Label "実保有シート非表示" -Action { $realPosSheet.Visible = 0 } | Out-Null
+        $realPosSheet = Initialize-RealPosSheet
         $realPosReady = $true
         Write-Host "[REAL_POS] READY (read only, this PC only)" -ForegroundColor Green
     } catch {
         $realPosSheet = $null
         $realPosReady = $false
-        Write-Host "[REAL_POS] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+        $realPosSetupFailed = $true   # OWNER 2026-11-07 「起動時の失敗も周回で読み直す」
+        Write-Host "[REAL_POS] WARN / UNAVAILABLE - retried from the cycle, Collector continues" -ForegroundColor DarkYellow
     }
 }
 
@@ -3246,6 +3257,20 @@ try {
             Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
         $realPosSeq++
+        $rpFail = ""
+        if ($realPosSetupFailed -and -not $realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt -and $null -ne (Get-RealPosConfig)) {
+            try {
+                $realPosSheet = Initialize-RealPosSheet -Retries 8
+                $realPosReady = $true
+                $realPosSetupFailed = $false
+                $realPosFailCount = 0
+                $realPosRetryAt = [datetime]::MinValue
+                Write-Host "[REAL_POS] READY after a failed start (read only, this PC only)" -ForegroundColor Green
+            } catch {
+                $realPosSheet = $null
+                $rpFail = "SETUP " + ([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)
+            }
+        }
         if ($realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt) {
             try {
                 # OWNER 2026-11-06 「1回の待ち時間を板の読み取りと同じ短さ（約2秒）にして」: 8 tries of 250 ms instead of the default 60 s, so a busy Excel does not hold the loop
@@ -3270,6 +3295,10 @@ try {
                     $rpExec = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
                     if ($null -ne $rpExec) { break }
                 }
+                # OWNER 2026-11-07: a list without its header is not a success. The file is not rewritten, so the screen falls to 読めません.
+                if (-not (Test-AccountListsReady $rpMargin $rpExec)) {
+                    $rpFail = "LIST_NOT_READY margin=" + [string]($null -ne $rpMargin) + " executions=" + [string]($null -ne $rpExec)
+                } else {
                 $rpToday = (Get-Date).ToString("yyyy/MM/dd")
                 $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
                     [ordered]@{ at = Get-RealPosDate $p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
@@ -3312,23 +3341,27 @@ try {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
                 }
+                }
             } catch {
                 $realPosSheet = $null
-                $realPosFailCount++
-                $rpWait = Get-AccountRetrySeconds $realPosFailCount
-                $realPosRetryAt = (Get-Date).AddSeconds($rpWait)
-                $rpReason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
-                if ($rpReason.Length -gt 200) { $rpReason = $rpReason.Substring(0, 200) }
-                try {
-                    $rpErrCsv = Join-Path $dayDir "account_read_errors.csv"
-                    Ensure-Csv $rpErrCsv "captured_at,fail_count,retry_after_s,reason"
-                    Add-RecordLines $rpErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$realPosFailCount + "," + [string]$rpWait + "," + $rpReason))
-                } catch { }
-                Write-Host ("[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
+                $rpFail = ([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)
             }
         }
+        if ($rpFail) {
+            $realPosFailCount++
+            $rpWait = Get-AccountRetrySeconds $realPosFailCount
+            $realPosRetryAt = (Get-Date).AddSeconds($rpWait)
+            $rpReason = $rpFail -replace '[\r\n,"]', ' '
+            if ($rpReason.Length -gt 200) { $rpReason = $rpReason.Substring(0, 200) }
+            try {
+                $rpErrCsv = Join-Path $dayDir "account_read_errors.csv"
+                Ensure-Csv $rpErrCsv "captured_at,fail_count,retry_after_s,reason"
+                Add-RecordLines $rpErrCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + [string]$realPosFailCount + "," + [string]$rpWait + "," + $rpReason))
+            } catch { }
+            Write-Host ("[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
+        }
         # Speaks only; it cannot do anything to the account. In session, once a minute.
-        $accountReadFailSeconds = $(if ($realPosReady -or $null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
+        $accountReadFailSeconds = $(if ($realPosReady -or $realPosSetupFailed -or $null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
         if ($accountReadFailSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
             $arClock = (Get-Date).TimeOfDay
             if (($arClock -ge [TimeSpan]"09:00:00" -and $arClock -lt [TimeSpan]"11:30:00") -or ($arClock -ge [TimeSpan]"12:30:00" -and $arClock -lt [TimeSpan]"15:30:00")) {
