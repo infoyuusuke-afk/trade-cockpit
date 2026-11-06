@@ -583,7 +583,7 @@
     const e=knownNumber(entry),val=u.now===null||e===null||e<=0?null:(short?1-u.now/e:u.now/e-1)*100;
     // OWNER 2026-10-27 「仮想の含み損益（持ち越し含む）にも1回100株で計算した円を出して」
     const yen100=val===null?null:val/100*e*100;
-    return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,yen100,
+    return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,yen100,lastPrice:u.text.includes("最後の値"),
       text:u.text.replace("含み損益：","")+(yen100===null?"":"・100株 "+gYen(yen100))};
   }
   // OWNER 2026-10-27 過去実績（たたき直し）: /owner_review.json is built on this PC from the OWNER's own CSV exports
@@ -663,12 +663,13 @@
     const vSum=closed.reduce((a,p)=>a+Number(p.return_pct),0),vWin=closed.filter(p=>Number(p.return_pct)>0).length;
     // OWNER 2026-10-27 「金額もいれる」: the same closed trades in yen at 100 shares each (return after cost x fill price x 100)
     const vYenRows=closed.filter(p=>gNum(p.fill_price)>0),vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);
-    const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
+    const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り"),true))
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
     // OWNER 2026-11-05 「仮想売買の今日の損益を、注目の上に1行で出して」: the figures for that line (virtual, 100 shares)
+    const vCheck=k=>{const a=vHeld.filter(x=>x.kind===k);return {none:a.length>0&&a.every(x=>x.yen100===null),last:a.some(x=>x.lastPrice)};};
     window.cockpitVirtualDay={at:Date.now(),dayDone:vYen,dayN:closed.length,dayOpen:vHeld.filter(x=>x.kind==="仮想").reduce((a,x)=>a+(x.yen100||0),0),dayOpenN:vHeld.filter(x=>x.kind==="仮想").length,
-      onDone:(Array.isArray(pos.overnight_closed)?pos.overnight_closed:[]).reduce((a,x)=>a+(Number(x.yen)||0),0),onOpen:vHeld.filter(x=>x.kind==="仮想・持越").reduce((a,x)=>a+(x.yen100||0),0),onN:vHeld.filter(x=>x.kind==="仮想・持越").length,ref:pos.owner_rules?.limit_reference||null,limit:Number(pos.owner_rules?.daily_limit_yen)||-30000};
+      dayCheck:vCheck("仮想"),onCheck:vCheck("仮想・持越"),onDone:(Array.isArray(pos.overnight_closed)?pos.overnight_closed:[]).reduce((a,x)=>a+(Number(x.yen)||0),0),onOpen:vHeld.filter(x=>x.kind==="仮想・持越").reduce((a,x)=>a+(x.yen100||0),0),onN:vHeld.filter(x=>x.kind==="仮想・持越").length,ref:pos.owner_rules?.limit_reference||null,limit:Number(pos.owner_rules?.daily_limit_yen)||-30000};
     // OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: when today's Rakuten 実現損益 CSV is on this PC, the tile shows
     // its total (Rakuten's own numbers, costs included); until then the estimate stays, marked as such.
     const csvToday=!!(rcsv&&rcsv.schema_version==="100b-v10-realized-csv-v1"&&rcsv.real_submit_allowed===false&&rcsv.state==="OK"&&

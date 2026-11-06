@@ -2459,7 +2459,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    window.cockpitLivePrices=stale?null:{at:Date.now(),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>rowReady(x)).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
    // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: after the close (no fresh rows) the last price of each row is kept apart,
    // with the time of the data, so a carried position can be valued at its last price, labelled as such.
-   window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>Number(x.price)>0).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
+   {const lastRows=Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>Number(x.price)>0).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]));
+    if(Object.keys(lastRows).length)window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),rows:lastRows};}   // OWNER 2026-11-06 「含み益・損がない」: a payload without prices keeps the last ones
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
@@ -3779,10 +3780,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(st.day!==now.day)st={day:now.day};
     if(total<lim&&!st.hit){st.hit=now.hm;try{localStorage.setItem(KEY,JSON.stringify(st));}catch(_){}}
     const hit=st.hit||(v.ref&&v.ref.hit_at?String(v.ref.hit_at).slice(0,5):null),over=total<lim;
-    const g=(name,d,o)=>'<span><span class="g">'+name+'</span> <span class="'+cls(d)+'">確定 '+yen(d)+'</span> <span class="'+cls(o)+'">含み '+yen(o)+'</span></span>';
+    // OWNER 2026-11-06 「含み益・損がない」: no price is 値なし, not 0円; the last price is labelled
+    const g=(name,d,o,c)=>'<span><span class="g">'+name+'</span> <span class="'+cls(d)+'">確定 '+yen(d)+'</span> <span class="'+cls(o)+'">含み '+(c&&c.none?'値なし':yen(o)+(c&&c.last?'（最後の値）':''))+'</span></span>';
     el.className="vd-line"+(over?" over":total>0?" plus":"");   // OWNER 2026-11-05 「プラスの場合は緑」
     el.innerHTML='<span>仮想 今日 <b class="'+cls(total)+'">'+yen(total)+'</b> <span class="g">（確定 '+yen(done)+'・含み '+yen(open)+'）</span></span>'+
-      g("デイ",v.dayDone,v.dayOpen)+g("オーバーナイト",v.onDone||0,v.onOpen)+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
+      g("デイ",v.dayDone,v.dayOpen,v.dayCheck)+g("オーバーナイト",v.onDone||0,v.onOpen,v.onCheck)+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
       (hit?'<span class="vd-mark">−3万到達 '+hit+'、そこから'+yen(total-lim)+'</span>':'')+
       (v.ref&&v.ref.hit_at?'<span class="vd-ref">参考：−3万で止めていたら '+(v.ref.n||0)+'回 '+yen(v.ref.yen||0)+'</span>':'');
   }
@@ -3804,6 +3806,16 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<span class="g">別枠 持ち越し含み '+yen(g.carry)+'・現物含み '+yen(g.cash)+'</span>'+
       hedged.map(h=>'<span class="vd-mark">両建て中 '+String(h.name||"").replace(/[<>&"']/g,"")+'('+String(h.code||"").replace(/[<>&"']/g,"")+') 買'+h.long+'株・売'+h.short+'株 含み '+yen(h.pnl)+'</span>').join("");
   }
+  // OWNER 2026-11-06 「どの銘柄で確かめているかを画面に出す」
+  document.addEventListener("ms2RssUpdate",e=>{
+    const diag=(e.detail||{}).live_price_diagnostics||{},box=document.getElementById("unified-mode-title")?.parentElement;
+    if(!box)return;
+    let el=document.getElementById("identity-source-note");
+    if(!el){el=document.createElement("div");el.id="identity-source-note";el.style.cssText="font-size:11px;color:#9AA0AA;margin-top:2px";box.append(el);}
+    const names={"285A.T":"キオクシア(285A)","8035.T":"東京エレクトロン(8035)","6857.T":"アドバンテスト(6857)"},fb=diag.identity_fallback_active===true,who=names[diag.symbol];
+    el.style.color=fb?"#F2C14E":"#9AA0AA";
+    el.textContent=who?"値段の本物確認："+who+(fb?"（キオクシア(285A)が未約定のため）":""):"値段の本物確認：できていません";
+  });
   document.addEventListener("DOMContentLoaded",()=>{loadHolds();setInterval(loadHolds,600000);setInterval(()=>{render();renderGuard();},3000);});
 })();
 </script>

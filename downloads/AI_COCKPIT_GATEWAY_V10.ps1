@@ -1136,12 +1136,15 @@ function Get-PublishedWorkbookGate {
         [string]$ExpectedPath,
         [string]$Symbol,
         [bool]$ControllerVerified,
-        [string]$PublicationId = ""
+        [string]$PublicationId = "",
+        [bool]$FallbackActive = $false
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
     $identity = "285A.T"
-    if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
+    # OWNER 2026-11-06: 8035 / 6857 prove the source only while the Collector declares that 285A has no trade yet.
+    $allowed = $(if ($FallbackActive) { @($identity, "8035.T", "6857.T") } else { @($identity) })
+    if ($allowed -cnotcontains [string]$Symbol) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
     $expectedId = Get-WorkbookPublicationId $ExpectedPath
@@ -2214,7 +2217,7 @@ function Get-LivePriceRejection {
     if (-not [string]::IsNullOrWhiteSpace($RuntimeDir)) {
         $canonicalWorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     }
-    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id)
+    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id) ($diag.identity_fallback_active -eq $true)
     if (-not [string]::IsNullOrWhiteSpace($gateText)) {
         foreach ($gateReason in ($gateText -split ",")) {
             if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }

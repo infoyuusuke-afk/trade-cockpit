@@ -65,6 +65,8 @@ function Get-SheetSymbolCode($table, [int]$row) {
 }
 
 $script:IdentityTicker = "285A.T"
+# OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄（東京エレクトロン8035、だめならアドバンテスト6857）でして。どれも約定が無い時や古い時は、今と同じく止める。鮮度の基準は変えない」
+$script:IdentityFallbackTickers = @("8035.T", "6857.T")
 $script:preopenIdentitySpare = $null
 # The identity row this loop when its sheet code is the identity ticker but it
 # has no current price (no trade yet). Its own state, not a symbol mismatch.
@@ -308,6 +310,27 @@ function Get-IdentityQuote($Rows) {
     }
 }
 
+function Select-IdentityFallback($Rows, $Primary, [bool]$InSession, [DateTimeOffset]$Now) {
+    # Only while the session is open and 285A's row is proved but has no trade yet (untraded). Each
+    # candidate must map to itself, have a price and be fresh by the same row rule (120 s). Nothing
+    # usable returns $null: the caller keeps 285A, which stays IDENTITY_UNTRADED and fails closed.
+    if (-not $InSession -or $null -eq $Primary -or $Primary.ok -eq $true -or $Primary.untraded -ne $true) { return $null }
+    foreach ($ticker in $script:IdentityFallbackTickers) {
+        $row = $null
+        foreach ($item in @($Rows)) { if ($null -ne $item -and [string]$item.ticker -ceq $ticker) { $row = $item; break } }
+        if ($null -eq $row) { continue }
+        if (([string]$row.sheet_code).Trim().ToUpperInvariant() -cne $ticker) { continue }
+        if ($null -eq $row.price -or [double]$row.price -le 0) { continue }
+        $verdict = Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $row.source_timestamp_at
+        if ($verdict.fresh -ne $true) { continue }
+        return [pscustomobject]@{
+            ok = $true; untraded = $false; symbol = $ticker; current_price = $row.price; sheet_code = $ticker; source_timestamp = $row.source_timestamp
+            source_timestamp_at = $row.source_timestamp_at; basis = $row.source_timestamp_basis; observed_at = $row.source_timestamp_observed_at
+        }
+    }
+    return $null
+}
+
 function Set-IdentityNullPriceState([bool]$InPreopen, [string]$SheetCode, [string]$QuoteTime) {
     # The identity row has no current price this loop. Before the open with a
     # proper quote time it is the zero-price pre-open spare (unchanged).
@@ -368,12 +391,15 @@ function Get-PublishedWorkbookGate {
         [string]$ExpectedPath,
         [string]$Symbol,
         [bool]$ControllerVerified,
-        [string]$PublicationId = ""
+        [string]$PublicationId = "",
+        [bool]$FallbackActive = $false
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
     $identity = "285A.T"
-    if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
+    # OWNER 2026-11-06: 8035 / 6857 prove the source only while the Collector declares that 285A has no trade yet.
+    $allowed = $(if ($FallbackActive) { @($identity, "8035.T", "6857.T") } else { @($identity) })
+    if ($allowed -cnotcontains [string]$Symbol) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
     $expectedId = Get-WorkbookPublicationId $ExpectedPath
@@ -915,6 +941,10 @@ function Invoke-WorkbookIdentitySelfTest {
     if ($otherBook -notmatch "WRONG_SOURCE_WORKBOOK") { throw "other workbook must fail closed even when controller is true" }
     $wrongSymbol = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected)
     if ($wrongSymbol -notmatch "WRONG_SYMBOL_MAPPING") { throw "proved workbook with 8035 must fail closed" }
+    $fallbackGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected) $true
+    if (-not [string]::IsNullOrWhiteSpace($fallbackGate)) { throw "declared fallback 8035 must pass" }
+    $otherGate = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "7203.T" $true (Get-WorkbookPublicationId $expected) $true
+    if ($otherGate -notmatch "WRONG_SYMBOL_MAPPING") { throw "only the listed fallback symbols may pass" }
     $init = Get-WorkbookIdentityInitialization
     $probe = Start-Job -InitializationScript $init -ScriptBlock {
         Get-PublishedWorkbookGate $true $true "Kioxia_MS2_RSS_Live_Signals.xlsx" "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "285A.T" $false (Get-WorkbookPublicationId "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx")
@@ -1511,7 +1541,7 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                     }
                 }
             }
-            $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $CanonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id)
+            $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $CanonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id) ($diag.identity_fallback_active -eq $true)
             if (-not [string]::IsNullOrWhiteSpace($gateText)) {
                 foreach ($gateReason in ($gateText -split ",")) {
                     if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
@@ -3653,6 +3683,13 @@ try {
         if (-not $workbookCanonical -and $nameRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
         $identityQuote = Get-IdentityQuote $results
         $script:identityQuoteObservation = Update-QuoteObservation $script:identityQuoteObservation ([string]$identityQuote.source_timestamp) (Get-JstNow)
+        $identityJst = Get-JstNow
+        $identityFallback = Select-IdentityFallback $results $identityQuote ((Get-MarketSession $identityJst) -ceq "OPEN_BY_CLOCK") $identityJst
+        $identityObservation = $script:identityQuoteObservation
+        if ($null -ne $identityFallback) {
+            $identityQuote = $identityFallback
+            $identityObservation = [pscustomobject]@{ source_timestamp_at = $identityFallback.source_timestamp_at; basis = $identityFallback.basis; observed_at = $identityFallback.observed_at }
+        }
         $identityReason = Get-IdentitySourceReason $identityQuote
         if (-not [string]::IsNullOrEmpty($identityReason) -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add($identityReason) }
         if ($symbolMismatchCount -gt 0 -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
@@ -3678,12 +3715,15 @@ try {
         if ($workbookCanonical) { $publishedFullName = [IO.Path]::GetFileName($script:canonicalWorkbookPath) }
         $livePriceDiagnostics = [ordered]@{
             source_timestamp = $identityQuote.source_timestamp
-            source_timestamp_at = $script:identityQuoteObservation.source_timestamp_at
-            source_timestamp_basis = $script:identityQuoteObservation.basis
-            source_timestamp_observed_at = $script:identityQuoteObservation.observed_at
+            source_timestamp_at = $identityObservation.source_timestamp_at
+            source_timestamp_basis = $identityObservation.basis
+            source_timestamp_observed_at = $identityObservation.observed_at
             source_timezone = "Asia/Tokyo"
             updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
             symbol = $identityQuote.symbol
+            identity_primary = [string]$script:IdentityTicker
+            identity_fallback_active = ($null -ne $identityFallback)
+            identity_fallback_reason = $(if ($null -ne $identityFallback) { "PRIMARY_UNTRADED" } else { "" })
             current_price = $identityQuote.current_price
             sheet_code = $identityQuote.sheet_code
             source_mode = $(if ($workbookCanonical) { "MS2_RSS_WORKBOOK" } else { "NONCANONICAL_WORKBOOK" })
@@ -3887,7 +3927,7 @@ try {
         Add-LoopMark 'pts_ir_signal'
         $aggregateNow=Get-JstNow
         $aggregateBoardQuoteAt=$null
-        if($null -ne $script:identityQuoteObservation){$aggregateBoardQuoteAt=$script:identityQuoteObservation.source_timestamp_at}
+        if($null -ne $identityObservation){$aggregateBoardQuoteAt=$identityObservation.source_timestamp_at}
         $aggregateFreshCount=0
         foreach($result in $results){
             $aggregateVerdict=Get-RowQuoteFreshness -Row $result -Now $aggregateNow -BoardQuoteAt $aggregateBoardQuoteAt

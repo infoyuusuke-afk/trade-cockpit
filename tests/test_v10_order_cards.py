@@ -161,7 +161,7 @@ class OrderCards(unittest.TestCase):
 
     def test_overnight_exit_at_1400(self):
         # OWNER 2026-11-05 「持ち越しは翌日14:00の値段を仮想の手じまいとして確定に入れて、注目の上の1行にも足す。OVERNIGHT 5の持ち越し成績も14:00で計算する」
-        self.assertIn('g("オーバーナイト",v.onDone||0,v.onOpen)', HTML)
+        self.assertIn('g("オーバーナイト",v.onDone||0,v.onOpen,v.onCheck)', HTML)
         self.assertIn('const done=v.dayDone+(v.onDone||0)+sw.done+lg.done', HTML)
         root = Path(__file__).resolve().parents[1]
         self.assertIn("overnight_closed", (root / "trade_control.js").read_text(encoding="utf-8"))
@@ -193,6 +193,24 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして」
         self.assertIn("-not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code)", col)
         self.assertIn("（両建て・声なし）", HTML)
+
+    def test_identity_fallback(self):
+        # OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄（東京エレクトロン8035、だめならアドバンテスト6857）でして…どの銘柄で確かめているかを画面に出す」
+        root = Path(__file__).resolve().parents[1]
+        col = (root / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        gate = (root / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('$script:IdentityFallbackTickers = @("8035.T", "6857.T")', col)
+        self.assertIn("$Primary.untraded -ne $true) { return $null }", col)
+        self.assertIn("Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $row.source_timestamp_at", col)
+        for text in (col, gate):
+            self.assertIn('$allowed = $(if ($FallbackActive) { @($identity, "8035.T", "6857.T") } else { @($identity) })', text)
+            self.assertIn("($diag.identity_fallback_active -eq $true)", text)
+        self.assertIn("値段の本物確認：", HTML)
+
+    def test_missing_price_is_not_zero(self):
+        # OWNER 2026-11-06 「含み益・損がない」
+        self.assertIn("含み '+(c&&c.none?'値なし':", HTML)
+        self.assertIn("if(Object.keys(lastRows).length)window.cockpitLastPrices=", HTML)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
