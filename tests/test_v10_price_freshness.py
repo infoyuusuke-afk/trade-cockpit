@@ -519,7 +519,7 @@ class SourceContracts(unittest.TestCase):
     def test_collector_publishes_dated_quote_fields(self):
         text = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
         for field in ("source_timestamp_at", "source_timestamp_basis", "source_timestamp_observed_at"):
-            self.assertIn(field + " = $script:identityQuoteObservation", text)
+            self.assertIn(field + " = $identityObservation", text)   # OWNER 2026-11-06: the observation of 285A, or of the declared fallback row
         self.assertIn("real_submit_allowed = $false", text)
         self.assertNotIn("RssOrder(", text)
 

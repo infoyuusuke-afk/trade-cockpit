@@ -3812,7 +3812,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!box)return;
     let el=document.getElementById("identity-source-note");
     if(!el){el=document.createElement("div");el.id="identity-source-note";el.style.cssText="font-size:11px;color:#9AA0AA;margin-top:2px";box.append(el);}
-    const names={"285A.T":"キオクシア(285A)","9432.T":"NTT(9432)","7203.T":"トヨタ自動車(7203)"},fb=diag.identity_fallback_active===true,who=names[diag.symbol];
+    const names={"285A.T":"キオクシア(285A)","7203.T":"トヨタ自動車(7203)","8306.T":"三菱UFJ FG(8306)","9432.T":"NTT(9432)"},fb=diag.identity_fallback_active===true,who=names[diag.symbol];
     el.style.color=fb?"#F2C14E":"#9AA0AA";
     el.textContent=who?"値段の本物確認："+who+(fb?"（キオクシア(285A)が未約定のため）":""):"値段の本物確認：できていません";
   });

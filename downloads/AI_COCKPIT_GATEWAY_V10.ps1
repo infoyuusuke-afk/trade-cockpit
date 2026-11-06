@@ -1142,8 +1142,8 @@ function Get-PublishedWorkbookGate {
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
     $identity = "285A.T"
-    # OWNER 2026-11-06: 9432 / 7203 prove the source only while the Collector declares that 285A has no trade yet.
-    $allowed = $(if ($FallbackActive) { @($identity, "9432.T", "7203.T") } else { @($identity) })
+    # OWNER 2026-11-06: 7203 / 8306 / 9432 prove the source only while the Collector declares that 285A has no trade yet.
+    $allowed = $(if ($FallbackActive) { @($identity, "7203.T", "8306.T", "9432.T") } else { @($identity) })
     if ($allowed -cnotcontains [string]$Symbol) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
