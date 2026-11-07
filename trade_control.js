@@ -688,7 +688,7 @@
     let html='<div class="g-tiles">'+
       (csvToday?gTile("実口座 今日の確定損益（楽天CSV）",gYen(rcsv.yen),gCls(rcsv.yen),"買い→売埋 "+gYen(rcsv.long.yen)+"（"+rcsv.long.n+"件）／空売り→買埋 "+gYen(rcsv.short.yen)+"（"+rcsv.short.n+"件）"+(rcsv.other&&rcsv.other.n?"／その他 "+gYen(rcsv.other.yen)+"（"+rcsv.other.n+"件）":"")+"・"+rcsv.n+"件（楽天の計算・費用込み、"+csvAt+"保存のCSV。この後の決済は次のCSVで入ります）"):
       gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算・楽天の数字とずれます"+(csvWhy?"。"+csvWhy:"")+"）":"V10停止中・MS2未接続・設定OFF"))+
-      gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
+      gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄"+(acct.cash_state==="OK"?"":"・現物は読めていないので入っていません"):"—")+
       gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（％は1回ごとの合計・金額は100株ずつの換算、費用込み"+(vYenRows.length<closed.length?"・約定値の無い"+(closed.length-vYenRows.length)+"回は金額に入れず":"")+"）":"今日の仮想決済はまだありません")+
       gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg)+"／"+gYen(vHeld.reduce((a,x)=>a+(x.yen100||0),0)),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":"・金額は1回100株ずつの合計（持ち越し含む）"))+
       '</div>';

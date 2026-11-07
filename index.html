@@ -1671,7 +1671,7 @@ window.realGuardCardHtml = (ticker, buy) => {
   const g = window.realGuardFresh(), yen = v => Math.round(v).toLocaleString("ja-JP") + "円";
   if (!g) return "<div class='ob-ng'>今日の負け枠：読めません（口座の一覧が読めていません）</div>";
   const code = String(ticker || "").replace(".T", ""), room = window.realGuardRoom(g), held = (g.hedged || []).some(h => String(h.code) === code);
-  return "<div class='" + (room > 0 ? "ob-note" : "ob-ng") + "'>" + (room > 0 ? "今日の負け枠 残り " + yen(room) : "今日の負け枠なし（−3万に到達）") + "</div>" + (held ? "<div class='ob-ng'>この銘柄は両建て中です</div>" : "");
+  return "<div class='" + (room > 0 ? "ob-note" : "ob-ng") + "'>" + (room > 0 ? "今日の負け枠 残り " + yen(room) : "今日の負け枠なし（−3万に到達）") + "</div>" + (held ? "<div class='ob-ng'>この銘柄は両建て中です</div>" : "") + (g.cashRead === false ? "<div class='ob-ng'>両建て：現物が読めていない</div>" : "");
 };
 window.orderBigHtml = (k, v, closeAttr) => {
   const s = v.s, e = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -3088,7 +3088,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="analysts"]'))return;
     pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="analysts";
-    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。答えはプロジェクトのチャット（PCのClaude）に貼ってください。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section><section class="card wide"><div id="an-weekly"><div class="an-none">週間成績を読込中...</div></div></section>';
+    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。GPTの答えはプロジェクトのチャット（PCのClaude）に貼ってください。Grokの答えはPCが自動で受け取ります。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section><section class="card wide"><div id="an-weekly"><div class="an-none">週間成績を読込中...</div></div></section>';
     main.append(pane);
     const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="analysts";b.type="button";b.textContent="アナリスト";
     const after=nav.querySelector('.cockpit-tab[data-tab="control"]');
@@ -3124,7 +3124,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const stock=(x,check)=>x&&num(x.n)&&x.n>0&&num(x.win_pct)&&num(x.avg_pct)?esc(x.n)+"回｜勝率"+esc(x.win_pct.toFixed(0))+"%｜平均"+esc((x.avg_pct>0?"+":"")+x.avg_pct.toFixed(2))+"%"+mark(check&&x.stock_checking):"—";
     el.innerHTML='<h3>週間成績（毎週金曜に更新・最後の更新 '+esc(String(w.generated_on||"").slice(5).replace("-","/"))+'）</h3>'+
       '<table class="an-week"><thead><tr><th>アナリスト</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 向き</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 銘柄</th><th>通算 向き</th><th>通算 銘柄</th></tr></thead><tbody>'+
-      w.rows.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table>'+
+      w.rows.filter(r=>r&&typeof r==="object").map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table>'+
       '<p class="an-none">向きは当たった回数/答えた回数（日経平均の寄り→引け）。銘柄は寄り→引け、向きどおり、往復0.1%の費用込み。Grokは見張りのリストを全部買った計算、Claudeは入る条件を見ずに寄りで入った計算です。検証中＝向き'+esc(w.dir_min)+'回未満、銘柄'+esc(w.stock_min)+'回未満。研究の記録で、売買の勧めではありません。</p>';
   }
   async function render(){
@@ -3172,7 +3172,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         '<p class="an-none">決算の確認は、朝の定時タスクの最後に入れた「決算の確認」の文で、AIが自分で行います（文：Claudeブレイン\\AI指示文\\定時タスク用_決算の追記_20261028.txt）。監視銘柄が入れ替わったらPCのClaudeが文を作り直します。</p>'+
         '<p class="an-none">コクピットの決算日程（AIの答えと照らす用）：'+(c.text===null?'決算日程を読めません':esc(c.cal||"対象の決算なし"))+'</p></details>':
        c.text===null?'<p class="an-none">決算日程を読めないので、今日の追加の指示を作れません。</p>':
-       c.text?'<ol><li>'+(c.g1?'下のファイルの全文を、Grok1号のタスク（毎日8:00）に入れておく':'下の今日の指示をコピーして、このアナリストのチャットに貼る')+'</li><li>'+(c.g1?'答えはPCが5分おきに受け取る。届かない時だけ、プロジェクトのチャット（PCのClaude）に貼る':'返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る')+'</li></ol><textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>':
+       c.text?'<ol><li>'+(c.g1?'下のファイルの全文を、Grok1号のタスク（毎日8:00）に入れておく':'下の今日の指示をコピーして、このアナリストのチャットに貼る')+'</li><li>'+(c.g1?'答えはPCが5分おきに受け取る。届かない時だけ、プロジェクトのチャット（PCのClaude）に貼る':'返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る')+'</li></ol>'+(c.g1?'<p class="an-none" style="white-space:pre-line">'+esc(c.text)+'</p>':'<textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>'):
        '<p class="an-none">'+esc(c.fixed||"今日は追加の指示はありません（対象の決算がない日）。いつもの答えだけ貼ってください。")+'</p>')+'</div>').join("");
   }
   document.addEventListener("DOMContentLoaded",()=>{mount();render();setInterval(render,300000);});
@@ -3827,7 +3827,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   // OWNER 2026-11-06 「どの銘柄で確かめているかを画面に出す」
   document.addEventListener("ms2RssUpdate",e=>{
     const diag=(e.detail||{}).live_price_diagnostics||{},box=document.getElementById("unified-mode-title")?.parentElement;
-    window.cockpitAccountFailSeconds=diag.account_read_fail_seconds;
+    if(Number.isFinite(diag.account_read_fail_seconds))window.cockpitAccountFailSeconds=diag.account_read_fail_seconds;   // a loop without this field keeps the last value, so the red band does not blink off
     if(!box)return;
     let el=document.getElementById("identity-source-note");
     if(!el){el=document.createElement("div");el.id="identity-source-note";el.style.cssText="font-size:11px;color:#9AA0AA;margin-top:2px";box.append(el);}

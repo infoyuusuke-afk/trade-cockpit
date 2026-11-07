@@ -2442,7 +2442,13 @@ function Initialize-RealPosSheet([int]$Retries = 240) {
     if ($null -eq $sheet) {
         # Added for this session only (Safe Stop closes the workbook without saving).
         $sheet = Invoke-ExcelCom -Retries $Retries -Label "実保有シート作成" -Action { $book.Worksheets.Add() }
-        Invoke-ExcelCom -Retries $Retries -Label "実保有シート命名" -Action { $sheet.Name = "REAL_POS" } | Out-Null
+        try {
+            Invoke-ExcelCom -Retries $Retries -Label "実保有シート命名" -Action { $sheet.Name = "REAL_POS" } | Out-Null
+        } catch {
+            # the retry from the cycle must not leave an empty sheet behind each time
+            try { Invoke-ExcelCom -Retries $Retries -Label "実保有シート片付け" -Action { $sheet.Delete() } | Out-Null } catch { }
+            throw
+        }
     }
     # read-only list functions only (all issues, all accounts, all margin kinds and sides)
     Invoke-ExcelCom -Retries $Retries -Label "信用建玉一覧式設定" -Action { $sheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
@@ -3258,7 +3264,7 @@ try {
             Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
         # OWNER 2026-11-07 「設定を切ったら、警告の秒数と旗を下ろす」
-        if ($realPosSetupFailed -and $null -eq (Get-RealPosConfig)) { $realPosSetupFailed = $false }
+        if ($realPosSetupFailed -and $script:realPosLatched) { $realPosSetupFailed = $false }
         $realPosSeq++
         $rpFail = ""
         if ($realPosSetupFailed -and -not $realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt -and $null -ne (Get-RealPosConfig)) {
