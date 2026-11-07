@@ -44,7 +44,7 @@
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
  <button class="cockpit-tab" data-tab="value">VALUE 5</button>
  <button class="cockpit-tab" data-tab="focus-owner">FOCUS</button>
- <button class="cockpit-tab" data-tab="kioxia-calendar">KIOXIA</button>
+ <button class="cockpit-tab" data-tab="kioxia-calendar">SOX</button>
  <button class="cockpit-tab" data-tab="events">注意</button>
  <details class="secondary-tabs"><summary>参考</summary>
   <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button><button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
@@ -296,7 +296,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros.correlation=["相関・米国の前日→寄りの窓","米国の前日の動きと東京の寄りの窓の関係だけを、2年分で確かめた結果。寄った後の方向には使わない。"];
  intros.events=["注意","重要イベント・市場警報・売買禁止条件を確認。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
- intros["kioxia-calendar"]=["KIOXIA","キオクシア専用。5分足カレンダー、MS2 RSS、時間帯統計を集約。"];
+ intros["kioxia-calendar"]=["SOXシナリオ","毎朝8:05に更新。2度目の下げのシナリオと、2000年をなぞった場合の形。下にキオクシアの表示をたたんであります。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
  intros["ms2-live"]=["REALTIME 5","100銘柄をMS2 RSSで監視し、数十分〜数時間の候補を表示。"];
@@ -3837,6 +3837,54 @@ document.addEventListener("DOMContentLoaded",()=>{
     el.textContent=who?"値段の本物確認："+who+(fb?"（キオクシア(285A)が未約定のため）":""):"値段の本物確認：できていません";
   });
   document.addEventListener("DOMContentLoaded",()=>{loadHolds();setInterval(loadHolds,600000);setInterval(()=>{render();renderGuard();},3000);});
+})();
+</script>
+<script>
+// OWNER 2026-11-08 「みんなが意識すればそれに近い値動きになる…AIコクピットで必ず毎朝予測チャートで知りたい 今のキオクシア専用タブからこっちに変更して」:
+// the SOX scenario chart replaces the top of the old KIOXIA tab; the KIOXIA content stays folded below it. Display only: no voice, no score, no order.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>typeof v==="number"&&Number.isFinite(v);
+  const yen=v=>Math.round(v).toLocaleString("ja-JP");
+  let box=null,fold=null;
+  function mount(){
+    const pane=document.querySelector('.tab-pane[data-pane="kioxia-calendar"]');if(!pane)return null;pane.style.gridColumn="1/-1";
+    if(!box){
+      box=document.createElement("section");box.className="card wide";box.id="sox-scenario";box.style.cssText="width:100%;max-width:none;grid-column:1/-1;box-sizing:border-box";box.innerHTML='<div class="an-none">SOXシナリオを読込中...</div>';
+      fold=document.createElement("details");fold.className="an-fold";fold.id="kioxia-fold";fold.innerHTML="<summary>キオクシアの表示</summary>";
+    }
+    [...pane.children].forEach(el=>{if(el!==box&&el!==fold&&!el.classList.contains("pane-intro"))fold.appendChild(el);});
+    if(box.parentElement!==pane)pane.append(box,fold);
+    return box;
+  }
+  function chart(w){
+    const all=[...w.actual,...w.path],W=1040,H=380,L=64,R=96,T=16,B=34;
+    const day=s=>Date.parse(s+"T00:00:00Z"),x0=day(w.actual[0][0]),x1=Math.max(...all.map(r=>day(r[0])));
+    const lo=Math.min(...all.map(r=>r[1]),w.line_40),hi=Math.max(...all.map(r=>r[1]),w.line_out);
+    const x=d=>L+(day(d)-x0)/(x1-x0)*(W-L-R),y=v=>T+(hi*1.03-v)/(hi*1.03-lo*.95)*(H-T-B);
+    let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="SOXの動きと、2000年をなぞった場合の形" style="display:block;width:100%;height:auto">';
+    const line=(v,label,col,dy=4)=>'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="'+col+'" stroke-width="1" stroke-dasharray="3 4"/><text x="'+(W-R+6)+'" y="'+(y(v)+dy)+'" fill="#d1d4dc" font-size="12">'+esc(label)+'</text>';
+    s+=line(w.line_out,"外れ "+yen(w.line_out),"#35e2ae")+line(w.line_low,"底 "+yen(w.line_low),"#F2C14E",-6)+line(w.line_40,"−40% "+yen(w.line_40),"#f23645",12);
+    for(let i=0;i<=4;i++){const v=lo*.95+(hi*1.03-lo*.95)*i/4;s+='<text x="'+(L-8)+'" y="'+(y(v)+4)+'" fill="#9ba3af" font-size="12" text-anchor="end">'+yen(v)+'</text>';}
+    const seen={};all.forEach(r=>{const m=r[0].slice(0,7);if(!seen[m]){seen[m]=1;const px=x(r[0]);if(m.slice(5)%2===1||m.slice(5)==="12")s+='<text x="'+px+'" y="'+(H-10)+'" fill="#9ba3af" font-size="12">'+esc(m.slice(2).replace("-","/"))+'</text>';}});
+    const path=a=>a.map((r,i)=>(i?"L":"M")+x(r[0]).toFixed(1)+" "+y(r[1]).toFixed(1)).join("");
+    s+='<path d="'+path(w.path)+'" fill="none" stroke="#eb6834" stroke-width="2" stroke-dasharray="6 5"/><path d="'+path(w.actual)+'" fill="none" stroke="#3987e5" stroke-width="2.5"/>';
+    const e=w.actual[w.actual.length-1];
+    return s+'<circle cx="'+x(e[0])+'" cy="'+y(e[1])+'" r="5" fill="#3987e5" stroke="#131722" stroke-width="2"/><text x="'+(x(e[0])+8)+'" y="'+(y(e[1])-10)+'" fill="#fff" font-size="13" font-weight="700">今 '+yen(e[1])+'</text></svg>';
+  }
+  async function render(){
+    const el=mount();if(!el)return;
+    let w=null;try{const r=await fetch("/sox_scenario.json?t="+Date.now(),{cache:"no-store"});w=r.ok?await r.json():null;}catch(_){w=null;}
+    const ok=!!(w&&w.schema_version==="100b-v10-sox-scenario-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false&&Array.isArray(w.actual)&&Array.isArray(w.path)&&w.actual.length>1&&w.path.length>1&&
+      [w.close,w.line_low,w.line_out,w.line_40].every(num)&&[...w.actual,...w.path].every(r=>Array.isArray(r)&&/^\d{4}-\d{2}-\d{2}$/.test(r[0])&&num(r[1])));
+    if(!ok){el.innerHTML='<h2>SOXシナリオ</h2><p class="an-none">SOXシナリオを読めません（コクピットが止まっているか、まだ作られていません）。</p>';return;}
+    const steps=(Array.isArray(w.steps)?w.steps:[]).map(s=>'<tr><td>'+esc(s&&s.name)+'</td><td>'+esc(s&&s.when)+'</td><td>'+(num(s&&s.sox)?yen(s.sox):"—")+'</td><td>'+(num(s&&s.nikkei)?yen(s.nikkei):"—")+'</td></tr>').join("");
+    el.innerHTML='<h2>SOXシナリオ予測チャート</h2><p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
+      '<p class="an-none">青が実際、橙の点線が2000年の動きをなぞった場合の形です。起きると決まったものではありません。似た例は1回だけです。</p>'+
+      '<table class="an-week"><thead><tr><th>段階</th><th>2000年では</th><th>SOXの目安</th><th>日経の目安</th></tr></thead><tbody>'+steps+'</tbody></table>'+
+      '<p class="an-none">日経の目安はSOXの半分動く計算です。研究の記録で、売買の勧めではありません。注文にはつながりません。</p>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>{setTimeout(render,1200);setInterval(render,300000);});
 })();
 </script>
 </body></html>
