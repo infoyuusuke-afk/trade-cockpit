@@ -2462,7 +2462,8 @@ if ($null -eq (Get-RealPosConfig)) {
     Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
 } else {
     try {
-        $realPosSheet = Initialize-RealPosSheet
+        # OWNER 2026-11-07 「起動の最初の読みも -Retries 8 にする」: a failed start goes to the cycle's retry
+        $realPosSheet = Initialize-RealPosSheet -Retries 8
         $realPosReady = $true
         Write-Host "[REAL_POS] READY (read only, this PC only)" -ForegroundColor Green
     } catch {
@@ -3256,6 +3257,8 @@ try {
             $realPosReady = $false   # switched off or config gone: stays off until restart
             Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
+        # OWNER 2026-11-07 「設定を切ったら、警告の秒数と旗を下ろす」
+        if ($realPosSetupFailed -and $null -eq (Get-RealPosConfig)) { $realPosSetupFailed = $false }
         $realPosSeq++
         $rpFail = ""
         if ($realPosSetupFailed -and -not $realPosReady -and ($realPosSeq % $realPosEvery) -eq 1 -and (Get-Date) -ge $realPosRetryAt -and $null -ne (Get-RealPosConfig)) {
@@ -3337,7 +3340,8 @@ try {
                 # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして。両建てでない建玉は今のまま声も出す」: hedged = the same rule as the screen (short and long or cash in one code).
                 $slShort = @($rpMarginRows | Where-Object { ([string]$_.side).Contains("売") } | ForEach-Object { [string]$_.code })
                 $slLong = @(@($rpMarginRows | Where-Object { -not ([string]$_.side).Contains("売") }) + @($rpCashRows) | ForEach-Object { [string]$_.code })
-                if ($slInSession -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) }).Count -gt 0) {
+                # OWNER 2026-11-07 「現物の一覧が読めないときは、両建てを『現物が読めていない』と表示し、損切りの声も止める」
+                if ($slInSession -and $null -ne $rpCash -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) }).Count -gt 0) {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
                 }
@@ -3361,7 +3365,7 @@ try {
             Write-Host ("[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
         }
         # Speaks only; it cannot do anything to the account. In session, once a minute.
-        $accountReadFailSeconds = $(if ($realPosReady -or $realPosSetupFailed -or $null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
+        $accountReadFailSeconds = $(if ($null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
         if ($accountReadFailSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
             $arClock = (Get-Date).TimeOfDay
             if (($arClock -ge [TimeSpan]"09:00:00" -and $arClock -lt [TimeSpan]"11:30:00") -or ($arClock -ge [TimeSpan]"12:30:00" -and $arClock -lt [TimeSpan]"15:30:00")) {

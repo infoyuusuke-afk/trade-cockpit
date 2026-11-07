@@ -62,7 +62,7 @@ class AnalystTab(_unittest.TestCase):
         for label in ("<b>役目</b>", "<b>動く時刻</b>", "<b>答えを貼る時刻</b>", "<b>最後の答え</b>"):
             self.assertIn(label, b)
         self.assertIn("text:G1_TASK,g1:true}", b)
-        self.assertIn("テーマ先回り・決算の追加はなし", b)
+        self.assertIn("下のファイルの全文を、Grok1号のタスク（毎日8:00）に入れておく", b)
         self.assertIn("GROK_THEME_V1", b.split("const G1_TASK=", 1)[1].split("\n", 1)[0])
         self.assertEqual(b.count("paste:"), 5)
         self.assertEqual(b.count("last:lastAt("), 5)
