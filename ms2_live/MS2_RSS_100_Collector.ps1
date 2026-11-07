@@ -2446,7 +2446,7 @@ function Initialize-RealPosSheet([int]$Retries = 240) {
             Invoke-ExcelCom -Retries $Retries -Label "実保有シート命名" -Action { $sheet.Name = "REAL_POS" } | Out-Null
         } catch {
             # the retry from the cycle must not leave an empty sheet behind each time
-            try { Invoke-ExcelCom -Retries $Retries -Label "実保有シート片付け" -Action { $sheet.Delete() } | Out-Null } catch { }
+            try { Invoke-ExcelCom -Retries $Retries -Label "実保有シート片付け" -Action { $xl = $book.Application; $alerts = $xl.DisplayAlerts; $xl.DisplayAlerts = $false; try { $sheet.Delete() } finally { $xl.DisplayAlerts = $alerts } } | Out-Null } catch { }
             throw
         }
     }
@@ -2464,6 +2464,7 @@ $realPosSetupFailed = $false
 $realPosLastOkAt = Get-Date
 $accountReadFailSeconds = 0
 $accountReadVoiceAt = [datetime]::MinValue
+$cashUnreadSince = $null
 if ($null -eq (Get-RealPosConfig)) {
     Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
 } else {
@@ -3351,6 +3352,16 @@ try {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
                 }
+                # OWNER 2026-11-08 「直せるものは全てなおす」: the stop-loss voice is silent while the cash list is unread, so a long gap must be heard. Speaks only.
+                if ($null -eq $rpCash) {
+                    if ($null -eq $cashUnreadSince) { $cashUnreadSince = Get-Date }
+                    if ($slInSession -and ((Get-Date) - $cashUnreadSince).TotalSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
+                        $accountReadVoiceAt = Get-Date
+                        Invoke-SerializedSpeak $speaker "現物が読めていません"
+                    }
+                } else {
+                    $cashUnreadSince = $null
+                }
                 }
             } catch {
                 $realPosSheet = $null
@@ -3371,7 +3382,7 @@ try {
             Write-Host ("[REAL_POS] WARN / READ FAILED - retry in " + [string]$rpWait + "s (" + [string]$realPosFailCount + "), Collector continues: " + $rpReason) -ForegroundColor DarkYellow
         }
         # Speaks only; it cannot do anything to the account. In session, once a minute.
-        $accountReadFailSeconds = $(if ($null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
+        $accountReadFailSeconds = $(if (($realPosReady -or $realPosSetupFailed) -and $null -ne (Get-RealPosConfig)) { [int]((Get-Date) - $realPosLastOkAt).TotalSeconds } else { 0 })
         if ($accountReadFailSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
             $arClock = (Get-Date).TimeOfDay
             if (($arClock -ge [TimeSpan]"09:00:00" -and $arClock -lt [TimeSpan]"11:30:00") -or ($arClock -ge [TimeSpan]"12:30:00" -and $arClock -lt [TimeSpan]"15:30:00")) {

@@ -20,10 +20,16 @@ class AccountCashUnread(unittest.TestCase):
 
     def test_switching_off_clears_the_warning(self):
         self.assertIn("if ($realPosSetupFailed -and $script:realPosLatched) { $realPosSetupFailed = $false }", self.collector)
-        self.assertIn("$accountReadFailSeconds = $(if ($null -ne (Get-RealPosConfig)) {", self.collector)
+        self.assertIn("$accountReadFailSeconds = $(if (($realPosReady -or $realPosSetupFailed) -and $null -ne (Get-RealPosConfig)) {", self.collector)
 
     def test_a_failed_naming_leaves_no_empty_sheet(self):
         self.assertIn("$sheet.Delete()", self.collector)
+        self.assertIn("$xl.DisplayAlerts = $false", self.collector)   # no dialog can hold Excel
+
+    def test_a_long_unread_cash_list_is_heard(self):
+        self.assertIn('Invoke-SerializedSpeak $speaker "現物が読めていません"', self.collector)
+        script = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("一覧の一部が読めていません", script)
 
     def test_a_loop_without_the_field_keeps_the_red_band(self):
         self.assertIn("if(Number.isFinite(diag.account_read_fail_seconds))window.cockpitAccountFailSeconds=", self.page)

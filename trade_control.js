@@ -526,7 +526,7 @@
           });
           doneRoot.innerHTML=cards.join("")||'<div class="focus-empty">今日決済した銘柄はありません</div>';
         }
-        realRoot.innerHTML=(margin.join("")+cash.join(""))||'<div class="focus-empty">保有中の銘柄はありません'+esc(state)+'（'+esc(String(d.updated_at||"").slice(11,19))+' 時点）</div>';
+        realRoot.innerHTML=(state&&(margin.length||cash.length)?'<div class="focus-empty">一覧の一部が読めていません（現物が抜けている時があります）</div>':"")+(margin.join("")+cash.join(""))||'<div class="focus-empty">保有中の銘柄はありません'+esc(state)+'（'+esc(String(d.updated_at||"").slice(11,19))+' 時点）</div>';
       }catch(_e){
         realRoot.innerHTML='<div class="focus-empty">実口座の保有を読めません（V10停止中・MS2未接続・または設定OFF）。古い保有は表示しません。</div>';
         const doneRoot=document.getElementById("owner-real-closed");

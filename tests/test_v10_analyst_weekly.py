@@ -22,7 +22,7 @@ class AnalystWeekly(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('get("/analyst_weekly.json").then(renderWeekly);', html)   # the cards do not wait for it
         self.assertNotIn('await get("/analyst_weekly.json")', html)
-        self.assertIn('w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false', html)
+        self.assertIn('w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false', html)
         self.assertIn('id="an-weekly"', html)
         self.assertIn("週間成績を読めません", html)     # a missing file shows a plain note
         self.assertIn("検証中", html)

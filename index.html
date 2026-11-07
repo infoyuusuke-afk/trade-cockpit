@@ -3116,7 +3116,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   // the numbers come from /analyst_weekly.json, which the research script rewrites every Friday on this PC. Display only.
   function renderWeekly(w){
     const el=pane&&pane.querySelector("#an-weekly");if(!el)return;
-    const ok=!!(w&&w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false&&Array.isArray(w.rows));
+    const ok=!!(w&&w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false&&Array.isArray(w.rows));
     if(!ok){el.innerHTML='<h3>週間成績</h3><p class="an-none">週間成績を読めません（コクピットが止まっているか、まだ作られていません）。</p>';return;}
     const num=v=>typeof v==="number"&&Number.isFinite(v);
     const mark=on=>on?'<span class="an-check">検証中</span>':"";
