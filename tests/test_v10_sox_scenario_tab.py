@@ -22,6 +22,8 @@ class SoxScenarioTab(unittest.TestCase):
         self.assertIn('data-tab="kioxia-calendar">SOX</button>', html)
         self.assertIn('fold.id="kioxia-fold"', html)
         self.assertIn("SOXシナリオを読めません", html)
+        self.assertIn('!el.classList.contains("cc-tab-owner-summary")', html)   # that box must stay directly under the pane
+        self.assertIn("今朝の更新がありません", html)
         self.assertIn('w.schema_version==="100b-v10-sox-scenario-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false', html)
         self.assertIn("起きると決まったものではありません", html)
 

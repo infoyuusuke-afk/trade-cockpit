@@ -3123,7 +3123,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const dir=(x,check)=>x&&num(x.dir_n)&&x.dir_n>0?esc(x.dir_hit)+"/"+esc(x.dir_n)+"回"+mark(check&&x.dir_checking):"—";
     const stock=(x,check)=>x&&num(x.n)&&x.n>0&&num(x.win_pct)&&num(x.avg_pct)?esc(x.n)+"回｜勝率"+esc(x.win_pct.toFixed(0))+"%｜平均"+esc((x.avg_pct>0?"+":"")+x.avg_pct.toFixed(2))+"%"+mark(check&&x.stock_checking):"—";
     el.innerHTML='<h3>週間成績（毎週金曜に更新・最後の更新 '+esc(String(w.generated_on||"").slice(5).replace("-","/"))+'）</h3>'+
-      '<table class="an-week"><thead><tr><th>アナリスト</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 向き</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 銘柄</th><th>通算 向き</th><th>通算 銘柄</th></tr></thead><tbody>'+
+      '<table class="an-week" data-keep-table><thead><tr><th>アナリスト</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 向き</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 銘柄</th><th>通算 向き</th><th>通算 銘柄</th></tr></thead><tbody>'+
       w.rows.filter(r=>r&&typeof r==="object").map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table>'+
       '<p class="an-none">向きは当たった回数/答えた回数（日経平均の寄り→引け）。銘柄は寄り→引け、向きどおり、往復0.1%の費用込み。Grokは見張りのリストを全部買った計算、Claudeは入る条件を見ずに寄りで入った計算です。検証中＝向き'+esc(w.dir_min)+'回未満、銘柄'+esc(w.stock_min)+'回未満。研究の記録で、売買の勧めではありません。</p>';
   }
@@ -3853,7 +3853,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       box=document.createElement("section");box.className="card wide";box.id="sox-scenario";box.style.cssText="width:100%;max-width:none;grid-column:1/-1;box-sizing:border-box";box.innerHTML='<div class="an-none">SOXシナリオを読込中...</div>';
       fold=document.createElement("details");fold.className="an-fold";fold.id="kioxia-fold";fold.innerHTML="<summary>キオクシアの表示</summary>";
     }
-    [...pane.children].forEach(el=>{if(el!==box&&el!==fold&&!el.classList.contains("pane-intro"))fold.appendChild(el);});
+    [...pane.children].forEach(el=>{if(el!==box&&el!==fold&&!el.classList.contains("pane-intro")&&!el.classList.contains("cc-tab-owner-summary"))fold.appendChild(el);});
     if(box.parentElement!==pane)pane.append(box,fold);
     return box;
   }
@@ -3879,9 +3879,11 @@ document.addEventListener("DOMContentLoaded",()=>{
       [w.close,w.line_low,w.line_out,w.line_40].every(num)&&[...w.actual,...w.path].every(r=>Array.isArray(r)&&/^\d{4}-\d{2}-\d{2}$/.test(r[0])&&num(r[1])));
     if(!ok){el.innerHTML='<h2>SOXシナリオ</h2><p class="an-none">SOXシナリオを読めません（コクピットが止まっているか、まだ作られていません）。</p>';return;}
     const steps=(Array.isArray(w.steps)?w.steps:[]).map(s=>'<tr><td>'+esc(s&&s.name)+'</td><td>'+esc(s&&s.when)+'</td><td>'+(num(s&&s.sox)?yen(s.sox):"—")+'</td><td>'+(num(s&&s.nikkei)?yen(s.nikkei):"—")+'</td></tr>').join("");
-    el.innerHTML='<h2>SOXシナリオ予測チャート</h2><p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
+    const jst=new Date(Date.now()+9*3600000),jd=jst.toISOString().slice(0,10),jm=jst.getUTCHours()*60+jst.getUTCMinutes(),jw=jst.getUTCDay();
+    const late=jw>0&&jw<6&&jm>=495&&String(w.generated_on||"")!==jd;
+    el.innerHTML='<h2>SOXシナリオ予測チャート</h2>'+(late?'<p class="an-none" style="color:#F2C14E"><b>今朝の更新がありません。</b>下は前回の内容です。</p>':'')+'<p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
       '<p class="an-none">青が実際、橙の点線が2000年の動きをなぞった場合の形です。起きると決まったものではありません。似た例は1回だけです。</p>'+
-      '<table class="an-week"><thead><tr><th>段階</th><th>2000年では</th><th>SOXの目安</th><th>日経の目安</th></tr></thead><tbody>'+steps+'</tbody></table>'+
+      '<table class="an-week" data-keep-table><thead><tr><th>段階</th><th>2000年では</th><th>SOXの目安</th><th>日経の目安</th></tr></thead><tbody>'+steps+'</tbody></table>'+
       '<p class="an-none">日経の目安はSOXの半分動く計算です。研究の記録で、売買の勧めではありません。注文にはつながりません。</p>';
   }
   document.addEventListener("DOMContentLoaded",()=>{setTimeout(render,1200);setInterval(render,300000);});
