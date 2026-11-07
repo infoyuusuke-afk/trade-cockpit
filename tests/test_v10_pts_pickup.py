@@ -1,0 +1,117 @@
+"""Night PTS -> next-morning watch candidates (synthetic records only; no orders)."""
+from datetime import datetime, timedelta, timezone
+import importlib.util
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+from scripts import v10_pts_pickup as pts
+
+ROOT = Path(__file__).resolve().parents[1]
+GATEWAY = ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1"
+HTML = (ROOT / "index.html").read_text(encoding="utf-8").replace("\r\n", "\n")
+HEAD = ("captured_at,ticker,name,pts_date,exchange_time,price,tse_close,gap_pct,volume,tse_volume,pts_volume_ratio,"
+        "turnover,vwap,bid,ask,spread_pct,bid_qty,ask_qty,over,under,under_ratio,last_tick,bias_score,expectation_score,stance\n")
+
+
+def row(at, ticker, gap, turnover, spread, stance="翌日上方向注目"):
+    return '"%s","%s","n","2026-10-21","%s","1010","1000","%s","100","1","1","%s","1","1","1","%s","1","1","1","1","50","1","30","30","%s"\n' % (
+        at, ticker, at[11:], gap, turnover, spread, stance)
+
+
+def write(records, day, rows):
+    d = records / day
+    d.mkdir(parents=True, exist_ok=True)
+    (d / pts.PTS_FILE).write_text(HEAD + "".join(rows), encoding="utf-8-sig")
+
+
+class Pickup(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.mkdtemp(prefix="v10-pts-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.records = Path(tmp) / "records"
+        self.records.mkdir()
+
+    def test_latest_snapshot_per_issue_and_criteria(self):
+        write(self.records, "2026-10-20", [row("2026-10-20 20:00:00", "1000.JNX", 3.0, 50_000_000, 0.2)])  # older evening
+        write(self.records, "2026-10-21", [
+            row("2026-10-21 18:00:00", "2000.JNX", 0.5, 50_000_000, 0.2),   # small move at 18:00 ...
+            row("2026-10-21 21:00:00", "2000.JNX", 2.5, 50_000_000, 0.2),   # ... latest snapshot moved: kept
+            row("2026-10-21 21:00:00", "3000.JNX", -1.8, 20_000_000, 0.5, "翌日下方向警戒"),
+            row("2026-10-21 21:00:00", "4000.JNX", 4.0, 5_000_000, 0.2),    # thin: dropped
+            row("2026-10-21 21:00:00", "5000.JNX", 4.0, 50_000_000, 2.0),   # wide spread: dropped
+            row("2026-10-21 21:00:00", "6000.JNX", 0.4, 90_000_000, 0.1),   # small gap: dropped
+        ])
+        view = pts.build(self.records, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))  # 08:00 JST 10/22
+        self.assertEqual(view["pts_session_date"], "2026-10-21")
+        self.assertEqual(view["recorded_pts_evenings"], 2)
+        self.assertEqual([(r["ticker"], r["direction"]) for r in view["rows"]], [("2000.T", "UP"), ("3000.T", "DOWN")])
+        self.assertIs(view["trade_instruction"], False)
+        self.assertIn("UNVERIFIED", view["verification"])
+
+    def test_nothing_after_now_and_no_records(self):
+        write(self.records, "2026-10-21", [row("2026-10-21 21:00:00", "2000.JNX", 2.5, 50_000_000, 0.2)])
+        early = pts.build(self.records, now=datetime(2026, 10, 21, 11, 0, tzinfo=timezone.utc))   # 20:00 JST
+        self.assertEqual(early["rows"], [])
+        empty = Path(tempfile.mkdtemp(prefix="v10-pts-empty-"))
+        self.addCleanup(shutil.rmtree, empty, True)
+        view = pts.build(empty, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        self.assertEqual((view["pts_session_date"], view["recorded_pts_evenings"], view["rows"]), (None, 0, []))
+
+
+class Observer(unittest.TestCase):
+    def test_pin_and_rebuild_every_five_minutes(self):
+        spec = importlib.util.spec_from_file_location("obs_pts_under_test", ROOT / "scripts" / "ai_brain_observer.py")
+        obs = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(obs)
+        name, pin = obs.PTS_PICKUP_MODULE
+        self.assertEqual(obs.git_blob_sha1((ROOT / "scripts" / (name + ".py")).read_bytes()), pin)
+        tmp = Path(tempfile.mkdtemp(prefix="v10-obs-pts-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "records").mkdir()
+        live = tmp / "live_ms2.json"
+        state, now = {}, datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc)
+        self.assertEqual(obs.pts_pickup_pass(state, live, now=now)["pts_pickup"], "BUILT")
+        self.assertIsNone(obs.pts_pickup_pass(state, live, now=now + timedelta(minutes=4)))
+        self.assertEqual(obs.pts_pickup_pass(state, live, now=now + timedelta(minutes=6))["pts_pickup"], "BUILT")
+        self.assertEqual(json.loads((tmp / obs.PTS_PICKUP_FILE).read_text("utf-8"))["schema_version"], pts.SCHEMA)
+
+
+class Wiring(unittest.TestCase):
+    def test_gateway_route_and_panel(self):
+        text = GATEWAY.read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/pts_pickup.json') {", text)
+        self.assertIn("'100b-v10-pts-pickup-v1'", text)
+        self.assertIn('ptsPanel.id="pts-morning-pickup";', HTML)
+        self.assertIn("監視候補で売買サインではありません", HTML)
+        self.assertIn("window.cockpitMs2RowReady?.(x)===true", HTML)
+
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
+    def test_gateway_states(self):
+        harness = r"""
+param([string]$Gateway, [string]$Dir)
+$t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Gateway,[ref]$t,[ref]$e)
+$fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-PtsPickupView'},$true))
+. ([scriptblock]::Create($fn[0].Extent.Text))
+$o=[ordered]@{}; foreach($c in Get-ChildItem -LiteralPath $Dir -Directory){ $o[$c.Name]=(Get-PtsPickupView $c.FullName).status }
+$o | ConvertTo-Json -Compress
+"""
+        good = json.dumps({"schema_version": pts.SCHEMA, "real_submit_allowed": False, "trade_instruction": False, "rows": []})
+        with tempfile.TemporaryDirectory() as d:
+            for name, text in {"valid": good, "missing": None, "unsafe": good.replace('"real_submit_allowed": false', '"real_submit_allowed": true')}.items():
+                (Path(d) / name).mkdir()
+                if text is not None:
+                    (Path(d) / name / "pts_pickup_v1.json").write_text(text, encoding="utf-8")
+            h = Path(d) / "h.ps1"
+            h.write_text(harness, encoding="utf-8-sig")
+            p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Gateway", str(GATEWAY),
+                                "-Dir", d], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
+                         {"missing": "503 Service Unavailable", "unsafe": "503 Service Unavailable", "valid": "200 OK"})
+
+
+if __name__ == "__main__":
+    unittest.main()

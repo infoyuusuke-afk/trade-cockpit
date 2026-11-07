@@ -23,9 +23,9 @@
     "レーザーテック（6920）": {"ticker": "6920.T", "sector": "半導体・AI", "style": "day"},
     "キオクシアHD（285A）": {"ticker": "285A.T", "sector": "半導体・AI", "style": "day"},
     "ソシオネクスト（6526）": {"ticker": "6526.T", "sector": "半導体・AI", "style": "both"},
-    "フューチャー（4722）": {"ticker": "4722.T", "sector": "AI・DX", "style": "both"},
+    "村田製作所（6981）": {"ticker": "6981.T", "sector": "電子部品・AI", "style": "day"},
     "GO（581A）": {"ticker": "581A.T", "sector": "MaaS・成長株", "style": "both", "day_bucket": "IPO・グロース"},
-    "セルシス（3663）": {"ticker": "3663.T", "sector": "コンテンツ・成長株", "style": "both"},
+    "東京海上HD（8766）": {"ticker": "8766.T", "sector": "保険・金利", "style": "day"},
     "MS&AD（8725）": {"ticker": "8725.T", "sector": "保険・金利", "style": "swing"},
     "ローツェ（6323）": {"ticker": "6323.T", "sector": "半導体・AI", "style": "both"},
     "SUMCO（3436）": {"ticker": "3436.T", "sector": "半導体・AI", "style": "swing"},
@@ -72,7 +72,7 @@
     ,"NTT（9432）": {"ticker": "9432.T", "sector": "通信・データセンター", "style": "swing"}
     ,"KDDI（9433）": {"ticker": "9433.T", "sector": "通信・データセンター", "style": "swing"}
     ,"ソフトバンク（9434）": {"ticker": "9434.T", "sector": "通信・AI", "style": "swing"}
-    ,"ユアテック（1934）": {"ticker": "1934.T", "sector": "データセンター・電力設備", "style": "both"}
+    ,"JX金属（5016）": {"ticker": "5016.T", "sector": "非鉄・レアメタル", "style": "day"}
     ,"東北電力（9506）": {"ticker": "9506.T", "sector": "電力・データセンター", "style": "swing"}
     ,"高砂熱学工業（1969）": {"ticker": "1969.T", "sector": "データセンター・冷却", "style": "swing"}
     ,"関電工（1942）": {"ticker": "1942.T", "sector": "データセンター・電気設備", "style": "swing"}
@@ -80,37 +80,37 @@
     ,"住友金属鉱山（5713）": {"ticker": "5713.T", "sector": "非鉄・レアメタル", "style": "swing"}
     ,"双日（2768）": {"ticker": "2768.T", "sector": "資源商社・レアアース", "style": "swing"}
     ,"DOWA HD（5714）": {"ticker": "5714.T", "sector": "非鉄・資源循環", "style": "swing"}
-    ,"FIXER（5129）": {"ticker": "5129.T", "sector": "生成AI・クラウド", "style": "day", "day_bucket": "SaaS・AIソフト"}
-    ,"モビルス（4370）": {"ticker": "4370.T", "sector": "SaaS・AIチャット", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"太陽誘電（6976）": {"ticker": "6976.T", "sector": "電子部品・AI", "style": "day"}
+    ,"みずほFG（8411）": {"ticker": "8411.T", "sector": "銀行・金利", "style": "day"}
     ,"ティアフォー（593A）": {"ticker": "593A.T", "sector": "自動運転・IPO", "style": "day", "day_bucket": "IPO・グロース"}
     ,"データセクション（3905）": {"ticker": "3905.T", "sector": "AI・データセンター", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
     ,"HENNGE（4475）": {"ticker": "4475.T", "sector": "SaaS・セキュリティ", "style": "day", "day_bucket": "SaaS・AIソフト"}
-    ,"チャットプラス（598A）": {"ticker": "598A.T", "sector": "SaaS・生成AI", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"イビデン（4062）": {"ticker": "4062.T", "sector": "半導体・AI", "style": "day"}
     ,"サイバーセキュリティクラウド（4493）": {"ticker": "4493.T", "sector": "SaaS・セキュリティ", "style": "day", "day_bucket": "SaaS・AIソフト"}
     ,"マネーフォワード（3994）": {"ticker": "3994.T", "sector": "SaaS・フィンテック", "style": "day", "day_bucket": "SaaS・AIソフト"}
-    ,"freee（4478）": {"ticker": "4478.T", "sector": "SaaS・フィンテック", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"りそなHD（8308）": {"ticker": "8308.T", "sector": "銀行・金利", "style": "day"}
     ,"Sansan（4443）": {"ticker": "4443.T", "sector": "SaaS・DX", "style": "day", "day_bucket": "SaaS・AIソフト"}
-    ,"プレイド（4165）": {"ticker": "4165.T", "sector": "SaaS・CX", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"三井金属（5706）": {"ticker": "5706.T", "sector": "非鉄・レアメタル", "style": "day"}
     ,"note（5243）": {"ticker": "5243.T", "sector": "コンテンツ・AI", "style": "day", "day_bucket": "IPO・グロース"}
     ,"Terra Drone（278A）": {"ticker": "278A.T", "sector": "ドローン・成長株", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
     ,"アストロスケールHD（186A）": {"ticker": "186A.T", "sector": "宇宙・成長株", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
     ,"エクサウィザーズ（4259）": {"ticker": "4259.T", "sector": "生成AI・DX", "style": "day", "day_bucket": "SaaS・AIソフト"}
-    ,"FRONTEO（2158）": {"ticker": "2158.T", "sector": "AI創薬・医療DX", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
+    ,"KOKUSAI ELECTRIC（6525）": {"ticker": "6525.T", "sector": "半導体・AI", "style": "day"}
     ,"ペプチドリーム（4587）": {"ticker": "4587.T", "sector": "AI創薬・バイオ", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
     ,"中外製薬（4519）": {"ticker": "4519.T", "sector": "AI創薬・医薬品", "style": "swing"}
     ,"THK（6481）": {"ticker": "6481.T", "sector": "フィジカルAI・ロボット", "style": "both"}
-    ,"ハーモニック・ドライブ・システムズ（6324）": {"ticker": "6324.T", "sector": "フィジカルAI・ロボット部品", "style": "both"}
+    ,"伊藤忠商事（8001）": {"ticker": "8001.T", "sector": "商社・資源", "style": "day"}
     ,"ナブテスコ（6268）": {"ticker": "6268.T", "sector": "フィジカルAI・精密減速機", "style": "swing"}
-    ,"アイサンテクノロジー（4667）": {"ticker": "4667.T", "sector": "自動運転・高精度地図", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
-    ,"QPSホールディングス（464A）": {"ticker": "464A.T", "sector": "宇宙・小型SAR衛星", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
+    ,"レゾナックHD（4004）": {"ticker": "4004.T", "sector": "半導体・素材", "style": "day"}
+    ,"ファーストリテイリング（9983）": {"ticker": "9983.T", "sector": "小売・値がさ", "style": "day"}
     ,"ニトリHD（9843）": {"ticker": "9843.T", "sector": "小売・円高恩恵", "style": "both"}
     ,"良品計画（7453）": {"ticker": "7453.T", "sector": "小売・円高恩恵", "style": "both"}
     ,"神戸物産（3038）": {"ticker": "3038.T", "sector": "食品・円高恩恵", "style": "both"}
-    ,"セリア（2782）": {"ticker": "2782.T", "sector": "小売・円高恩恵", "style": "both"}
+    ,"ルネサス（6723）": {"ticker": "6723.T", "sector": "半導体・AI", "style": "day"}
     ,"エービーシー・マート（2670）": {"ticker": "2670.T", "sector": "小売・円高恩恵", "style": "both"}
-    ,"ワークマン（7564）": {"ticker": "7564.T", "sector": "小売・円高恩恵", "style": "both"}
+    ,"日本製鉄（5401）": {"ticker": "5401.T", "sector": "鉄鋼・素材", "style": "day"}
     ,"サイゼリヤ（7581）": {"ticker": "7581.T", "sector": "外食・円高恩恵", "style": "both"}
-    ,"さくらインターネット（3778）": {"ticker": "3778.T", "sector": "生成AI・データセンター", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
+    ,"HOYA（7741）": {"ticker": "7741.T", "sector": "半導体・素材", "style": "day"}
     ,"メルカリ（4385）": {"ticker": "4385.T", "sector": "グロース・ネット", "style": "day"}
     ,"SHIFT（3697）": {"ticker": "3697.T", "sector": "IT・DX", "style": "day"}
     ,"SWCC（5805）": {"ticker": "5805.T", "sector": "電線・電力網", "style": "both"}
