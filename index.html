@@ -3066,7 +3066,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{render();setInterval(render,600000);});
 })();
 </script>
-<style>.an-fold{margin-top:8px}.an-fold summary{cursor:pointer;color:#35e2ae;font-weight:700}.an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:10px}.an-card{background:#0E1013;border:1px solid #22252A;border-radius:12px;padding:12px 14px;color:#E8EAED;font-size:13px}.an-card h3{margin:0 0 4px;font-size:16px}.an-card .an-role{color:#9AA0AA;font-size:12px;margin:0 0 8px}.an-st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px}.an-st.ok{background:#0d2b23;color:#35e2ae}.an-st.wait{background:#341418;color:#ff8a8f}.an-st.unk{background:#22252A;color:#9AA0AA}.an-card ol{margin:6px 0 8px;padding-left:20px;line-height:1.7}.an-card textarea{width:100%;min-height:150px;background:#090A0C;color:#E8EAED;border:1px solid #22252A;border-radius:8px;font-size:12px;padding:8px;box-sizing:border-box}.an-card button{margin-top:6px;padding:5px 12px;border-radius:8px;border:1px solid #303033;background:#111113;color:#E8EAED;cursor:pointer}.an-none{color:#9AA0AA;font-size:12px;margin:6px 0}</style>
+<style>.an-week{width:100%;border-collapse:collapse;font-size:13px}.an-week th,.an-week td{padding:5px 8px;border-bottom:1px solid #262A30;text-align:right;white-space:nowrap}.an-week th:first-child,.an-week td:first-child{text-align:left}.an-week th{color:#9AA3AF;font-weight:600}.an-check{display:inline-block;margin-left:5px;padding:0 5px;border-radius:4px;background:#3A3218;color:#F4C95D;font-size:11px}.an-fold{margin-top:8px}.an-fold summary{cursor:pointer;color:#35e2ae;font-weight:700}.an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:10px}.an-card{background:#0E1013;border:1px solid #22252A;border-radius:12px;padding:12px 14px;color:#E8EAED;font-size:13px}.an-card h3{margin:0 0 4px;font-size:16px}.an-card .an-role{color:#9AA0AA;font-size:12px;margin:0 0 8px}.an-st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px}.an-st.ok{background:#0d2b23;color:#35e2ae}.an-st.wait{background:#341418;color:#ff8a8f}.an-st.unk{background:#22252A;color:#9AA0AA}.an-card ol{margin:6px 0 8px;padding-left:20px;line-height:1.7}.an-card textarea{width:100%;min-height:150px;background:#090A0C;color:#E8EAED;border:1px solid #22252A;border-radius:8px;font-size:12px;padding:8px;box-sizing:border-box}.an-card button{margin-top:6px;padding:5px 12px;border-radius:8px;border:1px solid #303033;background:#111113;color:#E8EAED;cursor:pointer}.an-none{color:#9AA0AA;font-size:12px;margin:6px 0}</style>
 <script>
 // OWNER 2026-10-28 「全てのタブに同じ文言は不要、また各アナリスト用に分けて指示は明確化すること、必要なら各アナリストタブ　コントロールの
 // 次に作成すること」: an 「アナリスト」 tab right after CONTROL. One card per analyst (GPT PRE-NEXT, GPT 需給, Grok1号 テーマ先回り,
@@ -3087,7 +3087,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="analysts"]'))return;
     pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="analysts";
-    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。答えはプロジェクトのチャット（PCのClaude）に貼ってください。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section>';
+    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。答えはプロジェクトのチャット（PCのClaude）に貼ってください。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section><section class="card wide"><div id="an-weekly"><div class="an-none">週間成績を読込中...</div></div></section>';
     main.append(pane);
     const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="analysts";b.type="button";b.textContent="アナリスト";
     const after=nav.querySelector('.cockpit-tab[data-tab="control"]');
@@ -3111,9 +3111,25 @@ document.addEventListener("DOMContentLoaded",()=>{
       "銘柄コード4文字 | 強・中・弱（話題の強さ） | 強気 か 弱気 | 理由（120文字まで。先頭に「"+prefix+"」と書く。事実とXの声を分ける） | 出典URL（https） | 時刻（YYYY-MM-DD HH:MM）\nEND\n"+
       "確かめられない数字は「未確認」と書き、作らない。";
   }
+  // OWNER 2026-11-07 「アナリストタブに週間成績の欄を足して。Claudeも入れた7人の向きの当たり・銘柄の勝率と平均・回数、回数が少ないうちは検証中の印。毎週金曜に更新」:
+  // the numbers come from /analyst_weekly.json, which the research script rewrites every Friday on this PC. Display only.
+  function renderWeekly(w){
+    const el=pane&&pane.querySelector("#an-weekly");if(!el)return;
+    const ok=!!(w&&w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false&&Array.isArray(w.rows));
+    if(!ok){el.innerHTML='<h3>週間成績</h3><p class="an-none">週間成績を読めません（コクピットが止まっているか、まだ作られていません）。</p>';return;}
+    const num=v=>typeof v==="number"&&Number.isFinite(v);
+    const mark=on=>on?'<span class="an-check">検証中</span>':"";
+    const dir=(x,check)=>x&&num(x.dir_n)&&x.dir_n>0?esc(x.dir_hit)+"/"+esc(x.dir_n)+"回"+mark(check&&x.dir_checking):"—";
+    const stock=(x,check)=>x&&num(x.n)&&x.n>0&&num(x.win_pct)&&num(x.avg_pct)?esc(x.n)+"回｜勝率"+esc(x.win_pct.toFixed(0))+"%｜平均"+esc((x.avg_pct>0?"+":"")+x.avg_pct.toFixed(2))+"%"+mark(check&&x.stock_checking):"—";
+    el.innerHTML='<h3>週間成績（毎週金曜に更新・最後の更新 '+esc(String(w.generated_on||"").slice(5).replace("-","/"))+'）</h3>'+
+      '<table class="an-week"><thead><tr><th>アナリスト</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 向き</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 銘柄</th><th>通算 向き</th><th>通算 銘柄</th></tr></thead><tbody>'+
+      w.rows.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table>'+
+      '<p class="an-none">向きは当たった回数/答えた回数（日経平均の寄り→引け）。銘柄は寄り→引け、向きどおり、往復0.1%の費用込み。Grokは見張りのリストを全部買った計算、Claudeは入る条件を見ずに寄りで入った計算です。検証中＝向き'+esc(w.dir_min)+'回未満、銘柄'+esc(w.stock_min)+'回未満。研究の記録で、売買の勧めではありません。</p>';
+  }
   async function render(){
     if(!pane)return;
     const box=pane.querySelector("#an-cards");
+    renderWeekly(await get("/analyst_weekly.json"));
     const [cal,bp,gb,tw,ins]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json"),get("/analyst_instructions.json")]);
     // OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: the standing instruction of each GPT
     // analyst, kept on this PC (never in the repo), folded under its card with a copy button.

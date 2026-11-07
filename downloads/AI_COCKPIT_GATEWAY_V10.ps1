@@ -923,6 +923,30 @@ function Get-AnalystInstructionsView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-07 「アナリストタブに週間成績の欄を足して。Claudeも入れた7人…毎週金曜に更新」: RuntimeDir\analyst_weekly_v1.json
+# (written on this PC every Friday by the research script, never in the repo) is served as-is when its flags are safe.
+function Get-AnalystWeeklyView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'analyst_weekly_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'ANALYST_WEEKLY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'ANALYST_WEEKLY_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-analyst-weekly-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'ANALYST_WEEKLY_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'ANALYST_WEEKLY_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: RuntimeDir\realized_csv_today_v1.json (today's total from the
 # OWNER's Rakuten 実現損益 CSV on this PC, written by the Brain observer) is served as-is when its flags are safe.
 function Get-RealizedCsvView([string]$RuntimeDir) {
@@ -3090,6 +3114,11 @@ try {
             if ($path -eq '/analyst_instructions.json') {
                 $instrView = Get-AnalystInstructionsView $RuntimeDir
                 Send-Response $stream $instrView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$instrView.body))
+                continue
+            }
+            if ($path -eq '/analyst_weekly.json') {
+                $weeklyView = Get-AnalystWeeklyView $RuntimeDir
+                Send-Response $stream $weeklyView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$weeklyView.body))
                 continue
             }
             if ($path -eq '/realized_csv.json') {
