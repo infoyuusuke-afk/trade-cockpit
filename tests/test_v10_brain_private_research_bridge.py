@@ -29,6 +29,9 @@ def row(t):
         "source_timestamp": "10:00:03", "source_timestamp_at": QUOTE,
         "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE",
         "source_timestamp_observed_at": OBS,
+        # The Collector marks a row it judged FRESH this cycle; the Brain
+        # observer reads only such rows (P0-V10-INTEGRATION-AND-LIVE-START-20261020).
+        "aggregate_row_fresh": True,
     }
 
 
