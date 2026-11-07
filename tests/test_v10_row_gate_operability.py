@@ -465,6 +465,12 @@ def ui_live_body(top5_ticker="SYN01.T"):
     payload = board(datetime.now(timezone.utc).astimezone(JST))
     payload["updated_at"] = utc_updated_at()  # the harness runs with TZ=UTC
     payload["top5"] = [r for r in payload["all_targets"] if r["ticker"] == top5_ticker]
+    # Strict dashboard LIVE gate requires the real Collector's explicit
+    # workbook/source/observation evidence; no invented auth token.
+    payload["observed_at_offset"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    payload["connection_source"] = "自宅PC・MS2 RSS LIVE"
+    payload["live_price_diagnostics"]["workbook_identity_verified"] = True
+    payload["live_price_diagnostics"]["real_submit_allowed"] = False
     return payload
 
 
@@ -483,7 +489,15 @@ class UiFailClosed(unittest.TestCase):
             raise unittest.SkipTest("node not installed; the Windows CI job runs this class")
         live = ui_live_body()
         healthy = {"runtime": {"fail_closed": False}}
+        missing_identity = json.loads(json.dumps(live))
+        del missing_identity["live_price_diagnostics"]["workbook_identity_verified"]
+        outdated = json.loads(json.dumps(live))
+        outdated["observed_at_offset"] = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
         cases = [
+            {"name": "http_200_without_workbook_identity", "bridge_status": 200,
+             "bridge_body": json.dumps(missing_identity), "health": healthy},
+            {"name": "http_200_with_30s_frozen_observation", "bridge_status": 200,
+             "bridge_body": json.dumps(outdated), "health": healthy},
             {"name": "positive_control", "bridge_status": 200, "bridge_body": json.dumps(live), "health": healthy},
             {"name": "row_stale_503", "bridge_status": 503,
              "bridge_body": json.dumps(rejection_body("ROW_QUOTE_NOT_FRESH,ROW_STALE_SOURCE_QUOTE")), "health": healthy},
