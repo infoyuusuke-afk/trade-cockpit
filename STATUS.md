@@ -3431,3 +3431,17 @@ Current repository-only backlog has been reduced to external/actual-machine acce
 - Issue #57 remains open by design: Replay 15-second evidence exists, but the required separate real Claude/MCP `TSE:285A` / `15S` / `Asia/Tokyo` handoff payload and sanitized intake receipt have not been evidenced. Do not substitute another timeframe or synthesize bars.
 - Issue #17 remains open by design: code separates TSE `285A.T` from JNX reference handling and prevents JNX from driving TSE OR/VWAP/EMA signals, but the four-scenario Windows/MS2 acceptance matrix still requires actual-machine evidence.
 - No remaining repository-only step authorizes broker submission, RssOrder, Scheduled Task/autostart activation, private-data publication, or LIVE promotion.
+
+## Issue #346 MS2 watcher sidecar contract (offline only)
+
+Audited main `7d796f1d4f60fb81027f756401d8dbf1c065c915`. `ms2_live/Kioxia_RSS_Live_Watcher.ps1` was not modified.
+
+The live loop already calls `Read-BoardDepth` (A870:D879, 40 sequential `Value2` reads), `Write-TickLogDiff`, and a minute board log. `poll_seq` is the loop counter. `recorded_at` is one naive `Get-Date` taken before those reads. The tick CSV does not store a book. The board CSV stores OVER/UNDER and best prices, not 10-level quantities. No file stores `available_at`, a numeric offset, or an atomic snapshot flag.
+
+`scripts/ms2_watcher_sidecar_contract.py` is an offline validator for a separate private JSONL schema, `ms2-watcher-sidecar-0.1`, under `data/private/ms2_sidecar`. The writer flag defaults off and this module does not create or append a sidecar. An empty path reads nothing. Legacy tick, diagnostic, 15-second, and board CSV headers are recognized and refused without rewriting bytes. A record whose source is the current watcher script is rejected, because that script has no sidecar writer.
+
+Clocks stay distinct. `event_time` is accepted only with basis `EXCHANGE_SUPPLIED`. `watcher_observed_at` is the local clock and is not copied into `received_at` or `available_at`. Equal clocks are rejected. `poll_seq` is not accepted as `exchange_sequence`. A sequential board read is stored as incomplete when the skew is explicit, and it is not projected as one quote. Missing quantity, stale freshness, a suspected gap, a contradictory gap flag, OVER/UNDER used as top-of-book size, duplicate conflicts, and torn JSONL fail closed.
+
+A complete synthetic record can be projected to the Draft PR #345 shape `ms2-pit-observation-0.1`. The projection is `evidence_origin=SYNTHETIC`. This module does not authenticate a capture, does not import the unmerged fill evaluator, and does not emit a virtual close. `eligible_observed_n=0`. EV, PF, DD, and verified net are unknown. `real_submit_allowed`, `promotion_eligible`, and `statistical_edge_confirmed` stay false.
+
+`python3 -m unittest tests.test_ms2_watcher_sidecar_contract -v` — 31 tests, OK. The full local discovery was 1654 tests with one pre-existing error, `test_dialog_cancel_does_not_probe`, because this environment has no `tkinter`. Windows/Excel acceptance W1–W4 in `windows_acceptance_checklist()` was not run. A live watcher edit still needs a separate OWNER approval.
