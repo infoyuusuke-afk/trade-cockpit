@@ -33,6 +33,14 @@ class AccountCashUnread(unittest.TestCase):
 
     def test_a_loop_without_the_field_keeps_the_red_band(self):
         self.assertIn("if(Number.isFinite(diag.account_read_fail_seconds))window.cockpitAccountFailSeconds=", self.page)
+        a = self.page.index("if(Number.isFinite(diag.account_read_fail_seconds))")
+        b = self.page.index("else if((e.detail||{})._collector_silent)window.cockpitAccountFailSeconds=0")
+        self.assertLess(a, b)                                        # a real count always wins
+        self.assertEqual(self.page.count("_collector_silent:true"), 1)   # set only when the stream went silent
+        self.assertNotIn("(e.detail||{})._transport_fail_closed", self.page)
+
+    def test_an_unreadable_config_comes_back(self):
+        self.assertIn("$realPosSetupFailed = (-not $script:realPosLatched)", self.collector)
 
     def test_screen_says_the_cash_list_is_not_read(self):
         script = (ROOT / "trade_control.js").read_text(encoding="utf-8")

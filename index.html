@@ -2388,7 +2388,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  let lastVerifiedEventAt=null,clockTimer=null;
  const stopReason=reason=>({
   stale:true,live_values_available:false,data_conflict:true,
-  real_submit_allowed:false,_transport_fail_closed:true,stale_reason:reason
+  real_submit_allowed:false,_transport_fail_closed:true,_collector_silent:true,stale_reason:reason
  });
  const invalidate=reason=>{
   lastVerifiedEventAt=null;
@@ -3827,8 +3827,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   // OWNER 2026-11-06 「どの銘柄で確かめているかを画面に出す」
   document.addEventListener("ms2RssUpdate",e=>{
     const diag=(e.detail||{}).live_price_diagnostics||{},box=document.getElementById("unified-mode-title")?.parentElement;
-    if((e.detail||{})._transport_fail_closed)window.cockpitAccountFailSeconds=0;   // the Collector is gone: the band must not stay with a stale count
-    else if(Number.isFinite(diag.account_read_fail_seconds))window.cockpitAccountFailSeconds=diag.account_read_fail_seconds;   // a loop without this field keeps the last value, so the red band does not blink off
+    if(Number.isFinite(diag.account_read_fail_seconds))window.cockpitAccountFailSeconds=diag.account_read_fail_seconds;
+    else if((e.detail||{})._collector_silent)window.cockpitAccountFailSeconds=0;   // only when the Collector went silent: the band must not stay with a stale count   // a loop without this field keeps the last value, so the red band does not blink off
     if(!box)return;
     let el=document.getElementById("identity-source-note");
     if(!el){el=document.createElement("div");el.id="identity-source-note";el.style.cssText="font-size:11px;color:#9AA0AA;margin-top:2px";box.append(el);}
