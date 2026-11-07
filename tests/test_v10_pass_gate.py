@@ -126,5 +126,34 @@ class Cost(unittest.TestCase):
         self.assertEqual(gate.evaluate(good()), gate.evaluate(good()))
 
 
+class RandomTime(unittest.TestCase):
+    def path(self):
+        return [("09:%02d:00" % m, 1000.0 + m) for m in range(0, 60)]
+
+    def trade(self, side, gross):
+        return {"status": gate.CLOSED, "day": "2026-11-04", "side": side, "gross_pct": gross, "price": 1000.0, "cost_pct": 0.1,
+                "path": self.path(), "hold_s": 300}
+
+    def test_no_path_is_not_tested(self):
+        t = self.trade(1, 1.0)
+        del t["path"]
+        self.assertIsNone(gate.random_time_share([t]))
+        self.assertIsNone(gate.random_time_share([]))
+
+    def test_a_trade_far_above_random_times_is_beaten_every_time(self):
+        self.assertEqual(gate.random_time_share([self.trade(1, 5.0)], rounds=200), 1.0)
+
+    def test_a_trade_far_below_random_times_never_wins(self):
+        self.assertEqual(gate.random_time_share([self.trade(1, -5.0)], rounds=200), 0.0)
+
+    def test_the_same_seed_gives_the_same_share(self):
+        t = self.trade(-1, 0.1)
+        self.assertEqual(gate.random_time_share([t], rounds=100), gate.random_time_share([t], rounds=100))
+
+    def test_the_share_can_pass_the_random_condition(self):
+        v = [self.trade(1, 5.0) for _ in range(30)]
+        self.assertTrue(gate.evaluate(v, random_time_share=gate.random_time_share(v, rounds=100))["checks"]["random"])
+
+
 if __name__ == "__main__":
     unittest.main()

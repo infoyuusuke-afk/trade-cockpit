@@ -17,6 +17,7 @@ lacks one is reported as invalid, and an invalid list cannot pass. Nothing here 
 """
 from __future__ import annotations
 
+import bisect
 import random
 
 MIN_CLOSED = 30
@@ -73,6 +74,35 @@ def permutation_share(trades: list[dict], seed: int = 20261106, rounds: int = PE
     beaten = 0
     for _ in range(rounds):
         mean = sum((g if rng.random() < .5 else -g) - d for g, d in zip(gross, drag)) / n
+        beaten += real > mean
+    return beaten / rounds
+
+
+def _seconds(clock: str) -> int:
+    return int(clock[:2]) * 3600 + int(clock[3:5]) * 60 + int(clock[6:8])
+
+
+def _random_return(secs: list, prices: list, hold: int, side: int, rng: random.Random) -> float:
+    """Enter at a random print of the same day and stock, hold for the same time, in the same direction."""
+    at = rng.randrange(len(secs))
+    out = min(bisect.bisect_left(secs, secs[at] + hold, at), len(secs) - 1)
+    return side * (prices[out] / prices[at] - 1) * 100
+
+
+def random_time_share(trades: list[dict], seed: int = 20261108, rounds: int = 2000) -> float | None:
+    """OWNER 2026-11-07 「時刻の検査は research/pass-gate で作る」: the share of random-entry means that the real mean beats
+    (ties count against it). Same day, stock, direction, hold time and cost as each trade; stops and targets are not
+    replayed, so the random side only keeps the time. None when any trade has no price path: an untested list cannot pass."""
+    if not trades or any(not t.get("path") or t.get("hold_s") is None for t in trades):
+        return None
+    n = len(trades)
+    drag = [float(t["gross_pct"]) - net_pct(t) for t in trades]
+    real = sum(net_pct(t) for t in trades) / n
+    rows = [([_seconds(c) for c, _ in t["path"]], [p for _, p in t["path"]], int(t["hold_s"]), int(t["side"]), d) for t, d in zip(trades, drag)]
+    rng = random.Random(seed)
+    beaten = 0
+    for _ in range(rounds):
+        mean = sum(_random_return(s, p, h, side, rng) - d for s, p, h, side, d in rows) / n
         beaten += real > mean
     return beaten / rounds
 

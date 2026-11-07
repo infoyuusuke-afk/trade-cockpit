@@ -75,5 +75,16 @@ class SharedDays(unittest.TestCase):
         self.assertEqual(gate.evaluate(rows, calendar=["d1", "d2", "d3", "d4", "d5", "d6"])["first_half"]["n"], 2)
 
 
+class Days(unittest.TestCase):
+    def test_a_running_day_is_not_finished(self):
+        from datetime import datetime
+        self.assertFalse(conv.finished_day("2026-11-09", datetime(2026, 11, 9, 11, 0)))
+        self.assertTrue(conv.finished_day("2026-11-09", datetime(2026, 11, 9, 15, 45)))
+        self.assertTrue(conv.finished_day("2026-11-06", datetime(2026, 11, 9, 11, 0)))
+
+    def test_hold_seconds(self):
+        self.assertEqual(conv.hold_seconds({"fill_time": "09:05:00", "exit_time": "09:10:30"}), 330)
+
+
 if __name__ == "__main__":
     unittest.main()

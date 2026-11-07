@@ -14,6 +14,7 @@ Paths come from the arguments; no record or ledger belongs in this repository.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import csv
 from collections import defaultdict
 import glob
@@ -71,10 +72,21 @@ def load_ticks(path: Path, day: str, want: set) -> dict:
     return out
 
 
+def hold_seconds(got: dict) -> int:
+    return gate._seconds(got["exit_time"]) - gate._seconds(got["fill_time"])
+
+
+def finished_day(day: str, now: datetime | None = None) -> bool:
+    """Audit 2026-11-07 問題6: a replay of a day still running is not a closed trade."""
+    now = now or datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    return day < today or (day == today and now.strftime("%H:%M") >= "15:40")
+
+
 def rule_trades(records: Path) -> list[dict]:
     """Replays every recorded rule signal the way v10_positions_live does (filled trades only)."""
     trades = []
-    for d in sorted(p for p in Path(records).iterdir() if (p / "brain_rule_signals.csv").is_file() and (p / "ticks.csv").is_file()):
+    for d in sorted(p for p in Path(records).iterdir() if (p / "brain_rule_signals.csv").is_file() and (p / "ticks.csv").is_file() and finished_day(p.name)):
         signals = list(csv.DictReader(open(d / "brain_rule_signals.csv", encoding="utf-8-sig", errors="replace", newline="")))
         ticks = load_ticks(d / "ticks.csv", d.name, {s["ticker"] for s in signals})
         seen = set()
@@ -84,9 +96,12 @@ def rule_trades(records: Path) -> list[dict]:
                 continue
             sig = {"signal": s.get("signal"), "entry": s.get("entry"), "stop": s.get("stop"), "target1": s.get("target"),
                    "captured_at": s.get("captured_at"), "signal_bar": s.get("signal_bar")}
-            trade = from_replay(ev.replay(sig, ticks.get(s["ticker"], []), max_hold_minutes=rule.get("max_hold_minutes")), d.name, s["rule"])
+            got = ev.replay(sig, ticks.get(s["ticker"], []), max_hold_minutes=rule.get("max_hold_minutes"))
+            trade = from_replay(got, d.name, s["rule"])
             if trade:
                 seen.add((s["rule"], s["ticker"]))
+                trade["path"] = [(x[0], x[2]) for x in ticks.get(s["ticker"], [])]   # the day's prints, for the random-time check
+                trade["hold_s"] = hold_seconds(got)
                 trades.append(trade)
     return trades
 
@@ -101,6 +116,7 @@ def main() -> int:
     ap.add_argument("--records")
     ap.add_argument("--r09-dir")
     ap.add_argument("--r09-from", default="2026-10-28")
+    ap.add_argument("--r09-to", default="9999-12-31")   # audit 2026-11-07 問題5: an end day as well as a start
     ap.add_argument("--h2-ledger")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
@@ -115,7 +131,7 @@ def main() -> int:
         for f in sorted(glob.glob(str(Path(a.r09_dir) / "ledger_*.csv"))):
             for r in read_csv(f):
                 t = from_r09_row(r)
-                if t and t["day"] >= a.r09_from:
+                if t and a.r09_from <= t["day"] <= a.r09_to:
                     groups["R09"].append(t)
     if a.h2_ledger:
         for r in read_csv(a.h2_ledger):
@@ -124,7 +140,8 @@ def main() -> int:
                 groups[t["rule"]].append(t)
     result = {"days": calendar, "methods": {}}
     for k, v in sorted(groups.items()):
-        result["methods"][k] = {"own_days": gate.evaluate(v), "shared_days": gate.evaluate(v, calendar=calendar) if calendar and k[0] == "R" and k != "R09" else None}
+        share = gate.random_time_share(v)
+        result["methods"][k] = {"own_days": gate.evaluate(v, random_time_share=share), "shared_days": gate.evaluate(v, random_time_share=share, calendar=calendar) if calendar and k[0] == "R" and k != "R09" else None}
     Path(a.out).write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     print("ok", len(groups))
     return 0
