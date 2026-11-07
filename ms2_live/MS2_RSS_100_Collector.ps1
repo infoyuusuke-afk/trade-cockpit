@@ -2446,7 +2446,7 @@ function Initialize-RealPosSheet([int]$Retries = 240) {
             Invoke-ExcelCom -Retries $Retries -Label "実保有シート命名" -Action { $sheet.Name = "REAL_POS" } | Out-Null
         } catch {
             # the retry from the cycle must not leave an empty sheet behind each time
-            try { Invoke-ExcelCom -Retries $Retries -Label "実保有シート片付け" -Action { $xl = $book.Application; $xl.DisplayAlerts = $false; try { $sheet.Delete() } finally { $xl.DisplayAlerts = $true } } | Out-Null } catch { }
+            try { Invoke-ExcelCom -Retries $Retries -Label "実保有シート片付け" -Action { $sheet.Delete() } | Out-Null } catch { }
             throw
         }
     }
@@ -3261,9 +3261,9 @@ try {
         }
         # OWNER 2026-10-23 夜: the OWNER's real holdings, read only, this PC only (see REAL_POS above).
         if ($realPosReady -and $null -eq (Get-RealPosConfig)) {
-            $realPosReady = $false   # switched off or config gone: stays off until restart
+            $realPosReady = $false   # switched off: stays off until restart. Only unreadable: the next line lets the cycle retry
             $realPosSetupFailed = (-not $script:realPosLatched)   # a config that could only not be read this time comes back through the cycle's retry
-            Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+            Write-Host ("[REAL_POS] OFF - " + $(if ($script:realPosLatched) { "switched off by local config (latched)" } else { "local config not readable, retried from the cycle" })) -ForegroundColor DarkYellow
         }
         # OWNER 2026-11-07 「設定を切ったら、警告の秒数と旗を下ろす」
         if ($realPosSetupFailed -and $script:realPosLatched) { $realPosSetupFailed = $false }

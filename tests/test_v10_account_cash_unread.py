@@ -24,7 +24,7 @@ class AccountCashUnread(unittest.TestCase):
 
     def test_a_failed_naming_leaves_no_empty_sheet(self):
         self.assertIn("$sheet.Delete()", self.collector)
-        self.assertIn("$xl.DisplayAlerts = $false", self.collector)   # no dialog can hold Excel
+        self.assertNotIn("DisplayAlerts", self.collector)   # an application-wide setting can leak; an empty new sheet needs no dialog
 
     def test_a_long_unread_cash_list_is_heard(self):
         self.assertIn('Invoke-SerializedSpeak $speaker "現物が読めていません"', self.collector)
