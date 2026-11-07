@@ -401,6 +401,9 @@ def _plain_positive_int(value) -> int | None:
     return value
 
 
+PARTIAL_MIN_FRESH_PCT = 95.0
+
+
 def assess_board_availability(payload, quote_freshness: dict | None, row_freshness: dict | None,
                               universe: dict | None) -> dict:
     """Whether this board may be used for any decision (entry, exit, ranking).
@@ -460,6 +463,24 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
         status = "BLOCKED_ROW_QUOTES"
     else:
         status = "AVAILABLE"
+    # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020), the
+    # same rule as Get-BoardAvailability: STALE/UNKNOWN rows only, identity
+    # fresh, universe complete, no INVALID row, >= 95% of expected rows FRESH,
+    # and the Collector computed every aggregate from FRESH rows only.
+    partial_rows = False
+    partial_reasons: list[str] = []
+    aggregate_basis = payload.get("aggregate_basis") if isinstance(payload, dict) else None
+    if (status == "BLOCKED_ROW_QUOTES" and aggregate_basis == "FRESH_ROWS_ONLY"
+            and isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict)
+            and isinstance(expected_count, int) and expected_count > 0):
+        partial_fresh = int(row_freshness["state_counts"].get(FRESH) or 0)
+        partial_invalid = int(row_freshness["state_counts"].get(INVALID) or 0)
+        other = [r for r in unique if not r.startswith("ROW_") or r.startswith("ROW_TICKER_")]
+        if partial_invalid == 0 and not other and 100.0 * partial_fresh / expected_count >= PARTIAL_MIN_FRESH_PCT:
+            partial_rows = True
+            partial_reasons = unique
+            unique = []
+            status = "AVAILABLE_PARTIAL"
     counts = {FRESH: 0, STALE: 0, UNKNOWN: 0, INVALID: 0, "MISSING": len(missing)}
     if isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict):
         for key in (FRESH, STALE, UNKNOWN, INVALID):
@@ -486,6 +507,9 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
         "unexpected_sample": unexpected[:10],
         "collector_valid_count": valid,
         "collector_valid_quality_pass": valid is not None and valid >= 90,
+        "partial_rows": partial_rows,
+        "partial_reasons": partial_reasons,
+        "partial_min_fresh_pct": PARTIAL_MIN_FRESH_PCT,
         "order_allowed": False,
         "real_submit_allowed": False,
     }
