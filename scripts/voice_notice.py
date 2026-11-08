@@ -6,7 +6,8 @@ OWNER 2026-11-08 「決算前の知らせは確かめた時刻の銘柄だけに
   python voice_notice.py watch   --files ... --brain ...                                平日8:45〜15:30に1分おき（9:00〜9:14の決算の15分前も出すため）。決算の15分前と5分前
   --dry で話さずに画面に出す。--date YYYY-MM-DD と --now HH:MM で試せる
 決算の時刻は「確かめた時刻」だけを使う：AIアナリスト3号の答えの「決算予定：YYYY-MM-DD HH:MM」で、行のどこにも疑いの言葉
-（未確認・未確定・未定・推定・見込・予想・慣例・例年・前回・二次など）が無く、「出典」の後ろに https があるもの。
+（未確認・未確定・未定・推定・見込・予想・慣例・例年・前回・観測など。URLの中は見ない）が無く、「出典」か「／」の後ろに https があるもの。
+二次サイトの時刻も https があれば使う（OWNER 2026-11-08）。場中と昼休み（9:00〜15:30）の決算を知らせる。土日・休場日・12/31〜1/3は鳴らさない。
 同じ銘柄は、その銘柄が載ったいちばん新しい答えだけで決める（新しい答えで未確認になれば、古い答えの時刻は使わない）。
 または <brain>/研究結果/音声/決算時刻_確認済み.json に人が書いたもの（{"items":[{"code","date","time","source"}]}、source は https）。こちらが優先。
 前回の決算の時刻は朝の案内で「参考」として言うだけで、決算前の知らせには使わない。TDnetで発表が出た銘柄は話さない。銘柄コードは読まない。
@@ -30,17 +31,25 @@ READ = {"5714": "ドーワ ホールディングス", "581A": "ゴー", "4475": 
         "4443": "サンサン", "6762": "ティーディーケー", "6481": "ティーエイチケー", "278A": "テラドローン", "5243": "ノート", "8306": "三菱ユーエフジェイ フィナンシャルグループ",
         "285A": "きおくしあ ホールディングス"}
 SESSION = (("09:00", "11:30"), ("12:30", "15:30"))
+ALERT = ("09:00", "15:30")   # OWNER 2026-11-08: the lunch break too
 CONFIRMED_DAYS = 5   # an answer of AIアナリスト3号 older than this is not used
 TIME_LINE = re.compile(r"^決算予定[：:]\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})(.*)$")
 STOCK_LINE = re.compile(r"銘柄[：:]")
 CODE_IN = re.compile(r"[（(]([0-9][0-9A-Z]{3})[）)]")
 # any of these anywhere on the line means the time is not one the company stated
-UNSURE = ("未確認", "未確定", "未定", "推定", "見込", "予想", "慣例", "例年", "前回", "二次", "観測", "報道", "?", "？")
+# OWNER 2026-11-08 「二次サイトの時刻は使う」: a secondary site with an https source counts. URLs are removed before this check.
+UNSURE = ("未確認", "未確定", "未定", "推定", "見込", "予想", "慣例", "例年", "前回", "観測", "?", "？")
+URL = re.compile(r"https?://\S+")
+EARN = re.compile(r"決算(?:予定)?[：:]\s*(.*)$")
+WHEN = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})")
 MAX_ITEM, MAX_TEXT = 40, 450
 # the text goes to PowerShell through an environment variable, never into the command line
-PS_SEND = ("$ErrorActionPreference='Stop';"
-           "$r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri $env:VOICE_NOTICE_URL;"
-           "[Console]::Out.Write([string]$r.Content)")
+# exit 3 = timed out after sending (the voice answers only when it has finished speaking), 2 = any other failure
+PS_SEND = ("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';"
+           "try{$r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri $env:VOICE_NOTICE_URL;$c=$r.Content;if($c -is [byte[]]){$c=[Text.Encoding]::UTF8.GetString($c)};[Console]::Out.Write([string]$c);exit 0}"
+           "catch [System.Net.WebException]{if($_.Exception.Status -eq [System.Net.WebExceptionStatus]::Timeout){[Console]::Out.Write('TIMEOUT');exit 3};"
+           "$c='';if($_.Exception.Response){$c=[int]$_.Exception.Response.StatusCode};[Console]::Out.Write('FAILED '+$_.Exception.Status+' '+$c);exit 2}"
+           "catch{[Console]::Out.Write('FAILED '+$_.Exception.GetType().Name);exit 2}")
 
 
 def arg(name, default=None):
@@ -75,6 +84,19 @@ def in_session(hm):
     return any(a <= hm < b for a, b in SESSION)
 
 
+def alert_time(hm):
+    return ALERT[0] <= hm < ALERT[1]
+
+
+def closed(files, day):
+    """Weekend, a TSE closed day in the cockpit's event calendar (category 休場 with 日本株), or the year-end 12/31-1/3."""
+    d = date.fromisoformat(day)
+    if d.weekday() > 4 or (d.month, d.day) in ((12, 31), (1, 1), (1, 2), (1, 3)):
+        return True
+    ev = load(Path(files, "public_feed", "event_calendar.json"))
+    return any(e.get("date") == day and e.get("category") == "休場" and "日本株" in str(e.get("title") or "") for e in dicts(ev.get("events")))
+
+
 def hm_words(hm):
     h, m = int(hm[:2]), int(hm[3:5])
     return "%d時" % h + ("" if m == 0 else "半" if m == 30 else "%d分" % m)
@@ -92,22 +114,37 @@ def file_day(f):
         return None
 
 
+def judge(rest, line, day):
+    """HH:MM when `rest` (the words after 決算予定： or 決算：) is a sure time for the day, else "" """
+    t = WHEN.match(rest.strip())
+    if not t:
+        return ""
+    hm = "%02d:%s" % (int(t.group(2)), t.group(3))
+    words = URL.sub("", line)
+    src = line.split("出典", 1)[1] if "出典" in line else line.split("／", 1)[1] if "／" in line else ""
+    ok = t.group(1) == day and valid_hm(hm) and not any(w in words for w in UNSURE) and "https://" in src
+    return hm if ok else ""
+
+
 def read_answer(lines, day):
-    """code -> HH:MM or "" (listed but no sure time) from one answer. Only the first 決算予定 line after a stock's 銘柄 line counts."""
+    """code -> HH:MM or "" (listed but no sure time) from one answer. Only the first 決算予定 line after a stock's 銘柄 line counts;
+    a line like 「銘柄：X（code）／決算：…」 (the check list at the end) is judged by itself."""
     code, found = None, {}
     for line in lines:
         line = line.strip()
         if line.startswith("決算予定"):
             if code and code not in found:
-                t = TIME_LINE.match(line)
-                hm = "%02d:%s" % (int(t.group(2)), t.group(3)) if t else ""
-                src = line.split("出典", 1)[1] if "出典" in line else ""
-                sure = bool(t) and t.group(1) == day and valid_hm(hm) and not any(w in line for w in UNSURE) and "https://" in src
-                found[code] = hm if sure else ""
+                m = EARN.match(line)
+                found[code] = judge(m.group(1), line, day) if m else ""
             code = None
         elif STOCK_LINE.search(line):
             c = CODE_IN.search(line)
             code = c.group(1) if c else None   # a stock line without a code never keeps the stock before it
+            m = EARN.search(line.split("）", 1)[1] if "）" in line else "")
+            if code and m:
+                if code not in found:
+                    found[code] = judge(m.group(1), line, day)
+                code = None
     return found
 
 
@@ -181,20 +218,19 @@ def say(brain, text, dry):
     env = dict(os.environ, VOICE_NOTICE_URL=BRIDGE + urllib.parse.quote(text))
     try:
         r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", PS_SEND],
-                           env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=75)
+                           env=env, capture_output=True, timeout=90)
     except subprocess.TimeoutExpired:
         note("  読み上げの返事待ちで時間切れ（話している途中かもしれないので、もう一度は話さない）")
         return True
     except OSError as e:
         note("  読み上げ失敗 %s" % type(e).__name__)
         return False
-    body = (r.stdout or "").strip()
+    body = r.stdout.decode("utf-8", "replace").strip()
+    if r.returncode == 3:
+        note("  読み上げの返事待ちで時間切れ（話している途中かもしれないので、もう一度は話さない）")
+        return True
     if r.returncode != 0:
-        err = [x for x in (r.stderr or "").strip().splitlines() if x.strip()]
-        if any("timed out" in x.lower() or "タイムアウト" in x for x in err):
-            note("  読み上げの返事待ちで時間切れ（もう一度は話さない）")
-            return True
-        note("  読み上げ失敗 %s" % (err[0][:120] if err else r.returncode))
+        note("  読み上げ失敗 %s" % (body[:120] or r.returncode))
         return False
     if "skipped" in body or "DISABLED" in body.upper():
         note("  読み上げはOFFでした %s" % body[:120])
@@ -210,17 +246,17 @@ def morning_text(files, brain, day):
         when = hm_words(t) if re.fullmatch(r"\d{2}:\d{2}", t) and valid_hm(t) else clip(t)
         parts.append("%s%s。" % (when + "、" if when else "", clip(e.get("title"))))
     es = earnings_today(files, brain, day)
-    alerts = [x for x in es if x["sure"] and in_session(x["sure"])]
+    alerts = [x for x in es if x["sure"] and alert_time(x["sure"])]
     for x in es:
         if x["sure"]:
-            parts.append("%sの決算、%s%s。" % (x["name"], "場中の" if in_session(x["sure"]) else "", hm_words(x["sure"])))
+            parts.append("%sの決算、%s%s。" % (x["name"], "場中の" if in_session(x["sure"]) else "昼休みの" if alert_time(x["sure"]) else "", hm_words(x["sure"])))
         elif x["key"]:
             parts.append("%sの決算、時刻は未確認。%s" % (x["name"], "前回は%sでした。" % hm_words(x["prev"]) if x["prev"] else ""))
     others = len([x for x in es if not x["sure"] and not x["key"]])
     if others:
         parts.append("ほかに、時刻が未確認の監視銘柄の決算が%d社あります。" % others)
     if alerts:
-        parts.append("場中の決算は、時刻を確かめた銘柄だけ、15分前と5分前にお知らせします。")
+        parts.append("場中と昼休みの決算は、時刻を確かめた銘柄だけ、15分前と5分前にお知らせします。")
     if not hi and not es:
         parts.append("大きな予定と主な決算はありません。")
     m = first_line(Path(brain, "研究結果", "朝の段", "最新.txt"))
@@ -252,7 +288,7 @@ def due(files, brain, day, now, done):
     t0 = datetime.strptime(day + " " + now, "%Y-%m-%d %H:%M")
     gone = announced(files, day)
     for x in earnings_today(files, brain, day):
-        if not x["sure"] or not in_session(x["sure"]) or x["code"] in gone:
+        if not x["sure"] or not alert_time(x["sure"]) or x["code"] in gone:
             continue
         try:
             at = datetime.strptime(day + " " + x["sure"], "%Y-%m-%d %H:%M")
@@ -274,7 +310,7 @@ def main():
     dry = "--dry" in sys.argv
     day = arg("--date", date.today().isoformat())
     now = arg("--now", datetime.now().strftime("%H:%M"))
-    if date.fromisoformat(day).weekday() > 4 or not valid_hm(now):
+    if closed(files, day) or not valid_hm(now):   # OWNER 2026-11-08 「祝日は鳴らさない」
         return 0
     if "morning" in sys.argv:
         say(brain, morning_text(files, brain, day), dry)

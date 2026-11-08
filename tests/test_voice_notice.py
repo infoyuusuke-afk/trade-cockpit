@@ -119,6 +119,35 @@ class AuditFindings(unittest.TestCase):
             self.assertNotIn("None", text)
             self.assertTrue(text.endswith("売買の判断はご自身でお願いします。"))
 
+    def test_owner_decisions_of_the_second_audit(self):
+        lines = ["銘柄：A社（5001）", "決算予定：2026-11-09 14:00（場中）／出典 会社IR ／ https://ir.example.com/x.php?date=20261109",
+                 "銘柄：B社（5002）", "決算予定：2026-11-09 13:00（場中・二次サイト）／https://kabu.example.com/b",
+                 "銘柄：C社（5003）", "決算予定：2026-11-09 12:00（昼休み）／出典 https://c",
+                 "銘柄：D社（5004）／決算：2026-11-09 10:00（場中）／出典 https://d",
+                 "銘柄：E社（5005）／決算：2026-11-09（時刻未確認）"]
+        self.assertEqual({k: x for k, x in v.read_answer(lines, DAY).items() if x}, {"5001": "14:00", "5002": "13:00", "5003": "12:00", "5004": "10:00"})
+        self.assertIn("5005", v.read_answer(lines, DAY))   # listed, so an older sure time of it is dropped
+
+    def test_the_lunch_break_is_alerted_and_a_closed_day_is_quiet(self):
+        with tempfile.TemporaryDirectory() as root:
+            files, brain = setup(root)
+            Path(brain, "Grok3号", "決算前監視_20261108_090000.txt").write_text(
+                "銘柄：テスト電機（1111）\n決算予定：2026-11-09 12:00（昼休み）／出典 https://a\n", encoding="utf-8")
+            self.assertEqual([k for k, _ in v.due(files, brain, DAY, "11:45", set())], ["1111-15"])
+            self.assertIn("テスト電機の決算、昼休みの12時。", v.morning_text(files, brain, DAY))
+            self.assertFalse(v.closed(files, DAY))
+            ev = {"events": [{"date": DAY, "category": "休場", "title": "日本株休場／先物祝日取引あり"}]}
+            Path(files, "public_feed", "event_calendar.json").write_text(json.dumps(ev, ensure_ascii=False), encoding="utf-8")
+            self.assertTrue(v.closed(files, DAY))
+            self.assertTrue(v.closed(files, "2026-12-31"))
+            self.assertTrue(v.closed(files, "2026-11-08"))   # Sunday
+
+    def test_a_timeout_is_told_by_the_exit_code(self):
+        src = (Path(__file__).resolve().parents[1] / "scripts" / "voice_notice.py").read_text(encoding="utf-8")
+        self.assertIn("exit 3", src)
+        self.assertIn("r.returncode == 3", src)
+        self.assertIn("$ProgressPreference='SilentlyContinue'", src)
+
     def test_the_voice_is_sent_through_powershell_without_the_text_in_the_command(self):
         src = (Path(__file__).resolve().parents[1] / "scripts" / "voice_notice.py").read_text(encoding="utf-8")
         self.assertIn("Invoke-WebRequest", src)
