@@ -99,7 +99,7 @@ class Scalp8Static(unittest.TestCase):
         self.assertIn('",setup" + [string]$scalp8SetupTries + ",30," + $scalp8SetupError', cycle)
         self.assertIn("Initialize-Scalp8 -Retries 8", cycle)
         self.assertIn("function Initialize-Scalp8([int]$Retries = 240) {", text)
-        self.assertEqual(text.count("Invoke-ExcelCom -Retries $Retries -Label \"SCALP8"), 7)
+        self.assertEqual(text.count("Invoke-ExcelCom -Retries $Retries -Label \"SCALP8"), 8)   # OWNER 2026-11-08: + the volume cell
         self.assertIn("$script:scalp8SetupRetryAt = (Get-Date).AddSeconds(30)", text)
         catch = cycle[cycle.index("$scalp8FailCount++"):]
         self.assertNotIn("$scalp8Ready = $false", catch)

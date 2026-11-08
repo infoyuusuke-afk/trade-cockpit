@@ -2219,6 +2219,48 @@ function Get-Scalp8NewTicks($Previous, $Current) {
     }
     return @{ New = $cur; Gap = $true }
 }
+# OWNER 2026-11-08: RssTickList has no print id, and many identical prints (same second, price and 100 shares) make the
+# 10-print probe of Get-Scalp8NewTicks match too early and drop new prints. With the day's volume added since the previous
+# read ($Delta), every offset whose first 30 prints (or the whole overlap) match the previous window is a candidate, and the
+# one whose new prints add up to $Delta (or the nearest; a tie keeps the smaller) is used. Missing = $Delta - the new shares:
+# above 0 means prints were lost (more than 300 since the last read, or the volume cell ran ahead of the list).
+# Without a usable $Delta (first read, no volume, a lower volume) it is exactly Get-Scalp8NewTicks.
+function Get-Scalp8NewTicksByVolume($Previous, $Current, $Volumes, $Delta) {
+    # (not "$x = if ...": an if statement unrolls a one-item array into a string)
+    $cur = @(); if ($null -ne $Current) { $cur = @($Current) }
+    $prev = @(); if ($null -ne $Previous) { $prev = @($Previous) }
+    if ($null -ne $Delta) { try { $Delta = [double]$Delta } catch { $Delta = $null } }
+    if ($null -eq $Delta -or $Delta -lt 0 -or $prev.Count -eq 0 -or $cur.Count -eq 0) {
+        $r = Get-Scalp8NewTicks $Previous $Current
+        return @{ New = @($r.New); Gap = [bool]$r.Gap; Missing = $null; Candidates = 0 }
+    }
+    $vols = @($Volumes)
+    $prefix = New-Object double[] ($cur.Count + 1)
+    for ($i = 0; $i -lt $cur.Count; $i++) { $prefix[$i + 1] = $prefix[$i] + [double]$vols[$i] }
+    $probe = [Math]::Min(30, $prev.Count)
+    $best = -1
+    $bestErr = [double]::MaxValue
+    $n = 0
+    for ($o = 0; $o -lt $cur.Count; $o++) {
+        $m = [Math]::Min($probe, $cur.Count - $o)
+        if ($m -lt [Math]::Min($probe, 3) -and $o -gt 0) { break }
+        $same = $true
+        for ($k = 0; $k -lt $m; $k++) {
+            if ($cur[$o + $k] -cne $prev[$k]) { $same = $false; break }
+        }
+        if (-not $same) { continue }
+        $n++
+        $err = [Math]::Abs($prefix[$o] - [double]$Delta)
+        if ($err -lt $bestErr) { $best = $o; $bestErr = $err }
+        if ($err -eq 0) { break }
+    }
+    if ($best -lt 0) {
+        $miss = [double]$Delta - $prefix[$cur.Count]
+        return @{ New = $cur; Gap = $true; Missing = $(if ($miss -gt 0) { $miss } else { 0.0 }); Candidates = 0 }
+    }
+    $new = if ($best -eq 0) { @() } else { @($cur[0..($best - 1)]) }
+    return @{ New = $new; Gap = $false; Missing = ([double]$Delta - $prefix[$best]); Candidates = $n }
+}
 # Which side took the print, judged against the best quotes of the same read (an estimate).
 function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
     if ($Ask -is [double] -and $Ask -gt 0 -and $Price -ge $Ask) { return "BUY" }
@@ -2283,6 +2325,13 @@ $scalp8Ready = $false
 $scalp8Codes = @()
 $scalp8PrevKeys = @{}
 $scalp8PrevBoard = @{}
+# OWNER 2026-11-08 「歩み値と板の直しを、1周の内訳の記録・SCALP8を2秒おき・出来高での突き合わせの3つで1つの版にして」:
+# the day's volume of each issue (RssMarket 出来高, row 2 of its block) is read in the same single read; the volume added
+# since the previous read decides where the previous window sits in the new one (see Get-Scalp8NewTicksByVolume).
+$scalp8PrevVolume = @{}
+# SCALP8 is also read while the loop waits, so its prints and boards come about every 2 s (the read takes about 8 ms).
+$Scalp8ReadEveryMs = 2000
+$scalp8LastReadAt = [datetime]::MinValue
 $scalp8Seq = 0
 # OWNER 2026-10-27 「SCALP8の直し」: on 10/26 every start stopped the recorder after one READ FAILED and it stayed off
 # all day without a reason. Now the reason is written to records/<day>/scalp8_errors.csv and the read is tried again
@@ -2323,6 +2372,8 @@ function Initialize-Scalp8([int]$Retries = 240) {
                     Invoke-ExcelCom -Retries $Retries -Label "SCALP8板式設定" -Action { $sheet.Cells.Item(2 + $lv, $s8Col + $j).FormulaLocal = [string]$s8Formula } | Out-Null
                 }
             }
+            $s8VolFormula = '=RssMarket("' + $s8Sym + '","出来高")'
+            Invoke-ExcelCom -Retries $Retries -Label "SCALP8出来高式設定" -Action { $sheet.Cells.Item(2, $s8Col).FormulaLocal = [string]$s8VolFormula } | Out-Null
             $s8TickFormula = '=RssTickList(,"' + $s8Sym + '",' + [string]$scalp8TickRows + ')'
             Invoke-ExcelCom -Retries $Retries -Label "SCALP8歩み値式設定" -Action { $sheet.Cells.Item(20, $s8Col).FormulaLocal = [string]$s8TickFormula } | Out-Null
         }
@@ -3163,10 +3214,14 @@ try {
             $scalp8Ready = $false   # switched off or config gone: stays off until restart
             Write-Host "[SCALP8] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
         }
+        # OWNER 2026-11-08 「SCALP8を2秒おき」: the same read as a block, dot-sourced here and again from the wait at the end of the
+        # loop (same scope, same variables). A busy Excel waits at most about 2 s (8 tries of 250 ms), then the usual retry later.
+        $scalp8ReadBlock = {
         if ($scalp8Ready -and $null -ne $scalp8Sheet -and (Get-Date) -ge $scalp8RetryAt) {
+            $scalp8LastReadAt = Get-Date
             try {
                 $s8Started = Get-Date
-                $s8Packet = Invoke-ExcelCom -Label "SCALP8値取得" -Action {
+                $s8Packet = Invoke-ExcelCom -Retries 8 -Label "SCALP8値取得" -Action {
                     [pscustomobject]@{ Data = $scalp8Sheet.Range($scalp8Sheet.Cells.Item(1, 1), $scalp8Sheet.Cells.Item($scalp8TickFirstRow + $scalp8TickRows - 1, $scalp8BlockWidth * $scalp8Codes.Count)).Value2 }
                 }
                 $s8Now = Get-Date
@@ -3184,21 +3239,34 @@ try {
                 $s8TickLines = New-Object System.Collections.Generic.List[string]
                 $s8BoardLines = New-Object System.Collections.Generic.List[string]
                 $s8DiagLines = New-Object System.Collections.Generic.List[string]
+                $s8VolCsv = Join-Path $dayDir "scalp8_volume_check.csv"
+                Ensure-Csv $s8VolCsv "captured_at,read_seq,ticker,volume,delta,new_shares,missing_shares,candidates,gap"
+                $s8VolLines = New-Object System.Collections.Generic.List[string]
                 for ($i = 0; $i -lt $scalp8Codes.Count; $i++) {
                     $c = 1 + $scalp8BlockWidth * $i
                     $code = [string]$scalp8Codes[$i]
                     $ask = $s8Data[3, $c]
                     $bid = $s8Data[3, ($c + 2)]
                     $keys = New-Object System.Collections.Generic.List[string]
+                    $s8Vols = New-Object System.Collections.Generic.List[double]
+                    $s8Volume = $s8Data[2, $c]
                     for ($r = $scalp8TickFirstRow; $r -lt $scalp8TickFirstRow + $scalp8TickRows; $r++) {
                         $tm = $s8Data[$r, $c]; $vol = $s8Data[$r, ($c + 1)]; $px = $s8Data[$r, ($c + 2)]
                         if ($vol -is [double] -and $px -is [double] -and $vol -gt 0 -and $px -gt 0) {
                             $tt = if ($tm -is [double]) { [TimeSpan]::FromSeconds([Math]::Round(($tm % 1) * 86400)).ToString("hh\:mm\:ss") } else { ([string]$tm).Trim() }
                             $keys.Add($tt + "|" + [string]$px + "|" + [string]$vol)
+                            $s8Vols.Add([double]$vol)
                         }
                     }
                     $first = -not $scalp8PrevKeys.ContainsKey($code)
-                    $diff = Get-Scalp8NewTicks $scalp8PrevKeys[$code] $keys
+                    $s8Delta = $null
+                    if ($s8Volume -is [double] -and $scalp8PrevVolume.ContainsKey($code)) { $s8Delta = $s8Volume - [double]$scalp8PrevVolume[$code] }
+                    if ($s8Volume -is [double]) { $scalp8PrevVolume[$code] = $s8Volume }
+                    $diff = Get-Scalp8NewTicksByVolume $scalp8PrevKeys[$code] $keys $s8Vols $s8Delta
+                    if ($null -ne $diff.Missing -and ($diff.Missing -ne 0 -or $diff.Gap -or ($scalp8Seq % 30) -eq 1)) {
+                        $s8NewShares = [double]$s8Delta - [double]$diff.Missing
+                        $s8VolLines.Add((@($s8Stamp, [string]$scalp8Seq, $code, [string]$s8Volume, [string]$s8Delta, [string]$s8NewShares, [string]$diff.Missing, [string]$diff.Candidates, [string]([bool]$diff.Gap)) -join ","))
+                    }
                     $scalp8PrevKeys[$code] = $keys
                     $batch = if ($first) { "initial" } elseif ($diff.Gap) { "gap" } else { "" }
                     $newTicks = @($diff.New)
@@ -3243,6 +3311,7 @@ try {
                 if ($s8TickLines.Count -gt 0) { Add-RecordLines $s8TickCsv $s8TickLines }
                 if ($s8BoardLines.Count -gt 0) { Add-RecordLines $s8BoardCsv $s8BoardLines }
                 if ($s8DiagLines.Count -gt 0) { Add-RecordLines $s8DiagCsv $s8DiagLines }
+                if ($s8VolLines.Count -gt 0) { Add-RecordLines $s8VolCsv $s8VolLines }
                 $scalp8FailCount = 0
             } catch {
                 $scalp8FailCount++
@@ -3259,6 +3328,8 @@ try {
                 Write-Host ("[SCALP8] retry in " + [string]$s8Wait + "s (" + [string]$scalp8FailCount + "): " + $s8Reason) -ForegroundColor DarkYellow
             }
         }
+        }
+        . $scalp8ReadBlock
         # OWNER 2026-10-23 夜: the OWNER's real holdings, read only, this PC only (see REAL_POS above).
         if ($realPosReady -and $null -eq (Get-RealPosConfig)) {
             $realPosReady = $false   # switched off: stays off until restart. Only unreadable: the next line lets the cycle retry
@@ -4509,7 +4580,27 @@ try {
         }
         Add-LoopMark 'voice_tail'
         Write-Host ('[TIMING] ' + $now.ToString('HH:mm:ss') + ' total=' + $script:loopTimer.ElapsedMilliseconds + ' ' + ($script:loopMarks -join ' '))
-        Start-Sleep -Seconds $IntervalSeconds
+        # OWNER 2026-11-08 「1周の内訳の記録」: the same line goes to records/<day>/collector_timing.csv (measurement only).
+        $loopBusyMs = $script:loopTimer.ElapsedMilliseconds
+        $loopMarkText = ($script:loopMarks -join ' ')
+        # OWNER 2026-11-08 「SCALP8を2秒おき」: wait in short steps and run the SCALP8 read again whenever 2 s have passed.
+        $waitStarted = Get-Date
+        $waitUntil = $waitStarted.AddSeconds($IntervalSeconds)
+        $waitReads = 0
+        while ((Get-Date) -lt $waitUntil) {
+            if ($null -ne $scalp8ReadBlock -and ((Get-Date) - $scalp8LastReadAt).TotalMilliseconds -ge $Scalp8ReadEveryMs) {
+                $beforeRead = $scalp8LastReadAt
+                . $scalp8ReadBlock
+                if ($scalp8LastReadAt -ne $beforeRead) { $waitReads++ }
+            }
+            $waitLeft = ($waitUntil - (Get-Date)).TotalMilliseconds
+            if ($waitLeft -gt 0) { Start-Sleep -Milliseconds ([int][Math]::Min(250, [Math]::Ceiling($waitLeft))) }
+        }
+        try {
+            $timingCsv = Join-Path $dayDir "collector_timing.csv"
+            Ensure-Csv $timingCsv "captured_at,busy_ms,wait_ms,wait_reads_s8,marks"
+            Add-RecordLines $timingCsv @((@($now.ToString("yyyy-MM-dd HH:mm:ss.fff"), [string]$loopBusyMs, [string][int]((Get-Date) - $waitStarted).TotalMilliseconds, [string]$waitReads, $loopMarkText) -join ","))
+        } catch { }
     }
 } finally {
     if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
