@@ -27,6 +27,19 @@ class SoxScenarioTab(unittest.TestCase):
         self.assertIn('w.schema_version==="100b-v10-sox-scenario-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false', html)
         self.assertIn("起きると決まったものではありません", html)
 
+    def test_the_caution_zone(self):
+        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」: the band, the warning and the tab mark;
+        # the voice is the morning notice on the PC (研究スクリプト voice_notice.py), not this page
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html[html.index("SOX scenario chart replaces"):]
+        block = block[:block.index("</script>")]
+        self.assertIn("function zoneOf(w){", block)
+        self.assertIn("![z.from,z.to,z.peak].every(num)||!(z.from<z.to))return null", block)
+        self.assertIn("in:z.in===true", block)
+        self.assertIn("注意：SOXが注意ゾーンに入っています", block)
+        self.assertIn('b.textContent=on?"SOX ⚠":"SOX";', block)
+        self.assertIn("if(!ok){markTab(false);", block)
+
     def test_the_tab_cannot_speak_or_order(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         block = html[html.index("SOX scenario chart replaces"):]
