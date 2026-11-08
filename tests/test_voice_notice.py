@@ -180,6 +180,8 @@ class Morning(unittest.TestCase):
             line.write_text("2026-11-06 終値 11200／シナリオ：続く（底 9011 と外れの線 13218 の間）／注意：戻りの天井（約11,383）の±3%に入った（終値 11,200）\n", encoding="utf-8")
             text = v.morning_text(files, brain, today)
             self.assertTrue(text.startswith("おはようございます。今日の注意です。注意です。SOXが、戻りの天井"))
+            # the whole caution, not cut at its first bracket (2026-11-08 audit)
+            self.assertIn("注意です。SOXが、戻りの天井（約11,383）の±3%に入った。予測ではありません。", text)
             self.assertIn("予測ではありません。", text)
             line.write_text("2026-11-06 終値 8700／シナリオ：本番の下げ（底 9011 を割った）／注意：底の線 9,011 を割った（終値 8,700）／注意：−40%の線 8,781 を割った（終値 8,700）\n", encoding="utf-8")
             text = v.morning_text(files, brain, today)

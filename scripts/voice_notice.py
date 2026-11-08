@@ -276,7 +276,8 @@ def morning_text(files, brain, day):
     v = re.search(r"シナリオ：([^（／]+)", sline)
     # OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して、8:40の朝の音声で知らせ…
     # 『予測ではありません』と添える」: each caution of the 8:05 update (最新.txt 「／注意：…」) is said first, right after the greeting
-    cautions = [clip(x).split("（")[0] for x in re.findall(r"／注意：([^／\n]+)", sline)][:3] if written_on(sfile, day) else []
+    # 2026-11-08 audit: cut only the trailing 「（終値 …）」, so 「戻りの天井（約11,383）の±3%に入った」 is said whole
+    cautions = [clip(re.sub(r"（終値[^）]*）\s*$", "", x.strip())) for x in re.findall(r"／注意：([^／\n]+)", sline)][:3] if written_on(sfile, day) else []
     if cautions:
         parts.insert(1, "注意です。SOXが、" + "、".join(cautions) + "。予測ではありません。")
     if v:
