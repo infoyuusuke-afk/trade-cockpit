@@ -1,0 +1,7 @@
+@echo off
+rem OWNER 2026-11-08: earnings voice 15 and 5 minutes before a confirmed time in the session (every minute 09:00-15:30 on weekdays). Speaks only.
+rem Copy this file next to voice_notice.py on the PC, fill in the three paths, and register it only after the audit passes.
+set PY=<python.exe>
+set FILES=<MarketSpeed II RSS files folder>
+set BRAIN=<research folder>
+"%PY%" -I "%~dp0voice_notice.py" watch --files "%FILES%" --brain "%BRAIN%" >> "%~dp0voice_notice.log" 2>&1
