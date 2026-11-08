@@ -27,16 +27,19 @@ class SoxScenarioTab(unittest.TestCase):
         self.assertIn('w.schema_version==="100b-v10-sox-scenario-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false', html)
         self.assertIn("起きると決まったものではありません", html)
 
-    def test_the_caution_zone(self):
-        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」: the band, the warning and the tab mark;
-        # the voice is the morning notice on the PC (研究スクリプト voice_notice.py), not this page
+    def test_the_caution_banner(self):
+        # OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して、8:40の朝の音声で知らせ、
+        # その日は画面に赤い帯を出す。『予測ではありません』と添える」: the voice is the morning notice on the PC, not this page
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         block = html[html.index("SOX scenario chart replaces"):]
         block = block[:block.index("</script>")]
         self.assertIn("function zoneOf(w){", block)
         self.assertIn("![z.from,z.to,z.peak].every(num)||!(z.from<z.to))return null", block)
-        self.assertIn("in:z.in===true", block)
-        self.assertIn("注意：SOXが注意ゾーンに入っています", block)
+        # only that day's cautions, only the three known kinds, at most 3, text length-limited and escaped
+        self.assertIn('if(String(w&&w.generated_on||"")!==today||!Array.isArray(w.alerts))return [];', block)
+        self.assertIn('["zone","below_low","below_40"].includes(a.kind)', block)
+        self.assertIn("'<li>SOXが'+esc(a.text)+'</li>'", block)
+        self.assertIn("予測ではありません。", block)
         self.assertIn('b.textContent=on?"SOX ⚠":"SOX";', block)
         self.assertIn("if(!ok){markTab(false);", block)
 

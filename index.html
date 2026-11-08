@@ -3886,6 +3886,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!z||typeof z!=="object"||![z.from,z.to,z.peak].every(num)||!(z.from<z.to))return null;
     return {from:z.from,to:z.to,peak:z.peak,peakDate:/^\d{4}-\d{2}-\d{2}$/.test(String(z.peak_date||""))?z.peak_date:"",in:z.in===true};
   }
+  // the cautions of the 8:05 update, shown only on the day it was made (JST) and only with known kinds
+  function alertsOf(w,today){
+    if(String(w&&w.generated_on||"")!==today||!Array.isArray(w.alerts))return [];
+    return w.alerts.filter(a=>a&&["zone","below_low","below_40"].includes(a.kind)&&typeof a.text==="string"&&a.text.length<=80).slice(0,3);
+  }
   function markTab(on){
     const b=document.querySelector('.cockpit-tab[data-tab="kioxia-calendar"]');
     if(!b)return;
@@ -3900,7 +3905,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     const x=d=>L+(day(d)-x0)/(x1-x0)*(W-L-R),y=v=>T+(hi*1.03-v)/(hi*1.03-lo*.95)*(H-T-B);
     let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="SOXの動きと、2000年をなぞった場合の形" style="display:block;width:100%;height:auto">';
     const line=(v,label,col,dy=4)=>'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="'+col+'" stroke-width="1" stroke-dasharray="3 4"/><text x="'+(W-R+6)+'" y="'+(y(v)+dy)+'" fill="#d1d4dc" font-size="12">'+esc(label)+'</text>';
-    // OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」: the caution zone (3 % below the path's top up to the off line)
+    // OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して…その日は画面に赤い帯を出す」:
+    // the band is the zone around the rebound top (±3 %), red while SOX is in it
     const z=zoneOf(w);
     if(z)s+='<rect x="'+L+'" width="'+(W-L-R)+'" y="'+y(z.to)+'" height="'+Math.max(0,y(z.from)-y(z.to))+'" fill="'+(z.in?"rgba(242,54,69,.22)":"rgba(235,104,52,.12)")+'"/><text x="'+(L+6)+'" y="'+(y(z.from)-6)+'" fill="'+(z.in?"#ff8a8a":"#eb9a70")+'" font-size="12" font-weight="700">注意ゾーン '+yen(z.from)+'〜'+yen(z.to)+'</text>';
     s+=line(w.line_out,"外れ "+yen(w.line_out),"#35e2ae")+line(w.line_low,"底 "+yen(w.line_low),"#F2C14E",-6)+line(w.line_40,"−40% "+yen(w.line_40),"#f23645",12);
@@ -3920,8 +3926,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     const steps=(Array.isArray(w.steps)?w.steps:[]).map(s=>'<tr><td>'+esc(s&&s.name)+'</td><td>'+esc(s&&s.when)+'</td><td>'+(num(s&&s.sox)?yen(s.sox):"—")+'</td><td>'+(num(s&&s.nikkei)?yen(s.nikkei):"—")+'</td></tr>').join("");
     const jst=new Date(Date.now()+9*3600000),jd=jst.toISOString().slice(0,10),jm=jst.getUTCHours()*60+jst.getUTCMinutes(),jw=jst.getUTCDay();
     const late=jw>0&&jw<6&&jm>=495&&String(w.generated_on||"")!==jd;
-    const z=zoneOf(w);markTab(!!(z&&z.in));
-    const warn=z&&z.in?'<p class="an-none" style="color:#ff8a8a;border:1px solid #f23645;border-radius:8px;padding:8px 10px;background:rgba(242,54,69,.12)"><b>注意：SOXが注意ゾーンに入っています（'+yen(z.from)+'〜'+yen(z.to)+'）。</b>予測の線の山（'+yen(z.peak)+(z.peakDate?'・'+esc(z.peakDate.slice(5).replace("-","/"))+'ごろ':'')+'）のあたりで、2000年はここから本番の下げが始まりました。起きると決まったものではありません。</p>':'';
+    const al=alertsOf(w,jd);markTab(al.length>0);
+    const warn=al.length?'<div class="an-none" role="alert" style="color:#fff;border:2px solid #f23645;border-radius:8px;padding:10px 12px;background:#7a1620;margin:6px 0"><b>注意（'+esc(w.as_of)+'の終値・今朝8:05の判定）</b><ul style="margin:6px 0 4px 1.2em;padding:0">'+al.map(a=>'<li>SOXが'+esc(a.text)+'</li>').join("")+'</ul><span>予測ではありません。2000年の形をなぞった目安です。売買の判断はご自身でお願いします。</span></div>':'';
     el.innerHTML='<h2>SOXシナリオ予測チャート</h2>'+warn+(late?'<p class="an-none" style="color:#F2C14E"><b>今朝の更新がありません。</b>下は前回の内容です。</p>':'')+'<p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
       '<p class="an-none">青が実際、橙の点線が2000年の動きをなぞった場合の形です。起きると決まったものではありません。似た例は1回だけです。</p>'+
       '<table class="an-week" data-keep-table><thead><tr><th>段階</th><th>2000年では</th><th>SOXの目安</th><th>日経の目安</th></tr></thead><tbody>'+steps+'</tbody></table>'+
