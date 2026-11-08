@@ -262,7 +262,11 @@ def morning_text(files, brain, day):
     m = first_line(Path(brain, "研究結果", "朝の段", "最新.txt"))
     if m.startswith(day) and len(m.split()) > 1:
         parts.append("朝の点数は%s。" % clip(m.split()[1]))
-    v = re.search(r"シナリオ：([^（／]+)", first_line(Path(brain, "研究結果", "シナリオ", "最新.txt")))
+    sline = first_line(Path(brain, "研究結果", "シナリオ", "最新.txt"))
+    v = re.search(r"シナリオ：([^（／]+)", sline)
+    if "注意ゾーン：入った" in sline:
+        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」: said first, right after the greeting
+        parts.insert(1, "注意です。SOXが、予測の線の山、2000年に本番の下げが始まる前の戻りの天井のあたり、注意ゾーンに来ています。")
     if v:
         parts.append("SOXのシナリオは、%s。" % clip(v.group(1)))
     a = Path(brain, "アナリスト報告", "地合い", "地合い_%s_0815.txt" % day.replace("-", ""))

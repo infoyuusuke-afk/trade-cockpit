@@ -167,6 +167,19 @@ class Morning(unittest.TestCase):
                 self.assertNotIn(code, text)
             self.assertTrue(text.endswith("売買の判断はご自身でお願いします。"))
 
+    def test_the_caution_zone_is_said_first(self):
+        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」
+        with tempfile.TemporaryDirectory() as root:
+            files, brain = setup(root)
+            Path(brain, "研究結果", "シナリオ").mkdir(parents=True)
+            line = Path(brain, "研究結果", "シナリオ", "最新.txt")
+            line.write_text("2026-11-06 終値 9390／シナリオ：続く（底 9011 と外れの線 13218 の間）\n", encoding="utf-8")
+            self.assertNotIn("注意ゾーン", v.morning_text(files, brain, DAY))
+            line.write_text("2026-11-20 終値 11200／シナリオ：続く（底 9011 と外れの線 13218 の間）／注意ゾーン：入った（予測の山 11383 の3%下 11041 〜 外れの線 13218）\n", encoding="utf-8")
+            text = v.morning_text(files, brain, DAY)
+            self.assertTrue(text.startswith("おはようございます。今日の注意です。注意です。SOXが、予測の線の山"))
+            self.assertIn("SOXのシナリオは、続く。", text)
+
     def test_the_script_has_no_pc_path(self):
         src = (Path(__file__).resolve().parents[1] / "scripts" / "voice_notice.py").read_text(encoding="utf-8")
         for word in ("C:\\\\", "C:/", "Users"):
