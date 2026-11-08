@@ -196,10 +196,13 @@ def announced(files, day):
     return {str(i.get("code")) for i in dicts(td.get("items")) if "決算短信" in str(i.get("title") or "") and "訂正" not in str(i.get("title") or "")}
 
 
-def day_before_or_same(day):
-    """the 8:05 line starts with the US close date: the same day or up to 4 days before (a weekend or a holiday)"""
-    d = date.fromisoformat(day)
-    return tuple((d - timedelta(days=n)).isoformat() for n in range(0, 5))
+def written_on(p, day):
+    """OWNER 2026-11-08 「SOXの音声の注意は、シナリオの最新.txtが今日書かれた時だけ話すように直して」: True only when the file was
+    last written on `day` (the PC's local date). A file that cannot be read is not today's."""
+    try:
+        return datetime.fromtimestamp(Path(p).stat().st_mtime).date().isoformat() == day
+    except (OSError, ValueError, OverflowError):
+        return False
 
 
 def first_line(p):
@@ -268,11 +271,12 @@ def morning_text(files, brain, day):
     m = first_line(Path(brain, "研究結果", "朝の段", "最新.txt"))
     if m.startswith(day) and len(m.split()) > 1:
         parts.append("朝の点数は%s。" % clip(m.split()[1]))
-    sline = first_line(Path(brain, "研究結果", "シナリオ", "最新.txt"))
+    sfile = Path(brain, "研究結果", "シナリオ", "最新.txt")
+    sline = first_line(sfile)
     v = re.search(r"シナリオ：([^（／]+)", sline)
     # OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して、8:40の朝の音声で知らせ…
     # 『予測ではありません』と添える」: each caution of the 8:05 update (最新.txt 「／注意：…」) is said first, right after the greeting
-    cautions = [clip(x).split("（")[0] for x in re.findall(r"／注意：([^／\n]+)", sline)][:3] if sline.startswith(day_before_or_same(day)) else []
+    cautions = [clip(x).split("（")[0] for x in re.findall(r"／注意：([^／\n]+)", sline)][:3] if written_on(sfile, day) else []
     if cautions:
         parts.insert(1, "注意です。SOXが、" + "、".join(cautions) + "。予測ではありません。")
     if v:
