@@ -17,3 +17,7 @@ __pycache__/
 
 # V10 owner-local source selection; never commit machine-specific approval material.
 downloads/V10_APPROVED_SOURCE.json
+
+# the voice notice run files hold PC paths; keep them out of the repository
+scripts/voice_notice_*_run.cmd
+scripts/voice_notice.log

@@ -70,6 +70,62 @@ class Confirmed(unittest.TestCase):
             self.assertEqual(v.due(files, brain, DAY, "13:45", set()), [])
 
 
+class AuditFindings(unittest.TestCase):
+    """The audit of 2026-11-08: newest answer wins, words of doubt, a stock line without a code, bad values."""
+
+    def test_the_newest_answer_decides_for_each_stock(self):
+        with tempfile.TemporaryDirectory() as root:
+            files, brain = setup(root)
+            Path(brain, "Grok3号", "決算前監視_20261109_080000.txt").write_text("\n".join([
+                "銘柄：テスト電機（1111）",
+                "決算予定：2026-11-09（時刻未確認・二次で14:00場中との記載あり）／出典 https://example.com/x"]), encoding="utf-8")
+            got = v.confirmed_times(brain, DAY)
+            self.assertNotIn("1111", got)          # the older 14:00 is not kept
+            self.assertEqual(got.get("4444"), "15:30")   # a stock the new answer does not list keeps its time
+
+    def test_words_of_doubt_anywhere_on_the_line(self):
+        lines = ["銘柄：A社（5001）", "決算予定：2026-11-09 14:00（未確定）／出典 https://a",
+                 "銘柄：B社（5002）", "決算予定：2026-11-09 14:00（前回実績から推定）／出典 https://a",
+                 "銘柄：C社（5003）", "決算予定：2026-11-09 14:00（場中）／出典 https://a （会社は時刻未確認）",
+                 "銘柄：D社（5004）", "決算予定：2026-11-09 14:00（場中） https://a",
+                 "銘柄：E社（5005）", "決算予定：2026-11-09 13:30（場中）／出典 https://a"]
+        self.assertEqual({k: x for k, x in v.read_answer(lines, DAY).items() if x}, {"5005": "13:30"})
+
+    def test_a_stock_line_without_a_code_does_not_borrow_the_one_before(self):
+        lines = ["銘柄：A社（5001）", "決算予定：2026-11-10 14:00（場中）／出典 https://a",
+                 "■銘柄：B社", "決算予定：2026-11-09 13:00（場中）／出典 https://a",
+                 "銘柄：C社（5003）", "決算予定：2026-11-09（時刻未確認）",
+                 "決算予定：2026-11-09 12:45（場中）／出典 https://a"]
+        self.assertEqual({k: x for k, x in v.read_answer(lines, DAY).items() if x}, {})
+
+    def test_bad_minutes_and_bad_files_do_not_stop_the_watch(self):
+        with tempfile.TemporaryDirectory() as root:
+            files, brain = setup(root)
+            Path(brain, "Grok3号", "決算前監視_20261399_080000.txt").write_text("x", encoding="utf-8")
+            Path(brain, "Grok3号", "決算前監視_20261108_090000.txt").write_text(
+                "銘柄：テスト通信（3333）\n決算予定：2026-11-09 14:75（場中）／出典 https://a\n", encoding="utf-8")
+            Path(brain, "研究結果", "音声").mkdir(parents=True)
+            Path(brain, "研究結果", "音声", "決算時刻_確認済み.json").write_text("[1]", encoding="utf-8")
+            Path(files, "tdnet_today_v1.json").write_text("5", encoding="utf-8")
+            self.assertEqual([k for k, _ in v.due(files, brain, DAY, "13:45", set())], ["1111-15"])
+
+    def test_the_morning_text_stays_short_and_ends_with_the_closing_words(self):
+        with tempfile.TemporaryDirectory() as root:
+            files, brain = setup(root)
+            ev = {"events": [{"date": DAY, "impact": "高", "time_jst": "21:30", "title": "長い題" * 100}, {"date": DAY, "impact": "高"}]}
+            Path(files, "public_feed", "event_calendar.json").write_text(json.dumps(ev, ensure_ascii=False), encoding="utf-8")
+            text = v.morning_text(files, brain, DAY)
+            self.assertLessEqual(len(text), v.MAX_TEXT)
+            self.assertNotIn("None", text)
+            self.assertTrue(text.endswith("売買の判断はご自身でお願いします。"))
+
+    def test_the_voice_is_sent_through_powershell_without_the_text_in_the_command(self):
+        src = (Path(__file__).resolve().parents[1] / "scripts" / "voice_notice.py").read_text(encoding="utf-8")
+        self.assertIn("Invoke-WebRequest", src)
+        self.assertIn("$env:VOICE_NOTICE_URL", src)
+        self.assertNotIn("urllib.request", src)
+
+
 class Morning(unittest.TestCase):
     def test_the_text_reads_names_not_codes(self):
         with tempfile.TemporaryDirectory() as root:

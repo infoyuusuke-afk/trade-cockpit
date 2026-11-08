@@ -3,19 +3,23 @@ OWNER 2026-11-08 「決算前の知らせは確かめた時刻の銘柄だけに
 
 コクピットの今の音声の仕組み（127.0.0.1:28583 の読み上げ）に話させる。コクピットの版は変えない。話すだけで、売買や画面は変えない。
   python voice_notice.py morning --files <MS2のfilesフォルダ> --brain <研究のフォルダ>   平日8:40。今日の注意
-  python voice_notice.py watch   --files ... --brain ...                                平日9:00〜15:30に1分おき。決算の15分前と5分前
+  python voice_notice.py watch   --files ... --brain ...                                平日8:45〜15:30に1分おき（9:00〜9:14の決算の15分前も出すため）。決算の15分前と5分前
   --dry で話さずに画面に出す。--date YYYY-MM-DD と --now HH:MM で試せる
-決算の時刻は「確かめた時刻」だけを使う：AIアナリスト3号の答えの「決算予定：YYYY-MM-DD HH:MM」で、時刻未確認と書かれておらず、https の出典があるもの。
-または <brain>/研究結果/音声/決算時刻_確認済み.json に人が書いたもの（{"items":[{"code","date","time","source"}]}、source は https）。
+決算の時刻は「確かめた時刻」だけを使う：AIアナリスト3号の答えの「決算予定：YYYY-MM-DD HH:MM」で、行のどこにも疑いの言葉
+（未確認・未確定・未定・推定・見込・予想・慣例・例年・前回・二次など）が無く、「出典」の後ろに https があるもの。
+同じ銘柄は、その銘柄が載ったいちばん新しい答えだけで決める（新しい答えで未確認になれば、古い答えの時刻は使わない）。
+または <brain>/研究結果/音声/決算時刻_確認済み.json に人が書いたもの（{"items":[{"code","date","time","source"}]}、source は https）。こちらが優先。
 前回の決算の時刻は朝の案内で「参考」として言うだけで、決算前の知らせには使わない。TDnetで発表が出た銘柄は話さない。銘柄コードは読まない。
+読み上げ側は Origin の無い /announce を PowerShell の呼び出し（Collector と同じ道）からだけ受けるので、PowerShell の Invoke-WebRequest で送る。
 """
 from datetime import date, datetime, timedelta
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import urllib.parse
-import urllib.request
 
 KEY = ["285A", "6857", "8035", "9984", "6981", "4062", "6525", "6963", "6920", "9983", "7203", "6758"]
 BRIDGE = "http://127.0.0.1:28583/announce?level=WATCH&text="
@@ -27,18 +31,44 @@ READ = {"5714": "ドーワ ホールディングス", "581A": "ゴー", "4475": 
         "285A": "きおくしあ ホールディングス"}
 SESSION = (("09:00", "11:30"), ("12:30", "15:30"))
 CONFIRMED_DAYS = 5   # an answer of AIアナリスト3号 older than this is not used
-TIME_LINE = re.compile(r"^決算予定：\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})(.*)$")
+TIME_LINE = re.compile(r"^決算予定[：:]\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})(.*)$")
+STOCK_LINE = re.compile(r"銘柄[：:]")
+CODE_IN = re.compile(r"[（(]([0-9][0-9A-Z]{3})[）)]")
+# any of these anywhere on the line means the time is not one the company stated
+UNSURE = ("未確認", "未確定", "未定", "推定", "見込", "予想", "慣例", "例年", "前回", "二次", "観測", "報道", "?", "？")
+MAX_ITEM, MAX_TEXT = 40, 450
+# the text goes to PowerShell through an environment variable, never into the command line
+PS_SEND = ("$ErrorActionPreference='Stop';"
+           "$r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri $env:VOICE_NOTICE_URL;"
+           "[Console]::Out.Write([string]$r.Content)")
 
 
 def arg(name, default=None):
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv and sys.argv.index(name) + 1 < len(sys.argv) else default
 
 
-def load(p):
+def load(p, kind=dict):
     try:
-        return json.loads(Path(p).read_text(encoding="utf-8-sig"))
+        v = json.loads(Path(p).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
-        return None
+        return kind()
+    return v if isinstance(v, kind) else kind()
+
+
+def dicts(v):
+    return [x for x in v if isinstance(x, dict)] if isinstance(v, list) else []
+
+
+def clip(t):
+    return re.sub(r"\s+", " ", str(t or "")).strip()[:MAX_ITEM]
+
+
+def valid_hm(t):
+    try:
+        datetime.strptime(t, "%H:%M")
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 def in_session(hm):
@@ -51,92 +81,134 @@ def hm_words(hm):
 
 
 def name_of(code, raw):
-    return READ.get(code) or re.sub(r"\s+", "", str(raw or ""))
+    return READ.get(code) or re.sub(r"\s+", "", str(raw or ""))[:MAX_ITEM]
+
+
+def file_day(f):
+    m = re.search(r"_(\d{4})(\d{2})(\d{2})_", f.name)
+    try:
+        return date(*map(int, m.groups())) if m else None
+    except ValueError:
+        return None
+
+
+def read_answer(lines, day):
+    """code -> HH:MM or "" (listed but no sure time) from one answer. Only the first 決算予定 line after a stock's 銘柄 line counts."""
+    code, found = None, {}
+    for line in lines:
+        line = line.strip()
+        if line.startswith("決算予定"):
+            if code and code not in found:
+                t = TIME_LINE.match(line)
+                hm = "%02d:%s" % (int(t.group(2)), t.group(3)) if t else ""
+                src = line.split("出典", 1)[1] if "出典" in line else ""
+                sure = bool(t) and t.group(1) == day and valid_hm(hm) and not any(w in line for w in UNSURE) and "https://" in src
+                found[code] = hm if sure else ""
+            code = None
+        elif STOCK_LINE.search(line):
+            c = CODE_IN.search(line)
+            code = c.group(1) if c else None   # a stock line without a code never keeps the stock before it
+    return found
 
 
 def confirmed_times(brain, day):
-    """code -> HH:MM for the day, from AIアナリスト3号 (newest file wins) and the hand-written file. Only a time with an https source."""
-    out = {}
+    """code -> HH:MM for the day. For each stock only the newest answer of AIアナリスト3号 that lists it decides; then the hand-written file, which wins."""
     today = date.fromisoformat(day)
+    latest = {}
     for f in sorted(Path(brain, "Grok3号").glob("決算前監視_*.txt")):
-        m = re.search(r"_(\d{4})(\d{2})(\d{2})_", f.name)
-        if not m or (today - date(*map(int, m.groups()))).days > CONFIRMED_DAYS or date(*map(int, m.groups())) > today:
+        fd = file_day(f)
+        if not fd or fd > today or (today - fd).days > CONFIRMED_DAYS:
             continue
-        code = None
-        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
-            line = line.strip()
-            c = re.match(r"^銘柄：.*?[（(]([0-9][0-9A-Z]{3})[）)]", line)
-            if c:
-                code = c.group(1)
-                continue
-            t = TIME_LINE.match(line)
-            if code and t and t.group(1) == day:
-                rest = t.group(4)
-                head = rest.split("出典")[0]
-                if "未確認" not in head and "https://" in rest and 0 <= int(t.group(2)) <= 23:
-                    out[code] = "%02d:%s" % (int(t.group(2)), t.group(3))
-                code = None
-    hand = load(Path(brain, "研究結果", "音声", "決算時刻_確認済み.json")) or {}
-    for it in hand.get("items") or []:
-        if isinstance(it, dict) and it.get("date") == day and re.fullmatch(r"\d{2}:\d{2}", str(it.get("time") or "")) and str(it.get("source") or "").startswith("https://"):
-            out[str(it.get("code"))] = it["time"]
+        try:
+            lines = f.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+        except OSError:
+            continue
+        for c, hm in read_answer(lines, day).items():
+            if c not in latest or (fd, f.name) >= latest[c][0]:
+                latest[c] = ((fd, f.name), hm)
+    out = {c: v[1] for c, v in latest.items() if v[1]}
+    for it in dicts(load(Path(brain, "研究結果", "音声", "決算時刻_確認済み.json")).get("items")):
+        t = str(it.get("time") or "")
+        if it.get("date") == day and re.fullmatch(r"\d{2}:\d{2}", t) and valid_hm(t) and str(it.get("source") or "").startswith("https://"):
+            out[str(it.get("code"))] = t
     return out
 
 
 def earnings_today(files, brain, day):
-    cal = load(Path(files, "public_feed", "earnings_calendar.json")) or {}
-    last = (load(Path(files, "earnings_times_v1.json")) or {}).get("stocks") or {}
+    cal = load(Path(files, "public_feed", "earnings_calendar.json"))
+    last = load(Path(files, "earnings_times_v1.json")).get("stocks")
+    last = last if isinstance(last, dict) else {}
     sure = confirmed_times(brain, day)
     out, seen = [], set()
-    for x in cal.get("calendar") or []:
+    for x in dicts(cal.get("calendar")):
         code = str(x.get("code"))
         if x.get("date") != day or code in seen or not (code in KEY or x.get("watched") is True or code in sure):
             continue
         seen.add(code)
-        prev = str((last.get(code) or {}).get("last_at") or "")
-        out.append({"code": code, "name": name_of(code, x.get("name")), "key": code in KEY, "sure": sure.get(code, ""),
-                    "prev": prev[11:16] if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", prev) else ""})
+        lp = last.get(code)
+        prev = str(lp.get("last_at") or "") if isinstance(lp, dict) else ""
+        prev = prev[11:16] if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", prev) and valid_hm(prev[11:16]) else ""
+        out.append({"code": code, "name": name_of(code, x.get("name")), "key": code in KEY, "sure": sure.get(code, ""), "prev": prev})
     return out
 
 
 def announced(files, day):
-    td = load(Path(files, "tdnet_today_v1.json")) or {}
+    td = load(Path(files, "tdnet_today_v1.json"))
     if td.get("date") != day:
         return set()
-    return {str(i.get("code")) for i in td.get("items") or [] if "決算短信" in str(i.get("title") or "") and "訂正" not in str(i.get("title") or "")}
+    return {str(i.get("code")) for i in dicts(td.get("items")) if "決算短信" in str(i.get("title") or "") and "訂正" not in str(i.get("title") or "")}
 
 
 def first_line(p):
     try:
-        return Path(p).read_text(encoding="utf-8").splitlines()[0]
-    except (OSError, IndexError):
+        return Path(p).read_text(encoding="utf-8-sig", errors="replace").splitlines()[0]
+    except (OSError, IndexError, ValueError):
         return ""
 
 
 def say(brain, text, dry):
+    """True when the voice took it, or when it timed out after the request went out (it may still be speaking, so not again)."""
     log = Path(brain, "研究結果", "音声")
     log.mkdir(parents=True, exist_ok=True)
-    with open(log / "話した記録.txt", "a", encoding="utf-8") as f:
-        f.write("%s%s %s\n" % ("（試し）" if dry else "", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), text))
+
+    def note(t):
+        with open(log / "話した記録.txt", "a", encoding="utf-8") as f:
+            f.write(t + "\n")
+    note("%s%s %s" % ("（試し）" if dry else "", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), text))
     print(text)
     if dry:
         return True
+    env = dict(os.environ, VOICE_NOTICE_URL=BRIDGE + urllib.parse.quote(text))
     try:
-        urllib.request.urlopen(BRIDGE + urllib.parse.quote(text), timeout=40).read()
+        r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", PS_SEND],
+                           env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=75)
+    except subprocess.TimeoutExpired:
+        note("  読み上げの返事待ちで時間切れ（話している途中かもしれないので、もう一度は話さない）")
         return True
-    except Exception as e:
-        with open(log / "話した記録.txt", "a", encoding="utf-8") as f:
-            f.write("  読み上げ失敗 %s\n" % type(e).__name__)
+    except OSError as e:
+        note("  読み上げ失敗 %s" % type(e).__name__)
         return False
+    body = (r.stdout or "").strip()
+    if r.returncode != 0:
+        err = [x for x in (r.stderr or "").strip().splitlines() if x.strip()]
+        if any("timed out" in x.lower() or "タイムアウト" in x for x in err):
+            note("  読み上げの返事待ちで時間切れ（もう一度は話さない）")
+            return True
+        note("  読み上げ失敗 %s" % (err[0][:120] if err else r.returncode))
+        return False
+    if "skipped" in body or "DISABLED" in body.upper():
+        note("  読み上げはOFFでした %s" % body[:120])
+    return True
 
 
 def morning_text(files, brain, day):
     parts = ["おはようございます。今日の注意です。"]
-    ev = load(Path(files, "public_feed", "event_calendar.json")) or {}
-    hi = [e for e in ev.get("events") or [] if e.get("date") == day and e.get("impact") == "高"]
+    ev = load(Path(files, "public_feed", "event_calendar.json"))
+    hi = [e for e in dicts(ev.get("events")) if e.get("date") == day and e.get("impact") == "高" and clip(e.get("title"))]
     for e in hi[:3]:
         t = str(e.get("time_jst") or "")
-        parts.append("%s、%s。" % (hm_words(t) if re.match(r"\d{2}:\d{2}$", t) else t, e.get("title")))
+        when = hm_words(t) if re.fullmatch(r"\d{2}:\d{2}", t) and valid_hm(t) else clip(t)
+        parts.append("%s%s。" % (when + "、" if when else "", clip(e.get("title"))))
     es = earnings_today(files, brain, day)
     alerts = [x for x in es if x["sure"] and in_session(x["sure"])]
     for x in es:
@@ -153,18 +225,25 @@ def morning_text(files, brain, day):
         parts.append("大きな予定と主な決算はありません。")
     m = first_line(Path(brain, "研究結果", "朝の段", "最新.txt"))
     if m.startswith(day) and len(m.split()) > 1:
-        parts.append("朝の点数は%s。" % m.split()[1])
+        parts.append("朝の点数は%s。" % clip(m.split()[1]))
     v = re.search(r"シナリオ：([^（／]+)", first_line(Path(brain, "研究結果", "シナリオ", "最新.txt")))
     if v:
-        parts.append("SOXのシナリオは、%s。" % v.group(1))
+        parts.append("SOXのシナリオは、%s。" % clip(v.group(1)))
     a = Path(brain, "アナリスト報告", "地合い", "地合い_%s_0815.txt" % day.replace("-", ""))
-    if a.is_file():
-        t = a.read_text(encoding="utf-8", errors="replace")
-        d1, d2 = re.search(r"危なさ[：:]\s*(\S+)", t), re.search(r"^向き[：:]\s*(\S+)", t, re.M)
-        if d1 and d2:
-            parts.append("地合いの見立ては、危なさ%s、向きは%s。" % (d1.group(1), d2.group(1)))
-    parts.append("売買の判断はご自身でお願いします。")
-    return "".join(parts)
+    try:
+        t = a.read_text(encoding="utf-8-sig", errors="replace") if a.is_file() else ""
+    except OSError:
+        t = ""
+    d1, d2 = re.search(r"危なさ[：:]\s*(\S+)", t), re.search(r"^向き[：:]\s*(\S+)", t, re.M)
+    if d1 and d2:
+        parts.append("地合いの見立ては、危なさ%s、向きは%s。" % (clip(d1.group(1)), clip(d2.group(1))))
+    end = "売買の判断はご自身でお願いします。"
+    body = ""
+    for p in parts:   # whole sentences only, and the closing words always stay
+        if len(body) + len(p) + len(end) > MAX_TEXT:
+            break
+        body += p
+    return body + end
 
 
 def due(files, brain, day, now, done):
@@ -175,7 +254,10 @@ def due(files, brain, day, now, done):
     for x in earnings_today(files, brain, day):
         if not x["sure"] or not in_session(x["sure"]) or x["code"] in gone:
             continue
-        at = datetime.strptime(day + " " + x["sure"], "%Y-%m-%d %H:%M")
+        try:
+            at = datetime.strptime(day + " " + x["sure"], "%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
         for mins in (15, 5):
             key = "%s-%d" % (x["code"], mins)
             start = at - timedelta(minutes=mins)
@@ -192,7 +274,7 @@ def main():
     dry = "--dry" in sys.argv
     day = arg("--date", date.today().isoformat())
     now = arg("--now", datetime.now().strftime("%H:%M"))
-    if date.fromisoformat(day).weekday() > 4:
+    if date.fromisoformat(day).weekday() > 4 or not valid_hm(now):
         return 0
     if "morning" in sys.argv:
         say(brain, morning_text(files, brain, day), dry)
@@ -201,12 +283,12 @@ def main():
         if not ("08:45" <= now <= "15:30"):
             return 0
         state = Path(brain, "研究結果", "音声", "決算の知らせ_%s.json" % day.replace("-", ""))
-        done = set(load(state) or [])
+        done = {x for x in load(state, list) if isinstance(x, str)}
+        state.parent.mkdir(parents=True, exist_ok=True)
         for key, text in due(files, brain, day, now, done):
             if say(brain, text, dry):
                 done.add(key)
-        state.parent.mkdir(parents=True, exist_ok=True)
-        state.write_text(json.dumps(sorted(done)), encoding="utf-8")
+                state.write_text(json.dumps(sorted(done)), encoding="utf-8")   # after each one, so a stop never repeats it
         return 0
     print("morning か watch を指定してください")
     return 1
