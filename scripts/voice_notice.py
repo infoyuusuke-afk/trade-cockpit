@@ -196,6 +196,12 @@ def announced(files, day):
     return {str(i.get("code")) for i in dicts(td.get("items")) if "決算短信" in str(i.get("title") or "") and "訂正" not in str(i.get("title") or "")}
 
 
+def day_before_or_same(day):
+    """the 8:05 line starts with the US close date: the same day or up to 4 days before (a weekend or a holiday)"""
+    d = date.fromisoformat(day)
+    return tuple((d - timedelta(days=n)).isoformat() for n in range(0, 5))
+
+
 def first_line(p):
     try:
         return Path(p).read_text(encoding="utf-8-sig", errors="replace").splitlines()[0]
@@ -264,9 +270,11 @@ def morning_text(files, brain, day):
         parts.append("朝の点数は%s。" % clip(m.split()[1]))
     sline = first_line(Path(brain, "研究結果", "シナリオ", "最新.txt"))
     v = re.search(r"シナリオ：([^（／]+)", sline)
-    if "注意ゾーン：入った" in sline:
-        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」: said first, right after the greeting
-        parts.insert(1, "注意です。SOXが、予測の線の山、2000年に本番の下げが始まる前の戻りの天井のあたり、注意ゾーンに来ています。")
+    # OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して、8:40の朝の音声で知らせ…
+    # 『予測ではありません』と添える」: each caution of the 8:05 update (最新.txt 「／注意：…」) is said first, right after the greeting
+    cautions = [clip(x).split("（")[0] for x in re.findall(r"／注意：([^／\n]+)", sline)][:3] if sline.startswith(day_before_or_same(day)) else []
+    if cautions:
+        parts.insert(1, "注意です。SOXが、" + "、".join(cautions) + "。予測ではありません。")
     if v:
         parts.append("SOXのシナリオは、%s。" % clip(v.group(1)))
     a = Path(brain, "アナリスト報告", "地合い", "地合い_%s_0815.txt" % day.replace("-", ""))

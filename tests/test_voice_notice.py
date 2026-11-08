@@ -167,18 +167,24 @@ class Morning(unittest.TestCase):
                 self.assertNotIn(code, text)
             self.assertTrue(text.endswith("売買の判断はご自身でお願いします。"))
 
-    def test_the_caution_zone_is_said_first(self):
-        # OWNER 2026-11-08 「ここの注意ゾーンきたら注意音声と、注意喚起してほしい」
+    def test_the_sox_cautions_are_said_first(self):
+        # OWNER 2026-11-08 「…8:40の朝の音声で知らせ…『予測ではありません』と添える」
         with tempfile.TemporaryDirectory() as root:
             files, brain = setup(root)
             Path(brain, "研究結果", "シナリオ").mkdir(parents=True)
             line = Path(brain, "研究結果", "シナリオ", "最新.txt")
             line.write_text("2026-11-06 終値 9390／シナリオ：続く（底 9011 と外れの線 13218 の間）\n", encoding="utf-8")
-            self.assertNotIn("注意ゾーン", v.morning_text(files, brain, DAY))
-            line.write_text("2026-11-20 終値 11200／シナリオ：続く（底 9011 と外れの線 13218 の間）／注意ゾーン：入った（予測の山 11383 の3%下 11041 〜 外れの線 13218）\n", encoding="utf-8")
+            self.assertNotIn("注意です。SOXが", v.morning_text(files, brain, DAY))
+            line.write_text("2026-11-06 終値 11200／シナリオ：続く（底 9011 と外れの線 13218 の間）／注意：戻りの天井（約11,383）の±3%に入った（終値 11,200）\n", encoding="utf-8")
             text = v.morning_text(files, brain, DAY)
-            self.assertTrue(text.startswith("おはようございます。今日の注意です。注意です。SOXが、予測の線の山"))
-            self.assertIn("SOXのシナリオは、続く。", text)
+            self.assertTrue(text.startswith("おはようございます。今日の注意です。注意です。SOXが、戻りの天井"))
+            self.assertIn("予測ではありません。", text)
+            line.write_text("2026-11-06 終値 8700／シナリオ：本番の下げ（底 9011 を割った）／注意：底の線 9,011 を割った（終値 8,700）／注意：−40%の線 8,781 を割った（終値 8,700）\n", encoding="utf-8")
+            text = v.morning_text(files, brain, DAY)
+            self.assertIn("注意です。SOXが、底の線 9,011 を割った、−40%の線 8,781 を割った。予測ではありません。", text)
+            # an old line (more than 4 days before) is not said
+            line.write_text("2026-10-30 終値 8700／注意：底の線 9,011 を割った（終値 8,700）\n", encoding="utf-8")
+            self.assertNotIn("注意です。SOXが", v.morning_text(files, brain, DAY))
 
     def test_the_script_has_no_pc_path(self):
         src = (Path(__file__).resolve().parents[1] / "scripts" / "voice_notice.py").read_text(encoding="utf-8")
