@@ -24,6 +24,9 @@ class AnalystWeekly(unittest.TestCase):
         self.assertNotIn('await get("/analyst_weekly.json")', html)
         self.assertIn('w.schema_version==="100b-v10-analyst-weekly-v1"&&w.real_submit_allowed===false&&w.trade_instruction===false', html)
         self.assertIn('id="an-weekly"', html)
+        self.assertIn('bars("銘柄の平均（通算・費用込み）"', html)   # OWNER 2026-11-08 「チャート形式で見やすく表示」
+        self.assertIn('bars("相場の向きの当たり率（通算）"', html)
+        self.assertIn("<summary>数字の表</summary>", html)
         self.assertIn("週間成績を読めません", html)     # a missing file shows a plain note
         self.assertIn("検証中", html)
         self.assertIn("<td>'+esc(r.name)+'</td>", html)  # the name is escaped

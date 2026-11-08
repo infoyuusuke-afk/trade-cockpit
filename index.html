@@ -3087,8 +3087,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   function mount(){
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="analysts"]'))return;
-    pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="analysts";
-    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。GPTの答えはプロジェクトのチャット（PCのClaude）に貼ってください。Grokの答えはPCが自動で受け取ります。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section><section class="card wide"><div id="an-weekly"><div class="an-none">週間成績を読込中...</div></div></section>';
+    pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="analysts";pane.style.gridColumn="1/-1";
+    pane.innerHTML='<div class="pane-intro"><h2>アナリスト｜指示と答えの確認</h2><p>アナリストごとに、今日の追加の指示と、答えが届いたかを出します。GPTの答えはプロジェクトのチャット（PCのClaude）に貼ってください。Grokの答えはPCが自動で受け取ります。</p></div><section class="card wide"><div id="an-cards" class="an-grid"><div class="an-none">読込中...</div></div></section><section class="card wide" style="grid-column:1/-1;width:100%;box-sizing:border-box"><div id="an-weekly"><div class="an-none">週間成績を読込中...</div></div></section>';
     main.append(pane);
     const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="analysts";b.type="button";b.textContent="アナリスト";
     const after=nav.querySelector('.cockpit-tab[data-tab="control"]');
@@ -3122,9 +3122,33 @@ document.addEventListener("DOMContentLoaded",()=>{
     const mark=on=>on?'<span class="an-check">検証中</span>':"";
     const dir=(x,check)=>x&&num(x.dir_n)&&x.dir_n>0?esc(x.dir_hit)+"/"+esc(x.dir_n)+"回"+mark(check&&x.dir_checking):"—";
     const stock=(x,check)=>x&&num(x.n)&&x.n>0&&num(x.win_pct)&&num(x.avg_pct)?esc(x.n)+"回｜勝率"+esc(x.win_pct.toFixed(0))+"%｜平均"+esc((x.avg_pct>0?"+":"")+x.avg_pct.toFixed(2))+"%"+mark(check&&x.stock_checking):"—";
+    // OWNER 2026-11-08 「チャート形式で見やすく表示」: two bar charts (stock average, market direction hit rate); the table stays folded below.
+    const rows=w.rows.filter(r=>r&&typeof r==="object");
+    const bars=(title,get,fmt,zero,lim,note)=>{
+      const W=520,RH=30,T=30,H=T+rows.length*RH+24,L=118,R=150,cx=v=>L+(v-lim[0])/(lim[1]-lim[0])*(W-L-R);
+      let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(title)+'" style="display:block;width:100%;height:auto"><text x="0" y="16" fill="#d1d4dc" font-size="13" font-weight="700">'+esc(title)+'</text>';
+      s+='<line x1="'+cx(zero)+'" x2="'+cx(zero)+'" y1="'+(T-4)+'" y2="'+(H-20)+'" stroke="#5d6573" stroke-width="1"/><text x="'+cx(zero)+'" y="'+(H-6)+'" fill="#9ba3af" font-size="11" text-anchor="middle">'+esc(note)+'</text>';
+      rows.forEach((r,i)=>{
+        const y=T+i*RH,g=get(r.total),k=get(r.week);
+        s+='<text x="0" y="'+(y+18)+'" fill="#d1d4dc" font-size="12">'+esc(r.name)+'</text>';
+        if(!g){s+='<text x="'+(L+4)+'" y="'+(y+18)+'" fill="#6b7280" font-size="12">記録なし</text>';return;}
+        const v=Math.max(lim[0],Math.min(lim[1],g.v)),x0=cx(zero),x1=cx(v),col=g.v>=zero?"#26a69a":"#ef5350";
+        s+='<rect x="'+Math.min(x0,x1).toFixed(1)+'" y="'+(y+6)+'" width="'+Math.max(2,Math.abs(x1-x0)).toFixed(1)+'" height="16" rx="3" fill="'+col+'" opacity="'+(g.checking?0.45:1)+'"/>';
+        if(k){const kv=Math.max(lim[0],Math.min(lim[1],k.v));s+='<circle cx="'+cx(kv).toFixed(1)+'" cy="'+(y+14)+'" r="4" fill="#131722" stroke="#F2C14E" stroke-width="2"/>';}
+        s+='<text x="'+(W-R+8)+'" y="'+(y+18)+'" fill="#d1d4dc" font-size="12">'+esc(fmt(g))+(g.checking?' <tspan fill="#F4C95D">検証中</tspan>':'')+'</text>';
+      });
+      return s+'</svg>';
+    };
+    const st=x=>x&&num(x.n)&&x.n>0&&num(x.avg_pct)?{v:x.avg_pct,n:x.n,checking:!!x.stock_checking}:null;
+    const dr=x=>x&&num(x.dir_n)&&x.dir_n>0&&num(x.dir_hit)?{v:100*x.dir_hit/x.dir_n,n:x.dir_n,hit:x.dir_hit,checking:!!x.dir_checking}:null;
+    const m=Math.max(3,...rows.map(r=>Math.abs((st(r.total)||{v:0}).v)),...rows.map(r=>Math.abs((st(r.week)||{v:0}).v)));
     el.innerHTML='<h3>週間成績（毎週金曜に更新・最後の更新 '+esc(String(w.generated_on||"").slice(5).replace("-","/"))+'）</h3>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:16px"><div style="flex:1 1 420px;min-width:0">'+bars("銘柄の平均（通算・費用込み）",st,g=>(g.v>0?"+":"")+g.v.toFixed(2)+"%（"+g.n+"回）",0,[-m,m],"0%")+'</div>'+
+      '<div style="flex:1 1 420px;min-width:0">'+bars("相場の向きの当たり率（通算）",dr,g=>Math.round(g.v)+"%（"+g.hit+"/"+g.n+"）",50,[0,100],"50%＝五分")+'</div></div>'+
+      '<p class="an-none">棒は通算、黄色の丸は'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週。薄い棒は回数が少ない検証中です。</p>'+
+      '<details class="an-fold"><summary>数字の表</summary>'+
       '<table class="an-week" data-keep-table><thead><tr><th>アナリスト</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 向き</th><th>'+esc(String(w.week||"").slice(5).replace("-","/"))+'の週 銘柄</th><th>通算 向き</th><th>通算 銘柄</th></tr></thead><tbody>'+
-      w.rows.filter(r=>r&&typeof r==="object").map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table>'+
+      w.rows.filter(r=>r&&typeof r==="object").map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+dir(r.week,false)+'</td><td>'+stock(r.week,false)+'</td><td>'+dir(r.total,true)+'</td><td>'+stock(r.total,true)+'</td></tr>').join("")+'</tbody></table></details>'+
       '<p class="an-none">向きは当たった回数/答えた回数（日経平均の寄り→引け）。銘柄は寄り→引け、向きどおり、往復0.1%の費用込み。Grokは見張りのリストを全部買った計算、Claudeは入る条件を見ずに寄りで入った計算です。検証中＝向き'+esc(w.dir_min)+'回未満、銘柄'+esc(w.stock_min)+'回未満。研究の記録で、売買の勧めではありません。</p>';
   }
   async function render(){
