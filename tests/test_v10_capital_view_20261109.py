@@ -158,6 +158,12 @@ class Sizing(unittest.TestCase):
             self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "10:00")["items"][0]["code"], "7011")
             self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "12:30")["items"][0]["code"], "8058")
             self.assertEqual(pos.focus_analyst(rt, "2026-11-10", "10:00")["state"], "OLD")
+            # audit 2026-11-09: a badly shaped file never raises (the holdings view must not stop)
+            for bad in ([1, 2], {"schema_version": "100b-v10-focus-analyst-v1", "date": "2026-11-09", "real_submit_allowed": False, "slots": {"0850": []}},
+                        {"schema_version": "100b-v10-focus-analyst-v1", "date": "2026-11-09", "real_submit_allowed": False, "slots": {"0850": {"items": ["x"]}}},
+                        {"schema_version": "100b-v10-focus-analyst-v1", "date": "2026-11-09", "real_submit_allowed": False, "slots": ["0850"]}):
+                (rt / pos.FOCUS_ANALYST_FILE).write_text(json.dumps(bad), encoding="utf-8")
+                self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "10:00")["items"], [])
         for x in ('const PIN_KEY="cockpitFocusPinnedV10";', "free=Math.max(0,5-pins.length)", "filter(x=>!pins.includes(x.ticker))",
                   '"AIアナリスト "+x.who+"・自信 "+x.conf'):
             self.assertIn(x, HTML)

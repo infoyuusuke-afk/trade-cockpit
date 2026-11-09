@@ -790,6 +790,8 @@ def focus_analyst(runtime: Path, today: str, now_hm: str) -> dict:
         doc = json.loads((Path(runtime) / FOCUS_ANALYST_FILE).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return {"state": "NO_FILE", "items": []}
+    if not isinstance(doc, dict) or not isinstance(doc.get("slots") or {}, dict):
+        return {"state": "FORMAT_UNKNOWN", "items": []}
     if doc.get("schema_version") != "100b-v10-focus-analyst-v1" or doc.get("real_submit_allowed") is not False:
         return {"state": "FORMAT_UNKNOWN", "items": []}
     if doc.get("date") != today:
@@ -798,13 +800,17 @@ def focus_analyst(runtime: Path, today: str, now_hm: str) -> dict:
     key = "1220" if "1220" in slots and now_hm >= "12:20" else "0850" if "0850" in slots else None
     if key is None:
         return {"state": "NOT_YET", "items": []}
+    slot = slots[key] if isinstance(slots[key], dict) else {}
     items = []
-    for x in (slots[key].get("items") or [])[:8]:
+    raw = slot.get("items") if isinstance(slot.get("items"), list) else []
+    for x in raw[:8]:
+        if not isinstance(x, dict):
+            continue
         t = str(x.get("ticker") or "")
         if len(t) != 6 or not t.endswith(".T"):
             continue
         items.append({k: str(x.get(k) or "")[:80] for k in ("ticker", "code", "name", "side", "conf", "who", "entry")})
-    return {"state": "OK", "slot": key, "made_at": str(slots[key].get("made_at") or "")[:5], "items": items}
+    return {"state": "OK", "slot": key, "made_at": str(slot.get("made_at") or "")[:5], "items": items}
 
 
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
@@ -1056,10 +1062,14 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         soon = dict(soon, split=earnings_split(runtime))
     except Exception as exc:
         soon = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "items": {}}
+    try:
+        focus = focus_analyst(runtime, today, hm)
+    except Exception as exc:
+        focus = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "items": []}
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
             "owner_rules": owner, "short_rebound": rebound, "overnight_closed": overnight_closed,
-            "capital": capital, "earnings_soon": soon, "focus_analyst": focus_analyst(runtime, today, hm),
+            "capital": capital, "earnings_soon": soon, "focus_analyst": focus,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}
