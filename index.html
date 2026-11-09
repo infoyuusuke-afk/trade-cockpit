@@ -715,6 +715,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     let box=document.getElementById("focus-analyst");
     if(!box){box=document.createElement("div");box.id="focus-analyst";panel.appendChild(box);}
     const pins=pinned(),free=Math.max(0,5-pins.length);
+    // OWNER 2026-11-10 (card かぶりを除く): what FOCUS shows now, so the トレード中 TOP5 can leave these out
+    window.cockpitFocusTickers=pins.concat(list&&list.state==="OK"&&free?(list.items||[]).filter(x=>!pins.includes(x.ticker)).slice(0,free).map(x=>x.ticker):[]);
     if(!list||list.state!=="OK"){box.innerHTML='<h3>アナリストの銘柄（空いた枠に自動）</h3><div class="fa-meta">'+
       (list&&list.state==="NOT_YET"?"8:50になると入ります":"今日のアナリストの銘柄はまだありません")+'</div>';return;}
     const items=(list.items||[]).filter(x=>!pins.includes(x.ticker)).slice(0,free);
@@ -2872,7 +2874,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     const evOf={};
     Object.entries((ev&&ev.by_strategy_ticker)||{}).forEach(([k,v])=>{const t=k.split("|").pop(),n=Number(v&&v.n)||0,e=Number(v&&v.ev_pct);if(!n||!Number.isFinite(e))return;const a=evOf[t]=evOf[t]||[0,0];a[0]+=n;a[1]+=n*e;});
     evScore=t=>evOf[t]&&evOf[t][0]>=10?evOf[t][1]/evOf[t][0]:null;
-    const inLive=new Set(live.map(x=>x.ticker));
+    // OWNER 2026-11-10 (card かぶりを除く): in 自動, stocks already shown in FOCUS (pinned or analyst-filled) are left out here
+    const inFocus=new Set(Array.isArray(window.cockpitFocusTickers)?window.cockpitFocusTickers:[]);
+    const inLive=new Set(live.map(x=>x.ticker).filter(t=>!inFocus.has(t)));
     hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);return r.length?r[0]:null;};
     auto=Object.keys(votes).filter(t=>inLive.has(t)).sort((a,b)=>{const ha=hitScore(a),hb=hitScore(b);if((ha===null)!==(hb===null))return ha===null?1:-1;if(ha&&hb&&hb.rate!==ha.rate)return hb.rate-ha.rate;const ea=evScore(a),eb=evScore(b);if((ea===null)!==(eb===null))return ea===null?1:-1;if(ea!==null&&eb!==ea)return eb-ea;return votes[b]-votes[a];}).slice(0,5);
     // fewer than 5 analyst stocks in the 100: the rest are the highest recorded EV stocks of the 100 (labelled as such)
@@ -2892,7 +2896,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const mode=document.getElementById("ai5-mode");
     if(mode){mode.className="ai5-mode "+(st.mode==="manual"?"manual":"auto");mode.textContent=st.mode==="manual"?"OWNER入れ替え（今日）":"AIのおすすめ（自動）";}
     const box=document.getElementById("ai5-cards");if(!box)return;
-    if(!list.length){box.innerHTML='<div class="focus-empty">'+(st.mode==="manual"?"入れた銘柄がありません。":"今日のAIアナリストの注目のうち、監視100銘柄に入っている銘柄がまだありません。")+'</div>';return;}
+    if(!list.length){box.innerHTML='<div class="focus-empty">'+(st.mode==="manual"?"入れた銘柄がありません。":((window.cockpitFocusTickers||[]).length?"FOCUSに出ている銘柄のほかに、":"")+"今日のAIアナリストの注目のうち、監視100銘柄に入っている銘柄がまだありません。")+'</div>';return;}
     const map=new Map(live.map(x=>[x.ticker,x]));
     box.innerHTML=list.map(t=>{const row=map.get(t),ok=liveOk&&row&&window.cockpitMs2RowReady?.(row)===true,e=evScore(t);
       const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,_allMetrics:true,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
