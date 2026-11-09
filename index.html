@@ -3886,6 +3886,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 .mc-head{color:var(--cc-text-secondary);font-size:11px;border-top:0}.mc-grid small{font-variant-numeric:tabular-nums}
 .mc-bar{position:relative;height:10px;border-radius:5px;background:#2a2e39;overflow:hidden;margin-bottom:2px}.mc-bar i{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
 .mc-bar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:#d1d4dc;z-index:1}
+.cap-area{margin-top:10px}.cap-head{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--cc-border);background:var(--cc-bg-card);
+color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-variant-numeric:tabular-nums}.cap-head .up{color:var(--cc-long)}.cap-head .dn{color:var(--cc-short)}
+.cap-head .g{color:var(--cc-text-secondary)}.cap-hint{margin-left:auto;font-size:11px}.cap-arrow{color:var(--cc-text-secondary);width:1em}#cap-body{margin-top:6px}
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
@@ -3912,10 +3915,35 @@ document.addEventListener("DOMContentLoaded",()=>{
     renderTable();renderJournal();renderMethods();renderSplit();
   }
   // 注文タブ：仮想の枠の下に、保有中の行と資金別の表
+  // OWNER 2026-11-09 「注文タブで注目が下に行かないようにして。並びは 仮想の1行・実口座の行・注目・注文カード・資金別の表・保有中の一覧・
+  // 手法の成績 の順。資金別と手法の成績は最初はたたんで1行（300万と500万の今日の損益）だけ出し、押すと開く。開け閉めは覚えておく」:
+  // one folding area at the bottom of the 注文 tab; its body holds the size table (with the 300万/500万 lists), the 100株 holdings line
+  // and the method chart, in that order. The open state is kept in this browser.
+  let capOpen=false;try{capOpen=localStorage.getItem("cockpitCapOpenV1")==="1";}catch(_){}
+  function capArea(){
+    const pane=document.querySelector('.tab-pane[data-pane="order"]');if(!pane)return null;
+    let area=document.getElementById("cap-area");
+    if(!area){area=document.createElement("div");area.id="cap-area";area.className="cap-area";
+      area.innerHTML='<button type="button" id="cap-head" class="cap-head"></button><div id="cap-body"></div>';pane.appendChild(area);
+      area.querySelector("#cap-head").addEventListener("click",()=>{capOpen=!capOpen;try{localStorage.setItem("cockpitCapOpenV1",capOpen?"1":"0");}catch(_){}paintHead();});}
+    else if(area.parentElement!==pane||area!==pane.lastElementChild)pane.appendChild(area);
+    return area;
+  }
+  function paintHead(){
+    const area=capArea();if(!area)return;
+    const head=area.querySelector("#cap-head"),body=area.querySelector("#cap-body");
+    body.hidden=!capOpen;
+    const S=sizes(),pick=l=>S.find(s=>s.label===l),f=s=>s?'<b class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+'</b>':'<span class="g">—</span>';
+    head.innerHTML='<span class="cap-arrow">'+(capOpen?'▼':'▶')+'</span><b>資金別・保有中・手法の成績</b>　<span class="g">今日</span> 300万 '+f(pick("300万"))+'　500万 '+f(pick("500万"))+
+      '<span class="g cap-hint">'+(capOpen?'押すとたたむ':'押すと開く')+'</span>';
+  }
   function renderHeld(){
-    const line=document.getElementById("virt-day-line"),v=window.cockpitVirtualDay;if(!line||!v)return;
+    const area=capArea(),v=window.cockpitVirtualDay;if(!area||!v)return;
+    const body=area.querySelector("#cap-body");
     let el=document.getElementById("virt-held-line");
-    if(!el){el=document.createElement("div");el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement("afterend",el);}
+    if(!el){el=document.createElement("div");el.id="virt-held-line";el.className="vd-held";}
+    const tbl=document.getElementById("cap-compare");
+    if(tbl&&tbl.parentElement===body){if(tbl.nextElementSibling!==el)tbl.insertAdjacentElement("afterend",el);}else if(el.parentElement!==body)body.appendChild(el);
     const held=Array.isArray(v.held)?v.held:[];
     if(!held.length){el.innerHTML='<span class="g">メルの保有中：なし</span>';return;}
     // the same stock held twice (two signals) is one entry with ×2
@@ -3955,10 +3983,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   function renderTable(){
     // OWNER 2026-11-09 「注目がこんな下いっちゃうとザラバ中にエントリータイミングが見にくい」: the size table and the method chart live at the
     // bottom of the 注文 tab itself, not in the area above every tab, so 注目 stays where it was
-    const pane=document.querySelector('.tab-pane[data-pane="order"]');if(!pane)return;
+    const area=capArea();if(!area)return;
+    const body=area.querySelector("#cap-body");
     let el=document.getElementById("cap-compare");
-    if(!el){el=document.createElement("div");el.id="cap-compare";el.className="cap-box";pane.appendChild(el);}
-    else if(el.parentElement!==pane)pane.appendChild(el);
+    if(!el){el=document.createElement("div");el.id="cap-compare";el.className="cap-box";body.prepend(el);}
+    else if(el.parentElement!==body||body.firstElementChild!==el)body.prepend(el);
+    paintHead();
     if(!cap){el.innerHTML='<span class="g">資金別の仮想：まだ読めません（コクピットの記録から1分ほどで出ます）</span>';return;}
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
@@ -4039,9 +4069,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<div class="mc-legend">'+cum.map(s=>'<button type="button" class="mc-leg'+(mOff[s.name]?" off":"")+'" data-mline="'+esc(s.name)+'"><i style="background:'+s.col+'"></i>'+esc(s.name)+' '+yen(s.c[s.c.length-1][1])+'</button>').join("")+'<span class="g">（押すと線を出す・消す）</span></div>';
   }
   function renderMethods(){
-    const after=document.getElementById("cap-compare");if(!after)return;
+    const area=capArea();if(!area)return;const body=area.querySelector("#cap-body");
     let sec=document.getElementById("method-compare");
-    if(!sec){sec=document.createElement("div");sec.id="method-compare";sec.className="cap-box";after.insertAdjacentElement("afterend",sec);
+    if(sec&&(sec.parentElement!==body||body.lastElementChild!==sec))body.appendChild(sec);
+    if(!sec){sec=document.createElement("div");sec.id="method-compare";sec.className="cap-box";body.appendChild(sec);
       sec.addEventListener("click",ev=>{const b=ev.target.closest("button[data-mview],button[data-mline],button[data-mfrom]");if(!b)return;
         if(b.dataset.mview){mView=b.dataset.mview;try{localStorage.setItem("cockpitMethodViewV1",mView);}catch(_){}}
         if(b.dataset.mline){const k=b.dataset.mline;if(mOff[k])delete mOff[k];else mOff[k]=1;try{localStorage.setItem("cockpitMethodOffV1",JSON.stringify(mOff));}catch(_){}}

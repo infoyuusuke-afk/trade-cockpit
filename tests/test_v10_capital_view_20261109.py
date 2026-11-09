@@ -127,10 +127,14 @@ class Sizing(unittest.TestCase):
     def test_size_table_and_chart_sit_in_the_order_tab(self):
         # OWNER 2026-11-09 「注目がこんな下いっちゃうとザラバ中にエントリータイミングが見にくい」
         i = HTML.index("function renderTable(){")
-        seg = HTML[i:i + 900]
-        self.assertIn("const pane=document.querySelector('.tab-pane[data-pane=\"order\"]');if(!pane)return;", seg)
-        self.assertIn("pane.appendChild(el)", seg)
+        seg = HTML[i:i + 1200]
+        # 「並びは 仮想の1行・実口座の行・注目・注文カード・資金別の表・保有中の一覧・手法の成績…たたんで1行…開け閉めは覚えておく」
+        self.assertIn("const area=capArea();if(!area)return;", seg)
         self.assertNotIn('line.insertAdjacentElement("afterend",el)', seg)
+        for x in ("function capArea()", "cockpitCapOpenV1", "body.hidden=!capOpen", "資金別・保有中・手法の成績", "押すと開く",
+                  "pane.appendChild(area)", 'body.prepend(el)', "body.appendChild(sec)"):
+            self.assertIn(x, HTML)
+        self.assertNotIn('el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement', HTML)
         self.assertIn("<table data-keep-table><tr><th>資金別（仮想・メル）</th>", HTML)   # the card adapter must leave this table as a table
 
     def test_skipped_signals_keep_the_reason(self):
