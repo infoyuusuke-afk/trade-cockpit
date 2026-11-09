@@ -134,7 +134,8 @@ class Sizing(unittest.TestCase):
         for x in ("function capArea()", "cockpitCapOpenV1", "body.hidden=!capOpen", "資金別・保有中・手法の成績", "押すと開く",
                   "pane.appendChild(area)", 'body.prepend(el)', "body.appendChild(sec)"):
             self.assertIn(x, HTML)
-        self.assertNotIn('el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement', HTML)
+        # 「『メルの保有中 5銘柄…』の1行だけは、まだどのタブにも残る作り　OK」: that line stays under the 仮想 line
+        self.assertIn('el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement("afterend",el);', HTML)
         self.assertIn("<table data-keep-table><tr><th>資金別（仮想・メル）</th>", HTML)   # the card adapter must leave this table as a table
 
     def test_skipped_signals_keep_the_reason(self):

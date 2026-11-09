@@ -3937,13 +3937,11 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     head.innerHTML='<span class="cap-arrow">'+(capOpen?'▼':'▶')+'</span><b>資金別・保有中・手法の成績</b>　<span class="g">今日</span> 300万 '+f(pick("300万"))+'　500万 '+f(pick("500万"))+
       '<span class="g cap-hint">'+(capOpen?'押すとたたむ':'押すと開く')+'</span>';
   }
+  // OWNER 2026-11-09 「メルの保有中 5銘柄…」の1行だけは、まだどのタブにも残る作り　OK」: the one-line holdings row stays under the 仮想 line
   function renderHeld(){
-    const area=capArea(),v=window.cockpitVirtualDay;if(!area||!v)return;
-    const body=area.querySelector("#cap-body");
+    const line=document.getElementById("virt-day-line"),v=window.cockpitVirtualDay;if(!line||!v)return;
     let el=document.getElementById("virt-held-line");
-    if(!el){el=document.createElement("div");el.id="virt-held-line";el.className="vd-held";}
-    const tbl=document.getElementById("cap-compare");
-    if(tbl&&tbl.parentElement===body){if(tbl.nextElementSibling!==el)tbl.insertAdjacentElement("afterend",el);}else if(el.parentElement!==body)body.appendChild(el);
+    if(!el){el=document.createElement("div");el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement("afterend",el);}
     const held=Array.isArray(v.held)?v.held:[];
     if(!held.length){el.innerHTML='<span class="g">メルの保有中：なし</span>';return;}
     // the same stock held twice (two signals) is one entry with ×2
