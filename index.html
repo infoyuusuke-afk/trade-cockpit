@@ -3879,6 +3879,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cap-skip-row{display:grid;grid-template-columns:3.2em minmax(0,1fr) 3.4em minmax(0,2fr);gap:6px;border-top:1px solid var(--cc-border);padding:2px 0;font-size:11.5px}
 .cap-skip-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cap-skip-row span:last-child{white-space:normal}
 .cap-held-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-grid{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr 1fr 1fr .8fr .9fr;gap:10px;align-items:center;padding:5px 0;border-top:1px solid var(--cc-border);font-size:12.5px}
+.mc-head{color:var(--cc-text-secondary);font-size:11px;border-top:0}.mc-grid small{font-variant-numeric:tabular-nums}
+.mc-bar{position:relative;height:10px;border-radius:5px;background:#2a2e39;overflow:hidden;margin-bottom:2px}.mc-bar i{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
+.mc-bar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:#d1d4dc;z-index:1}
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
@@ -3902,7 +3906,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       soon=p.earnings_soon&&p.earnings_soon.items?p.earnings_soon:null;
     }catch(_){cap=null;soon=null;}
     window.cockpitEarningsSoon=soon;
-    renderTable();renderJournal();renderSplit();
+    renderTable();renderJournal();renderMethods();renderSplit();
   }
   // 注文タブ：仮想の枠の下に、保有中の行と資金別の表
   function renderHeld(){
@@ -3990,6 +3994,30 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<div class="cap-chart"><h4>デイ　9:00〜15:30　今日 '+yen(s.rows.day.done+s.rows.day.open)+'（確定 '+yen(s.rows.day.done)+'）</h4>'+legend+chartSvg(s.day_curve||[],"09:00","15:30")+'</div>'+
       '<div class="cap-chart"><h4>オーバーナイト　前の日の15:25に入り、今日14:00に決済　'+yen(s.rows.overnight.done+s.rows.overnight.open)+'（'+s.rows.overnight.n+'銘柄）</h4>'+legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
       '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。</p></div>';
+  }
+  // OWNER 2026-11-09 「手法の勝率など結果については、グラフで比較、一目でわかる形にしてほしい」: one row per method, bars side by side
+  // (勝率 with the 50% line, 1回の平均 around 0, PF with the 1.0 line, 回数), from the days before today; today's 100-share result next to it.
+  function renderMethods(){
+    const pane=document.querySelector('.tab-pane[data-pane="ai-journal"]'),capSec=document.getElementById("cap-journal");if(!pane||!capSec)return;
+    let sec=document.getElementById("method-compare");
+    if(!sec){sec=document.createElement("section");sec.id="method-compare";sec.className="card wide";capSec.after(sec);}
+    const r=cap&&cap.rule_ev||{},e=r.ev||{},n=r.n||{},w=r.win||{},pf=r.pf||{},td=cap&&cap.methods_today||{};
+    const names=[["R2","手法B","弱い日の朝の空売り"],["R5","手法D","下に窓の日の戻り売り"],["R1","手法A","朝の買い"],["R4","手法C","上げている銘柄の押し目買い"],["ON_LONG","持ち越し 買い",""],["ON_SHORT","持ち越し 空売り",""]];
+    const rows=names.filter(([k])=>e[k]!=null);
+    if(!rows.length){sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>手法の成績くらべ</h2></div><p class="g">まだ読めません</p>';return;}
+    const maxAbs=Math.max(0.1,...rows.map(([k])=>Math.abs(e[k]))),maxPf=Math.max(2,...rows.map(([k])=>Number(pf[k])||0)),maxN=Math.max(1,...rows.map(([k])=>n[k]||0));
+    const bar=(pct,c,mark)=>'<div class="mc-bar">'+(mark!=null?'<em style="left:'+mark+'%"></em>':'')+'<i style="width:'+Math.max(0,Math.min(100,pct))+'%;background:'+c+'"></i></div>';
+    const evBar=v=>{const half=Math.min(50,Math.abs(v)/maxAbs*50);return '<div class="mc-bar mc-mid"><em style="left:50%"></em><i style="'+(v>=0?'left:50%':'left:'+(50-half)+'%')+';width:'+half+'%;background:'+(v>=0?'#35e2ae':'#ff5a5f')+'"></i></div>';};
+    sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>手法の成績くらべ（メル・仮想）</h2><p>前の日までの記録（手法A〜Dは10/22から、持ち越しは記録の始めから。1回の平均は費用込み。今朝'+esc(r.made_at||"")+'に固定）。右端は今日の分（100株換算）。棒が長いほど良い。PFは1より大きければ勝ち越し。</p></div>'+
+      '<div class="mc-grid mc-head"><span>手法</span><span>勝率（線＝50%）</span><span>1回の平均（中央＝0）</span><span>PF（線＝1）</span><span>回数</span><span>今日</span></div>'+
+      rows.map(([k,name,desc])=>{const ev=e[k],wr=Number(w[k]),p=Number(pf[k]),t=td[k];
+        return '<div class="mc-grid"><span><b>'+esc(name)+'</b><br><small class="g">'+esc(desc)+'</small></span>'+
+          '<span>'+bar(wr,wr>=50?"#35e2ae":"#ff5a5f",50)+'<small>'+(Number.isFinite(wr)?wr.toFixed(1)+'%':'—')+'</small></span>'+
+          '<span>'+evBar(ev)+'<small class="'+(ev>0?"up":"dn")+'">'+(ev>0?"+":"")+Number(ev).toFixed(3)+'%</small></span>'+
+          '<span>'+bar(Number.isFinite(p)?p/maxPf*100:0,p>=1?"#35e2ae":"#ff5a5f",100/maxPf)+'<small>'+(Number.isFinite(p)?p.toFixed(2):'—')+'</small></span>'+
+          '<span>'+bar((n[k]||0)/maxN*100,"#5aa9ff")+'<small>'+(n[k]||0)+'回</small></span>'+
+          '<span><small>'+(t?t.closed+'回・勝ち'+t.wins+'<br><b class="'+cls(t.yen)+'">'+yen(t.yen)+'</b>':'今日はなし')+'</small></span></div>';}).join("")+
+      '<p class="g" style="font-size:11px">研究の記録で、売買の勧めではありません。回数が少ない手法は、たまたまの差が大きいです。</p>';
   }
   // オーバーナイトのタブ：決算またぎの成績を別に
   function renderSplit(){

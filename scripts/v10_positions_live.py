@@ -712,13 +712,15 @@ def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
             return got
     except (OSError, ValueError):
         pass
-    out = {"date": today, "made_at": datetime.now(JST).strftime("%H:%M"), "ev": {}, "n": {}}
+    out = {"date": today, "made_at": datetime.now(JST).strftime("%H:%M"), "ev": {}, "n": {}, "win": {}, "pf": {}}
     try:
         rs = json.loads((Path(runtime) / "rule_shadow_v1.json").read_text(encoding="utf-8-sig"))
         if rs.get("real_submit_allowed") is False and today not in (rs.get("days") or []):
             for k, v in (rs.get("forward") or {}).items():
                 if k in ("R1", "R2", "R4", "R5") and v.get("ev_pct") is not None:
                     out["ev"][k], out["n"][k] = float(v["ev_pct"]), int(v.get("n") or 0)
+                    out["win"][k] = v.get("win_rate_pct")
+                    out["pf"][k] = v.get("pf")
     except (OSError, ValueError, TypeError):
         pass
     acc = {"ON_LONG": [], "ON_SHORT": []}
@@ -731,7 +733,11 @@ def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
             continue
     for k, xs in acc.items():
         if xs:
-            out["ev"][k], out["n"][k] = round(sum(xs) / len(xs) - ON_RATE_DAY[k], 4), len(xs)
+            net = [x - ON_RATE_DAY[k] for x in xs]
+            out["ev"][k], out["n"][k] = round(sum(net) / len(net), 4), len(net)
+            out["win"][k] = round(sum(1 for x in net if x > 0) / len(net) * 100, 1)
+            gain, loss = sum(x for x in net if x > 0), -sum(x for x in net if x < 0)
+            out["pf"][k] = round(gain / loss, 2) if loss > 0 else None
     if day_dir.is_dir():
         tmp = f.with_name(f.name + ".tmp")
         tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
@@ -769,12 +775,24 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
                           total_pct=None if capital is None else round(total_done / capital * 100, 2),
                           day_curve=curve(taken, ("day",), points, now_hm),
                           overnight_curve=curve(taken, ("overnight",), [p for p in points if p <= EXIT_AT], now_hm)))
+    # OWNER 2026-11-09 「手法の勝率など結果については、グラフで比較、一目でわかる形にしてほしい」: today's per-method figures (100 shares)
+    today_by = {}
+    base = size(trades, None, now_hm)["_taken"]
+    for t in base:
+        y = _closed_yen(t, t["shares"]) if t["out"] is not None and t["out"] <= now_hm else None
+        r = today_by.setdefault(t.get("rule") or "?", {"n": 0, "closed": 0, "wins": 0, "yen": 0.0})
+        r["n"] += 1
+        if y is not None:
+            r["closed"] += 1
+            r["wins"] += y > 0
+            r["yen"] += y
+    today_by = {k: dict(v, yen=round(v["yen"])) for k, v in today_by.items()}
     if day_dir.is_dir():
         tmp = day_dir / (DAY_FILE + ".tmp")
         tmp.write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
         tmp.replace(day_dir / DAY_FILE)
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
-            "rule_ev": ev_doc or {},
+            "rule_ev": ev_doc or {}, "methods_today": today_by,
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 

@@ -87,6 +87,18 @@ class Sizing(unittest.TestCase):
         self.assertIn('row("先着順なら（参考）"', HTML)
         self.assertIn("優先に使った手法の成績（前の日まで・1回の平均・費用込み）", HTML)
 
+    def test_method_compare_chart(self):
+        # OWNER 2026-11-09 「手法の勝率など結果については、グラフで比較、一目でわかる形にしてほしい」
+        for x in ("function renderMethods()", "手法の成績くらべ（メル・仮想）", "勝率（線＝50%）", "1回の平均（中央＝0）", "PF（線＝1）", "cap.methods_today"):
+            self.assertIn(x, HTML)
+        with tempfile.TemporaryDirectory() as d:
+            rec = Path(d) / "records"
+            (rec / "2026-11-09").mkdir(parents=True)
+            tr = pos.trades_of([dict(day_trade("A.T", 1000, "09:30", "10:00", 1.0), rule="R4"),
+                                dict(day_trade("B.T", 1000, "09:31", "10:00", -1.0), rule="R4")], [], [], "2026-11-09", {}, "15:30")
+            v = pos.capital_view(rec, rec / "2026-11-09", "2026-11-09", "15:30", tr)
+            self.assertEqual(v["methods_today"]["R4"], {"n": 2, "closed": 2, "wins": 1, "yen": 0})
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
