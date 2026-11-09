@@ -146,6 +146,14 @@ class EarningsMarks(unittest.TestCase):
 class Screen(unittest.TestCase):
     def test_lamp_follows_the_pc(self):
         self.assertIn('badge.textContent=live?"V10 / LIVE":phase==="down"?"V10 / 停止":"V10 / 時間外"', HTML)
+        self.assertIn("window.cockpitLampState={live,phase,at:d.updated_at||\"\"};window.cockpitLampRefresh?.();", HTML)
+
+    def test_yellow_when_public_analysis_is_old_and_tooltip_names_it(self):
+        # OWNER 2026-11-09 「状態のランプに黄も入れて…マウスを乗せたら何が古いかを文字で出す」
+        self.assertIn('badge.classList.add(live?(warn?"status-warn":"status-ok")', HTML)
+        self.assertIn('"公開の分析データが古い：\\n"+f.lines.join("\\n")', HTML)
+        self.assertIn("files.filter(([,x])=>x.stale||x.ok===false)", HTML)
+        self.assertIn("setInterval(loadFeed,60000)", HTML)
         self.assertIn(".cockpit-brand small.status-ok{", HTML)
         self.assertIn("if(!window.cockpitLampSet){", HTML)
 
