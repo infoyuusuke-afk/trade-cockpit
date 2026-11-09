@@ -667,8 +667,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 // only the visual order changes (CSS order on the existing buttons, a line break between the rows); the buttons, their tabs and the HTML
 // order stay as they are. Tabs added later by other scripts are placed when they appear; anything not listed goes at the end of row 2.
 (()=>{
-  const ROW1=["scalp","order","board","ms2-live","pts","overnight","pre-next","analysts"];
-  const ROW2=["kioxia-calendar","events","focus-owner","swing","value","ai-journal","brain","control"];
+  // OWNER 2026-11-09 later 「FOCUSは場中に使うので1段目の板の右に移して」
+  const ROW1=["scalp","order","board","focus-owner","ms2-live","pts","overnight","pre-next","analysts"];
+  const ROW2=["kioxia-calendar","events","swing","value","ai-journal","brain","control"];
   function arrange(){
     const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
     nav.classList.add("two-rows");

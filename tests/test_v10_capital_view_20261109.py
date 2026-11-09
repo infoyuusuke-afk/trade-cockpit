@@ -140,9 +140,10 @@ class Sizing(unittest.TestCase):
 
     def test_tabs_in_two_rows(self):
         # OWNER 2026-11-09 「上のタブを2段にして…1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・テーマ・アナリスト、
+        # (OWNER 2026-11-09 later: 「FOCUSは場中に使うので1段目の板の右に移して」)
         # 2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」
-        self.assertIn('const ROW1=["scalp","order","board","ms2-live","pts","overnight","pre-next","analysts"];', HTML)
-        self.assertIn('const ROW2=["kioxia-calendar","events","focus-owner","swing","value","ai-journal","brain","control"];', HTML)
+        self.assertIn('const ROW1=["scalp","order","board","focus-owner","ms2-live","pts","overnight","pre-next","analysts"];', HTML)
+        self.assertIn('const ROW2=["kioxia-calendar","events","swing","value","ai-journal","brain","control"];', HTML)
         self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
         self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)
 
