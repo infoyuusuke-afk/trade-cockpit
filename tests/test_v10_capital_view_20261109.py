@@ -202,6 +202,13 @@ class Screen(unittest.TestCase):
         self.assertNotIn("t[0].pts_date", seg)
         self.assertIn('"いつの夜か未確認"', seg)
 
+    def test_collector_ir_rows_carry_the_pts_date(self):
+        # OWNER 2026-11-09 「IRの行にPTSの日付を足して」: the IR row takes the matched PTS row's pts_date (no other field changes)
+        src = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        i = src.index("$irPtsCandidates += [pscustomobject]@{")
+        row = src[i:src.index(chr(10), i)]
+        self.assertIn("judgement=$judgement;pts_date=$ptsMatch.pts_date}", row)
+
     def test_capital_table_held_line_charts_and_earnings_tag(self):
         for s in ('id="cap-compare"', "virt-held-line", "cap-journal", "chartSvg(s.day_curve", "chartSvg(s.overnight_curve",
                   'class="earn-tag"', "hold-earn-split", "window.cockpitEarningsSoon=soon"):

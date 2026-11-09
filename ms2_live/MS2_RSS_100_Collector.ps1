@@ -4036,7 +4036,7 @@ try {
             if([double]$ptsMatch.turnover -lt 10000000 -or [double]$ptsMatch.spread_pct -gt 1.5 -or [double]$ptsMatch.gap_pct -lt 1 -or [double]$ptsMatch.bias_score -le 0){continue}
             $total=Limit (([double]$assessment.score*1.4)+[double]$ptsMatch.expectation_score) 0 100
             $judgement=if([double]$ptsMatch.gap_pct -ge 15){"急騰過熱・翌朝飛び乗り禁止"}elseif([double]$ptsMatch.gap_pct -ge 7){"高寄り警戒・押し目確認"}else{"公式材料＋PTS反応"}
-            $irPtsCandidates += [pscustomobject]@{code=$disclosure.code;ticker=$ptsMatch.ticker;name=$ptsMatch.name;disclosure_time=$disclosure.time;material_label=$assessment.label;material_score=$assessment.score;title=$disclosure.title;official_url=$disclosure.url;pts_price=$ptsMatch.price;tse_close=$ptsMatch.tse_close;gap_pct=$ptsMatch.gap_pct;turnover=$ptsMatch.turnover;spread_pct=$ptsMatch.spread_pct;under_ratio=$ptsMatch.under_ratio;pts_score=$ptsMatch.expectation_score;total_score=[Math]::Round($total);judgement=$judgement}
+            $irPtsCandidates += [pscustomobject]@{code=$disclosure.code;ticker=$ptsMatch.ticker;name=$ptsMatch.name;disclosure_time=$disclosure.time;material_label=$assessment.label;material_score=$assessment.score;title=$disclosure.title;official_url=$disclosure.url;pts_price=$ptsMatch.price;tse_close=$ptsMatch.tse_close;gap_pct=$ptsMatch.gap_pct;turnover=$ptsMatch.turnover;spread_pct=$ptsMatch.spread_pct;under_ratio=$ptsMatch.under_ratio;pts_score=$ptsMatch.expectation_score;total_score=[Math]::Round($total);judgement=$judgement;pts_date=$ptsMatch.pts_date}   # OWNER 2026-11-09 「IRの行にPTSの日付を足して」
         }
         $irPtsTop5=@($irPtsCandidates|Sort-Object total_score -Descending|Select-Object -First 5)
         if($snapshotDue -and $inPts){
