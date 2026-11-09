@@ -177,6 +177,9 @@ class Sizing(unittest.TestCase):
         self.assertIn("function indent(nav){", HTML)
         self.assertIn("const d=first.getBoundingClientRect().left-second.getBoundingClientRect().left;", HTML)
         self.assertIn("setInterval(()=>indent(nav),1000)", HTML)
+        # OWNER 2026-11-10 card かぶりを除く: FOCUS publishes what it shows; the トレード中 TOP5 (自動) leaves those out
+        self.assertIn("window.cockpitFocusTickers=pins.concat(", HTML)
+        self.assertIn("const inLive=new Set(live.map(x=>x.ticker).filter(t=>!inFocus.has(t)));", HTML)
 
     def test_focus_analyst_slots(self):
         # OWNER 2026-11-09 「FOCUSの空いた枠に、8:50と12:20にアナリストの今日の8銘柄から自信の高い順で…自動で入れて…注文はしない」
