@@ -12,6 +12,8 @@ import math
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sys
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
@@ -64,6 +66,15 @@ def phase(buy_change_pct: float, sell_change_pct: float) -> tuple[str, str, str]
 
 
 def main() -> None:
+    """A failed read (HTTP 403, network error, timeout) or a page that fails validation keeps the previous
+    credit_supply.json and returns normally, so the rest of the data update still runs."""
+    try:
+        collect()
+    except (URLError, TimeoutError, OSError, ValueError) as exc:
+        print(f"stockscope_credit: skipped, previous file kept ({type(exc).__name__}: {exc})", file=sys.stderr)
+
+
+def collect() -> None:
     request = Request(URL, headers={"User-Agent": "Mozilla/5.0 AI-Trade-Cockpit/1.0"})
     with urlopen(request, timeout=30) as response:
         html = response.read().decode(response.headers.get_content_charset() or "utf-8", errors="replace")
