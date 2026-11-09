@@ -717,7 +717,7 @@ def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
         rs = json.loads((Path(runtime) / "rule_shadow_v1.json").read_text(encoding="utf-8-sig"))
         if rs.get("real_submit_allowed") is False and today not in (rs.get("days") or []):
             for k, v in (rs.get("forward") or {}).items():
-                if k in ("R1", "R2", "R4", "R5") and v.get("ev_pct") is not None:
+                if k in ("R1", "R2", "R4", "R5", "BRAIN") and v.get("ev_pct") is not None:
                     out["ev"][k], out["n"][k] = float(v["ev_pct"]), int(v.get("n") or 0)
                     out["win"][k] = v.get("win_rate_pct")
                     out["pf"][k] = v.get("pf")
@@ -743,6 +743,40 @@ def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
         tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
         tmp.replace(f)
     return out
+
+
+def method_days(records: Path, runtime: Path, today: str) -> dict:
+    """{method: [[day, yen]]} for the days before today, 100 shares, from the records as they are:
+    records/<day>/owner_rules_virtual.json (closed rule trades, ①②④⑤) and overnight_hold_history.csv 検証済み rows
+    (return_close_pct x reference price x 100, by evaluation day). The Brain has no per-day record, so it has no line."""
+    by = {}
+    try:
+        days = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
+    except OSError:
+        days = []
+    for d in days:
+        try:
+            if datetime.strptime(d, "%Y-%m-%d").weekday() >= 5:
+                continue
+            v = json.loads((Path(records) / d / OWNER_RULES_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for t in v.get("trades") or []:
+            if t.get("status") == "CLOSED" and t.get("yen") is not None and t.get("rule"):
+                by.setdefault(t["rule"], {}).setdefault(d, 0)
+                by[t["rule"]][d] += t["yen"]
+    for r in _rows(Path(runtime) / HISTORY_FILE):
+        d = str(r.get("evaluation_date") or "")
+        if r.get("status") != "検証済み" or not d or d >= today:
+            continue
+        try:
+            y = float(r.get("return_close_pct")) / 100 * float(r.get("reference_price_1525")) * 100
+        except (TypeError, ValueError):
+            continue
+        k = "ON_LONG" if r.get("side") == "LONG" else "ON_SHORT"
+        by.setdefault(k, {}).setdefault(d, 0)
+        by[k][d] += y
+    return {k: [[d, round(y)] for d, y in sorted(v.items())] for k, v in by.items()}
 
 
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
@@ -780,19 +814,25 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
     base = size(trades, None, now_hm)["_taken"]
     for t in base:
         y = _closed_yen(t, t["shares"]) if t["out"] is not None and t["out"] <= now_hm else None
-        r = today_by.setdefault(t.get("rule") or "?", {"n": 0, "closed": 0, "wins": 0, "yen": 0.0})
+        r = today_by.setdefault(t.get("rule") or "?", {"n": 0, "closed": 0, "wins": 0, "yen": 0.0, "pcts": []})
         r["n"] += 1
         if y is not None:
             r["closed"] += 1
             r["wins"] += y > 0
             r["yen"] += y
-    today_by = {k: dict(v, yen=round(v["yen"])) for k, v in today_by.items()}
+            r["pcts"].append(y / (t["fill"] * t["shares"]) * 100)
+    def _fig(v):
+        xs = v.pop("pcts")
+        gain, loss = sum(x for x in xs if x > 0), -sum(x for x in xs if x < 0)
+        return dict(v, yen=round(v["yen"]), win=round(v["wins"] / len(xs) * 100, 1) if xs else None,
+                    mean=round(sum(xs) / len(xs), 4) if xs else None, pf=round(gain / loss, 2) if loss > 0 else None)
+    today_by = {k: _fig(v) for k, v in today_by.items()}
     if day_dir.is_dir():
         tmp = day_dir / (DAY_FILE + ".tmp")
         tmp.write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
         tmp.replace(day_dir / DAY_FILE)
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
-            "rule_ev": ev_doc or {}, "methods_today": today_by,
+            "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 

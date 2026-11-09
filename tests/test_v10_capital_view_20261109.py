@@ -78,7 +78,9 @@ class Sizing(unittest.TestCase):
                                                "2026-11-05,LONG,検証済み,2026-11-06,1.0\n2026-11-06,LONG,検証済み,2026-11-09,-5.0\n", encoding="utf-8")
             e = pos.rule_ev(rt, rt / "records" / "2026-11-09", "2026-11-09")
             self.assertEqual(e["ev"]["R2"], 0.35)
-            self.assertNotIn("BRAIN", e["ev"])
+            # OWNER 2026-11-09 「手法A〜D・ブレイン…を並べる」: the Brain's figure is kept for the chart only; no sized trade has rule BRAIN
+            self.assertEqual(e["ev"]["BRAIN"], 1.0)
+            self.assertFalse(any(t.get("rule") == "BRAIN" for t in pos.trades_of([dict(day_trade("A.T", 1000, "09:30"), rule="R4")], [], [], "2026-11-09", {}, "10:00")))
             self.assertAlmostEqual(e["ev"]["ON_LONG"], round(1.0 - pos.ON_RATE_DAY["ON_LONG"], 4))   # today's evaluation is not used
             # a later rebuild that includes today does not change today's figures
             (rt / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-09"],
@@ -89,7 +91,9 @@ class Sizing(unittest.TestCase):
 
     def test_method_compare_chart(self):
         # OWNER 2026-11-09 「手法の勝率など結果については、グラフで比較、一目でわかる形にしてほしい」
-        for x in ("function renderMethods()", "手法の成績くらべ（メル・仮想）", "勝率（線＝50%）", "1回の平均（中央＝0）", "PF（線＝1）", "cap.methods_today"):
+        # OWNER 2026-11-09 「注文タブの資金別の下に『手法の成績』…ブレイン…通算損益の線グラフ。今日と通算をボタンで切り替え」
+        for x in ("function renderMethods()", "手法の成績（メル・仮想）", "勝率（線＝50%）", "1回の平均（中央＝0）", "PF（線＝1.0）", "cap.methods_today",
+                  'document.getElementById("cap-compare")', 'data-mview="today"', 'data-mview="total"', '["BRAIN","ブレイン"', "lineChart(series)", "cap.method_days"):
             self.assertIn(x, HTML)
         with tempfile.TemporaryDirectory() as d:
             rec = Path(d) / "records"
@@ -97,7 +101,9 @@ class Sizing(unittest.TestCase):
             tr = pos.trades_of([dict(day_trade("A.T", 1000, "09:30", "10:00", 1.0), rule="R4"),
                                 dict(day_trade("B.T", 1000, "09:31", "10:00", -1.0), rule="R4")], [], [], "2026-11-09", {}, "15:30")
             v = pos.capital_view(rec, rec / "2026-11-09", "2026-11-09", "15:30", tr)
-            self.assertEqual(v["methods_today"]["R4"], {"n": 2, "closed": 2, "wins": 1, "yen": 0})
+            self.assertEqual({k: v["methods_today"]["R4"][k] for k in ("n", "closed", "wins", "yen", "win", "pf")},
+                             {"n": 2, "closed": 2, "wins": 1, "yen": 0, "win": 50.0, "pf": 1.0})
+            self.assertEqual(v["method_days"], {})
 
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
