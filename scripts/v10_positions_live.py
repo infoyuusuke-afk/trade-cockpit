@@ -700,6 +700,9 @@ RULE_EV_FILE = "capital_rule_ev_v1.json"
 ON_RATE_DAY = {"ON_LONG": LONG_RATE / 365 * 100, "ON_SHORT": SHORT_RATE / 365 * 100}
 
 
+DAY_RULE_KEYS = ("R1", "R2", "R4", "R5", "BRAIN")
+
+
 def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
     """{rule: mean % after cost} from the records before today, fixed in records/<day>/capital_rule_ev_v1.json at the first
     pass of the day (so a figure built after today's close is never used for today). Day rules: rule_shadow_v1.json forward
@@ -717,12 +720,35 @@ def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
         rs = json.loads((Path(runtime) / "rule_shadow_v1.json").read_text(encoding="utf-8-sig"))
         if rs.get("real_submit_allowed") is False and today not in (rs.get("days") or []):
             for k, v in (rs.get("forward") or {}).items():
-                if k in ("R1", "R2", "R4", "R5", "BRAIN") and v.get("ev_pct") is not None:
+                if k in DAY_RULE_KEYS and v.get("ev_pct") is not None:
                     out["ev"][k], out["n"][k] = float(v["ev_pct"]), int(v.get("n") or 0)
                     out["win"][k] = v.get("win_rate_pct")
                     out["pf"][k] = v.get("pf")
     except (OSError, ValueError, TypeError):
         pass
+    # OWNER 2026-11-10 「すべてなおして」(資金別の「ルールの成績」が、初回の計算が15:35より後の日は空になる件): when the shadow file
+    # already holds today (first pass after the close), the day rules come from the latest earlier day's fixed file — built
+    # before that day, so nothing of today is used. The overnight part below is unchanged.
+    if not any(k in out["ev"] for k in DAY_RULE_KEYS):
+        try:
+            prev = sorted(d for d in Path(day_dir).parent.iterdir()
+                          if d.is_dir() and d.name < today and (d / RULE_EV_FILE).is_file())
+        except OSError:
+            prev = []
+        for d in reversed(prev[-10:]):
+            try:
+                old = json.loads((d / RULE_EV_FILE).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            keys = [k for k in DAY_RULE_KEYS if k in (old.get("ev") or {})]
+            if not keys:
+                continue
+            for k in keys:
+                for part in ("ev", "n", "win", "pf"):
+                    if k in (old.get(part) or {}):
+                        out[part][k] = old[part][k]
+            out["day_rules_from"] = d.name
+            break
     acc = {"ON_LONG": [], "ON_SHORT": []}
     for r in _rows(Path(runtime) / HISTORY_FILE):
         if r.get("status") != "検証済み" or not str(r.get("evaluation_date") or "") or str(r.get("evaluation_date")) >= today:
@@ -872,8 +898,11 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
 
 
 # TSE holidays that fall on weekdays (only the ones known here; extend when a year is added)
+# OWNER 2026-11-10 「すべてなおして」: the rest of 2027 from the Cabinet Office list (syukujitsu.csv, weekday ones) + the
+# exchange's year-end and new-year closures (12/31, 1/1–1/3).
 EXCHANGE_HOLIDAYS = {"2026-11-23", "2026-12-31", "2027-01-01", "2027-01-11", "2027-02-11", "2027-02-23",
-                     "2027-04-29", "2027-05-03", "2027-05-04", "2027-05-05"}
+                     "2027-03-22", "2027-04-29", "2027-05-03", "2027-05-04", "2027-05-05", "2027-07-19", "2027-08-11",
+                     "2027-09-20", "2027-09-23", "2027-10-11", "2027-11-03", "2027-11-23", "2027-12-31", "2028-01-03"}
 
 
 def _next_weekday(d: date) -> date:

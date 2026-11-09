@@ -86,8 +86,34 @@ class Sizing(unittest.TestCase):
             (rt / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-09"],
                 "forward": {"R2": {"ev_pct": -9, "n": 1}}}), encoding="utf-8")
             self.assertEqual(pos.rule_ev(rt, rt / "records" / "2026-11-09", "2026-11-09")["ev"]["R2"], 0.35)
+            # OWNER 2026-11-10 「すべてなおして」: a first pass after the close (the shadow file already holds today) takes the day
+            # rules from the latest earlier day's fixed file, never from today's shadow figures
+            (rt / "records" / "2026-11-10").mkdir()
+            (rt / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-10"],
+                "forward": {"R2": {"ev_pct": -9, "n": 1}}}), encoding="utf-8")
+            e2 = pos.rule_ev(rt, rt / "records" / "2026-11-10", "2026-11-10")
+            self.assertEqual((e2["ev"]["R2"], e2["n"]["R2"], e2["day_rules_from"]), (0.35, 119, "2026-11-09"))
+            self.assertNotIn(-9, e2["ev"].values())
+            # no earlier file: stays empty (unknown = not positive)
+            with tempfile.TemporaryDirectory() as d2:
+                rt2 = Path(d2)
+                (rt2 / "records" / "2026-11-10").mkdir(parents=True)
+                (rt2 / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-10"],
+                    "forward": {"R2": {"ev_pct": -9, "n": 1}}}), encoding="utf-8")
+                e3 = pos.rule_ev(rt2, rt2 / "records" / "2026-11-10", "2026-11-10")
+                self.assertNotIn("R2", e3["ev"])
+                self.assertNotIn("day_rules_from", e3)
         self.assertIn('row("先着順なら（参考）"', HTML)
         self.assertIn("優先に使った手法の成績（前の日まで・1回の平均・費用込み）", HTML)
+
+    def test_holidays_2027(self):
+        # OWNER 2026-11-10 「すべてなおして」: the rest of 2027 (Cabinet Office list, weekday ones) and the exchange's closures
+        for d in ("2027-03-22", "2027-07-19", "2027-08-11", "2027-09-20", "2027-09-23", "2027-10-11", "2027-11-03", "2027-11-23",
+                  "2027-12-31", "2028-01-03"):
+            self.assertIn(d, pos.EXCHANGE_HOLIDAYS)
+        from datetime import date
+        self.assertEqual(pos._next_weekday(date(2027, 3, 19)).isoformat(), "2027-03-23")
+        self.assertEqual(pos._next_weekday(date(2027, 9, 17)).isoformat(), "2027-09-21")
 
     def test_method_compare_chart(self):
         # OWNER 2026-11-09 「手法の勝率など結果については、グラフで比較、一目でわかる形にしてほしい」
