@@ -4336,7 +4336,16 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const late=jw>0&&jw<6&&jm>=495&&String(w.generated_on||"")!==jd;
     const al=alertsOf(w,jd);markTab(al.length>0);
     const warn=al.length?'<div class="an-none" role="alert" style="color:#fff;border:2px solid #f23645;border-radius:8px;padding:10px 12px;background:#7a1620;margin:6px 0"><b>注意（'+esc(w.as_of)+'の終値・今朝8:05の判定）</b><ul style="margin:6px 0 4px 1.2em;padding:0">'+al.map(a=>'<li>SOXが'+esc(a.text)+'</li>').join("")+'</ul><span>予測ではありません。2000年の形をなぞった目安です。売買の判断はご自身でお願いします。</span></div>':'';
-    el.innerHTML='<h2>SOXシナリオ予測チャート</h2>'+warn+(late?'<p class="an-none" style="color:#F2C14E"><b>今朝の更新がありません。</b>下は前回の内容です。</p>':'')+'<p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
+    // OWNER 2026-11-10 「B 場中はナスダック100の先物で目安を出す」: the PC's SOX gauge from Nasdaq-100 futures (about 10 minutes late), today's
+    // file only; yellow when it is within 2 % below the zone, red inside it. Not SOX itself. Display only (the voice is the PC's).
+    let px=null;try{const r=await fetch("/sox_proxy.json?t="+Date.now(),{cache:"no-store"});px=r.ok?await r.json():null;}catch(_){px=null;}
+    const pxOk=!!(px&&px.schema_version==="100b-v10-sox-proxy-v1"&&px.real_submit_allowed===false&&px.trade_instruction===false&&px.date===jd&&
+      [px.estimate,px.zone_from,px.zone_to,px.nq_change_pct,px.beta,px.err_pct].every(num));
+    const pxCol=pxOk&&px.state==="IN"?"#f23645":pxOk&&px.state==="NEAR"?"#F2C14E":"#3a3f47";
+    const proxy=pxOk?'<div class="an-none" id="sox-proxy" style="border:2px solid '+pxCol+';border-radius:8px;padding:8px 12px;margin:6px 0"><b>場中の目安 '+yen(px.estimate)+'</b>（'+
+      (px.state==="IN"?'<b style="color:#f23645">注意ゾーンの中</b>':px.state==="ABOVE"?'注意ゾーンより上':'注意ゾーン '+yen(px.zone_from)+'〜'+yen(px.zone_to)+' まで '+(px.to_zone_pct>=0?'+':'')+esc(Number(px.to_zone_pct).toFixed(1))+'%')+
+      '）<br><span style="color:#9ba3af;font-size:12px">ナスダック100先物 '+(px.nq_change_pct>=0?'+':'')+esc(Number(px.nq_change_pct).toFixed(2))+'%（'+esc(px.nq_time)+'の値・約10分遅れ）×倍率'+esc(Number(px.beta).toFixed(2))+'で計算。1日の外れ方は ±'+esc(Number(px.err_pct).toFixed(1))+'%くらい。SOXそのものではありません（更新 '+esc(px.made_at)+'）</span></div>':'';
+    el.innerHTML='<h2>SOXシナリオ予測チャート</h2>'+warn+proxy+(late?'<p class="an-none" style="color:#F2C14E"><b>今朝の更新がありません。</b>下は前回の内容です。</p>':'')+'<p class="an-none"><b>'+esc(w.as_of)+'</b> 終値 '+yen(w.close)+'／シナリオ：<b>'+esc(w.scenario)+'</b>／最高値から '+esc(w.dd)+'%／段階 '+esc(w.state)+'（毎朝8:05に更新。最後の更新 '+esc(w.generated_at)+'）</p>'+chart(w)+
       '<p class="an-none">青が実際、橙の点線が2000年の動きをなぞった場合の形です。起きると決まったものではありません。似た例は1回だけです。</p>'+
       '<table class="an-week" data-keep-table><thead><tr><th>段階</th><th>2000年では</th><th>SOXの目安</th><th>日経の目安</th></tr></thead><tbody>'+steps+'</tbody></table>'+
       '<p class="an-none">日経の目安はSOXの半分動く計算です。研究の記録で、売買の勧めではありません。注文にはつながりません。</p>';

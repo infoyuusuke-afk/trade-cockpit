@@ -49,7 +49,25 @@ class SoxScenarioTab(unittest.TestCase):
         block = block[:block.index("</script>")]
         for word in ("speak", "POST", "/order", "Speech"):
             self.assertNotIn(word, block)
-        self.assertEqual(block.count("fetch("), 1)   # it only reads its own file
+        # it only reads its own file and (OWNER 2026-11-10) the PC's SOX gauge
+        self.assertEqual(block.count("fetch("), 2)
+        self.assertIn('fetch("/sox_scenario.json?t="', block)
+        self.assertIn('fetch("/sox_proxy.json?t="', block)
+
+    def test_the_session_gauge(self):
+        # OWNER 2026-11-10 「B 場中はナスダック100の先物で目安を出す」: today's file only, flags checked, numbers checked, labelled as not SOX
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/sox_proxy.json') {", gw)
+        fn = gw[gw.index("function Get-SoxProxyView"):]
+        fn = fn[:fn.index("\n}\n") if "\n}\n" in fn else fn.index("\r\n}\r\n")]
+        for x in ("[string]$view.schema_version -cne '100b-v10-sox-proxy-v1'", "$view.real_submit_allowed -ne $false",
+                  "$view.trade_instruction -ne $false", "ReparsePoint", "$item.Length -gt 16384"):
+            self.assertIn(x, fn)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('px.schema_version==="100b-v10-sox-proxy-v1"&&px.real_submit_allowed===false&&px.trade_instruction===false&&px.date===jd', html)
+        self.assertIn("[px.estimate,px.zone_from,px.zone_to,px.nq_change_pct,px.beta,px.err_pct].every(num)", html)
+        self.assertIn("SOXそのものではありません", html)
+        self.assertIn("約10分遅れ", html)
 
 
 if __name__ == "__main__":
