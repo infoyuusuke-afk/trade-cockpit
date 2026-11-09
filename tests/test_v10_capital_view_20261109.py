@@ -118,6 +118,12 @@ class Sizing(unittest.TestCase):
         tr = pos.trades_of([day_trade("A.T", 1000, "09:30", "10:00", 1.0), day_trade("B.T", 2000, "09:40", "10:30", 1.0)], [], [], "2026-11-09", {}, "15:30")
         self.assertEqual(pos.size(tr, None, "15:30")["peak_amount"], 300_000)
 
+    def test_line_chart_is_easier_to_read(self):
+        # OWNER 2026-11-09 「このグラフちょっと見にくい」
+        for x in ("const W=1000,H=300,L=78,R=200", "keep the end labels apart", 'data-mline="', 'data-mfrom="same"', "からそろえる",
+                  "cockpitMethodOffV1", "（押すと線を出す・消す）"):
+            self.assertIn(x, HTML)
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
