@@ -109,6 +109,9 @@ class Sizing(unittest.TestCase):
         # OWNER 2026-11-09 「ここに１００株（資金額）がでるとわかりやすい」
         self.assertIn("必要な資金 '+man(s.peak_amount)+'（今日いちばん多く持った額）", HTML)
         self.assertIn('row("今日いちばん多く持った額"', HTML)
+        # OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
+        self.assertIn('["ON_LONG","持ち越し 買い","（オーバーナイト銘柄）"', HTML)
+        self.assertIn('["ON_SHORT","持ち越し 空売り","（オーバーナイト銘柄）"', HTML)
         tr = pos.trades_of([day_trade("A.T", 1000, "09:30", "10:00", 1.0), day_trade("B.T", 2000, "09:40", "10:30", 1.0)], [], [], "2026-11-09", {}, "15:30")
         self.assertEqual(pos.size(tr, None, "15:30")["peak_amount"], 300_000)
 
