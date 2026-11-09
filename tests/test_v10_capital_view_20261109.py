@@ -175,6 +175,12 @@ class Screen(unittest.TestCase):
         self.assertEqual((r4["strategy"], r4["min_move_pct"], r4["side"], r4["target_mult"], r4["stop_mult"]), ("OR15押し目", 0.5, 1, 2.0, 2.0))
         self.assertNotIn('fetch("market_summary.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>null).then(s=>{', HTML)
 
+    def test_sox_zone_label_in_the_margin(self):
+        # OWNER 2026-11-09 「注意ゾーンの色変えて　文字がチャートにかぶって数字みえない」
+        self.assertIn('"rgba(167,139,250,.13)"', HTML)
+        self.assertIn("'<text x=\"'+(W-R+6)+'\" y=\"'+(zm-2)+'\" fill=\"'+zc+'\" font-size=\"12\" font-weight=\"700\">注意ゾーン</text>'", HTML)
+        self.assertNotIn("'<text x=\"'+(L+6)+'\" y=\"'+(y(z.from)-6)+'\"", HTML)
+
     def test_capital_table_held_line_charts_and_earnings_tag(self):
         for s in ('id="cap-compare"', "virt-held-line", "cap-journal", "chartSvg(s.day_curve", "chartSvg(s.overnight_curve",
                   'class="earn-tag"', "hold-earn-split", "window.cockpitEarningsSoon=soon"):
