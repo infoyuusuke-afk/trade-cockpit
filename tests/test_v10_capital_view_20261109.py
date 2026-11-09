@@ -124,6 +124,15 @@ class Sizing(unittest.TestCase):
                   "cockpitMethodOffV1", "（押すと線を出す・消す）"):
             self.assertIn(x, HTML)
 
+    def test_size_table_and_chart_sit_in_the_order_tab(self):
+        # OWNER 2026-11-09 「注目がこんな下いっちゃうとザラバ中にエントリータイミングが見にくい」
+        i = HTML.index("function renderTable(){")
+        seg = HTML[i:i + 900]
+        self.assertIn("const pane=document.querySelector('.tab-pane[data-pane=\"order\"]');if(!pane)return;", seg)
+        self.assertIn("pane.appendChild(el)", seg)
+        self.assertNotIn('line.insertAdjacentElement("afterend",el)', seg)
+        self.assertIn("<table data-keep-table><tr><th>資金別（仮想・メル）</th>", HTML)   # the card adapter must leave this table as a table
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")

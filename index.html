@@ -3953,13 +3953,16 @@ document.addEventListener("DOMContentLoaded",()=>{
     return '<div class="cap-held"><div class="cap-held-title">資金別の保有中の建玉（仮想・フルレバ）</div><div class="cap-held-grid">'+caps.map(col).join("")+'</div></div>';
   }
   function renderTable(){
-    const line=document.getElementById("virt-held-line")||document.getElementById("virt-day-line");if(!line)return;
+    // OWNER 2026-11-09 「注目がこんな下いっちゃうとザラバ中にエントリータイミングが見にくい」: the size table and the method chart live at the
+    // bottom of the 注文 tab itself, not in the area above every tab, so 注目 stays where it was
+    const pane=document.querySelector('.tab-pane[data-pane="order"]');if(!pane)return;
     let el=document.getElementById("cap-compare");
-    if(!el){el=document.createElement("div");el.id="cap-compare";el.className="cap-box";line.insertAdjacentElement("afterend",el);}
+    if(!el){el=document.createElement("div");el.id="cap-compare";el.className="cap-box";pane.appendChild(el);}
+    else if(el.parentElement!==pane)pane.appendChild(el);
     if(!cap){el.innerHTML='<span class="g">資金別の仮想：まだ読めません（コクピットの記録から1分ほどで出ます）</span>';return;}
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
-    el.innerHTML='<table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）<br>今日いちばん多く同時に持った建て金額・持ち越し込み</small>')+'</th>').join("")+'</tr>'+
+    el.innerHTML='<table data-keep-table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）<br>今日いちばん多く同時に持った建て金額・持ち越し込み</small>')+'</th>').join("")+'</tr>'+
       row("今日の損益（確定＋含み）",s=>td(s.done+s.open,yen))+
       row("　うちデイ",s=>td(s.rows.day.done+s.rows.day.open,yen))+
       row("　うちオーバーナイト",s=>td(s.rows.overnight.done+s.rows.overnight.open,yen))+
