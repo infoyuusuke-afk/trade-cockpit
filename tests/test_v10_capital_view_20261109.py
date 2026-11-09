@@ -188,11 +188,19 @@ class Screen(unittest.TestCase):
         self.assertIn('"overnight","pts","ms2-live"', HTML)
         for x in ('document.getElementById("ms2-pts-cards")', 'document.getElementById("ms2-ir-pts-cards")', 'document.getElementById("pts-morning-pickup")',
                   'dateLine("pts-date-night"', 'dateLine("pts-date-ir"', 'dateLine("pts-date-pickup"', "v.pts_session_date", "t[0].pts_date",
-                  '"IR急騰PTSはありません"', '.tab-pane[data-pane="pts"] .warning'):
+                  "x&&x.pts_date", '.tab-pane[data-pane="pts"] .warning'):
             self.assertIn(x, HTML)
         # the ids the renderers write into are still in the page exactly once
         for x in ('id="ms2-pts-cards"', 'id="ms2-ir-pts-cards"', 'id="ms2-ir-pts-meta"', 'ptsPanel.id="pts-morning-pickup"'):
             self.assertEqual(HTML.count(x), 1, x)
+
+    def test_ir_date_only_from_the_ir_rows(self):
+        # audit 6734811954: no current time and no other block's date for the IR block
+        i = HTML.index('setDate("pts-date-ir"')
+        seg = HTML[i - 400:i + 200]
+        self.assertNotIn("d.updated_at", seg)
+        self.assertNotIn("t[0].pts_date", seg)
+        self.assertIn('"いつの夜か未確認"', seg)
 
     def test_capital_table_held_line_charts_and_earnings_tag(self):
         for s in ('id="cap-compare"', "virt-held-line", "cap-journal", "chartSvg(s.day_curve", "chartSvg(s.overnight_curve",

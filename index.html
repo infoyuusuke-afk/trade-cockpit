@@ -4028,9 +4028,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   function setDate(id,text){const el=document.getElementById(id);if(el)el.firstChild.textContent=text;}
   document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},t=Array.isArray(d.pts_top5)?d.pts_top5:[];
     setDate("pts-date-night",t.length&&t[0].pts_date?md(t[0].pts_date):"いつの夜か未確認（データ待ち）");
-    // the IR rows carry no date: the night's date is the JNX night of the PTS rows, and an empty list says so (audit note)
-    const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[],night=t.length&&t[0].pts_date?t[0].pts_date:"";
-    setDate("pts-date-ir",!ir.length?"IR急騰PTSはありません":night?md(night).replace("の夜のPTS","の開示・夜のPTS"):"いつの夜か未確認");});
+    // OWNER 2026-11-09 audit 6734811954 「IR急騰PTS TOP5の日付を、今の時刻ではなく ir_pts_top5 の行に入っている pts_date から出す。日付が無い時は『いつの夜か未確認』」:
+    // the newest pts_date among the IR rows; no row with a date -> 未確認 (never the current time, never the other block's date)
+    const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[],irDay=ir.map(x=>String(x&&x.pts_date||"")).filter(x=>/^\d{4}-\d{2}-\d{2}/.test(x)).sort().pop();
+    setDate("pts-date-ir",irDay?md(irDay).replace("の夜のPTS","の開示・夜のPTS"):"いつの夜か未確認");});
   async function pickDate(){try{const r=await fetch("/pts_pickup.json?t="+Date.now(),{cache:"no-store"});const v=r.ok?await r.json():null;
     setDate("pts-date-pickup",v&&v.pts_session_date?md(v.pts_session_date):"いつの夜か未確認");}catch(_){setDate("pts-date-pickup","いつの夜か未確認");}}
   document.addEventListener("DOMContentLoaded",()=>{build();pickDate();setInterval(pickDate,600000);});
