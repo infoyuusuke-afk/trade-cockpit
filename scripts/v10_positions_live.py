@@ -622,7 +622,9 @@ def size(trades: list, capital, now_hm: str) -> dict:
         elif t["last"] is not None:
             u = t["side"] * (t["last"] - t["fill"]) * t["shares"]
             r["open"] += u
-            held.append({"ticker": t["ticker"], "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
+            # OWNER 2026-11-09 「フルレバで３００万　５００万も表示…その場合のポジションはわかりやすく表示して」: name, side and entry for the screen
+            held.append({"ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り", "fill": t["fill"], "last": t["last"],
+                         "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
                          "open_yen": round(u)})
     using_now = sum(h["amount"] for h in held)
     done_rows = sorted(((t["out"], _closed_yen(t, t["shares"])) for t in taken

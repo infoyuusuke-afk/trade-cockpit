@@ -36,6 +36,14 @@ class Sizing(unittest.TestCase):
         self.assertEqual(s["skipped_room"], 2)
         self.assertEqual(pos.size(tr, None, "10:00")["skipped_room"], 0)   # 100 shares: no limit
 
+    def test_held_rows_say_name_side_shares_and_amount(self):
+        # OWNER 2026-11-09 「その場合のポジションはわかりやすく表示して」
+        tr = pos.trades_of([day_trade("A.T", 1000, "09:30")], [], [], "2026-11-09", {"A.T": tk(("09:30:00", 1000), ("09:40:00", 1010))}, "09:45")
+        h = pos.size(tr, 3_000_000, "09:45")["held"][0]
+        self.assertEqual((h["name"], h["side"], h["shares"], h["amount"], h["open_yen"]), ("A.T", "買い", 3000, 3_000_000, 30000))
+        self.assertIn("資金別の保有中の建玉（仮想）", HTML)
+        self.assertIn("'+heldBlock(S)+'", HTML)
+
     def test_expensive_stock_is_skipped_apart(self):
         tr = pos.trades_of([day_trade("X.T", 40000, "09:30")], [], [], "2026-11-09", {}, "10:00")
         s = pos.size(tr, 3_000_000, "10:00")
