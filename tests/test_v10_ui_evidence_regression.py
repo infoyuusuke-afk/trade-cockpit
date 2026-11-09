@@ -34,7 +34,7 @@ class V10UiEvidenceRegression(unittest.TestCase):
         actual = re.findall(r'<button class="cockpit-tab(?: active)?" data-tab="([^"]+)"', self.source)
         self.assertEqual(actual, [
             "control", "brain", "ai-journal", "scalp", "event-hot", "ms2-live", "pre-next",
-            "overnight", "swing", "value", "focus-owner", "kioxia-calendar", "events",
+            "overnight", "pts", "swing", "value", "focus-owner", "kioxia-calendar", "events",   # OWNER 2026-11-09 PTS tab next to OVERNIGHT 5
             "strong-yen", "us-smr", "investor-regime", "market",
             "correlation", "wick", "expansion", "accumulation",
             "policy",

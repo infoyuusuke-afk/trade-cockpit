@@ -43,6 +43,7 @@
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
  <button class="cockpit-tab" data-tab="pre-next">テーマ</button>
  <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
+ <button class="cockpit-tab" data-tab="pts">PTS</button>
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
  <button class="cockpit-tab" data-tab="value">VALUE 5</button>
  <button class="cockpit-tab" data-tab="focus-owner">FOCUS</button>
@@ -60,7 +61,7 @@
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={}; ["control","brain","ai-journal","scalp","event-hot","overnight","ms2-live","pre-next","focus-owner","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","value","policy",...policyTabs,"market"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="scalp"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
+ const panes={}; ["control","brain","ai-journal","scalp","event-hot","overnight","pts","ms2-live","pre-next","focus-owner","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","value","policy",...policyTabs,"market"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="scalp"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
 
  const scalpPanel=document.createElement("section");
  scalpPanel.className="card wide scalp-tv";
@@ -4001,6 +4002,35 @@ document.addEventListener("DOMContentLoaded",()=>{
     window.cockpitLampRefresh();
   }
   document.addEventListener("DOMContentLoaded",()=>{load();setInterval(load,30000);setInterval(()=>{renderHeld();renderTable();},3000);loadFeed();setInterval(loadFeed,60000);});
+})();
+</script>
+<style>.pts-tab-date{margin:2px 0 8px;font-size:20px;font-weight:800;color:#f5c542;letter-spacing:.01em}.pts-tab-date small{font-size:12px;font-weight:600;color:#9aa0a6;margin-left:8px}</style>
+<script>
+// OWNER 2026-11-09 「PTS専用のタブを作って。OVERNIGHT 5の隣に『PTS』のタブを置き、REALTIME 5にある夜間PTS期待TOP5、IR急騰PTS TOP5、
+// PTS→寄り前ピックアップをそこへまとめて移す。各欄の上に、いつの夜のPTSかの日付を大きく出す。中身と計算は変えない」:
+// the three blocks are moved as they are (same ids, so every renderer keeps writing into them); only a date line is added above each.
+(()=>{
+  const md=v=>{const m=/(\d{4})-(\d{2})-(\d{2})/.exec(String(v||""));return m?(+m[2])+"/"+(+m[3])+"の夜のPTS":"いつの夜か未確認";};
+  const dateLine=(id,note)=>{const d=document.createElement("div");d.className="pts-tab-date";d.id=id;d.innerHTML='確認中<small>'+note+'</small>';return d;};
+  function build(){
+    const pane=document.querySelector('.tab-pane[data-pane="pts"]');if(!pane||document.getElementById("pts-tab"))return;
+    const sec=document.createElement("section");sec.className="card wide";sec.id="pts-tab";
+    sec.innerHTML='<div class="pane-intro"><span>PTS</span><h2>夜間PTS（JNX）</h2><p>夜のPTSで動いた銘柄の3つの欄をまとめた場所です。中身と計算はREALTIME 5にあった時と同じ。監視候補で、売買のサインではありません。</p></div>';
+    pane.appendChild(sec);
+    const night=document.getElementById("ms2-pts-cards"),nightHead=night?.previousElementSibling;
+    if(night){const b=document.createElement("div");b.className="pts-tab-block";b.append(dateLine("pts-date-night","夜間PTS期待TOP5"));if(nightHead&&nightHead.classList.contains("pts-section-head"))b.append(nightHead);b.append(night);sec.append(b);}
+    const ir=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta"),irHead=irMeta?.previousElementSibling;
+    if(ir){const b=document.createElement("div");b.className="pts-tab-block";b.append(dateLine("pts-date-ir","IR急騰PTS TOP5"));if(irHead&&irHead.tagName==="H3")b.append(irHead);if(irMeta)b.append(irMeta);b.append(ir);sec.append(b);}
+    const pick=document.getElementById("pts-morning-pickup");
+    if(pick){pick.prepend(dateLine("pts-date-pickup","PTS→寄り前ピックアップ"));pane.appendChild(pick);}
+  }
+  function setDate(id,text){const el=document.getElementById(id);if(el)el.firstChild.textContent=text;}
+  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},t=Array.isArray(d.pts_top5)?d.pts_top5:[];
+    setDate("pts-date-night",t.length&&t[0].pts_date?md(t[0].pts_date):"いつの夜か未確認（データ待ち）");
+    setDate("pts-date-ir",d.updated_at?md(d.updated_at).replace("の夜のPTS","の開示・夜のPTS"):"いつの夜か未確認（データ待ち）");});
+  async function pickDate(){try{const r=await fetch("/pts_pickup.json?t="+Date.now(),{cache:"no-store"});const v=r.ok?await r.json():null;
+    setDate("pts-date-pickup",v&&v.pts_session_date?md(v.pts_session_date):"いつの夜か未確認");}catch(_){setDate("pts-date-pickup","いつの夜か未確認");}}
+  document.addEventListener("DOMContentLoaded",()=>{build();pickDate();setInterval(pickDate,600000);});
 })();
 </script>
 <script>

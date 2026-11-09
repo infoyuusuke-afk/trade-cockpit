@@ -182,6 +182,17 @@ class Screen(unittest.TestCase):
         self.assertNotIn("'<text x=\"'+(L+6)+'\" y=\"'+(y(z.from)-6)+'\"", HTML)
         self.assertIn("W=1040,H=380,L=64,R=118,", HTML)
 
+    def test_pts_tab_moves_the_three_blocks(self):
+        # OWNER 2026-11-09 「PTS専用のタブを作って…OVERNIGHT 5の隣…三つをそこへまとめて移す。各欄の上に…日付を大きく出す。中身と計算は変えない」
+        self.assertIn(' <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>\n <button class="cockpit-tab" data-tab="pts">PTS</button>', HTML)
+        self.assertIn('"overnight","pts","ms2-live"', HTML)
+        for x in ('document.getElementById("ms2-pts-cards")', 'document.getElementById("ms2-ir-pts-cards")', 'document.getElementById("pts-morning-pickup")',
+                  'dateLine("pts-date-night"', 'dateLine("pts-date-ir"', 'dateLine("pts-date-pickup"', "v.pts_session_date", "t[0].pts_date"):
+            self.assertIn(x, HTML)
+        # the ids the renderers write into are still in the page exactly once
+        for x in ('id="ms2-pts-cards"', 'id="ms2-ir-pts-cards"', 'id="ms2-ir-pts-meta"', 'ptsPanel.id="pts-morning-pickup"'):
+            self.assertEqual(HTML.count(x), 1, x)
+
     def test_capital_table_held_line_charts_and_earnings_tag(self):
         for s in ('id="cap-compare"', "virt-held-line", "cap-journal", "chartSvg(s.day_curve", "chartSvg(s.overnight_curve",
                   'class="earn-tag"', "hold-earn-split", "window.cockpitEarningsSoon=soon"):
