@@ -172,6 +172,11 @@ class Sizing(unittest.TestCase):
         self.assertIn('const ROW2=["kioxia-calendar","events","swing","value","ai-journal","brain","control"];', HTML)
         self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
         self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)
+        # OWNER 2026-11-10 「２段になっても先頭はそろえて」: a blank first in row 2, sized from where row 1's first tab starts
+        self.assertIn(".cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}</style>", HTML)
+        self.assertIn("function indent(nav){", HTML)
+        self.assertIn("const d=first.getBoundingClientRect().left-second.getBoundingClientRect().left;", HTML)
+        self.assertIn("setInterval(()=>indent(nav),1000)", HTML)
 
     def test_focus_analyst_slots(self):
         # OWNER 2026-11-09 「FOCUSの空いた枠に、8:50と12:20にアナリストの今日の8銘柄から自信の高い順で…自動で入れて…注文はしない」
