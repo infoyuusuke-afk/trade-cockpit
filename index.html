@@ -659,6 +659,28 @@ document.addEventListener("DOMContentLoaded",()=>{
  });
 });
 </script>
+<style>.cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important;row-gap:4px}.cockpit-tabs.two-rows .tab-break{flex-basis:100%;height:0;order:50}
+.cockpit-tabs.two-rows .cockpit-brand{order:0}</style>
+<script>
+// OWNER 2026-11-09 「上のタブを2段にして、横にスクロールしなくても全部見えるようにして。1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・
+// テーマ・アナリスト、2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」:
+// only the visual order changes (CSS order on the existing buttons, a line break between the rows); the buttons, their tabs and the HTML
+// order stay as they are. Tabs added later by other scripts are placed when they appear; anything not listed goes at the end of row 2.
+(()=>{
+  const ROW1=["scalp","order","board","ms2-live","pts","overnight","pre-next","analysts"];
+  const ROW2=["kioxia-calendar","events","focus-owner","swing","value","ai-journal","brain","control"];
+  function arrange(){
+    const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
+    nav.classList.add("two-rows");
+    if(!nav.querySelector(":scope > .tab-break")){const br=document.createElement("span");br.className="tab-break";br.setAttribute("aria-hidden","true");nav.appendChild(br);}
+    [...nav.querySelectorAll(":scope > .cockpit-tab[data-tab]")].forEach(b=>{const k=b.dataset.tab,i1=ROW1.indexOf(k),i2=ROW2.indexOf(k);
+      const o=i1>=0?10+i1:i2>=0?60+i2:90;if(b.style.order!==String(o))b.style.order=String(o);});
+    const more=nav.querySelector(":scope > details.secondary-tabs");if(more&&more.style.order!=="95")more.style.order="95";
+  }
+  document.addEventListener("DOMContentLoaded",()=>{arrange();const nav=document.querySelector(".cockpit-tabs");
+    if(nav)new MutationObserver(arrange).observe(nav,{childList:true});});
+})();
+</script>
 <!-- COCKPIT_TABS_END -->
 </head><body>
 <style>

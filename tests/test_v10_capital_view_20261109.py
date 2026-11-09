@@ -138,6 +138,14 @@ class Sizing(unittest.TestCase):
         self.assertIn('el.id="virt-held-line";el.className="vd-held";line.insertAdjacentElement("afterend",el);', HTML)
         self.assertIn("<table data-keep-table><tr><th>資金別（仮想・メル）</th>", HTML)   # the card adapter must leave this table as a table
 
+    def test_tabs_in_two_rows(self):
+        # OWNER 2026-11-09 「上のタブを2段にして…1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・テーマ・アナリスト、
+        # 2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」
+        self.assertIn('const ROW1=["scalp","order","board","ms2-live","pts","overnight","pre-next","analysts"];', HTML)
+        self.assertIn('const ROW2=["kioxia-calendar","events","focus-owner","swing","value","ai-journal","brain","control"];', HTML)
+        self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
+        self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
