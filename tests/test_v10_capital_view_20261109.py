@@ -107,6 +107,23 @@ class EarningsMarks(unittest.TestCase):
             self.assertEqual(v["items"]["1111"]["label"], "明日決算")
             self.assertEqual(v["state"], "OLD")
 
+    def test_morning_shows_the_held_window_and_holidays_are_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.write(d, {"1111": ["2026-11-09"], "2222": ["2026-11-09"], "3333": ["2026-11-24"], "4444": ["2026-11-23"]},
+                       {"2222": {"2026-11-09": "15:30"}})
+            m = pos.earnings_soon(Path(d), "2026-11-09", "10:00")["items"]
+            self.assertEqual(m, {"1111": {"label": "今日決算", "date": "2026-11-09", "time": ""}})   # 15:30 is after the 14:00 exit
+            fri = pos.earnings_soon(Path(d), "2026-11-20", "15:30")["items"]
+            self.assertEqual(fri["3333"]["label"], "明日決算")        # Monday 11/23 is a holiday: the next session is Tuesday
+            self.assertEqual(fri["4444"]["label"], "休みの日に決算")
+
+    def test_closed_trade_without_return_does_not_break_the_view(self):
+        trades = [day_trade("A.T", 1000, "09:30", "10:00", None), day_trade("B.T", 1000, "09:31", "10:00", -5.0)]
+        tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "15:30")
+        s = pos.size(tr, None, "15:30")
+        self.assertEqual(s["limit_hit_at"], None)
+        self.assertEqual(s["rows"]["day"]["closed"], 1)
+
     def test_no_file_means_no_marks(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(pos.earnings_soon(Path(d), "2026-11-09"), {"state": "NO_FILE", "items": {}})

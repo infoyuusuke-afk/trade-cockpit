@@ -625,8 +625,8 @@ def size(trades: list, capital, now_hm: str) -> dict:
             held.append({"ticker": t["ticker"], "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
                          "open_yen": round(u)})
     using_now = sum(h["amount"] for h in held)
-    done_rows = sorted((t["out"], _closed_yen(t, t["shares"])) for t in taken
-                       if t["kind"] == "day" and t["out"] is not None and t["out"] <= now_hm)
+    done_rows = sorted(((t["out"], _closed_yen(t, t["shares"])) for t in taken
+                        if t["kind"] == "day" and t["out"] is not None and t["out"] <= now_hm), key=lambda x: x[0])
     total, hit, after = 0.0, None, 0.0
     for at, y in done_rows:
         if y is None:
@@ -709,14 +709,19 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             "real_submit_allowed": False}
 
 
+# TSE holidays that fall on weekdays (only the ones known here; extend when a year is added)
+EXCHANGE_HOLIDAYS = {"2026-11-23", "2026-12-31", "2027-01-01", "2027-01-11", "2027-02-11", "2027-02-23",
+                     "2027-04-29", "2027-05-03", "2027-05-04", "2027-05-05"}
+
+
 def _next_weekday(d: date) -> date:
     d += timedelta(days=1)
-    while d.weekday() >= 5:
+    while d.weekday() >= 5 or d.isoformat() in EXCHANGE_HOLIDAYS:
         d += timedelta(days=1)
     return d
 
 
-def earnings_soon(runtime: Path, today: str) -> dict:
+def earnings_soon(runtime: Path, today: str, now_hm: str = "15:30") -> dict:
     """{code: {"label": 今夜決算|明日決算, "date", "time"}} for earnings between today's close and the next trading day's 14:00.
     An announcement already made in today's session (a known time before 15:25) is not marked; a next-day time at or
     after 14:00 is after the exit and not marked. Unknown times are marked with time ""."""
@@ -728,6 +733,7 @@ def earnings_soon(runtime: Path, today: str) -> dict:
         return {"state": "FORMAT_UNKNOWN", "items": {}}
     d0 = date.fromisoformat(today)
     d1 = _next_weekday(d0)
+    morning = now_hm < "15:00"   # until 15:00 the cards are yesterday's picks, held until 14:00 today
     times = doc.get("times") or {}
     items = {}
     try:   # only the cockpit's 100 stocks (the overnight picks come from them); all when the list is not readable
@@ -743,14 +749,20 @@ def earnings_soon(runtime: Path, today: str) -> dict:
                 d = date.fromisoformat(ds)
             except ValueError:
                 continue
+            hm = str((times.get(code) or {}).get(ds) or "")
+            if morning:
+                if d != d0 or (hm and hm >= EXIT_AT):
+                    continue
+                items[code] = {"label": "今日決算", "date": ds, "time": hm}
+                continue
             if not d0 <= d <= d1:
                 continue
-            hm = str((times.get(code) or {}).get(ds) or "")
             if d == d0 and hm and hm < DECIDE_AT:
                 continue
             if d == d1 and hm and hm >= EXIT_AT:
                 continue
-            items[code] = {"label": "明日決算" if d == d1 else "今夜決算", "date": ds, "time": hm}
+            label = "今夜決算" if d == d0 else "明日決算" if d == d1 else "休みの日に決算"
+            items[code] = {"label": label, "date": ds, "time": hm}
     gen = str(doc.get("generated_at") or "")[:10]
     return {"state": "OK" if gen == today else "OLD", "generated_on": gen, "items": items}
 
@@ -882,7 +894,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     except Exception as exc:
         capital = {"status": "UNAVAILABLE", "reason": type(exc).__name__}
     try:
-        soon = earnings_soon(runtime, today)
+        soon = earnings_soon(runtime, today, hm)
         if hm >= DECIDE_AT:
             keep_marks(day_dir, _overnight(day_dir, valid_until=""), soon)
         soon = dict(soon, split=earnings_split(runtime))
