@@ -105,6 +105,13 @@ class Sizing(unittest.TestCase):
                              {"n": 2, "closed": 2, "wins": 1, "yen": 0, "win": 50.0, "pf": 1.0})
             self.assertEqual(v["method_days"], {})
 
+    def test_100_share_column_shows_the_money_needed(self):
+        # OWNER 2026-11-09 「ここに１００株（資金額）がでるとわかりやすい」
+        self.assertIn("必要な資金 '+man(s.peak_amount)+'（今日いちばん多く持った額）", HTML)
+        self.assertIn('row("今日いちばん多く持った額"', HTML)
+        tr = pos.trades_of([day_trade("A.T", 1000, "09:30", "10:00", 1.0), day_trade("B.T", 2000, "09:40", "10:30", 1.0)], [], [], "2026-11-09", {}, "15:30")
+        self.assertEqual(pos.size(tr, None, "15:30")["peak_amount"], 300_000)
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
