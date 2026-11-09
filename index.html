@@ -3958,7 +3958,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!cap){el.innerHTML='<span class="g">資金別の仮想：まだ読めません（コクピットの記録から1分ほどで出ます）</span>';return;}
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
-    el.innerHTML='<table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（信用'+(cap.margin_mult||3.3)+'倍・今日いちばん多く同時に持った建て金額÷'+(cap.margin_mult||3.3)+'・持ち越し込み）</small>')+'</th>').join("")+'</tr>'+
+    el.innerHTML='<table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）<br>今日いちばん多く同時に持った建て金額・持ち越し込み</small>')+'</th>').join("")+'</tr>'+
       row("今日の損益（確定＋含み）",s=>td(s.done+s.open,yen))+
       row("　うちデイ",s=>td(s.rows.day.done+s.rows.day.open,yen))+
       row("　うちオーバーナイト",s=>td(s.rows.overnight.done+s.rows.overnight.open,yen))+
@@ -4005,7 +4005,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   // 今日と通算をボタンで切り替え。計算は今の記録をそのまま使い、表示だけ足す」
   let mView="total";try{mView=localStorage.getItem("cockpitMethodViewV1")||"total";}catch(_){}
   const METHODS=[["R1","手法A","朝の買い","#f5c542"],["R2","手法B","弱い日の朝の空売り","#35e2ae"],["R4","手法C","上げている銘柄の押し目買い","#5aa9ff"],["R5","手法D","下に窓の日の戻り売り","#c084fc"],
-                 ["BRAIN","ブレイン","ブレインが選んだ銘柄","#ff9f43"],["ON_LONG","持ち越し 買い","（オーバーナイト銘柄）","#ff6b9a"],["ON_SHORT","持ち越し 空売り","（オーバーナイト銘柄）","#9ae6b4"]];   // OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
+                 ["BRAIN","ブレイン","ブレインが選んだ銘柄","#ff9f43"],["ON_LONG","持ち越し 買い","オーバーナイト銘柄","#ff6b9a"],["ON_SHORT","持ち越し 空売り","オーバーナイト銘柄","#9ae6b4"]];   // OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
   function lineChart(series){
     const days=[...new Set(series.flatMap(s=>s.pts.map(p=>p[0])))].sort();if(days.length<1)return '<p class="g">日ごとの記録がまだありません</p>';
     const W=1000,H=220,L=70,R=10,T=10,B=24,x=d=>L+(days.length===1?0.5:days.indexOf(d)/(days.length-1))*(W-L-R);

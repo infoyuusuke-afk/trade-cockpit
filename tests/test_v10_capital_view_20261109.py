@@ -108,12 +108,13 @@ class Sizing(unittest.TestCase):
     def test_100_share_column_shows_the_money_needed(self):
         # OWNER 2026-11-09 「ここに１００株（資金額）がでるとわかりやすい」
         # 「…必要な資金（今日いちばん多く同時に持った建て金額を3.3で割った額、持ち越し込み）…『今日いちばん多く持った建て金額』の行も足し」
-        self.assertIn("必要な資金 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'", HTML)
-        self.assertIn("・持ち越し込み）", HTML)
+        # 「100株の必要な資金は『現物 3,493.5万円／信用 約1,060万円（3.3で割った額）』と両方出す」
+        self.assertIn("必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）", HTML)
+        self.assertIn("今日いちばん多く同時に持った建て金額・持ち越し込み", HTML)
         self.assertIn('row("今日いちばん多く持った建て金額"', HTML)
         # OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
-        self.assertIn('["ON_LONG","持ち越し 買い","（オーバーナイト銘柄）"', HTML)
-        self.assertIn('["ON_SHORT","持ち越し 空売り","（オーバーナイト銘柄）"', HTML)
+        self.assertIn('["ON_LONG","持ち越し 買い","オーバーナイト銘柄"', HTML)
+        self.assertIn('["ON_SHORT","持ち越し 空売り","オーバーナイト銘柄"', HTML)
         tr = pos.trades_of([day_trade("A.T", 1000, "09:30", "10:00", 1.0), day_trade("B.T", 2000, "09:40", "10:30", 1.0)], [], [], "2026-11-09", {}, "15:30")
         self.assertEqual(pos.size(tr, None, "15:30")["peak_amount"], 300_000)
 
