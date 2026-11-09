@@ -12642,7 +12642,10 @@
     "logged_at": "2026-11-05 01:38:17 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.19,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "1429",
@@ -12867,7 +12870,10 @@
     "logged_at": "2026-11-05 01:38:22 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 8.12,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "2475",
@@ -13764,7 +13770,10 @@
     "logged_at": "2026-11-05 01:38:41 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -5.66,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "5284",
@@ -14013,7 +14022,10 @@
     "logged_at": "2026-11-05 01:38:46 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -3.63,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "6088",
@@ -14346,7 +14358,10 @@
     "logged_at": "2026-11-05 01:38:53 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.82,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "6787",
@@ -14355,7 +14370,10 @@
     "logged_at": "2026-11-05 01:38:53 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -10.85,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "6803",
@@ -14988,7 +15006,10 @@
     "logged_at": "2026-11-05 01:39:07 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.65,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "8173",
@@ -15285,7 +15306,10 @@
     "logged_at": "2026-11-05 01:39:13 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.38,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "9072",
@@ -15474,7 +15498,10 @@
     "logged_at": "2026-11-05 01:39:17 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 3.16,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "9535",
@@ -19419,6 +19446,2454 @@
     "logged_at": "2026-11-09 10:59:10 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.97,
+    "status": "pending"
+  },
+  {
+    "code": "130A",
+    "name": "Ｖｅｒｉｔａｓ　Ｉｎ　Ｓｉｌｉｃｏ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:41 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.74,
+    "status": "pending"
+  },
+  {
+    "code": "1420",
+    "name": "サンヨーホームズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:41 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.06,
+    "status": "pending"
+  },
+  {
+    "code": "147A",
+    "name": "ソラコム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:42 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.41,
+    "status": "pending"
+  },
+  {
+    "code": "1762",
+    "name": "高松コンストラクショングループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:42 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.9,
+    "status": "pending"
+  },
+  {
+    "code": "1801",
+    "name": "大成建設",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:42 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.65,
+    "status": "pending"
+  },
+  {
+    "code": "1810",
+    "name": "松井建設",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:42 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.44,
+    "status": "pending"
+  },
+  {
+    "code": "1812",
+    "name": "鹿島建設",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:42 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.83,
+    "status": "pending"
+  },
+  {
+    "code": "1833",
+    "name": "奥村組",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:43 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.77,
+    "status": "pending"
+  },
+  {
+    "code": "1871",
+    "name": "ピーエス・コンストラクション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:43 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.06,
+    "status": "pending"
+  },
+  {
+    "code": "1925",
+    "name": "大和ハウス工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:43 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.51,
+    "status": "pending"
+  },
+  {
+    "code": "1926",
+    "name": "ライト工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:43 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.14,
+    "status": "pending"
+  },
+  {
+    "code": "1963",
+    "name": "日揮ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:43 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.34,
+    "status": "pending"
+  },
+  {
+    "code": "1980",
+    "name": "ダイダン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:44 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -22.8,
+    "status": "pending"
+  },
+  {
+    "code": "1982",
+    "name": "日比谷総合設備",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:44 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -18.26,
+    "status": "pending"
+  },
+  {
+    "code": "2108",
+    "name": "ニッテン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:44 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.34,
+    "status": "pending"
+  },
+  {
+    "code": "2138",
+    "name": "クルーズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:44 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.69,
+    "status": "pending"
+  },
+  {
+    "code": "2181",
+    "name": "パーソルホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:44 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.83,
+    "status": "pending"
+  },
+  {
+    "code": "2185",
+    "name": "シイエム・シイ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:45 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.42,
+    "status": "pending"
+  },
+  {
+    "code": "2204",
+    "name": "中村屋",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:45 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.83,
+    "status": "pending"
+  },
+  {
+    "code": "2207",
+    "name": "ｍｅｉｔｏ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:45 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.15,
+    "status": "pending"
+  },
+  {
+    "code": "2226",
+    "name": "湖池屋",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:45 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.11,
+    "status": "pending"
+  },
+  {
+    "code": "2311",
+    "name": "エプコ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:45 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.15,
+    "status": "pending"
+  },
+  {
+    "code": "2321",
+    "name": "ソフトフロントホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -14.39,
+    "status": "pending"
+  },
+  {
+    "code": "2410",
+    "name": "キャリアデザインセンター",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.13,
+    "status": "pending"
+  },
+  {
+    "code": "2454",
+    "name": "オールアバウト",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.66,
+    "status": "pending"
+  },
+  {
+    "code": "248A",
+    "name": "キッズスター",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.38,
+    "status": "pending"
+  },
+  {
+    "code": "2501",
+    "name": "サッポロビール",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 11.25,
+    "status": "pending"
+  },
+  {
+    "code": "2503",
+    "name": "キリンホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:46 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.79,
+    "status": "pending"
+  },
+  {
+    "code": "255A",
+    "name": "ジーエルテクノホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -19.34,
+    "status": "pending"
+  },
+  {
+    "code": "256A",
+    "name": "飛島ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.03,
+    "status": "pending"
+  },
+  {
+    "code": "2587",
+    "name": "サントリービバレッジ＆フード",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 5.39,
+    "status": "pending"
+  },
+  {
+    "code": "268A",
+    "name": "リガク・ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -24.61,
+    "status": "pending"
+  },
+  {
+    "code": "2820",
+    "name": "やまみ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.85,
+    "status": "pending"
+  },
+  {
+    "code": "2897",
+    "name": "日清食品ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:47 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.78,
+    "status": "pending"
+  },
+  {
+    "code": "2907",
+    "name": "あじかん",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:48 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.26,
+    "status": "pending"
+  },
+  {
+    "code": "2922",
+    "name": "なとり",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:48 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.56,
+    "status": "pending"
+  },
+  {
+    "code": "297A",
+    "name": "アルピコホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:48 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.76,
+    "status": "pending"
+  },
+  {
+    "code": "2980",
+    "name": "ＳＲＥホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:48 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.24,
+    "status": "pending"
+  },
+  {
+    "code": "3069",
+    "name": "ＪＦＬＡホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:48 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.13,
+    "status": "pending"
+  },
+  {
+    "code": "3107",
+    "name": "ダイワボウホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.78,
+    "status": "pending"
+  },
+  {
+    "code": "3109",
+    "name": "シキボウ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.3,
+    "status": "pending"
+  },
+  {
+    "code": "3178",
+    "name": "チムニー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.97,
+    "status": "pending"
+  },
+  {
+    "code": "3205",
+    "name": "ダイドーリミテッド",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.68,
+    "status": "pending"
+  },
+  {
+    "code": "3237",
+    "name": "イントランス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.33,
+    "status": "pending"
+  },
+  {
+    "code": "335A",
+    "name": "ミライロ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:49 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.31,
+    "status": "pending"
+  },
+  {
+    "code": "3392",
+    "name": "デリカフーズホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:50 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.13,
+    "status": "pending"
+  },
+  {
+    "code": "3405",
+    "name": "クラレ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:50 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.11,
+    "status": "pending"
+  },
+  {
+    "code": "3417",
+    "name": "大木ヘルスケアホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:50 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.51,
+    "status": "pending"
+  },
+  {
+    "code": "341A",
+    "name": "トヨコー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:50 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.94,
+    "status": "pending"
+  },
+  {
+    "code": "3431",
+    "name": "宮地エンジニアリンググループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:51 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.22,
+    "status": "pending"
+  },
+  {
+    "code": "3436",
+    "name": "ＳＵＭＣＯ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -29.23,
+    "status": "pending"
+  },
+  {
+    "code": "3447",
+    "name": "信和",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.38,
+    "status": "pending"
+  },
+  {
+    "code": "3537",
+    "name": "昭栄薬品",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.79,
+    "status": "pending"
+  },
+  {
+    "code": "3571",
+    "name": "ソトー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.15,
+    "status": "pending"
+  },
+  {
+    "code": "3632",
+    "name": "グリーホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.35,
+    "status": "pending"
+  },
+  {
+    "code": "3673",
+    "name": "ブロードリーフ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.03,
+    "status": "pending"
+  },
+  {
+    "code": "3683",
+    "name": "サイバーリンクス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.31,
+    "status": "pending"
+  },
+  {
+    "code": "3723",
+    "name": "日本ファルコム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.17,
+    "status": "pending"
+  },
+  {
+    "code": "3768",
+    "name": "リスクモンスター",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.25,
+    "status": "pending"
+  },
+  {
+    "code": "3773",
+    "name": "アドバンスト・メディア",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.42,
+    "status": "pending"
+  },
+  {
+    "code": "3800",
+    "name": "ユニリタ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.72,
+    "status": "pending"
+  },
+  {
+    "code": "3817",
+    "name": "ＳＲＡホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.66,
+    "status": "pending"
+  },
+  {
+    "code": "3848",
+    "name": "データ・アプリケーション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.08,
+    "status": "pending"
+  },
+  {
+    "code": "386A",
+    "name": "みのや",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.72,
+    "status": "pending"
+  },
+  {
+    "code": "3896",
+    "name": "阿波製紙",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.67,
+    "status": "pending"
+  },
+  {
+    "code": "3920",
+    "name": "アイビーシー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:53 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.76,
+    "status": "pending"
+  },
+  {
+    "code": "3944",
+    "name": "古林紙工",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.65,
+    "status": "pending"
+  },
+  {
+    "code": "3947",
+    "name": "ダイナパック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.43,
+    "status": "pending"
+  },
+  {
+    "code": "3950",
+    "name": "ザ・パック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.8,
+    "status": "pending"
+  },
+  {
+    "code": "3984",
+    "name": "ユーザーローカル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -13.03,
+    "status": "pending"
+  },
+  {
+    "code": "3992",
+    "name": "ニーズウェル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.96,
+    "status": "pending"
+  },
+  {
+    "code": "4004",
+    "name": "レゾナック・ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:54 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -24.71,
+    "status": "pending"
+  },
+  {
+    "code": "4008",
+    "name": "住友精化",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:55 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.44,
+    "status": "pending"
+  },
+  {
+    "code": "4013",
+    "name": "勤次郎",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:55 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.71,
+    "status": "pending"
+  },
+  {
+    "code": "4022",
+    "name": "ラサ工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:55 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -30.27,
+    "status": "pending"
+  },
+  {
+    "code": "4027",
+    "name": "テイカ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:55 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.65,
+    "status": "pending"
+  },
+  {
+    "code": "4071",
+    "name": "プラスアルファ・コンサルティング",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:55 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.4,
+    "status": "pending"
+  },
+  {
+    "code": "4100",
+    "name": "戸田工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -18.42,
+    "status": "pending"
+  },
+  {
+    "code": "4112",
+    "name": "保土谷化学工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.26,
+    "status": "pending"
+  },
+  {
+    "code": "4118",
+    "name": "カネカ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.76,
+    "status": "pending"
+  },
+  {
+    "code": "4183",
+    "name": "三井化学",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -17.81,
+    "status": "pending"
+  },
+  {
+    "code": "421A",
+    "name": "ムービン・ストラテジック・キャリア",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -13.91,
+    "status": "pending"
+  },
+  {
+    "code": "4231",
+    "name": "タイガースポリマー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.53,
+    "status": "pending"
+  },
+  {
+    "code": "4237",
+    "name": "フジプレアム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.95,
+    "status": "pending"
+  },
+  {
+    "code": "4242",
+    "name": "タカギセイコー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.62,
+    "status": "pending"
+  },
+  {
+    "code": "4243",
+    "name": "ニックス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.91,
+    "status": "pending"
+  },
+  {
+    "code": "4258",
+    "name": "網屋",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -17.34,
+    "status": "pending"
+  },
+  {
+    "code": "4259",
+    "name": "エクサウィザーズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:57 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -19.52,
+    "status": "pending"
+  },
+  {
+    "code": "4274",
+    "name": "細谷火工",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.3,
+    "status": "pending"
+  },
+  {
+    "code": "4275",
+    "name": "カーリット",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.76,
+    "status": "pending"
+  },
+  {
+    "code": "429A",
+    "name": "テクセンドフォトマスク",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -19.97,
+    "status": "pending"
+  },
+  {
+    "code": "4331",
+    "name": "テイクアンドギヴ・ニーズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.79,
+    "status": "pending"
+  },
+  {
+    "code": "4356",
+    "name": "応用技術",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.85,
+    "status": "pending"
+  },
+  {
+    "code": "4389",
+    "name": "プロパティデータバンク",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:58 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.21,
+    "status": "pending"
+  },
+  {
+    "code": "4396",
+    "name": "システムサポートホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:59 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.79,
+    "status": "pending"
+  },
+  {
+    "code": "4401",
+    "name": "ＡＤＥＫＡ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:59 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.23,
+    "status": "pending"
+  },
+  {
+    "code": "4478",
+    "name": "フリー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:59 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.53,
+    "status": "pending"
+  },
+  {
+    "code": "4524",
+    "name": "森下仁丹",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:09:59 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.43,
+    "status": "pending"
+  },
+  {
+    "code": "4538",
+    "name": "扶桑薬品工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.9,
+    "status": "pending"
+  },
+  {
+    "code": "4544",
+    "name": "Ｈ．Ｕ．グループホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.89,
+    "status": "pending"
+  },
+  {
+    "code": "4553",
+    "name": "東和薬品",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.34,
+    "status": "pending"
+  },
+  {
+    "code": "4570",
+    "name": "免疫生物研究所",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.93,
+    "status": "pending"
+  },
+  {
+    "code": "4587",
+    "name": "ペプチドリーム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.56,
+    "status": "pending"
+  },
+  {
+    "code": "4612",
+    "name": "日本ペイントホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:00 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 11.66,
+    "status": "pending"
+  },
+  {
+    "code": "4667",
+    "name": "アイサンテクノロジー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:01 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -18.48,
+    "status": "pending"
+  },
+  {
+    "code": "4680",
+    "name": "ラウンドワン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:01 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.94,
+    "status": "pending"
+  },
+  {
+    "code": "4694",
+    "name": "ビー・エム・エル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:01 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.8,
+    "status": "pending"
+  },
+  {
+    "code": "4705",
+    "name": "クリップコーポレーション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:01 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.94,
+    "status": "pending"
+  },
+  {
+    "code": "4751",
+    "name": "サイバーエージェント",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:01 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.34,
+    "status": "pending"
+  },
+  {
+    "code": "4828",
+    "name": "ビジネスエンジニアリング",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:02 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.6,
+    "status": "pending"
+  },
+  {
+    "code": "4884",
+    "name": "クリングルファーマ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:02 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -14.85,
+    "status": "pending"
+  },
+  {
+    "code": "4889",
+    "name": "レナサイエンス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:02 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -22.52,
+    "status": "pending"
+  },
+  {
+    "code": "4890",
+    "name": "坪田ラボ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:02 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.16,
+    "status": "pending"
+  },
+  {
+    "code": "4918",
+    "name": "アイビー化粧品",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:02 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.66,
+    "status": "pending"
+  },
+  {
+    "code": "4931",
+    "name": "新日本製薬",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:03 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.1,
+    "status": "pending"
+  },
+  {
+    "code": "4933",
+    "name": "Ｉ－ｎｅ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:03 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.52,
+    "status": "pending"
+  },
+  {
+    "code": "4951",
+    "name": "エステー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:03 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.34,
+    "status": "pending"
+  },
+  {
+    "code": "4958",
+    "name": "長谷川香料",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:03 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.26,
+    "status": "pending"
+  },
+  {
+    "code": "4966",
+    "name": "上村工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:03 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -17.13,
+    "status": "pending"
+  },
+  {
+    "code": "4971",
+    "name": "メック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -22.68,
+    "status": "pending"
+  },
+  {
+    "code": "4979",
+    "name": "ＯＡＴアグリオ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.14,
+    "status": "pending"
+  },
+  {
+    "code": "4980",
+    "name": "デクセリアルズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -23.74,
+    "status": "pending"
+  },
+  {
+    "code": "5013",
+    "name": "ユシロ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.21,
+    "status": "pending"
+  },
+  {
+    "code": "5019",
+    "name": "出光興産",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -19.6,
+    "status": "pending"
+  },
+  {
+    "code": "5020",
+    "name": "ＥＮＥＯＳホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:04 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -18.5,
+    "status": "pending"
+  },
+  {
+    "code": "5035",
+    "name": "ＨＯＵＳＥＩ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.85,
+    "status": "pending"
+  },
+  {
+    "code": "504A",
+    "name": "イノバセル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.48,
+    "status": "pending"
+  },
+  {
+    "code": "5076",
+    "name": "インフロニア・ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.23,
+    "status": "pending"
+  },
+  {
+    "code": "5184",
+    "name": "ニチリン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.75,
+    "status": "pending"
+  },
+  {
+    "code": "520A",
+    "name": "ジェイファーマ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -20.76,
+    "status": "pending"
+  },
+  {
+    "code": "5232",
+    "name": "住友大阪セメント",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:05 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.54,
+    "status": "pending"
+  },
+  {
+    "code": "5253",
+    "name": "カバー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:06 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.91,
+    "status": "pending"
+  },
+  {
+    "code": "5262",
+    "name": "日本ヒューム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:06 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.39,
+    "status": "pending"
+  },
+  {
+    "code": "5288",
+    "name": "アジアパイルホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:06 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.49,
+    "status": "pending"
+  },
+  {
+    "code": "544A",
+    "name": "ＧＭＳグループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:06 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.54,
+    "status": "pending"
+  },
+  {
+    "code": "548A",
+    "name": "システムエグゼ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:06 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.13,
+    "status": "pending"
+  },
+  {
+    "code": "5586",
+    "name": "Ｌａｂｏｒｏ．ＡＩ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:07 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.44,
+    "status": "pending"
+  },
+  {
+    "code": "5589",
+    "name": "オートサーバー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:07 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.43,
+    "status": "pending"
+  },
+  {
+    "code": "5599",
+    "name": "Ｓ＆Ｊ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:07 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -15.78,
+    "status": "pending"
+  },
+  {
+    "code": "5695",
+    "name": "パウダーテック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:07 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.15,
+    "status": "pending"
+  },
+  {
+    "code": "5702",
+    "name": "大紀アルミニウム工業所",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:07 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.19,
+    "status": "pending"
+  },
+  {
+    "code": "5711",
+    "name": "三菱マテリアル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -13.02,
+    "status": "pending"
+  },
+  {
+    "code": "5714",
+    "name": "ＤＯＷＡホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.87,
+    "status": "pending"
+  },
+  {
+    "code": "5805",
+    "name": "ＳＷＣＣ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -25.88,
+    "status": "pending"
+  },
+  {
+    "code": "5838",
+    "name": "楽天銀行",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.13,
+    "status": "pending"
+  },
+  {
+    "code": "5852",
+    "name": "アーレスティ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.03,
+    "status": "pending"
+  },
+  {
+    "code": "5952",
+    "name": "アマテイ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:08 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.68,
+    "status": "pending"
+  },
+  {
+    "code": "5976",
+    "name": "高周波熱錬",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:09 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.39,
+    "status": "pending"
+  },
+  {
+    "code": "5997",
+    "name": "協立エアテック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:09 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.88,
+    "status": "pending"
+  },
+  {
+    "code": "6013",
+    "name": "タクマ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:09 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.99,
+    "status": "pending"
+  },
+  {
+    "code": "6022",
+    "name": "赤阪鐵工所",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:09 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.48,
+    "status": "pending"
+  },
+  {
+    "code": "6027",
+    "name": "弁護士ドットコム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.34,
+    "status": "pending"
+  },
+  {
+    "code": "6059",
+    "name": "ウチヤマホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.59,
+    "status": "pending"
+  },
+  {
+    "code": "6087",
+    "name": "アビスト",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.8,
+    "status": "pending"
+  },
+  {
+    "code": "6090",
+    "name": "ヒューマン・メタボローム・テクノロジーズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.6,
+    "status": "pending"
+  },
+  {
+    "code": "6098",
+    "name": "リクルートホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.01,
+    "status": "pending"
+  },
+  {
+    "code": "6104",
+    "name": "芝浦機械",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:10 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.67,
+    "status": "pending"
+  },
+  {
+    "code": "6125",
+    "name": "岡本工作機械製作所",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -17.02,
+    "status": "pending"
+  },
+  {
+    "code": "6165",
+    "name": "パンチ工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.75,
+    "status": "pending"
+  },
+  {
+    "code": "6181",
+    "name": "タメニー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -21.52,
+    "status": "pending"
+  },
+  {
+    "code": "6226",
+    "name": "守谷輸送機工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.85,
+    "status": "pending"
+  },
+  {
+    "code": "6228",
+    "name": "ジェイ・イー・ティ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -16.23,
+    "status": "pending"
+  },
+  {
+    "code": "6272",
+    "name": "レオン自動機",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:11 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.63,
+    "status": "pending"
+  },
+  {
+    "code": "6278",
+    "name": "ユニオンツール",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -26.36,
+    "status": "pending"
+  },
+  {
+    "code": "6284",
+    "name": "日精エー・エス・ビー機械",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.86,
+    "status": "pending"
+  },
+  {
+    "code": "6286",
+    "name": "靜甲",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.45,
+    "status": "pending"
+  },
+  {
+    "code": "6324",
+    "name": "ハーモニック・ドライブ・システムズ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -22.17,
+    "status": "pending"
+  },
+  {
+    "code": "6383",
+    "name": "ダイフク",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -15.05,
+    "status": "pending"
+  },
+  {
+    "code": "6408",
+    "name": "小倉クラッチ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.44,
+    "status": "pending"
+  },
+  {
+    "code": "641A",
+    "name": "ＮＯＫ　Ｇｒｏｕｐ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.47,
+    "status": "pending"
+  },
+  {
+    "code": "6433",
+    "name": "ヒーハイスト",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -20.78,
+    "status": "pending"
+  },
+  {
+    "code": "6480",
+    "name": "日本トムソン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -22.12,
+    "status": "pending"
+  },
+  {
+    "code": "6485",
+    "name": "前澤給装工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.49,
+    "status": "pending"
+  },
+  {
+    "code": "6513",
+    "name": "オリジン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:14 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.0,
+    "status": "pending"
+  },
+  {
+    "code": "6523",
+    "name": "ＰＨＣホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:14 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.17,
+    "status": "pending"
+  },
+  {
+    "code": "6570",
+    "name": "共和コーポレーション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:14 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.47,
+    "status": "pending"
+  },
+  {
+    "code": "6588",
+    "name": "東芝テック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:14 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.06,
+    "status": "pending"
+  },
+  {
+    "code": "6626",
+    "name": "ＳＥＭＩＴＥＣ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:14 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.01,
+    "status": "pending"
+  },
+  {
+    "code": "6638",
+    "name": "ミマキエンジニアリング",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:15 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -16.59,
+    "status": "pending"
+  },
+  {
+    "code": "6662",
+    "name": "ユビテック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:15 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.05,
+    "status": "pending"
+  },
+  {
+    "code": "6694",
+    "name": "ズーム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:15 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.94,
+    "status": "pending"
+  },
+  {
+    "code": "6707",
+    "name": "サンケン電気",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:15 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -19.54,
+    "status": "pending"
+  },
+  {
+    "code": "6850",
+    "name": "チノー",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:15 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -12.61,
+    "status": "pending"
+  },
+  {
+    "code": "6894",
+    "name": "パルステック工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.24,
+    "status": "pending"
+  },
+  {
+    "code": "6969",
+    "name": "松尾電機",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -20.75,
+    "status": "pending"
+  },
+  {
+    "code": "6986",
+    "name": "双葉電子工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.88,
+    "status": "pending"
+  },
+  {
+    "code": "6998",
+    "name": "日本タングステン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -20.74,
+    "status": "pending"
+  },
+  {
+    "code": "7036",
+    "name": "イーエムネットジャパン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.13,
+    "status": "pending"
+  },
+  {
+    "code": "7075",
+    "name": "ＱＬＳホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:16 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.74,
+    "status": "pending"
+  },
+  {
+    "code": "7087",
+    "name": "ウイルテック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.03,
+    "status": "pending"
+  },
+  {
+    "code": "7119",
+    "name": "ハルメクホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.56,
+    "status": "pending"
+  },
+  {
+    "code": "7129",
+    "name": "ミアヘルサホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.53,
+    "status": "pending"
+  },
+  {
+    "code": "7167",
+    "name": "めぶきフィナンシャルグループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.75,
+    "status": "pending"
+  },
+  {
+    "code": "7186",
+    "name": "横浜フィナンシャルグループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.97,
+    "status": "pending"
+  },
+  {
+    "code": "7201",
+    "name": "日産自動車",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:17 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.51,
+    "status": "pending"
+  },
+  {
+    "code": "7213",
+    "name": "レシップホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:18 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.4,
+    "status": "pending"
+  },
+  {
+    "code": "7222",
+    "name": "日産車体",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:18 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.69,
+    "status": "pending"
+  },
+  {
+    "code": "7226",
+    "name": "極東開発工業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:18 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.44,
+    "status": "pending"
+  },
+  {
+    "code": "7242",
+    "name": "カヤバ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:18 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.97,
+    "status": "pending"
+  },
+  {
+    "code": "7280",
+    "name": "ミツバ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:18 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.9,
+    "status": "pending"
+  },
+  {
+    "code": "7287",
+    "name": "日本精機",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.43,
+    "status": "pending"
+  },
+  {
+    "code": "7292",
+    "name": "村上開明堂",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.79,
+    "status": "pending"
+  },
+  {
+    "code": "7326",
+    "name": "ＳＢＩインシュアランスグループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.73,
+    "status": "pending"
+  },
+  {
+    "code": "7359",
+    "name": "東京通信グループ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.32,
+    "status": "pending"
+  },
+  {
+    "code": "7374",
+    "name": "コンフィデンス・インターワークス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.32,
+    "status": "pending"
+  },
+  {
+    "code": "7414",
+    "name": "小野建",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:19 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.14,
+    "status": "pending"
+  },
+  {
+    "code": "7456",
+    "name": "松田産業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:20 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.75,
+    "status": "pending"
+  },
+  {
+    "code": "7505",
+    "name": "扶桑電通",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:20 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.71,
+    "status": "pending"
+  },
+  {
+    "code": "7525",
+    "name": "リックス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:20 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.52,
+    "status": "pending"
+  },
+  {
+    "code": "7554",
+    "name": "幸楽苑",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:20 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.01,
+    "status": "pending"
+  },
+  {
+    "code": "7561",
+    "name": "ハークスレイホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:20 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.74,
+    "status": "pending"
+  },
+  {
+    "code": "7628",
+    "name": "オーハシテクニカ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:21 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.28,
+    "status": "pending"
+  },
+  {
+    "code": "7637",
+    "name": "白銅",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:21 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.64,
+    "status": "pending"
+  },
+  {
+    "code": "7793",
+    "name": "イメージ・マジック",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:21 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.89,
+    "status": "pending"
+  },
+  {
+    "code": "7806",
+    "name": "ＭＴＧ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:21 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -15.35,
+    "status": "pending"
+  },
+  {
+    "code": "7849",
+    "name": "スターツ出版",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:21 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.31,
+    "status": "pending"
+  },
+  {
+    "code": "7864",
+    "name": "フジシールインターナショナル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:22 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.01,
+    "status": "pending"
+  },
+  {
+    "code": "7877",
+    "name": "永大化工",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:22 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.02,
+    "status": "pending"
+  },
+  {
+    "code": "7887",
+    "name": "南海プライウッド",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:22 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.1,
+    "status": "pending"
+  },
+  {
+    "code": "7898",
+    "name": "ウッドワン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:22 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.13,
+    "status": "pending"
+  },
+  {
+    "code": "7915",
+    "name": "ＮＩＳＳＨＡ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:22 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.3,
+    "status": "pending"
+  },
+  {
+    "code": "7938",
+    "name": "リーガルコーポレーション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.62,
+    "status": "pending"
+  },
+  {
+    "code": "7944",
+    "name": "ローランド",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.83,
+    "status": "pending"
+  },
+  {
+    "code": "8023",
+    "name": "ＤＡＩＫＯ　ＸＴＥＣＨ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.16,
+    "status": "pending"
+  },
+  {
+    "code": "8029",
+    "name": "ルックホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.77,
+    "status": "pending"
+  },
+  {
+    "code": "8051",
+    "name": "山善",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.54,
+    "status": "pending"
+  },
+  {
+    "code": "8107",
+    "name": "キムラタン",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:23 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.0,
+    "status": "pending"
+  },
+  {
+    "code": "8118",
+    "name": "キング",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:24 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.26,
+    "status": "pending"
+  },
+  {
+    "code": "8129",
+    "name": "東邦ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:24 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.48,
+    "status": "pending"
+  },
+  {
+    "code": "8131",
+    "name": "ミツウロコグループホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:24 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.01,
+    "status": "pending"
+  },
+  {
+    "code": "8132",
+    "name": "シナネンホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:24 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.55,
+    "status": "pending"
+  },
+  {
+    "code": "8138",
+    "name": "三京化成",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:24 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.5,
+    "status": "pending"
+  },
+  {
+    "code": "8151",
+    "name": "東陽テクニカ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:25 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -11.21,
+    "status": "pending"
+  },
+  {
+    "code": "8152",
+    "name": "ソマール",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:25 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.39,
+    "status": "pending"
+  },
+  {
+    "code": "8275",
+    "name": "フォーバル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:25 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.72,
+    "status": "pending"
+  },
+  {
+    "code": "8304",
+    "name": "あおぞら銀行",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:25 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -3.02,
+    "status": "pending"
+  },
+  {
+    "code": "8337",
+    "name": "千葉興業銀行",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:25 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.34,
+    "status": "pending"
+  },
+  {
+    "code": "8387",
+    "name": "四国銀行",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -16.43,
+    "status": "pending"
+  },
+  {
+    "code": "8399",
+    "name": "琉球銀行",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -15.06,
+    "status": "pending"
+  },
+  {
+    "code": "8891",
+    "name": "ＡＭＧホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.92,
+    "status": "pending"
+  },
+  {
+    "code": "8920",
+    "name": "東祥",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.97,
+    "status": "pending"
+  },
+  {
+    "code": "9006",
+    "name": "京浜急行電鉄",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.84,
+    "status": "pending"
+  },
+  {
+    "code": "9007",
+    "name": "小田急電鉄",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:26 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.25,
+    "status": "pending"
+  },
+  {
+    "code": "9017",
+    "name": "新潟交通",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.66,
+    "status": "pending"
+  },
+  {
+    "code": "9048",
+    "name": "名古屋鉄道",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.01,
+    "status": "pending"
+  },
+  {
+    "code": "9074",
+    "name": "日本石油輸送",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.11,
+    "status": "pending"
+  },
+  {
+    "code": "9075",
+    "name": "福山通運",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.26,
+    "status": "pending"
+  },
+  {
+    "code": "9082",
+    "name": "大和自動車交通",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -10.0,
+    "status": "pending"
+  },
+  {
+    "code": "9147",
+    "name": "ＮＩＰＰＯＮ　ＥＸＰＲＥＳＳホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:27 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.47,
+    "status": "pending"
+  },
+  {
+    "code": "9214",
+    "name": "Ｒｅｃｏｖｅｒｙ　Ｉｎｔｅｒｎａｔｉｏｎａｌ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.56,
+    "status": "pending"
+  },
+  {
+    "code": "9256",
+    "name": "サクシード",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -8.64,
+    "status": "pending"
+  },
+  {
+    "code": "9336",
+    "name": "大栄環境",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.01,
+    "status": "pending"
+  },
+  {
+    "code": "9380",
+    "name": "東海運",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.93,
+    "status": "pending"
+  },
+  {
+    "code": "9385",
+    "name": "ショーエイコーポレーション",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.62,
+    "status": "pending"
+  },
+  {
+    "code": "9408",
+    "name": "ＢＳＮメディアホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:28 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.18,
+    "status": "pending"
+  },
+  {
+    "code": "9435",
+    "name": "光通信",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:29 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.84,
+    "status": "pending"
+  },
+  {
+    "code": "9445",
+    "name": "フォーバルテレコム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:29 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.56,
+    "status": "pending"
+  },
+  {
+    "code": "9476",
+    "name": "中央経済社ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:29 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.51,
+    "status": "pending"
+  },
+  {
+    "code": "9519",
+    "name": "レノバ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:29 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -5.49,
+    "status": "pending"
+  },
+  {
+    "code": "9543",
+    "name": "静岡ガス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:30 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.97,
+    "status": "pending"
+  },
+  {
+    "code": "9633",
+    "name": "東京テアトル",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:30 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.11,
+    "status": "pending"
+  },
+  {
+    "code": "9635",
+    "name": "武蔵野興業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:30 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.94,
+    "status": "pending"
+  },
+  {
+    "code": "9684",
+    "name": "スクウェア・エニックス・ホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:30 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 5.96,
+    "status": "pending"
+  },
+  {
+    "code": "9726",
+    "name": "ＫＮＴ－ＣＴホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:31 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.58,
+    "status": "pending"
+  },
+  {
+    "code": "9735",
+    "name": "セコム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.48,
+    "status": "pending"
+  },
+  {
+    "code": "9746",
+    "name": "ＴＫＣ",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.52,
+    "status": "pending"
+  },
+  {
+    "code": "9755",
+    "name": "応用地質",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:31 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.57,
+    "status": "pending"
+  },
+  {
+    "code": "9780",
+    "name": "ハリマビステム",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:31 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -9.18,
+    "status": "pending"
+  },
+  {
+    "code": "9820",
+    "name": "エムティジェネックス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:32 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.62,
+    "status": "pending"
+  },
+  {
+    "code": "9850",
+    "name": "グルメ杵屋",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:32 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.88,
+    "status": "pending"
+  },
+  {
+    "code": "9929",
+    "name": "平和紙業",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:32 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.29,
+    "status": "pending"
+  },
+  {
+    "code": "9956",
+    "name": "バローホールディングス",
+    "target_date": "2026-11-11",
+    "logged_at": "2026-11-10 04:10:32 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.28,
     "status": "pending"
   }
 ]
