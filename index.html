@@ -3958,15 +3958,16 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!cap){el.innerHTML='<span class="g">資金別の仮想：まだ読めません（コクピットの記録から1分ほどで出ます）</span>';return;}
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
-    el.innerHTML='<table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金 '+man(s.peak_amount)+'（今日いちばん多く持った額）</small>')+'</th>').join("")+'</tr>'+
+    el.innerHTML='<table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（信用'+(cap.margin_mult||3.3)+'倍・今日いちばん多く同時に持った建て金額÷'+(cap.margin_mult||3.3)+'・持ち越し込み）</small>')+'</th>').join("")+'</tr>'+
       row("今日の損益（確定＋含み）",s=>td(s.done+s.open,yen))+
       row("　うちデイ",s=>td(s.rows.day.done+s.rows.day.open,yen))+
       row("　うちオーバーナイト",s=>td(s.rows.overnight.done+s.rows.overnight.open,yen))+
       row("通算（確定・"+esc(String(cap.from||"").slice(5).replace("-","/"))+"から）",s=>td(s.total_done,yen))+
       row("通算の増え方",s=>s.total_pct==null?'<td class="g">—</td>':td(s.total_pct,v=>(v>0?"+":"")+v.toFixed(2)+"%"))+
       row("今日の勝ち／決済",s=>'<td>'+s.wins+'／'+s.closed+'回</td>')+
-      // OWNER 2026-11-09 「ここに１００株（資金額）がでるとわかりやすい」: the largest amount held at the same time today (the money the column needed)
-      row("今日いちばん多く持った額",s=>'<td>'+man(s.peak_amount)+'</td>')+
+      // OWNER 2026-11-09 「資金別の表の100株の見出しに、必要な資金（今日いちばん多く同時に持った建て金額を3.3で割った額、持ち越し込み）を出して。
+      // 表に『今日いちばん多く持った建て金額』の行も足し、300万と500万にも同じ行を出す」
+      row("今日いちばん多く持った建て金額",s=>'<td>'+man(s.peak_amount)+'</td>')+
       row("今の建玉／枠",s=>'<td>'+man(s.using_amount)+'／'+(s.limit_amount?man(s.limit_amount):"枠なし")+'</td>')+
       row("入れなかった回数",s=>'<td>'+(s.capital?s.skipped_room+'回'+(s.skipped_price?'<span class="g">（1単元が資金より高い '+s.skipped_price+'回）</span>':''):'<span class="g">—</span>')+'</td>')+
       row("先着順なら（参考）",s=>s.fifo?td(s.fifo.done+s.fifo.open,v=>yen(v)+'<span class="g">（入れず '+s.fifo.skipped+'回）</span>'):'<td class="g">—</td>')+

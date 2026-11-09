@@ -107,8 +107,10 @@ class Sizing(unittest.TestCase):
 
     def test_100_share_column_shows_the_money_needed(self):
         # OWNER 2026-11-09 「ここに１００株（資金額）がでるとわかりやすい」
-        self.assertIn("必要な資金 '+man(s.peak_amount)+'（今日いちばん多く持った額）", HTML)
-        self.assertIn('row("今日いちばん多く持った額"', HTML)
+        # 「…必要な資金（今日いちばん多く同時に持った建て金額を3.3で割った額、持ち越し込み）…『今日いちばん多く持った建て金額』の行も足し」
+        self.assertIn("必要な資金 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'", HTML)
+        self.assertIn("・持ち越し込み）", HTML)
+        self.assertIn('row("今日いちばん多く持った建て金額"', HTML)
         # OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
         self.assertIn('["ON_LONG","持ち越し 買い","（オーバーナイト銘柄）"', HTML)
         self.assertIn('["ON_SHORT","持ち越し 空売り","（オーバーナイト銘柄）"', HTML)
