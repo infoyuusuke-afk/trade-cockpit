@@ -659,7 +659,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  });
 });
 </script>
-<style>.cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important;row-gap:4px}.cockpit-tabs.two-rows .tab-break{flex-basis:100%;height:0;order:50}
+<style>.cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important;row-gap:4px}.cockpit-tabs.two-rows .tab-break{flex-basis:100%;height:0;order:50}.cockpit-tabs.two-rows .tab-indent{order:55;height:1px;flex:0 0 auto}
 .cockpit-tabs.two-rows .cockpit-brand{order:0}</style>
 <script>
 // OWNER 2026-11-09 「上のタブを2段にして、横にスクロールしなくても全部見えるようにして。1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・
@@ -677,7 +677,22 @@ document.addEventListener("DOMContentLoaded",()=>{
     [...nav.querySelectorAll(":scope > .cockpit-tab[data-tab]")].forEach(b=>{const k=b.dataset.tab,i1=ROW1.indexOf(k),i2=ROW2.indexOf(k);
       const o=i1>=0?10+i1:i2>=0?60+i2:90;if(b.style.order!==String(o))b.style.order=String(o);});
     const more=nav.querySelector(":scope > details.secondary-tabs");if(more&&more.style.order!=="95")more.style.order="95";
+    indent();
   }
+  // OWNER 2026-11-10 「２段になっても先頭はそろえて」: row 2 starts under the first tab of row 1 (not under the title/lamp on the left).
+  // An empty spacer at the start of row 2 as wide as the space the title/lamp takes in row 1; re-measured when that width changes.
+  function indent(){
+    const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
+    let sp=nav.querySelector(":scope > .tab-indent");
+    if(!sp){sp=document.createElement("span");sp.className="tab-indent";sp.setAttribute("aria-hidden","true");nav.appendChild(sp);}
+    const first=nav.querySelector(':scope > .cockpit-tab[data-tab="scalp"]'),gap=parseFloat(getComputedStyle(nav).columnGap)||0;
+    const w=first?Math.round(first.getBoundingClientRect().left-nav.getBoundingClientRect().left-(parseFloat(getComputedStyle(nav).paddingLeft)||0)-gap):0;
+    const want=w>0?w+"px":"0px",disp=w>0?"":"none";
+    if(sp.style.width!==want)sp.style.width=want;if(sp.style.display!==disp)sp.style.display=disp;
+  }
+  window.addEventListener("resize",indent);
+  document.addEventListener("DOMContentLoaded",()=>{const br=document.querySelector(".cockpit-tabs > .cockpit-brand");
+    if(br&&window.ResizeObserver)new ResizeObserver(indent).observe(br);});
   document.addEventListener("DOMContentLoaded",()=>{arrange();const nav=document.querySelector(".cockpit-tabs");
     if(nav)new MutationObserver(arrange).observe(nav,{childList:true});});
 })();
