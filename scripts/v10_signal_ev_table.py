@@ -264,7 +264,7 @@ RULES = {
     # All three blocks chose them, so no block is out of sample: the Brain gives their
     # backtest a small weight (PROVISIONAL) until forward trades accumulate. Only the
     # strategy the search saw (押し目 for buys, 戻り for shorts) matches.
-    "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄の押し目・目標2倍・損切り2倍", "side": 1, "from": "09:00",
+    "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄が、最初の15分の高値まで押して上で引けた時（押し目買い）・目標2倍・損切り2倍", "side": 1, "from": "09:00",
            "to": "15:20", "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
            "strategy": "OR15押し目", "min_move_pct": 0.5, "selection": "IN_SAMPLE_ALL_BLOCKS", "backtest_weight": 0.1,
            "backtest": R4_BACKTEST},

@@ -146,7 +146,12 @@ class EarningsMarks(unittest.TestCase):
 class Screen(unittest.TestCase):
     def test_lamp_follows_the_pc(self):
         self.assertIn('badge.textContent=live?"V10 / LIVE":phase==="down"?"V10 / 停止":"V10 / 時間外"', HTML)
-        self.assertIn("window.cockpitLampState={live,phase,at:d.updated_at||\"\"};window.cockpitLampRefresh?.();", HTML)
+        # audit 6734206848: the unified handler is the same one line as before; the lamp and the PC check are a separate listener
+        line = HTML[HTML.index('document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live='):]
+        line = line[:line.index("\n")]
+        self.assertNotIn("cockpitLamp", line)
+        self.assertNotIn("PCの照合", line)
+        self.assertIn("window.cockpitLampState={live,phase,at:d.updated_at||\"\"};window.cockpitLampRefresh();", HTML)
 
     def test_yellow_when_public_analysis_is_old_and_tooltip_names_it(self):
         # OWNER 2026-11-09 「状態のランプに黄も入れて…マウスを乗せたら何が古いかを文字で出す」
@@ -159,6 +164,15 @@ class Screen(unittest.TestCase):
 
     def test_pc_check_replaces_the_cloud_line(self):
         self.assertIn('ver.textContent="PCの照合 "', HTML)
+        self.assertIn('ver.classList.toggle("down",!live&&phase==="down");', HTML)
+
+    def test_rule4_label_says_the_or15_high_pullback(self):
+        # OWNER 2026-11-09 「④の画面の説明が中身（寄りから+0.5%以上で最初の15分の高値を抜く）と合っているか確かめ、違えば直す」
+        from scripts import v10_signal_ev_table as ev
+        r4 = ev.RULES["R4"]
+        self.assertIn("寄りから+0.5%以上", r4["label"])
+        self.assertIn("最初の15分の高値", r4["label"])
+        self.assertEqual((r4["strategy"], r4["min_move_pct"], r4["side"], r4["target_mult"], r4["stop_mult"]), ("OR15押し目", 0.5, 1, 2.0, 2.0))
         self.assertNotIn('fetch("market_summary.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>null).then(s=>{', HTML)
 
     def test_capital_table_held_line_charts_and_earnings_tag(self):
