@@ -3870,9 +3870,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cap-box th{color:var(--cc-text-secondary);font-weight:700}.cap-box th:first-child,.cap-box td:first-child{text-align:left;color:var(--cc-text-secondary)}
 .cap-box tr:last-child td{border-bottom:0}.cap-box .up{color:var(--cc-long)}.cap-box .dn{color:var(--cc-short)}.cap-box .g{color:var(--cc-text-secondary)}
 .cap-box .cap-note{margin-top:4px;color:var(--cc-text-secondary);font-size:11px;white-space:normal}
-.cap-held{margin-top:6px}.cap-held-title{font-weight:700;margin:2px 0 4px}.cap-held-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.cap-held-col{border:1px solid var(--cc-border);border-radius:6px;padding:4px 6px;font-size:12px;max-height:15em;overflow-y:auto}.cap-held-head{font-weight:700;margin-bottom:2px;white-space:normal}
-.cap-held-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto;gap:6px;align-items:baseline;border-top:1px solid var(--cc-border);padding:2px 0;font-variant-numeric:tabular-nums}
+.cap-held{margin-top:6px}.cap-held-title{font-weight:700;margin:2px 0 4px}.cap-held-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cap-held-col{border:1px solid var(--cc-border);border-radius:6px;padding:4px 6px;font-size:12px;max-height:24em;overflow-y:auto}.cap-held-head{font-weight:700;margin-bottom:2px;white-space:normal}
+.cap-held-row{display:grid;grid-template-columns:minmax(0,1fr) 3.4em 5.2em 5.6em 6.6em 4.2em;gap:6px;align-items:baseline;border-top:1px solid var(--cc-border);padding:2px 0;font-variant-numeric:tabular-nums}
+.cap-held-row>*:not(:first-child){text-align:right}.cap-held-th{color:var(--cc-text-secondary);font-size:11px}
+.cap-bar{height:8px;border-radius:4px;background:#2a2e39;overflow:hidden;margin:4px 0 2px}.cap-bar i{display:block;height:100%;background:#f5c542}
+.cap-bar-text{font-size:11.5px;margin-bottom:4px}.cap-skip-title{margin-top:6px;font-weight:700;font-size:12px}
+.cap-skip-row{display:grid;grid-template-columns:3.2em minmax(0,1fr) 3.4em minmax(0,2fr);gap:6px;border-top:1px solid var(--cc-border);padding:2px 0;font-size:11.5px}
+.cap-skip-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cap-skip-row span:last-child{white-space:normal}
 .cap-held-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
@@ -3915,18 +3920,30 @@ document.addEventListener("DOMContentLoaded",()=>{
       groups.map(g=>'<span>'+nm(g)+(g.n>1?'×'+g.n:'')+' <span class="g">'+esc(g.side)+(g.kind==="仮想・持越"?"・持越":"")+'</span> '+man(g.amount)+' <b class="'+cls(g.none?0:g.yen)+'">'+(g.none?"値なし":yen(g.yen))+'</b>'+(g.last?'<span class="g">（最後の値）</span>':'')+'</span>').join("");
   }
   function sizes(){return cap?cap.sizes:[];}
-  // OWNER 2026-11-09 「フルレバで３００万　５００万も表示してくれれば大丈夫、だが、その場合のポジションはわかりやすく表示して」:
-  // each size's open positions side by side: name(code) 買い/空売り 株数・建て金額・含み, plus the room used of the limit
+  // OWNER 2026-11-09: the rule figures used for the priority (the days before today, fixed in the morning)
+  function evLine(r){const e=r&&r.ev||{},n=r&&r.n||{},names={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し買い",ON_SHORT:"持ち越し空売り"};
+    const xs=Object.keys(names).filter(k=>e[k]!=null).map(k=>names[k]+' '+(e[k]>0?"+":"")+Number(e[k]).toFixed(3)+'%（'+(n[k]||0)+'回）');
+    return '<br>優先に使った手法の成績（前の日まで・1回の平均・費用込み）：'+(xs.length?esc(xs.join("・")):"まだありません（全部マイナス扱い）");}
+  // OWNER 2026-11-09 「資金別の仮想はフルレバ（3.3倍）のままでよい。注文タブの資金別の表の下に、300万と500万それぞれの保有中の一覧を出して。
+  // 銘柄、買いか空売りか、株数、建て金額、含み損益、デイか持ち越しか。一番上に使っている枠と全体の枠を棒で出す。入れなかったサインも直近の数件を理由つきで出す」
   function heldBlock(S){
     const nm=x=>{const n=String(x.name||""),c=String(x.ticker||"").replace(/\.T$/,"");return esc(n.includes(c)?n:n+"("+c+")");};
     const group=list=>{const by={};list.forEach(x=>{const k=x.ticker+"|"+x.side+"|"+x.kind,g=by[k]=by[k]||Object.assign({},x,{n:0,shares:0,amount:0,open_yen:0});
       g.n++;g.shares+=Number(x.shares)||0;g.amount+=Number(x.amount)||0;g.open_yen+=Number(x.open_yen)||0;});return Object.values(by).sort((a,b)=>b.amount-a.amount);};
-    const col=s=>{const h=group(Array.isArray(s.held)?s.held:[]);const use=s.limit_amount?Math.round(s.using_amount/s.limit_amount*100):null;
-      return '<div class="cap-held-col"><div class="cap-held-head">'+esc(s.label)+(s.capital?'・信用':'')+'　保有 '+h.length+'銘柄・建て '+man(s.using_amount)+
-        (use!=null?'（枠の'+use+'%）':'')+'</div>'+(h.length?h.map(x=>'<div class="cap-held-row"><span>'+nm(x)+(x.n>1?'×'+x.n:'')+(x.kind==="overnight"?'<span class="g">・持越</span>':'')+'</span>'+
-        '<span class="'+(x.side==="買い"?"up":"dn")+'">'+esc(x.side)+'</span><span>'+Number(x.shares).toLocaleString("ja-JP")+'株</span><span>'+man(x.amount)+'</span>'+
-        '<b class="'+cls(x.open_yen)+'">'+yen(x.open_yen)+'</b></div>').join(""):'<div class="g">保有なし</div>')+'</div>';};
-    return '<div class="cap-held"><div class="cap-held-title">資金別の保有中の建玉（仮想）</div><div class="cap-held-grid">'+S.map(col).join("")+'</div></div>';
+    const col=s=>{const h=group(Array.isArray(s.held)?s.held:[]),lim=Number(s.limit_amount)||0,use=Number(s.using_amount)||0,pct=lim?Math.min(100,Math.round(use/lim*100)):0;
+      const sk=Array.isArray(s.skipped_recent)?s.skipped_recent:[];
+      return '<div class="cap-held-col"><div class="cap-held-head">'+esc(s.label)+'・信用（フルレバ3.3倍）　保有 '+h.length+'銘柄</div>'+
+        '<div class="cap-bar" title="使っている枠／全体の枠"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="cap-bar-text">使っている枠 <b>'+man(use)+'</b>／全体の枠 '+man(lim)+'（'+pct+'%）</div>'+
+        '<div class="cap-held-row cap-held-th"><span>銘柄</span><span>向き</span><span>株数</span><span>建て金額</span><span>含み損益</span><span>区分</span></div>'+
+        (h.length?h.map(x=>'<div class="cap-held-row"><span>'+nm(x)+(x.n>1?'×'+x.n:'')+'</span>'+
+          '<span class="'+(x.side==="買い"?"up":"dn")+'">'+esc(x.side)+'</span><span>'+Number(x.shares).toLocaleString("ja-JP")+'株</span><span>'+man(x.amount)+'</span>'+
+          '<b class="'+cls(x.open_yen)+'">'+yen(x.open_yen)+'</b><span class="g">'+(x.kind==="overnight"?"持ち越し":"デイ")+'</span></div>').join(""):'<div class="g">保有なし</div>')+
+        '<div class="cap-skip-title">入れなかったサイン（直近'+sk.length+'件・今日の合計 '+((s.skipped_room||0)+(s.skipped_price||0))+'件）</div>'+
+        (sk.length?sk.map(x=>'<div class="cap-skip-row"><span>'+esc(x.at)+'</span><span>'+nm(x)+'</span><span class="'+(x.side==="買い"?"up":"dn")+'">'+esc(x.side)+'</span>'+
+          '<span class="g">'+esc(x.reason)+'（必要 '+man(x.need)+(x.room!=null?'・残りの枠 '+man(x.room):'')+'）</span></div>').join(""):'<div class="g">なし</div>')+'</div>';};
+    const caps=S.filter(s=>s.capital);
+    return '<div class="cap-held"><div class="cap-held-title">資金別の保有中の建玉（仮想・フルレバ）</div><div class="cap-held-grid">'+caps.map(col).join("")+'</div></div>';
   }
   function renderTable(){
     const line=document.getElementById("virt-held-line")||document.getElementById("virt-day-line");if(!line)return;
@@ -3944,8 +3961,9 @@ document.addEventListener("DOMContentLoaded",()=>{
       row("今日の勝ち／決済",s=>'<td>'+s.wins+'／'+s.closed+'回</td>')+
       row("今の建玉／枠",s=>'<td>'+man(s.using_amount)+'／'+(s.limit_amount?man(s.limit_amount):"枠なし")+'</td>')+
       row("入れなかった回数",s=>'<td>'+(s.capital?s.skipped_room+'回'+(s.skipped_price?'<span class="g">（1単元が資金より高い '+s.skipped_price+'回）</span>':''):'<span class="g">—</span>')+'</td>')+
+      row("先着順なら（参考）",s=>s.fifo?td(s.fifo.done+s.fifo.open,v=>yen(v)+'<span class="g">（入れず '+s.fifo.skipped+'回）</span>'):'<td class="g">—</td>')+
       row("−3万で止めていたら（デイ）",s=>s.limit_hit_at?'<td class="dn">'+esc(s.limit_hit_at)+'で止め '+yen(s.limit_stop_yen)+'</td>':'<td class="g">届かず</td>')+
-      '</table>'+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+'</div>';
+      '</table>'+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+evLine(cap.rule_ev)+'</div>';
   }
   // AIトレード日記タブ：資金の条件と線グラフ
   function chartSvg(pts,from,to){

@@ -41,7 +41,60 @@ class Sizing(unittest.TestCase):
         tr = pos.trades_of([day_trade("A.T", 1000, "09:30")], [], [], "2026-11-09", {"A.T": tk(("09:30:00", 1000), ("09:40:00", 1010))}, "09:45")
         h = pos.size(tr, 3_000_000, "09:45")["held"][0]
         self.assertEqual((h["name"], h["side"], h["shares"], h["amount"], h["open_yen"]), ("A.T", "買い", 3000, 3_000_000, 30000))
-        self.assertIn("資金別の保有中の建玉（仮想）", HTML)
+        self.assertIn("資金別の保有中の建玉（仮想・フルレバ）", HTML)
+        for x in ("使っている枠 <b>", "全体の枠 ", 'class="cap-bar"', "入れなかったサイン（直近", '"持ち越し":"デイ"', "const caps=S.filter(s=>s.capital);"):
+            self.assertIn(x, HTML)
+
+    def test_priority_by_rule_and_reserve_for_positive_rules(self):
+        # OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先…後のサインを知っているように選ばない…マイナスのルールは
+        # 入った後に1回分の枠が残る時だけ入る…持ち越しも同じ。先着順の数字も参考に残す」
+        def dt(t, rule, at):
+            return dict(day_trade(t, 1000, at), rule=rule)
+        ev = {"R2": 0.3, "R4": -0.08}
+        # same minute: R4 listed first, R2 is taken first; later signals are not looked at
+        trs = pos.trades_of([dt("A.T", "R4", "09:30"), dt("B.T", "R2", "09:30"), dt("C.T", "R4", "09:30"), dt("D.T", "R2", "09:31")],
+                            [], [], "2026-11-09", {}, "10:00")
+        s = pos.size(trs, 3_000_000, "10:00", ev)
+        got = [(x["ticker"], x["in"]) for x in s["_taken"]]
+        # limit 9.9M: B(R2) 3M, then A(R4) needs 3M + one more 3M reserve -> 9M fits, C(R4) would leave 0.9M < 3M -> skipped,
+        # D(R2) at 09:31 fits (9M)
+        self.assertEqual(got, [("B.T", "09:30"), ("A.T", "09:30"), ("D.T", "09:31")])
+        self.assertEqual(s["skipped_recent"][0]["reason"], "成績がマイナスの手法なので、最後の1回分の枠を残した")
+        f = pos.size(trs, 3_000_000, "10:00")   # first come: A, B, C fill the room, D is skipped
+        self.assertEqual([x["ticker"] for x in f["_taken"]], ["A.T", "B.T", "C.T"])
+        # unknown rule = not positive; overnight holds follow their own figure
+        carry = [{"ticker": "E.T", "side": "LONG", "decided_at": "2026-11-06 15:25:04", "reference_price": "1000"}]
+        trs2 = pos.trades_of([], carry, [], "2026-11-09", {}, "10:00")
+        self.assertEqual(trs2[0]["rule"], "ON_LONG")
+        self.assertEqual(len(pos.size(trs2, 3_000_000, "10:00", {"ON_LONG": -0.1})["_taken"]), 1)   # 3M + 3M reserve <= 9.9M
+
+    def test_rule_ev_fixed_from_days_before_today(self):
+        with tempfile.TemporaryDirectory() as d:
+            rt = Path(d)
+            (rt / "records" / "2026-11-09").mkdir(parents=True)
+            (rt / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-06"],
+                "forward": {"R2": {"ev_pct": 0.35, "n": 119}, "R4": {"ev_pct": -0.083, "n": 236}, "BRAIN": {"ev_pct": 1}}}), encoding="utf-8")
+            (rt / pos.HISTORY_FILE).write_text("decision_date,side,status,evaluation_date,return_close_pct\n"
+                                               "2026-11-05,LONG,検証済み,2026-11-06,1.0\n2026-11-06,LONG,検証済み,2026-11-09,-5.0\n", encoding="utf-8")
+            e = pos.rule_ev(rt, rt / "records" / "2026-11-09", "2026-11-09")
+            self.assertEqual(e["ev"]["R2"], 0.35)
+            self.assertNotIn("BRAIN", e["ev"])
+            self.assertAlmostEqual(e["ev"]["ON_LONG"], round(1.0 - pos.ON_RATE_DAY["ON_LONG"], 4))   # today's evaluation is not used
+            # a later rebuild that includes today does not change today's figures
+            (rt / "rule_shadow_v1.json").write_text(json.dumps({"real_submit_allowed": False, "days": ["2026-11-09"],
+                "forward": {"R2": {"ev_pct": -9, "n": 1}}}), encoding="utf-8")
+            self.assertEqual(pos.rule_ev(rt, rt / "records" / "2026-11-09", "2026-11-09")["ev"]["R2"], 0.35)
+        self.assertIn('row("先着順なら（参考）"', HTML)
+        self.assertIn("優先に使った手法の成績（前の日まで・1回の平均・費用込み）", HTML)
+
+    def test_skipped_signals_keep_the_reason(self):
+        trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
+        tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
+        s = pos.size(tr, 3_000_000, "10:00")
+        sk = s["skipped_recent"]
+        self.assertEqual([x["reason"] for x in sk], ["1単元（100株）が資金より高い", "枠が足りない", "枠が足りない"])
+        self.assertEqual(sk[1]["room"], 900_000)
+        self.assertEqual(sk[0]["need"], 4_000_000)
         self.assertIn("'+heldBlock(S)+'", HTML)
 
     def test_expensive_stock_is_skipped_apart(self):

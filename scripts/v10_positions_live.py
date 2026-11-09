@@ -560,7 +560,7 @@ def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: 
             continue
         side = -1 if "空売り" in str(p.get("signal") or "") else 1
         tk = ticks.get(p.get("ticker", ""), [])
-        out.append({"kind": "day", "ticker": p.get("ticker"), "name": p.get("name"), "side": side, "fill": fill,
+        out.append({"kind": "day", "rule": p.get("rule"), "ticker": p.get("ticker"), "name": p.get("name"), "side": side, "fill": fill,
                     "in": str(p.get("fill_time"))[:5], "out": str(p.get("exit_time") or "")[:5] or None,
                     "ret": None if p.get("return_pct") is None else float(p["return_pct"]),
                     "exit": _pnum(p.get("exit_price")), "last": tk[-1][2] if tk else None, "ticks": tk})
@@ -575,7 +575,7 @@ def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: 
         leave = _pnum((closed.get(h.get("ticker")) or {}).get("exit_price"))
         if leave is None and now_hm >= EXIT_AT:
             leave = price_at(tk, EXIT_AT)
-        out.append({"kind": "overnight", "ticker": h.get("ticker"), "name": h.get("name"), "side": side, "fill": fill,
+        out.append({"kind": "overnight", "rule": "ON_LONG" if side > 0 else "ON_SHORT", "ticker": h.get("ticker"), "name": h.get("name"), "side": side, "fill": fill,
                     "in": "09:00", "out": EXIT_AT if leave is not None else None, "ret": None, "exit": leave,
                     "last": price_at(tk, min(now_hm, EXIT_AT)) if tk else None, "ticks": tk,
                     "days": _days_between(decided, today), "decided": decided})
@@ -591,20 +591,35 @@ def _closed_yen(t, shares):
     return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
 
 
-def size(trades: list, capital, now_hm: str) -> dict:
-    """Shares for each trade at one size, in fill order (overnight holds first: they were opened yesterday)."""
+def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
+    """Shares for each trade at one size (overnight holds first: they were opened yesterday).
+    ev=None: first come, first served (the reference figures).
+    ev={rule: mean % after cost of the days before today}: OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先する形にして。
+    後のサインを知っているように選ばない。…成績がマイナスのルールのサインは、入った後に1回分の枠が残る時だけ入る（最後の1回分は
+    成績がプラスのルール用に取っておく）。持ち越しも同じ」: signals of the same minute are taken highest rule first (nothing later is
+    looked at), and a signal whose rule is negative or unknown enters only when one more full trade (the capital) still fits after it."""
     limit = None if capital is None else capital * MARGIN_MULT
-    order = sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"]))
+    rank = (lambda t: -(ev.get(t.get("rule")) if ev.get(t.get("rule")) is not None else -1e9)) if ev is not None else (lambda t: 0)
+    order = sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"], rank(t)))
     taken, skipped_room, skipped_price, peak = [], 0, 0, 0.0
+    # OWNER 2026-11-09 「入れなかったサインも直近の数件を理由つきで出す」
+    skipped = []
     for t in order:
         sh = _shares(t["fill"], capital)
         if sh <= 0:
             skipped_price += 1
+            skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
+                            "kind": t["kind"], "reason": "1単元（100株）が資金より高い", "need": round(t["fill"] * 100), "room": None})
             continue
         using = sum(x["fill"] * x["shares"] for x in taken
                     if x["in"] <= t["in"] and (x["out"] is None or x["out"] > t["in"]))
-        if limit is not None and using + t["fill"] * sh > limit:
+        weak = ev is not None and not ((ev.get(t.get("rule")) or 0) > 0)
+        reserve = capital if (weak and limit is not None) else 0
+        if limit is not None and using + t["fill"] * sh + reserve > limit:
             skipped_room += 1
+            why = "枠が足りない" if using + t["fill"] * sh > limit else "成績がマイナスの手法なので、最後の1回分の枠を残した"
+            skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
+                            "kind": t["kind"], "rule": t.get("rule"), "reason": why, "need": round(t["fill"] * sh), "room": round(max(0.0, limit - using))})
             continue
         taken.append(dict(t, shares=sh))
         peak = max(peak, using + t["fill"] * sh)
@@ -642,7 +657,8 @@ def size(trades: list, capital, now_hm: str) -> dict:
     return {"rows": {k: {kk: (round(vv) if isinstance(vv, float) else vv) for kk, vv in v.items()} for k, v in rows.items()},
             "skipped_room": skipped_room, "skipped_price": skipped_price, "peak_amount": round(peak),
             "using_amount": using_now, "limit_amount": None if limit is None else round(limit),
-            "limit_hit_at": hit, "limit_stop_yen": round(total) if hit else None, "held": held, "_taken": taken}
+            "limit_hit_at": hit, "limit_stop_yen": round(total) if hit else None, "held": held, "_taken": taken,
+            "skipped_recent": sorted(skipped, key=lambda x: x["at"])[-5:][::-1]}
 
 
 def curve(taken: list, kinds: tuple, points: list, now_hm: str) -> list:
@@ -680,13 +696,64 @@ def _past(records: Path, today: str) -> list:
     return out
 
 
-def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list) -> dict:
+RULE_EV_FILE = "capital_rule_ev_v1.json"
+ON_RATE_DAY = {"ON_LONG": LONG_RATE / 365 * 100, "ON_SHORT": SHORT_RATE / 365 * 100}
+
+
+def rule_ev(runtime: Path, day_dir: Path, today: str) -> dict:
+    """{rule: mean % after cost} from the records before today, fixed in records/<day>/capital_rule_ev_v1.json at the first
+    pass of the day (so a figure built after today's close is never used for today). Day rules: rule_shadow_v1.json forward
+    ev_pct (cost = the replay's). Overnight: overnight_hold_history.csv 検証済み rows evaluated before today, return_close_pct
+    minus one day of interest, apart for long and short. A rule with no record is None (treated as not positive)."""
+    f = day_dir / RULE_EV_FILE
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+        if got.get("date") == today:
+            return got
+    except (OSError, ValueError):
+        pass
+    out = {"date": today, "made_at": datetime.now(JST).strftime("%H:%M"), "ev": {}, "n": {}}
+    try:
+        rs = json.loads((Path(runtime) / "rule_shadow_v1.json").read_text(encoding="utf-8-sig"))
+        if rs.get("real_submit_allowed") is False and today not in (rs.get("days") or []):
+            for k, v in (rs.get("forward") or {}).items():
+                if k in ("R1", "R2", "R4", "R5") and v.get("ev_pct") is not None:
+                    out["ev"][k], out["n"][k] = float(v["ev_pct"]), int(v.get("n") or 0)
+    except (OSError, ValueError, TypeError):
+        pass
+    acc = {"ON_LONG": [], "ON_SHORT": []}
+    for r in _rows(Path(runtime) / HISTORY_FILE):
+        if r.get("status") != "検証済み" or not str(r.get("evaluation_date") or "") or str(r.get("evaluation_date")) >= today:
+            continue
+        try:
+            acc["ON_LONG" if r.get("side") == "LONG" else "ON_SHORT"].append(float(r.get("return_close_pct")))
+        except (TypeError, ValueError):
+            continue
+    for k, xs in acc.items():
+        if xs:
+            out["ev"][k], out["n"][k] = round(sum(xs) / len(xs) - ON_RATE_DAY[k], 4), len(xs)
+    if day_dir.is_dir():
+        tmp = f.with_name(f.name + ".tmp")
+        tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(f)
+    return out
+
+
+def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
     points = marks()
     past = _past(records, today)
     sizes = []
     keep = {"date": today, "sizes": {}}
+    ev = (ev_doc or {}).get("ev") or {}
     for label, capital in SIZES:
-        s = size(trades, capital, now_hm)
+        s = size(trades, capital, now_hm, ev if capital is not None else None)
+        # OWNER 2026-11-09 「先着順の数字も参考に残す」
+        if capital is not None:
+            f = size(trades, capital, now_hm)
+            f.pop("_taken")
+            s["fifo"] = {"done": f["rows"]["day"]["done"] + f["rows"]["overnight"]["done"],
+                         "open": f["rows"]["day"]["open"] + f["rows"]["overnight"]["open"],
+                         "skipped": f["skipped_room"] + f["skipped_price"]}
         taken = s.pop("_taken")
         day_done = s["rows"]["day"]["done"] + s["rows"]["overnight"]["done"]
         day_open = s["rows"]["day"]["open"] + s["rows"]["overnight"]["open"]
@@ -707,7 +774,8 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         tmp.write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
         tmp.replace(day_dir / DAY_FILE)
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
-            "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
+            "rule_ev": ev_doc or {},
+            "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 
 
@@ -892,7 +960,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     # OWNER 2026-11-09 資金別（100株・300万・500万）と1日の損益の線グラフ、決算またぎの印. A failure here never stops the holdings view.
     try:
         capital = capital_view(records, day_dir, today, hm,
-                               trades_of(rule_positions, carry if not weekend else [], overnight_closed, today, ticks, hm))
+                               trades_of(rule_positions, carry if not weekend else [], overnight_closed, today, ticks, hm), rule_ev(runtime, day_dir, today))
     except Exception as exc:
         capital = {"status": "UNAVAILABLE", "reason": type(exc).__name__}
     try:
