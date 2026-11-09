@@ -187,7 +187,8 @@ class Screen(unittest.TestCase):
         self.assertIn(' <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>\n <button class="cockpit-tab" data-tab="pts">PTS</button>', HTML)
         self.assertIn('"overnight","pts","ms2-live"', HTML)
         for x in ('document.getElementById("ms2-pts-cards")', 'document.getElementById("ms2-ir-pts-cards")', 'document.getElementById("pts-morning-pickup")',
-                  'dateLine("pts-date-night"', 'dateLine("pts-date-ir"', 'dateLine("pts-date-pickup"', "v.pts_session_date", "t[0].pts_date"):
+                  'dateLine("pts-date-night"', 'dateLine("pts-date-ir"', 'dateLine("pts-date-pickup"', "v.pts_session_date", "t[0].pts_date",
+                  '"IR急騰PTSはありません"', '.tab-pane[data-pane="pts"] .warning'):
             self.assertIn(x, HTML)
         # the ids the renderers write into are still in the page exactly once
         for x in ('id="ms2-pts-cards"', 'id="ms2-ir-pts-cards"', 'id="ms2-ir-pts-meta"', 'ptsPanel.id="pts-morning-pickup"'):
