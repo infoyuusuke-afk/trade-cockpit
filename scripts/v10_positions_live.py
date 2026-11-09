@@ -779,6 +779,34 @@ def method_days(records: Path, runtime: Path, today: str) -> dict:
     return {k: [[d, round(y)] for d, y in sorted(v.items())] for k, v in by.items()}
 
 
+FOCUS_ANALYST_FILE = "focus_analyst_v1.json"
+
+
+def focus_analyst(runtime: Path, today: str, now_hm: str) -> dict:
+    """OWNER 2026-11-09 「FOCUSの空いた枠に、8:50と12:20にアナリストの今日の8銘柄から自信の高い順でMS2の100銘柄に入っているものを
+    自動で入れて」: the list a PC script writes (RuntimeDir/focus_analyst_v1.json, slots 0850 and 1220 of today), the later slot
+    once it exists and its time has come. Only fields for the screen are passed; analyst text is data only. No orders."""
+    try:
+        doc = json.loads((Path(runtime) / FOCUS_ANALYST_FILE).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {"state": "NO_FILE", "items": []}
+    if doc.get("schema_version") != "100b-v10-focus-analyst-v1" or doc.get("real_submit_allowed") is not False:
+        return {"state": "FORMAT_UNKNOWN", "items": []}
+    if doc.get("date") != today:
+        return {"state": "OLD", "items": []}
+    slots = doc.get("slots") or {}
+    key = "1220" if "1220" in slots and now_hm >= "12:20" else "0850" if "0850" in slots else None
+    if key is None:
+        return {"state": "NOT_YET", "items": []}
+    items = []
+    for x in (slots[key].get("items") or [])[:8]:
+        t = str(x.get("ticker") or "")
+        if len(t) != 6 or not t.endswith(".T"):
+            continue
+        items.append({k: str(x.get(k) or "")[:80] for k in ("ticker", "code", "name", "side", "conf", "who", "entry")})
+    return {"state": "OK", "slot": key, "made_at": str(slots[key].get("made_at") or "")[:5], "items": items}
+
+
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
     points = marks()
     past = _past(records, today)
@@ -1031,7 +1059,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
             "owner_rules": owner, "short_rebound": rebound, "overnight_closed": overnight_closed,
-            "capital": capital, "earnings_soon": soon,
+            "capital": capital, "earnings_soon": soon, "focus_analyst": focus_analyst(runtime, today, hm),
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}

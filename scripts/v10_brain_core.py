@@ -420,7 +420,7 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
     view["positions"] = {k: (positions or {}).get(k) for k in ("generated_at", "date", "rule_positions", "overnight",
                                                                "swing", "value", "counts", "status",
                                                                "owner_rules", "short_rebound", "overnight_closed",
-                                                               "capital", "earnings_soon")}   # OWNER 2026-11-09 資金別・決算またぎの印   # OWNER 2026-10-27 OWNER's rules tally, short-covering first moves
+                                                               "capital", "earnings_soon", "focus_analyst")}   # OWNER 2026-11-09 資金別・決算またぎの印   # OWNER 2026-10-27 OWNER's rules tally, short-covering first moves
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(view, ensure_ascii=False, sort_keys=True), encoding="utf-8")

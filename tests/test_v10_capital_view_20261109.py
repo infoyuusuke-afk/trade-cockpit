@@ -146,6 +146,22 @@ class Sizing(unittest.TestCase):
         self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
         self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)
 
+    def test_focus_analyst_slots(self):
+        # OWNER 2026-11-09 「FOCUSの空いた枠に、8:50と12:20にアナリストの今日の8銘柄から自信の高い順で…自動で入れて…注文はしない」
+        with tempfile.TemporaryDirectory() as d:
+            rt = Path(d)
+            self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "09:00")["state"], "NO_FILE")
+            item = {"ticker": "7011.T", "code": "7011", "name": "三菱重工業", "side": "買い", "conf": "中", "who": "Grok1号", "entry": "入る 寄り"}
+            (rt / pos.FOCUS_ANALYST_FILE).write_text(json.dumps({"schema_version": "100b-v10-focus-analyst-v1", "date": "2026-11-09",
+                "real_submit_allowed": False, "slots": {"0850": {"made_at": "08:50", "items": [item]},
+                                                         "1220": {"made_at": "12:20", "items": [dict(item, ticker="8058.T", code="8058")]}}}), encoding="utf-8")
+            self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "10:00")["items"][0]["code"], "7011")
+            self.assertEqual(pos.focus_analyst(rt, "2026-11-09", "12:30")["items"][0]["code"], "8058")
+            self.assertEqual(pos.focus_analyst(rt, "2026-11-10", "10:00")["state"], "OLD")
+        for x in ('const PIN_KEY="cockpitFocusPinnedV10";', "free=Math.max(0,5-pins.length)", "filter(x=>!pins.includes(x.ticker))",
+                  '"AIアナリスト "+x.who+"・自信 "+x.conf'):
+            self.assertIn(x, HTML)
+
     def test_skipped_signals_keep_the_reason(self):
         trades = [day_trade(f"{i}.T", 1000, "09:3%d" % i) for i in range(5)] + [day_trade("X.T", 40000, "09:40")]
         tr = pos.trades_of(trades, [], [], "2026-11-09", {}, "10:00")
