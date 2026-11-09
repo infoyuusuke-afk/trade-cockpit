@@ -176,10 +176,11 @@ class Screen(unittest.TestCase):
         self.assertNotIn('fetch("market_summary.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>null).then(s=>{', HTML)
 
     def test_sox_zone_label_in_the_margin(self):
-        # OWNER 2026-11-09 「注意ゾーンの色変えて　文字がチャートにかぶって数字みえない」
-        self.assertIn('"rgba(167,139,250,.13)"', HTML)
-        self.assertIn("'<text x=\"'+(W-R+6)+'\" y=\"'+(zm-2)+'\" fill=\"'+zc+'\" font-size=\"12\" font-weight=\"700\">注意ゾーン</text>'", HTML)
+        # OWNER 2026-11-09 「注意ゾーンの文字を帯の中から外し…右の外側に『注意 11,041〜11,724』…帯の色は…薄い黄色」
+        self.assertIn('"rgba(255,217,87,.09)"', HTML)
+        self.assertIn("'<text x=\"'+(W-R+6)+'\" y=\"'+(zm+4)+'\" fill=\"#ffd957\" font-size=\"11\" font-weight=\"700\">注意 '+yen(z.from)+'〜'+yen(z.to)+'</text>'", HTML)
         self.assertNotIn("'<text x=\"'+(L+6)+'\" y=\"'+(y(z.from)-6)+'\"", HTML)
+        self.assertIn("W=1040,H=380,L=64,R=118,", HTML)
 
     def test_capital_table_held_line_charts_and_earnings_tag(self):
         for s in ('id="cap-compare"', "virt-held-line", "cap-journal", "chartSvg(s.day_curve", "chartSvg(s.overnight_curve",

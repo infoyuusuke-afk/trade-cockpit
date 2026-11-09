@@ -4039,7 +4039,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     b.title=on?"SOXが注意ゾーンに入っています":"";
   }
   function chart(w){
-    const all=[...w.actual,...w.path],W=1040,H=380,L=64,R=96,T=16,B=34;
+    const all=[...w.actual,...w.path],W=1040,H=380,L=64,R=118,T=16,B=34;   // R: room for 「注意 11,041〜11,724」 (OWNER 2026-11-09)
     const day=s=>Date.parse(s+"T00:00:00Z"),x0=day(w.actual[0][0]),x1=Math.max(...all.map(r=>day(r[0])));
     const lo=Math.min(...all.map(r=>r[1]),w.line_40),hi=Math.max(...all.map(r=>r[1]),w.line_out);
     const x=d=>L+(day(d)-x0)/(x1-x0)*(W-L-R),y=v=>T+(hi*1.03-v)/(hi*1.03-lo*.95)*(H-T-B);
@@ -4048,14 +4048,14 @@ document.addEventListener("DOMContentLoaded",()=>{
     // OWNER 2026-11-08 「戻りの天井（約11,350）の±3%に入ったか、底の線9,011か−40%の線8,781を割ったかを判定して…その日は画面に赤い帯を出す」:
     // the band is the zone around the rebound top (±3 %), red while SOX is in it
     const z=zoneOf(w);
-    // OWNER 2026-11-09 「注意ゾーンの色変えて　文字がチャートにかぶって数字みえない」: a purple band with dashed edges (red while SOX is in it),
-    // and the label in the right margin like the other lines, so it never covers the chart
-    if(z){const zc=z.in?"#f23645":"#a78bfa",zm=(y(z.to)+y(z.from))/2;
-      s+='<rect x="'+L+'" width="'+(W-L-R)+'" y="'+y(z.to)+'" height="'+Math.max(0,y(z.from)-y(z.to))+'" fill="'+(z.in?"rgba(242,54,69,.20)":"rgba(167,139,250,.13)")+'"/>'+
-        '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(z.to)+'" y2="'+y(z.to)+'" stroke="'+zc+'" stroke-width="1" stroke-dasharray="2 3"/>'+
-        '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(z.from)+'" y2="'+y(z.from)+'" stroke="'+zc+'" stroke-width="1" stroke-dasharray="2 3"/>'+
-        '<text x="'+(W-R+6)+'" y="'+(zm-2)+'" fill="'+zc+'" font-size="12" font-weight="700">注意ゾーン</text>'+
-        '<text x="'+(W-R+6)+'" y="'+(zm+12)+'" fill="'+zc+'" font-size="11">'+yen(z.from)+'〜'+yen(z.to)+'</text>';}
+    // OWNER 2026-11-09 「注意ゾーンの文字を帯の中から外し、『外れ』『底』と同じく右の外側に『注意 11,041〜11,724』と出して。
+    // 帯の色は線と数字が透けて見える薄い黄色にする」: a pale yellow band (a little stronger while SOX is in it), dashed edges,
+    // and one label in the right margin next to the other line labels
+    if(z){const zm=(y(z.to)+y(z.from))/2,edge="rgba(255,217,87,.55)";
+      s+='<rect x="'+L+'" width="'+(W-L-R)+'" y="'+y(z.to)+'" height="'+Math.max(0,y(z.from)-y(z.to))+'" fill="'+(z.in?"rgba(255,217,87,.18)":"rgba(255,217,87,.09)")+'"/>'+
+        '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(z.to)+'" y2="'+y(z.to)+'" stroke="'+edge+'" stroke-width="1" stroke-dasharray="2 3"/>'+
+        '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(z.from)+'" y2="'+y(z.from)+'" stroke="'+edge+'" stroke-width="1" stroke-dasharray="2 3"/>'+
+        '<text x="'+(W-R+6)+'" y="'+(zm+4)+'" fill="#ffd957" font-size="11" font-weight="700">注意 '+yen(z.from)+'〜'+yen(z.to)+'</text>';}
     s+=line(w.line_out,"外れ "+yen(w.line_out),"#35e2ae")+line(w.line_low,"底 "+yen(w.line_low),"#F2C14E",-6)+line(w.line_40,"−40% "+yen(w.line_40),"#f23645",12);
     for(let i=0;i<=4;i++){const v=lo*.95+(hi*1.03-lo*.95)*i/4;s+='<text x="'+(L-8)+'" y="'+(y(v)+4)+'" fill="#9ba3af" font-size="12" text-anchor="end">'+yen(v)+'</text>';}
     const seen={};all.forEach(r=>{const m=r[0].slice(0,7);if(!seen[m]){seen[m]=1;const px=x(r[0]);if(m.slice(5)%2===1||m.slice(5)==="12")s+='<text x="'+px+'" y="'+(H-10)+'" fill="#9ba3af" font-size="12">'+esc(m.slice(2).replace("-","/"))+'</text>';}});
