@@ -56,7 +56,9 @@ class OwnerRules(unittest.TestCase):
 
     def test_brain_pick_carries_the_tally(self):
         src = (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8")
-        self.assertIn('"owner_rules", "short_rebound", "overnight_closed")}', src)
+        # OWNER 2026-11-09: capital and earnings_soon follow (資金別・決算またぎの印); owner_rules is still passed through
+        self.assertIn('"owner_rules", "short_rebound", "overnight_closed",', src)
+        self.assertIn('"capital", "earnings_soon")}', src)
 
 
 class OwnerRulesScreen(unittest.TestCase):

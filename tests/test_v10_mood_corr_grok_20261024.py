@@ -284,7 +284,10 @@ class HeaderLamps(unittest.TestCase):
         # OWNER 2026-10-24 「ランプの赤を直して」「完全照合の日付」
         self.assertIn('fetch("public_feed_meta.json?t="+Date.now()).then(r=>r.json()).then(m=>{', HTML)
         self.assertNotIn('fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{\n   const badge', HTML.replace("\r\n", "\n"))
-        self.assertIn("s.live_check", HTML)
+        # OWNER 2026-11-09 「完全照合が11/07のまま古い原因…直して」: the line is now this PC's own check (the cloud's live_check stopped on 11/07);
+        # the copy into market_summary stays (test below), the screen no longer reads it.
+        self.assertNotIn("s.live_check", HTML)
+        self.assertIn('ver.textContent="PCの照合 "', HTML)
 
     def test_live_check_copied_into_summary(self):
         def fetch(url):

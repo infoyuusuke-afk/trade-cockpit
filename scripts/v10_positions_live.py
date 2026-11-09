@@ -21,9 +21,10 @@ real_submit_allowed is always false.
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import io
 import json
+import math
 import os
 from pathlib import Path
 
@@ -476,6 +477,336 @@ def _owner_history(records: Path, today: str) -> list[dict]:
     return out
 
 
+# ---- capital sizes and earnings marks ----------------------------------------
+# Virtual trades of the day at three sizes, and the earnings marks for the overnight cards (display only; no orders).
+# 
+# OWNER 2026-11-09:
+# - 「メルの仮想トレードだけど、資金５００万、３００万のパターンも別につくって、信用取引つける設定で」
+#   「資金別の仮想は、1回に資金と同じ額まで入る形で作って」「オーバーナイト銘柄に入る場合も資金別作成」
+#   The same virtual trades as the 100-share line (rule ①②④⑤ trades and the overnight holds) are sized three ways:
+#   100 shares each (as today), and capital 3,000,000 / 5,000,000 yen on margin. With capital, one trade buys at most
+#   the capital's worth (floored to 100 shares); positions open at the same time (day trades and overnight holds) may
+#   not exceed MARGIN_MULT x capital (制度信用, 委託保証金率30%). A trade that does not fit is not entered and counted.
+# - 「1日の損益の線グラフ（9:00〜15:30、確定と含み）」「オーバーナイト銘柄の１４時まで（決済するまでの）の損益チャート」:
+#   5-minute points of closed and closed + open yen for each size.
+# - 「決算またぎは…Bと研究にする」: overnight candidates whose earnings fall between today's close and the next trading
+#   day's 14:00 exit get a mark (今夜決算 / 明日決算, 時刻未確認 when the time is not known). Dates come from the file this PC
+#   writes from JPX's schedule (earnings_dates_pc_v1.json), never from the cloud copy. Results are counted apart.
+# 
+# Costs: day trades use the replay's return after cost (it already holds one day of margin interest). Overnight holds pay
+# margin interest (long 2.80 %/year, short lending fee 1.10 %/year) for the calendar days held. Open positions are shown
+# before cost. Virtual only: real_submit_allowed is always false.
+SIZES = (("100株", None), ("300万", 3_000_000), ("500万", 5_000_000))
+MARGIN_MULT = 3.3
+LONG_RATE, SHORT_RATE = 0.028, 0.011
+DAILY_LIMIT_YEN = -30000
+DAY_FILE = "capital_sim_v1.json"
+EARN_FILE = "earnings_dates_pc_v1.json"
+EARN_MARK_FILE = "overnight_earnings_v1.json"
+HISTORY_FILE = "overnight_hold_history.csv"
+DECIDE_AT = "15:25"
+EXIT_AT = "14:00"
+
+
+def marks(start="09:00", end="15:30", step=5):
+    t = datetime.strptime(start, "%H:%M")
+    out = []
+    while t.strftime("%H:%M") <= end:
+        out.append(t.strftime("%H:%M"))
+        t += timedelta(minutes=step)
+    return out
+
+
+def _pnum(v):
+    try:
+        x = float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return x if math.isfinite(x) and x > 0 else None
+
+
+def price_at(ticks: list, hm: str):
+    """The last tick price at or before hm:59 (ticks: [(HH:MM:SS, seq, price)] in time order)."""
+    lim, last = hm + ":59", None
+    for t, _, p in ticks:
+        if t > lim:
+            break
+        last = p
+    return last
+
+
+def _shares(price, capital):
+    if capital is None:
+        return 100
+    return int(capital // (price * 100)) * 100
+
+
+def _days_between(a: str, b: str) -> int:
+    try:
+        return max(1, (date.fromisoformat(b) - date.fromisoformat(a)).days)
+    except ValueError:
+        return 1
+
+
+def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: str, ticks: dict, now_hm: str) -> list:
+    """One list of virtual trades for the sizing: day trades filled today and the overnight holds that end today at 14:00.
+    The 14:00 price is the Collector's (overnight_hold_1400.json) or, when that file is missing, the last recorded tick at 14:00."""
+    out = []
+    for p in rule_positions:
+        if p.get("status") not in ("OPEN", "CLOSED") or not p.get("fill_time"):
+            continue
+        fill = _pnum(p.get("fill_price"))
+        if fill is None:
+            continue
+        side = -1 if "空売り" in str(p.get("signal") or "") else 1
+        tk = ticks.get(p.get("ticker", ""), [])
+        out.append({"kind": "day", "ticker": p.get("ticker"), "name": p.get("name"), "side": side, "fill": fill,
+                    "in": str(p.get("fill_time"))[:5], "out": str(p.get("exit_time") or "")[:5] or None,
+                    "ret": None if p.get("return_pct") is None else float(p["return_pct"]),
+                    "exit": _pnum(p.get("exit_price")), "last": tk[-1][2] if tk else None, "ticks": tk})
+    closed = {c.get("ticker"): c for c in closed_overnight}
+    for h in carry:
+        decided = str(h.get("decided_at") or "")[:10]
+        fill = _pnum(h.get("reference_price"))
+        if len(decided) != 10 or decided >= today or fill is None:   # today's 15:25 picks start tomorrow's chart
+            continue
+        side = 1 if h.get("side") == "LONG" else -1
+        tk = ticks.get(h.get("ticker", ""), [])
+        leave = _pnum((closed.get(h.get("ticker")) or {}).get("exit_price"))
+        if leave is None and now_hm >= EXIT_AT:
+            leave = price_at(tk, EXIT_AT)
+        out.append({"kind": "overnight", "ticker": h.get("ticker"), "name": h.get("name"), "side": side, "fill": fill,
+                    "in": "09:00", "out": EXIT_AT if leave is not None else None, "ret": None, "exit": leave,
+                    "last": price_at(tk, min(now_hm, EXIT_AT)) if tk else None, "ticks": tk,
+                    "days": _days_between(decided, today), "decided": decided})
+    return out
+
+
+def _closed_yen(t, shares):
+    if t["kind"] == "day":
+        return None if t["ret"] is None else t["ret"] / 100 * t["fill"] * shares
+    if t["exit"] is None:
+        return None
+    rate = LONG_RATE if t["side"] > 0 else SHORT_RATE
+    return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
+
+
+def size(trades: list, capital, now_hm: str) -> dict:
+    """Shares for each trade at one size, in fill order (overnight holds first: they were opened yesterday)."""
+    limit = None if capital is None else capital * MARGIN_MULT
+    order = sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"]))
+    taken, skipped_room, skipped_price, peak = [], 0, 0, 0.0
+    for t in order:
+        sh = _shares(t["fill"], capital)
+        if sh <= 0:
+            skipped_price += 1
+            continue
+        using = sum(x["fill"] * x["shares"] for x in taken
+                    if x["in"] <= t["in"] and (x["out"] is None or x["out"] > t["in"]))
+        if limit is not None and using + t["fill"] * sh > limit:
+            skipped_room += 1
+            continue
+        taken.append(dict(t, shares=sh))
+        peak = max(peak, using + t["fill"] * sh)
+    rows = {"day": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0},
+            "overnight": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0}}
+    held = []
+    for t in taken:
+        r = rows[t["kind"]]
+        r["n"] += 1
+        y = _closed_yen(t, t["shares"]) if t["out"] is not None and t["out"] <= now_hm else None
+        if y is not None:
+            r["done"] += y
+            r["closed"] += 1
+            r["wins"] += y > 0
+        elif t["last"] is not None:
+            u = t["side"] * (t["last"] - t["fill"]) * t["shares"]
+            r["open"] += u
+            held.append({"ticker": t["ticker"], "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
+                         "open_yen": round(u)})
+    using_now = sum(h["amount"] for h in held)
+    done_rows = sorted((t["out"], _closed_yen(t, t["shares"])) for t in taken
+                       if t["kind"] == "day" and t["out"] is not None and t["out"] <= now_hm)
+    total, hit, after = 0.0, None, 0.0
+    for at, y in done_rows:
+        if y is None:
+            continue
+        if hit is None:
+            total += y
+            if total <= DAILY_LIMIT_YEN:
+                hit = at
+        else:
+            after += y
+    return {"rows": {k: {kk: (round(vv) if isinstance(vv, float) else vv) for kk, vv in v.items()} for k, v in rows.items()},
+            "skipped_room": skipped_room, "skipped_price": skipped_price, "peak_amount": round(peak),
+            "using_amount": using_now, "limit_amount": None if limit is None else round(limit),
+            "limit_hit_at": hit, "limit_stop_yen": round(total) if hit else None, "held": held, "_taken": taken}
+
+
+def curve(taken: list, kinds: tuple, points: list, now_hm: str) -> list:
+    """[(HH:MM, closed yen, closed + open yen)] up to now."""
+    out = []
+    for hm in points:
+        if hm > now_hm:
+            break
+        done = opn = 0.0
+        for t in taken:
+            if t["kind"] not in kinds or t["in"] > hm:
+                continue
+            if t["out"] is not None and t["out"] <= hm:
+                y = _closed_yen(t, t["shares"])
+                done += y or 0.0
+            else:
+                p = price_at(t["ticks"], hm)
+                if p is not None:
+                    opn += t["side"] * (p - t["fill"]) * t["shares"]
+        out.append([hm, round(done), round(done + opn)])
+    return out
+
+
+def _past(records: Path, today: str) -> list:
+    out = []
+    try:
+        days = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
+    except OSError:
+        return out
+    for name in days:
+        try:
+            out.append(json.loads((Path(records) / name / DAY_FILE).read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list) -> dict:
+    points = marks()
+    past = _past(records, today)
+    sizes = []
+    keep = {"date": today, "sizes": {}}
+    for label, capital in SIZES:
+        s = size(trades, capital, now_hm)
+        taken = s.pop("_taken")
+        day_done = s["rows"]["day"]["done"] + s["rows"]["overnight"]["done"]
+        day_open = s["rows"]["day"]["open"] + s["rows"]["overnight"]["open"]
+        closed = s["rows"]["day"]["closed"] + s["rows"]["overnight"]["closed"]
+        wins = s["rows"]["day"]["wins"] + s["rows"]["overnight"]["wins"]
+        prev = [(p.get("sizes") or {}).get(label) or {} for p in past]
+        total_done = sum(int(x.get("done") or 0) for x in prev) + day_done
+        total_closed = sum(int(x.get("closed") or 0) for x in prev) + closed
+        total_wins = sum(int(x.get("wins") or 0) for x in prev) + wins
+        keep["sizes"][label] = {"done": day_done, "closed": closed, "wins": wins}
+        sizes.append(dict(s, label=label, capital=capital, done=day_done, open=day_open, closed=closed, wins=wins,
+                          total_done=total_done, total_closed=total_closed, total_wins=total_wins,
+                          total_pct=None if capital is None else round(total_done / capital * 100, 2),
+                          day_curve=curve(taken, ("day",), points, now_hm),
+                          overnight_curve=curve(taken, ("overnight",), [p for p in points if p <= EXIT_AT], now_hm)))
+    if day_dir.is_dir():
+        tmp = day_dir / (DAY_FILE + ".tmp")
+        tmp.write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(day_dir / DAY_FILE)
+    return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
+            "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
+            "real_submit_allowed": False}
+
+
+def _next_weekday(d: date) -> date:
+    d += timedelta(days=1)
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    return d
+
+
+def earnings_soon(runtime: Path, today: str) -> dict:
+    """{code: {"label": 今夜決算|明日決算, "date", "time"}} for earnings between today's close and the next trading day's 14:00.
+    An announcement already made in today's session (a known time before 15:25) is not marked; a next-day time at or
+    after 14:00 is after the exit and not marked. Unknown times are marked with time ""."""
+    try:
+        doc = json.loads((Path(runtime) / EARN_FILE).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {"state": "NO_FILE", "items": {}}
+    if doc.get("schema_version") != "100b-v10-earnings-dates-pc-v1":
+        return {"state": "FORMAT_UNKNOWN", "items": {}}
+    d0 = date.fromisoformat(today)
+    d1 = _next_weekday(d0)
+    times = doc.get("times") or {}
+    items = {}
+    try:   # only the cockpit's 100 stocks (the overnight picks come from them); all when the list is not readable
+        w = json.loads((Path(runtime) / "watchlist_100.json").read_text(encoding="utf-8-sig"))
+        universe = {str(v.get("ticker") or "").replace(".T", "") for v in (w.get("stocks") or {}).values()} - {""}
+    except (OSError, ValueError, AttributeError):
+        universe = set()
+    for code, days in (doc.get("dates") or {}).items():
+        if universe and code not in universe:
+            continue
+        for ds in days or []:
+            try:
+                d = date.fromisoformat(ds)
+            except ValueError:
+                continue
+            if not d0 <= d <= d1:
+                continue
+            hm = str((times.get(code) or {}).get(ds) or "")
+            if d == d0 and hm and hm < DECIDE_AT:
+                continue
+            if d == d1 and hm and hm >= EXIT_AT:
+                continue
+            items[code] = {"label": "明日決算" if d == d1 else "今夜決算", "date": ds, "time": hm}
+    gen = str(doc.get("generated_at") or "")[:10]
+    return {"state": "OK" if gen == today else "OLD", "generated_on": gen, "items": items}
+
+
+def keep_marks(day_dir: Path, holds: list, soon: dict) -> None:
+    """Write today's marks for the fixed 15:25 picks once, so the results can be counted apart later."""
+    target = day_dir / EARN_MARK_FILE
+    if target.is_file() or not holds or soon.get("state") not in ("OK", "OLD"):
+        return
+    rows = {str(h.get("ticker") or "").replace(".T", ""): (soon["items"].get(str(h.get("ticker") or "").replace(".T", "")) or None)
+            for h in holds}
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(json.dumps({"date": day_dir.name, "marks": rows}, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(target)
+
+
+def earnings_split(runtime: Path) -> dict:
+    """Overnight results (the Collector's history, 検証済み rows) counted apart: earnings inside the hold or not.
+    Only days with a kept mark file are counted (from 2026-11-09)."""
+    records = Path(runtime) / "records"
+    marks_by_day = {}
+    try:
+        for p in records.iterdir():
+            f = p / EARN_MARK_FILE
+            if f.is_file():
+                try:
+                    marks_by_day[p.name] = json.loads(f.read_text(encoding="utf-8")).get("marks") or {}
+                except (OSError, ValueError):
+                    continue
+    except OSError:
+        pass
+    groups = {"earnings": [], "other": []}
+    try:
+        with open(Path(runtime) / HISTORY_FILE, newline="", encoding="utf-8-sig") as f:
+            for r in csv.DictReader(f):
+                m = marks_by_day.get(str(r.get("decision_date") or ""))
+                if m is None or r.get("status") != "検証済み":
+                    continue
+                code = str(r.get("ticker") or "").replace(".T", "")
+                if code not in m:
+                    continue
+                try:
+                    v = float(r.get("return_close_pct"))
+                except (TypeError, ValueError):
+                    continue
+                groups["earnings" if m.get(code) else "other"].append(v)
+    except OSError:
+        pass
+
+    def tally(xs):
+        return {"n": len(xs), "win_pct": round(sum(1 for x in xs if x > 0) / len(xs) * 100, 1) if xs else None,
+                "avg_pct": round(sum(xs) / len(xs), 2) if xs else None}
+    return {"from": min(marks_by_day) if marks_by_day else None, "earnings": tally(groups["earnings"]),
+            "other": tally(groups["other"])}
+
+
 def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict:
     """Write RuntimeDir/positions_live_v1.json and return it."""
     runtime = Path(runtime)
@@ -485,7 +816,9 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     records = runtime / "records"
     day_dir = records / today
     signals = _rows(day_dir / RULE_SIGNALS_FILE)
-    wanted = {s.get("ticker", "") for s in signals}
+    prev0 = _previous_day_dir(records, today)
+    carry = _overnight(prev0, valid_until="") if prev0 is not None else []   # their prices for the capital view
+    wanted = {s.get("ticker", "") for s in signals} | {h.get("ticker", "") for h in carry}
     _read_new_ticks(day_dir / TICKS_FILE, state.setdefault("ticks_state", {}), wanted)
     ticks = state["ticks_state"].get("ticks", {})
     now_t = local.strftime("%H:%M:%S")
@@ -542,9 +875,23 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         tmp.write_text(json.dumps(owner, ensure_ascii=False, sort_keys=True), encoding="utf-8")
         os.replace(tmp, day_dir / OWNER_RULES_FILE)
     owner = dict(owner, history=_owner_history(records, today))
+    # OWNER 2026-11-09 資金別（100株・300万・500万）と1日の損益の線グラフ、決算またぎの印. A failure here never stops the holdings view.
+    try:
+        capital = capital_view(records, day_dir, today, hm,
+                               trades_of(rule_positions, carry if not weekend else [], overnight_closed, today, ticks, hm))
+    except Exception as exc:
+        capital = {"status": "UNAVAILABLE", "reason": type(exc).__name__}
+    try:
+        soon = earnings_soon(runtime, today)
+        if hm >= DECIDE_AT:
+            keep_marks(day_dir, _overnight(day_dir, valid_until=""), soon)
+        soon = dict(soon, split=earnings_split(runtime))
+    except Exception as exc:
+        soon = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "items": {}}
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
             "owner_rules": owner, "short_rebound": rebound, "overnight_closed": overnight_closed,
+            "capital": capital, "earnings_soon": soon,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}
