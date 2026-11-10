@@ -63,7 +63,7 @@ class TradeLayout(unittest.TestCase):
         self.assertIn("#tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;", block)
         # audit 547f117: the boxes inside 今やること and 仮想の成績 keep no frame of their own
         self.assertIn("#tl-now>section.card{border:0!important;padding:0!important;margin:0!important;background:none!important;border-radius:0!important}", block)
-        self.assertIn("#tl-virtual .vd-line,#tl-virtual .vd-held{border:0!important;", block)
+        self.assertIn("#tl-virtual .vd-line,#tl-virtual .vd-held{min-height:0!important;border:0!important;", block)   # audit ac11723: no 58px floor inside the fold
 
     def test_history_shows_three_then_all(self):
         _, block = _block()
