@@ -23,6 +23,7 @@ class TickFromToday(unittest.TestCase):
         self.assertFalse(f("09:33:31", "2026-11-10 09:31:30"))
         self.assertTrue(f("11:29:58", "2026-11-10 12:10:00"))         # lunch: the morning's last trade is today's
         self.assertTrue(f("15:24:59", ""))                            # no capture time: kept as before
+        self.assertTrue(f("15:24:59", "2026-11-10 12:3x:45"))         # a broken capture time never raises
 
     def test_price_found_after_a_stale_start(self):
         rows = ['"captured_at","ticker","name","exchange_time","price"',
@@ -43,7 +44,8 @@ class TickFromToday(unittest.TestCase):
 
 class OvernightChartText(unittest.TestCase):
     def test_last_hour_label_not_cut(self):
-        self.assertIn("""text-anchor="'+(m+60>x1?"end":"middle")+'">'""", HTML)
+        # audit ace1aed: only the label at the right edge is anchored at its end (15:00 on the 15:30 chart stays centred)
+        self.assertIn("""text-anchor="'+(xs(hm)>W-R-20?"end":"middle")+'">'""", HTML)
 
     def test_heading_says_the_size_and_lists_the_holds(self):
         self.assertIn("で入った場合）　きのう15:25に入り、今日14:00に決済　合計 ", HTML)

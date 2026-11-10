@@ -86,11 +86,12 @@ def _tick_from_today(exchange_time: str, captured_at: str) -> bool:
     the first later time, so the overnight line found no price all day. A trade before 08:00, or later than its capture clock plus
     two minutes, is not today's (the same rule as the Collector's Test-QuoteFromToday). No capture time: kept as before."""
     clock = captured_at[11:19]
-    if len(clock) != 8 or clock[2] != ":":
+    parts = clock.split(":")
+    if len(clock) != 8 or len(parts) != 3 or not all(x.isdigit() for x in parts):
         return True
     if exchange_time < "08:00:00":
         return False
-    h, m, s = (int(x) for x in clock.split(":"))
+    h, m, s = (int(x) for x in parts)
     sec = min(h * 3600 + m * 60 + s + 120, 24 * 3600 - 1)
     return exchange_time <= "%02d:%02d:%02d" % (sec // 3600, sec % 3600 // 60, sec % 60)
 
