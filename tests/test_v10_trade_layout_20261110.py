@@ -83,6 +83,10 @@ class TradeLayout(unittest.TestCase):
         # 手法別の成績 moves to BRAIN in its own box
         self.assertIn("const brain=document.querySelector('.tab-pane[data-pane=\"brain\"]'),sum=document.getElementById(\"signal-ev-summary\");", block)
         self.assertIn('if(sum.parentElement!==mb)mb.appendChild(sum);', block)
+        # OWNER 2026-11-10 「ブレインの選択とGrokのX話題はBRAINのタブに移す」
+        self.assertIn('const bp=document.getElementById("brain-pick-rows"),gx=document.getElementById("grok-rows");', block)
+        self.assertIn("box(\"tl-brain-pick\",'<h2>ブレインの選択・GrokのX話題", block)
+        self.assertIn("[bp,gx].forEach(el=>{if(el&&el.parentElement!==pb)pb.appendChild(el);});", block)
         # the explanations are hidden; the rows and the cards stay
         self.assertIn("#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}", block)
         for keep in ('id="watchlist-100-rows"', 'id="premarket-gap-rows"', 'id="ms2-live-cards"'):

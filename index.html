@@ -4454,6 +4454,10 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     // the 手法別の成績 line (the backtest per method) moves to BRAIN, in a box of its own
     const brain=document.querySelector('.tab-pane[data-pane="brain"]'),sum=document.getElementById("signal-ev-summary");
     if(brain&&sum){const mb=box("tl-ev-methods",'<h2>手法別の成績（過去の記録で確かめたバックテスト・発注しません）</h2>');if(mb.parentElement!==brain)brain.appendChild(mb);if(sum.parentElement!==mb)mb.appendChild(sum);}
+    // OWNER 2026-11-10 「ブレインの選択とGrokのX話題はBRAINのタブに移す」: the two lists of the hidden EV box, in a BRAIN box of their own (filled by id as before)
+    const bp=document.getElementById("brain-pick-rows"),gx=document.getElementById("grok-rows");
+    if(brain&&(bp||gx)){const pb=box("tl-brain-pick",'<h2>ブレインの選択・GrokのX話題（検証中・監視のみ・発注しません）</h2>');if(pb.parentElement!==brain)brain.appendChild(pb);
+      [bp,gx].forEach(el=>{if(el&&el.parentElement!==pb)pb.appendChild(el);});}
     const emptyCards=!cards||!!cards.querySelector(":scope > .ob-none")||!cards.children.length,emptyRows=!rows||!!rows.querySelector(":scope > .ob-none")||!rows.children.length;
     now.classList.toggle("tl-empty",emptyCards&&emptyRows);
     // 4 見る銘柄
