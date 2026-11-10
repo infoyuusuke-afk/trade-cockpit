@@ -210,6 +210,23 @@ class JournalPanels(unittest.TestCase):
         self.assertIn("古い保有は表示しません", js)
         self.assertIn("手数料・金利は含まない概算", js)
 
+    def test_swing_and_long_holds_in_the_virtual_panel(self):
+        # OWNER 2026-11-10 「保有中にスイング。長期銘柄ない」「スイング 含み益表示」「長期も一緒」
+        js = CONTROL_JS.read_text(encoding="utf-8")
+        start = js.index("OWNER 2026-11-10 「スイング 含み益表示」")
+        block = js[start:js.index('const vDone=document.getElementById("owner-virtual-closed");', start)]
+        self.assertIn('fetch("/hold_track.json?t="+Date.now(),{cache:"no-store"})', block)
+        self.assertIn("ht&&ht.real_submit_allowed===false", block)          # a file without the flag shows nothing
+        self.assertIn('["swing","スイング（仮想）",', block)
+        self.assertIn('["value","長期（仮想）",', block)
+        self.assertIn("unrealized(code,o.entry,false,true)", block)          # the same 含み益／含み損 line as the other cards
+        self.assertIn("の終値）", block)                                    # outside the 100 rows: hold_track's close, labelled
+        self.assertIn('["含み（100株）",', block)
+        self.assertIn('rules.join("")+overnight.join("")+holds.join("")', block)
+        self.assertIn("スイング・長期の仮想保有を読めません", block)
+        self.assertNotIn("Order", block)
+        self.assertIn("ルール①②④⑤のサイン・オーバーナイト・スイング・長期の仮想売買です。", js)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -549,7 +549,28 @@
           ["採点",String(p.valid_until||"").replace("next trading day","翌営業日")]
         ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short",
           plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.reference_price,p.side!=="LONG",true))));
-        virtRoot.innerHTML=(rules.join("")+overnight.join(""))||'<div class="focus-empty">仮想の保有はありません</div>';
+        // OWNER 2026-11-10 「スイング 含み益表示」「長期も一緒」「保有中にスイング。長期銘柄ない」: the swing and long-term virtual holds
+        // of hold_track.py (/hold_track.json, long only, 100 shares, no cost) as cards here too, with the same 含み益／含み損 line.
+        // The live or last price the screen has; a stock outside the 100 rows falls back to hold_track's own close, labelled by day.
+        let holds=[];
+        try{
+          const hr=await fetch("/hold_track.json?t="+Date.now(),{cache:"no-store"});
+          const ht=hr.ok?await hr.json():null;
+          if(ht&&ht.real_submit_allowed===false)[["swing","スイング（仮想）","スイングの仮想保有（20営業日で手じまい・検証中・注文なし）"],["value","長期（仮想）","長期の仮想保有（60営業日で手じまい・検証中・注文なし）"]].forEach(([k,badge,foot])=>{
+            (Array.isArray(ht[k]&&ht[k].open)?ht[k].open:[]).forEach(o=>{
+              const code=String(o.code||"");
+              let u=unrealized(code,o.entry,false,true);
+              const e=knownNumber(o.entry),last=knownNumber(o.last);
+              if(u.now===null&&e!==null&&e>0&&last!==null&&last>0){const pct=(last/e-1)*100;u={cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 +":pct<0?"含み損 ":"±0 ")+pct.toFixed(2)+"%（"+String(o.last_day||"").slice(5).replace("-","/")+"の終値）",now:last};}
+              const y100=u.now!==null&&e!==null?Math.round((u.now-e)*100):null;
+              holds.push(holdingCard(String(o.name||code).replace(/（[0-9A-Z]{4}）$/,""),code,badge,[
+                ["売買","買い"],["建値（仮想）",yen(e)],["入った日",String(o.entry_day||"").slice(5).replace("-","/")||"—"],["日数",o.days!=null?o.days+"日目":"—"],
+                ["含み（100株）",y100===null?"—":money(y100)],["損切り／利確",yen(o.stop)+"／"+yen(o.target)]
+              ],foot,"long",plLine(u)));
+            });
+          });
+        }catch(_e){holds=['<div class="focus-empty">スイング・長期の仮想保有を読めません（毎日16:00の記録の後に作られます）</div>'];}
+        virtRoot.innerHTML=(rules.join("")+overnight.join("")+holds.join(""))||'<div class="focus-empty">仮想の保有はありません（スイング・長期も今は保有なし）</div>';
         const vDone=document.getElementById("owner-virtual-closed");
         if(vDone){
           const exitName={TARGET:"利確",STOP:"損切り",TIME_EXIT:"時間で手じまい",CLOSE_EXIT:"引けで手じまい"};
@@ -773,7 +794,7 @@
       const panels=[
         ["owner-real-holdings","保有中｜実口座（読むだけ）","武蔵などで売買した本当の保有です。MS2 RSSの建玉一覧・保有一覧・約定一覧を読むだけで、注文は出しません。このPCの画面だけに出します。"],
         ["owner-real-closed","保有した銘柄｜実口座・今日決済","今日の約定一覧から、決済した銘柄をまとめます。損益は手数料・金利を含まない概算です。"],
-        ["owner-virtual-holdings","保有中｜仮想（コクピットの検証）","ルール①②④⑤のサインとオーバーナイトの仮想売買です。お金は動いていません。"],
+        ["owner-virtual-holdings","保有中｜仮想（コクピットの検証）","ルール①②④⑤のサイン・オーバーナイト・スイング・長期の仮想売買です。お金は動いていません。"],
         ["owner-virtual-closed","保有した銘柄｜仮想・今日決済","ルールのサインの仮想売買で、今日決済したものです。"]
       ];
       const intro=journal.querySelector(":scope > .pane-intro");
