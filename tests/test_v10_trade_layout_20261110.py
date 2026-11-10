@@ -82,6 +82,9 @@ class TradeLayout(unittest.TestCase):
         self.assertIn("#unified-mode,.vd-line{border-radius:14px!important}", block)
         self.assertNotIn("#unified-mode,.vd-line{border-radius:14px!important;border:", block)
         self.assertIn("main .card{padding:16px 18px!important;margin:0 0 12px}", block)
+        # OWNER 2026-11-10 later 「枠のサイズがバラバラだとかっこ悪い」: the band and the 負け枠 line use the same inner space as the boxes
+        self.assertIn(".vd-line{padding:16px 18px!important;margin:0 0 12px!important;min-height:58px;box-sizing:border-box}", block)
+        self.assertIn("gap:6px 18px;padding:16px 18px!important;margin:0 0 12px!important;min-height:58px!important;box-sizing:border-box}", block)
         self.assertIn("main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;", block)
         # the lamps inside the band, their explanation only when red; the band's own explanation only when stopped in session
         self.assertIn('if(txt&&txt.nextElementSibling!==lamps)txt.insertAdjacentElement("afterend",lamps);', block)

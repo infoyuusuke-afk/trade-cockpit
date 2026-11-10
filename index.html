@@ -4447,12 +4447,13 @@ main .card{padding:16px 18px!important;margin:0 0 12px}
 main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;margin:0 0 10px!important}
 main .card h2 small{font-size:12px!important}
 main .card hr{display:none}
-.vd-line{padding:10px 18px!important;margin:0 0 12px!important}
+/* OWNER 2026-11-10 「枠のサイズがバラバラだとかっこ悪い」: the band, the 負け枠 line and every box share one inner space (16px 18px) and one height for a single line */
+.vd-line{padding:16px 18px!important;margin:0 0 12px!important;min-height:58px;box-sizing:border-box}
 /* the inner boxes of the 見る銘柄 switch keep no frame and no padding of their own (the switch is the box) */
 #tl-watch .tl-slot>section{padding:0!important}
 #tl-watch .tl-slot>section>h2,#opportunity-radar .cc-opportunity-radar-head h2,#opportunity-radar .cc-opportunity-radar-head p,.sp8-rule{display:none!important}
 /* the state line: 東証・ブレイン・Grok on one line; the explanations only when stopped (東証 in session without data, a red lamp) */
-#unified-mode{display:flex!important;align-items:center!important;flex-wrap:wrap;gap:6px 18px;padding:10px 18px!important;margin:0 0 12px!important;min-height:0!important}
+#unified-mode{display:flex!important;align-items:center!important;flex-wrap:wrap;gap:6px 18px;padding:16px 18px!important;margin:0 0 12px!important;min-height:58px!important;box-sizing:border-box}
 #unified-mode:not(.lamp-down)>div:not(.unified-mode-controls):not(.tl-status-lamps)>:not(#unified-mode-title){display:none!important}
 #unified-mode #unified-mode-title{font-size:15px}
 #unified-mode .tl-status-lamps{display:flex!important;flex:0 1 auto;gap:18px;margin:0!important;padding:0!important;border:0!important;background:none!important}
