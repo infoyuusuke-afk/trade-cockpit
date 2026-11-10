@@ -4021,7 +4021,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
-.cap-legend{font-size:11px;color:var(--cc-text-secondary)}.cap-legend i{display:inline-block;width:14px;height:3px;margin:0 4px 2px 10px;vertical-align:middle}</style>
+.cap-on-list{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#C4C9D1;margin:2px 0 6px}.cap-legend{font-size:11px;color:var(--cc-text-secondary)}.cap-legend i{display:inline-block;width:14px;height:3px;margin:0 4px 2px 10px;vertical-align:middle}</style>
 <script>
 // OWNER 2026-11-09 「メルの保有中の金額と保有中銘柄をここに表示して」「資金別で比較でき、みやすい画面にしてね」
 // 「AIトレード日記のタブに、資金の条件と1日の損益の線グラフ（9:00〜15:30、確定と含み）を足して」「オーバーナイト銘柄の１４時まで（決済するまでの）の損益チャートもつくって」
@@ -4032,12 +4032,13 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
   const yen=v=>v==null||!Number.isFinite(Number(v))?"—":(v>0?"+":v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString("ja-JP")+"円";
   const man=v=>v==null||!Number.isFinite(Number(v))?"—":(Math.round(v/1000)/10).toLocaleString("ja-JP")+"万円";
   const cls=v=>v>0?"up":v<0?"dn":"g";
-  let cap=null,soon=null,mode="300万";
+  let cap=null,soon=null,mode="300万",onClosed=[];
   try{mode=localStorage.getItem("cockpitCapModeV1")||"300万";}catch(_){}
   async function load(){
     try{const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});const d=r.ok?await r.json():null;
       const p=d&&d.real_submit_allowed===false&&d.positions?d.positions:{};
       cap=p.capital&&Array.isArray(p.capital.sizes)&&p.capital.real_submit_allowed===false?p.capital:null;
+      onClosed=Array.isArray(p.overnight_closed)?p.overnight_closed:[];
       soon=p.earnings_soon&&p.earnings_soon.items?p.earnings_soon:null;
     }catch(_){cap=null;soon=null;}
     window.cockpitEarningsSoon=soon;
@@ -4142,7 +4143,8 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const x0=toMin(from),x1=toMin(to),xs=v=>L+(toMin(v)-x0)/(x1-x0)*(W-L-R);
     const vals=pts.flatMap(p=>[p[1],p[2]]).concat([0]),lo=Math.min(...vals),hi=Math.max(...vals),span=hi-lo||1,ys=v=>T+(hi-v)/span*(H-T-B);
     const path=k=>pts.map((p,i)=>(i?"L":"M")+xs(p[0]).toFixed(1)+" "+ys(p[k]).toFixed(1)).join("");
-    let ticks="";for(let m=x0;m<=x1;m+=60){const hm=String(Math.floor(m/60)).padStart(2,"0")+":00";ticks+='<text x="'+xs(hm).toFixed(1)+'" y="'+(H-6)+'" fill="#9aa0a6" font-size="11" text-anchor="middle">'+hm+'</text>';}
+    // OWNER 2026-11-10 「１４：０　文字切れ」: the last hour label sits at the right edge, so it is anchored at its end
+    let ticks="";for(let m=x0;m<=x1;m+=60){const hm=String(Math.floor(m/60)).padStart(2,"0")+":00";ticks+='<text x="'+xs(hm).toFixed(1)+'" y="'+(H-6)+'" fill="#9aa0a6" font-size="11" text-anchor="'+(m+60>x1?"end":"middle")+'">'+hm+'</text>';}
     return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img"><line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(0).toFixed(1)+'" y2="'+ys(0).toFixed(1)+'" stroke="#3a3f4b" stroke-dasharray="4 4"/>'+
       '<text x="4" y="'+(T+10)+'" fill="#9aa0a6" font-size="11">'+esc(yen(hi))+'</text><text x="4" y="'+(H-B)+'" fill="#9aa0a6" font-size="11">'+esc(yen(lo))+'</text>'+ticks+
       (pts.length?'<path d="'+path(1)+'" fill="none" stroke="#5aa9ff" stroke-width="2"/><path d="'+path(2)+'" fill="none" stroke="#f5c542" stroke-width="2"/>':'')+'</svg>';
@@ -4159,8 +4161,12 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>資金の条件と1日の損益（メル・仮想）</h2><p>'+esc(cap.note||"")+'</p></div>'+cond+
       '<div class="cap-modes">'+S.map(x=>'<button type="button" data-cap="'+esc(x.label)+'" class="'+(x.label===s.label?"on":"")+'">'+esc(x.label)+(x.capital?"・信用":"")+'</button>').join("")+'</div>'+
       '<div class="cap-chart"><h4>デイ　9:00〜15:30　今日 '+yen(s.rows.day.done+s.rows.day.open)+'（確定 '+yen(s.rows.day.done)+'）</h4>'+legend+chartSvg(s.day_curve||[],"09:00","15:30")+'</div>'+
-      '<div class="cap-chart"><h4>オーバーナイト　前の日の15:25に入り、今日14:00に決済　'+yen(s.rows.overnight.done+s.rows.overnight.open)+'（'+s.rows.overnight.n+'銘柄）</h4>'+legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
-      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。</p></div>';
+      // OWNER 2026-11-10 「ー６７９３５５なのか　意味がよくわからない」: the heading says which size the figure is for, and the
+      // holds that ended today are listed by name with their own % (the same for every size), so the total can be read
+      '<div class="cap-chart"><h4>オーバーナイト（'+esc(s.label)+(s.capital?'・信用':'')+'で入った場合）　きのう15:25に入り、今日14:00に決済　合計 <span class="'+cls(s.rows.overnight.done+s.rows.overnight.open)+'">'+yen(s.rows.overnight.done+s.rows.overnight.open)+'</span>（'+s.rows.overnight.n+'銘柄）</h4>'+
+      (onClosed.length?'<div class="cap-on-list">'+onClosed.map(x=>{const v=Number(x.pct);return '<span>'+esc(String(x.name||x.ticker||""))+' '+(x.side==="LONG"?"買い":"空売り")+' <b class="'+cls(v)+'">'+(Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2)+"%":"—")+'</b></span>';}).join("")+'</div>':'')+
+      legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
+      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>';
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
   // 勝率・1回の平均（費用込み）・PFを横棒で出し、50%・0・1.0に基準の線、プラスは緑・マイナスは赤、回数も出す。その下に手法ごとの通算損益の線グラフ。

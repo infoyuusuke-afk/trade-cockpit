@@ -80,6 +80,21 @@ def _rows(path: Path) -> list[dict]:
         return []
 
 
+def _tick_from_today(exchange_time: str, captured_at: str) -> bool:
+    """OWNER 2026-11-10 「OR15とサインにきのうの値の繰り返しを使わない」 / later 「ー678355なのか 意味がよくわからない」:
+    on 11/10 MS2 stopped until about 09:30 and the file began with yesterday's 15:24:59 trades captured at 09:00; price_at() stops at
+    the first later time, so the overnight line found no price all day. A trade before 08:00, or later than its capture clock plus
+    two minutes, is not today's (the same rule as the Collector's Test-QuoteFromToday). No capture time: kept as before."""
+    clock = captured_at[11:19]
+    if len(clock) != 8 or clock[2] != ":":
+        return True
+    if exchange_time < "08:00:00":
+        return False
+    h, m, s = (int(x) for x in clock.split(":"))
+    sec = min(h * 3600 + m * 60 + s + 120, 24 * 3600 - 1)
+    return exchange_time <= "%02d:%02d:%02d" % (sec // 3600, sec % 3600 // 60, sec % 60)
+
+
 def _read_new_ticks(path: Path, state: dict, wanted: set) -> None:
     """Append new rows of the wanted tickers to state['ticks'] (ticker -> [(time, seq, price)])."""
     if state.get("wanted") != sorted(wanted) or state.get("path") != str(path):
@@ -120,6 +135,8 @@ def _read_new_ticks(path: Path, state: dict, wanted: set) -> None:
             continue
         t = (row.get("exchange_time") or "").strip()
         if price <= 0 or len(t) != 8:
+            continue
+        if not _tick_from_today(t, str(row.get("captured_at") or "")):
             continue
         state["ticks"].setdefault(ticker, []).append((t, state["seq"], price))
 
