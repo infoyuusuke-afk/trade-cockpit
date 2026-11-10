@@ -4404,7 +4404,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 #tl-now.tl-empty>section{display:none}
 #tl-now .tl-none{display:none;color:#9AA0AA;font-size:13px;padding:4px 0}#tl-now.tl-empty .tl-none{display:block}
 #tl-now .tl-sub{font-size:13px;color:#C4C9D1;margin:12px 0 6px}
-#tl-now>section.card{border:0;padding:0;margin:0;background:none}
+#tl-now>section.card{border:0!important;padding:0!important;margin:0!important;background:none!important;border-radius:0!important}#tl-virtual .vd-line,#tl-virtual .vd-held{border:0!important;padding:4px 0!important;background:none!important;margin:0!important}/* audit 547f117: main .card / .vd-line rules with !important framed the boxes inside 今やること and 仮想の成績 again */
 .tl-switch{display:flex;gap:6px;margin:0 0 10px}.tl-switch button{padding:6px 16px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-weight:700;cursor:pointer}
 .tl-switch button.on{background:#E6E8EB;color:#111;border-color:#E6E8EB}
 #tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;background:none;box-shadow:none}/* OWNER 2026-11-10 「急変のところ、文字がおさまってない」: .card keeps its border with !important, so the frame stayed while the padding was 0 */
@@ -4457,8 +4457,12 @@ main .card hr{display:none}
   // 寄り前 is shown 8:00-9:00 (Tokyo time) only; outside that, a stored 寄り前 shows 急変 (the stored choice is kept for the next morning)
   const PRE="premarket-gap-ranking";
   const preOpen=()=>{const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();return w>=1&&w<=5&&m>=480&&m<540;};
-  let view="sp8-panel";
-  try{const v=localStorage.getItem(KEY);if(VIEWS.some(x=>x[0]===v))view=v;}catch(_){}
+  // OWNER 2026-11-10 「見る銘柄は、8:00〜9:00は寄り前、9:00からは今動いている5を自動で開く。押して変えたら、その日はそのまま」:
+  // a choice is kept with its day (Tokyo); without a choice of today the view follows the clock
+  const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  let chosen=null;
+  try{const c=JSON.parse(localStorage.getItem(KEY)||"null");if(c&&typeof c==="object"&&VIEWS.some(x=>x[0]===c.view)&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.day)))chosen=c;}catch(_){}
+  const autoView=()=>preOpen()?PRE:"ms2-live-top5";
   const box=(id,html,tag)=>{let el=document.getElementById(id);if(!el){el=document.createElement(tag||"section");el.id=id;el.className="card wide tl-box";el.innerHTML=html;}return el;};
   function arrange(){
     const pane=document.querySelector('.tab-pane[data-pane="scalp"]');if(!pane)return;
@@ -4489,7 +4493,7 @@ main .card hr{display:none}
     // 4 見る銘柄
     const watch=box("tl-watch",'<h2>見る銘柄 <small>押して切り替え</small></h2><div class="tl-switch">'+VIEWS.map(([id,l])=>'<button type="button" data-tl-view="'+id+'">'+l+'</button>').join("")+'</div><div class="tl-slot"></div>');
     const slot=watch.querySelector(".tl-slot");
-    const pre=preOpen(),shown=view===PRE&&!pre?"sp8-panel":view;
+    const pre=preOpen(),view=chosen&&chosen.day===today()?chosen.view:autoView(),shown=view===PRE&&!pre?"ms2-live-top5":view;
     VIEWS.forEach(([id])=>{const el=document.getElementById(id);if(el){if(el.parentElement!==slot)slot.appendChild(el);el.classList.toggle("tl-show",id===shown);}});
     watch.querySelectorAll("[data-tl-view]").forEach(b=>{b.classList.toggle("on",b.dataset.tlView===shown);if(b.dataset.tlView===PRE)b.hidden=!pre;});
     // 5 サインの履歴
@@ -4512,7 +4516,7 @@ main .card hr{display:none}
   document.addEventListener("click",ev=>{
     if(!ev.target.closest)return;
     const v=ev.target.closest("[data-tl-view]");
-    if(v){view=v.dataset.tlView;try{localStorage.setItem(KEY,view);}catch(_){}arrange();return;}
+    if(v){chosen={view:v.dataset.tlView,day:today()};try{localStorage.setItem(KEY,JSON.stringify(chosen));}catch(_){}arrange();return;}
     const m=ev.target.closest("#tl-history .tl-more");
     if(m){document.getElementById("tl-history").classList.toggle("tl-all");arrange();return;}
     // the old 注文 pane's own buttons (閉じる and the copy buttons), now inside 今やること

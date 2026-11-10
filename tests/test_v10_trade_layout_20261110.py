@@ -52,13 +52,18 @@ class TradeLayout(unittest.TestCase):
         self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"]];', block)
         # 寄り前 only 8:00-9:00 on weekdays (Tokyo); outside it the button is hidden and a stored 寄り前 shows 急変
         self.assertIn("return w>=1&&w<=5&&m>=480&&m<540;", block)
-        self.assertIn('shown=view===PRE&&!pre?"sp8-panel":view;', block)
+        # OWNER 2026-11-10 「見る銘柄は、8:00〜9:00は寄り前、9:00からは今動いている5を自動で開く。押して変えたら、その日はそのまま」
+        self.assertIn('const autoView=()=>preOpen()?PRE:"ms2-live-top5";', block)
+        self.assertIn('view=chosen&&chosen.day===today()?chosen.view:autoView(),shown=view===PRE&&!pre?"ms2-live-top5":view;', block)
+        self.assertIn("chosen={view:v.dataset.tlView,day:today()};try{localStorage.setItem(KEY,JSON.stringify(chosen));}catch(_){}", block)
         self.assertIn("if(b.dataset.tlView===PRE)b.hidden=!pre;", block)
         self.assertIn('el.classList.toggle("tl-show",id===shown)', block)
         self.assertIn("#tl-watch .tl-slot>section:not(.tl-show){display:none!important}", block)
         # OWNER 2026-11-10 「急変のところ、文字がおさまってない」: the inner card's frame goes (.card sets its border with !important)
         self.assertIn("#tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;", block)
-        self.assertIn('try{localStorage.setItem(KEY,view);}catch(_){}', block)
+        # audit 547f117: the boxes inside 今やること and 仮想の成績 keep no frame of their own
+        self.assertIn("#tl-now>section.card{border:0!important;padding:0!important;margin:0!important;background:none!important;border-radius:0!important}", block)
+        self.assertIn("#tl-virtual .vd-line,#tl-virtual .vd-held{border:0!important;", block)
 
     def test_history_shows_three_then_all(self):
         _, block = _block()
