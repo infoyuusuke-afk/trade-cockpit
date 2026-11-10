@@ -1778,8 +1778,16 @@ window.orderPaneRender = () => {
   cards.innerHTML = [...held.entries()].sort((x, y) => y[1].at - x[1].at).slice(0, 4).map(([k, v]) => window.orderBigHtml(k, v, "data-close='" + e(k) + "'")).join("") ||
     "<div class='ob-none'>今はカードはありません（期待値プラスの注目は自動で出ます）</div>";
   const list = (window.attentionCardRows || []).filter(r => r.kind === "RULE" && r.target && r.stop && (r.signal === "買いサイン" || r.signal === "空売りサイン") && !window.ORDER_CARD_NO_RULES.includes(String(r.rule)) && Date.now() - Date.parse(String(r.captured_at).replace(" ", "T") + "+09:00") < window.ORDER_CARD_TTL_MS).slice(0, 20);   // OWNER 2026-11-05 「古くなったのはみえなくてよい」
-  rows.innerHTML = list.map(r => "<button type='button' class='att-click op-row' data-att-t='" + e(r.ticker) + "' data-att-at='" + e(r.captured_at) + "' data-att-r='" + e(r.rule) + "'><span>" + e(String(r.captured_at).slice(11, 19)) + "</span><b class='" + (r.signal === "買いサイン" ? "op-long'>買建" : "op-short'>売建") + "</b><b>" + e(String(r.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(String(r.ticker || "").replace(".T", "")) + ")</b><span>" + e(r.rule) + "・発動 " + e(r.entry) + "</span></button>").join("") ||
+  rows.innerHTML = list.map(r => "<button type='button' class='att-click op-row' data-att-t='" + e(r.ticker) + "' data-att-at='" + e(r.captured_at) + "' data-att-r='" + e(r.rule) + "'><span>" + e(String(r.captured_at).slice(11, 19)) + "</span><b class='" + (r.signal === "買いサイン" ? "op-long'>買建" : "op-short'>売建") + "</b><b>" + e(String(r.name || "").replace(/（[0-9A-Z]{4}）$/, "")) + "(" + e(String(r.ticker || "").replace(".T", "")) + ")</b><span>" + e(r.rule) + "・発動 " + e(r.entry) + "</span>" + window.opRowEv(r.rule) + "</button>").join("") ||
     "<div class='ob-none'>今はサインがありません（180秒以内のサインだけ出します）</div>";
+};
+// OWNER 2026-11-10 「期待値ランキングの箱は消して、期待値の数字は今やることのサインの横に出す」: the rule's forward record (rule_shadow,
+// costs in, the same numbers as the order card); under 20 trades it says 根拠不足 with the count, no record says 期待値 —. Display only.
+window.opRowEv = rule => {
+  const f = (window.attentionCardStat && window.attentionCardStat(rule)) || {}, n = Number(f.n), ev = Number(f.ev_pct);
+  if (!(n > 0) || !Number.isFinite(ev)) return "<span class='op-ev'>期待値 —</span>";
+  const txt = (ev > 0 ? "+" : "") + ev.toFixed(2) + "%";
+  return n < 20 ? "<span class='op-ev op-ev-thin'>期待値 " + txt + "・根拠不足（" + n + "回）</span>" : "<span class='op-ev " + (ev > 0 ? "op-ev-up" : "op-ev-dn") + "'>期待値 " + txt + "（" + n + "回）</span>";
 };
 // OWNER 2026-11-05 「注文タブを開いている時は、貼り忘れとショートリバの箱を隠して、カードを上に詰めて」
 window.orderTabSync = () => document.body.classList.toggle("order-open", !!document.querySelector('.tab-pane[data-pane="order"].active'));
@@ -4380,16 +4388,20 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 .cockpit-tab[data-tab="order"]{display:none!important}
 /* OWNER 2026-11-10 「REALTIME 5もトレード中に入れてタブは無くす。期待値ランキングは今やることへ、監視銘柄・寄り前・LIVE TOP5は見る銘柄の切り替えへ。説明文は消す」 */
 .cockpit-tab[data-tab="ms2-live"]{display:none!important}
-#signal-ev-ranking>p.warning,#signal-ev-summary,#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}
-#tl-now>#signal-ev-ranking{border:0;padding:0;margin:12px 0 0;background:none;box-shadow:none;width:100%;max-width:none}#tl-now>#signal-ev-ranking>h2{font-size:13px;color:#C4C9D1;border:0;margin:0 0 6px;padding:0}
-#tl-now.tl-empty>#signal-ev-ranking.tl-ev-empty{display:none}
+/* then 「REALTIME 5はさっき決めたとおり案2でタブを無くす。期待値ランキングの箱は消して、期待値の数字は今やることのサインの横に出す。手法別の成績の文はBRAINへ。
+   見る銘柄の切り替えは 急変／実況／AI注目／今動いている5／寄り前／その他100銘柄 の6つ（寄り前は8:00〜9:00だけ）。説明文は消す」 */
+#signal-ev-ranking{display:none!important}
+#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}
+.op-ev{margin-left:auto;font-size:12px;color:#9AA0AA;white-space:nowrap}.op-ev-up{color:#4CC38A}.op-ev-dn{color:#E0566B}.op-ev-thin{color:#C9A227}
+.tl-switch button[hidden]{display:none}
+#tl-ev-methods .sub{font-size:13px;line-height:1.6}
 #trade-watch{display:none!important}
 #attention-order-card{display:none!important}
 .tl-box{width:100%;max-width:none;grid-column:1/-1;box-sizing:border-box;margin:0 0 12px}
 .tl-box>h2{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.tl-box>h2 small{font-size:12px;font-weight:400;color:#9AA0AA}
 .tl-status-lamps{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}.tl-status-lamps>div{flex:1 1 260px;min-width:0}
 .tl-status-lamps .lamp-card,.tl-status-lamps>div>*{margin:0!important}
-#tl-now.tl-empty>section:not(#signal-ev-ranking){display:none}
+#tl-now.tl-empty>section{display:none}
 #tl-now .tl-none{display:none;color:#9AA0AA;font-size:13px;padding:4px 0}#tl-now.tl-empty .tl-none{display:block}
 #tl-now .tl-sub{font-size:13px;color:#C4C9D1;margin:12px 0 6px}
 #tl-now>section.card{border:0;padding:0;margin:0;background:none}
@@ -4416,7 +4428,10 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 // the old 「トレード中に見るところ」 section stays in the page, hidden, because the order-card loader needs its slot.
 (()=>{
   const KEY="cockpitTradeWatchView";
-  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","LIVE TOP5"],["watchlist-100","監視銘柄"],["premarket-gap-ranking","寄り前"]];
+  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"]];
+  // 寄り前 is shown 8:00-9:00 (Tokyo time) only; outside that, a stored 寄り前 shows 急変 (the stored choice is kept for the next morning)
+  const PRE="premarket-gap-ranking";
+  const preOpen=()=>{const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();return w>=1&&w<=5&&m>=480&&m<540;};
   let view="sp8-panel";
   try{const v=localStorage.getItem(KEY);if(VIEWS.some(x=>x[0]===v))view=v;}catch(_){}
   const box=(id,html,tag)=>{let el=document.getElementById(id);if(!el){el=document.createElement(tag||"section");el.id=id;el.className="card wide tl-box";el.innerHTML=html;}return el;};
@@ -4432,19 +4447,21 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const wrap=document.querySelector(".unified-mode-wrap.attention-wrap"),guard=document.getElementById("real-guard-line");
     if(wrap&&guard&&wrap.firstElementChild!==guard)wrap.prepend(guard);
     // 3 今やること
-    const now=box("tl-now",'<h2>今やること <small>注文カード・180秒以内のサイン・期待値ランキング・検証中・参考のみ（注文は出しません。押すと値がコピーされます）</small></h2><div class="tl-none">今はカードもサインもありません（期待値プラスの注目にサインが出ると、ここに出ます）</div>');
+    const now=box("tl-now",'<h2>今やること <small>注文カードと180秒以内のサイン（横の数字は期待値・費用込み）・検証中・参考のみ（注文は出しません）</small></h2><div class="tl-none">今はカードもサインもありません（期待値プラスの注目にサインが出ると、ここに出ます）</div>');
     const cards=document.getElementById("order-pane-cards"),rows=document.getElementById("order-pane-rows");
     if(cards){const s=cards.closest("section");if(s&&s.parentElement!==now)now.appendChild(s);}
     if(rows){const s=rows.closest("section");if(s&&s.parentElement!==now){const h=s.querySelector("h2");if(h){h.className="tl-sub";h.textContent="サイン（180秒以内・押すとカード）";}now.appendChild(s);}}
-    const ev=document.getElementById("signal-ev-ranking");
-    if(ev){if(ev.parentElement!==now||ev!==now.lastElementChild)now.appendChild(ev);ev.classList.toggle("tl-ev-empty",!ev.querySelector(".rotation-grid,.rotation-box"));}
+    // the 手法別の成績 line (the backtest per method) moves to BRAIN, in a box of its own
+    const brain=document.querySelector('.tab-pane[data-pane="brain"]'),sum=document.getElementById("signal-ev-summary");
+    if(brain&&sum){const mb=box("tl-ev-methods",'<h2>手法別の成績（過去の記録で確かめたバックテスト・発注しません）</h2>');if(mb.parentElement!==brain)brain.appendChild(mb);if(sum.parentElement!==mb)mb.appendChild(sum);}
     const emptyCards=!cards||!!cards.querySelector(":scope > .ob-none")||!cards.children.length,emptyRows=!rows||!!rows.querySelector(":scope > .ob-none")||!rows.children.length;
-    now.classList.toggle("tl-empty",emptyCards&&emptyRows&&(!ev||ev.classList.contains("tl-ev-empty")));
+    now.classList.toggle("tl-empty",emptyCards&&emptyRows);
     // 4 見る銘柄
     const watch=box("tl-watch",'<h2>見る銘柄 <small>押して切り替え</small></h2><div class="tl-switch">'+VIEWS.map(([id,l])=>'<button type="button" data-tl-view="'+id+'">'+l+'</button>').join("")+'</div><div class="tl-slot"></div>');
     const slot=watch.querySelector(".tl-slot");
-    VIEWS.forEach(([id])=>{const el=document.getElementById(id);if(el){if(el.parentElement!==slot)slot.appendChild(el);el.classList.toggle("tl-show",id===view);}});
-    watch.querySelectorAll("[data-tl-view]").forEach(b=>b.classList.toggle("on",b.dataset.tlView===view));
+    const pre=preOpen(),shown=view===PRE&&!pre?"sp8-panel":view;
+    VIEWS.forEach(([id])=>{const el=document.getElementById(id);if(el){if(el.parentElement!==slot)slot.appendChild(el);el.classList.toggle("tl-show",id===shown);}});
+    watch.querySelectorAll("[data-tl-view]").forEach(b=>{b.classList.toggle("on",b.dataset.tlView===shown);if(b.dataset.tlView===PRE)b.hidden=!pre;});
     // 5 サインの履歴
     const hist=box("tl-history",'<h2>サインの履歴 <small>注目：ランキング入り・ルールのサイン（新しい3件・検証中）</small></h2><div class="tl-hist-slot"></div><button type="button" class="tl-more" hidden></button>');
     const att=document.getElementById("attention-box"),hs=hist.querySelector(".tl-hist-slot");

@@ -49,8 +49,12 @@ class TradeLayout(unittest.TestCase):
 
     def test_watch_is_a_switch(self):
         _, block = _block()
-        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","LIVE TOP5"],["watchlist-100","監視銘柄"],["premarket-gap-ranking","寄り前"]];', block)
-        self.assertIn('el.classList.toggle("tl-show",id===view)', block)
+        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"]];', block)
+        # 寄り前 only 8:00-9:00 on weekdays (Tokyo); outside it the button is hidden and a stored 寄り前 shows 急変
+        self.assertIn("return w>=1&&w<=5&&m>=480&&m<540;", block)
+        self.assertIn('shown=view===PRE&&!pre?"sp8-panel":view;', block)
+        self.assertIn("if(b.dataset.tlView===PRE)b.hidden=!pre;", block)
+        self.assertIn('el.classList.toggle("tl-show",id===shown)', block)
         self.assertIn("#tl-watch .tl-slot>section:not(.tl-show){display:none!important}", block)
         self.assertIn('try{localStorage.setItem(KEY,view);}catch(_){}', block)
 
@@ -65,14 +69,22 @@ class TradeLayout(unittest.TestCase):
         self.assertIn('"details"', block)
 
     def test_realtime_5_is_folded_in(self):
-        # OWNER 2026-11-10 「REALTIME 5もトレード中に入れてタブは無くす。期待値ランキングは今やることへ、監視銘柄・寄り前・LIVE TOP5は見る銘柄の切り替えへ。説明文は消す」
+        # OWNER 2026-11-10 「REALTIME 5はさっき決めたとおり案2でタブを無くす。期待値ランキングの箱は消して、期待値の数字は今やることのサインの横に出す。
+        # 手法別の成績の文はBRAINへ。…説明文は消す」
         html, block = _block()
         self.assertIn('.cockpit-tab[data-tab="ms2-live"]{display:none!important}', block)
-        self.assertIn('const ev=document.getElementById("signal-ev-ranking");', block)
-        self.assertIn('ev.classList.toggle("tl-ev-empty",!ev.querySelector(".rotation-grid,.rotation-box"))', block)
-        self.assertIn('now.classList.toggle("tl-empty",emptyCards&&emptyRows&&(!ev||ev.classList.contains("tl-ev-empty")));', block)
+        self.assertIn("#signal-ev-ranking{display:none!important}", block)
+        self.assertIn('now.classList.toggle("tl-empty",emptyCards&&emptyRows);', block)
+        # the EV beside each 180 s signal, from the same forward record as the order card; thin records say so
+        self.assertIn('"</span>" + window.opRowEv(r.rule) + "</button>"', html)
+        self.assertIn("window.opRowEv = rule => {", html)
+        self.assertIn("if (!(n > 0) || !Number.isFinite(ev)) return \"<span class='op-ev'>期待値 —</span>\";", html)
+        self.assertIn('根拠不足（" + n + "回）', html)
+        # 手法別の成績 moves to BRAIN in its own box
+        self.assertIn("const brain=document.querySelector('.tab-pane[data-pane=\"brain\"]'),sum=document.getElementById(\"signal-ev-summary\");", block)
+        self.assertIn('if(sum.parentElement!==mb)mb.appendChild(sum);', block)
         # the explanations are hidden; the rows and the cards stay
-        self.assertIn("#signal-ev-ranking>p.warning,#signal-ev-summary,#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}", block)
+        self.assertIn("#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}", block)
         for keep in ('id="watchlist-100-rows"', 'id="premarket-gap-rows"', 'id="ms2-live-cards"'):
             self.assertIn(keep, html)
 
