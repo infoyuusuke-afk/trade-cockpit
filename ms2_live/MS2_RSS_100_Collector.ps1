@@ -37,6 +37,19 @@ function Get-TimeText($value) {
     try { return ([DateTime]::Parse([string]$value)).ToString("HH:mm:ss") } catch { return [string]$value }
 }
 
+# OWNER 2026-11-10 「OR15とサインにきのうの値の繰り返しを使わない」: on 11/10 MS2 stopped from 06:03 to about 09:30 and the sheet kept
+# yesterday's last price and trades; at 09:00-09:15 those were taken as today's OR15, and every signal after 09:31 was priced from them.
+# A price or a trade belongs to today's session only when its own time (HH:mm:ss) is not before 08:00 and not after now
+# (two minutes of slack for clock skew). A blank or unreadable time is not today's.
+function Test-QuoteFromToday([string]$TimeText, [TimeSpan]$Clock) {
+    if ([string]::IsNullOrWhiteSpace($TimeText)) { return $false }
+    $q = [TimeSpan]::Zero
+    if (-not [TimeSpan]::TryParseExact($TimeText.Trim(), 'hh\:mm\:ss', [Globalization.CultureInfo]::InvariantCulture, [ref]$q)) { return $false }
+    if ($q -lt [TimeSpan]::Parse("08:00:00")) { return $false }
+    if ($q -gt $Clock.Add([TimeSpan]::FromMinutes(2))) { return $false }
+    return $true
+}
+
 function Get-DateText($value) {
     if ($null -eq $value) { return "" }
     if ($value -is [double] -or $value -is [int]) {
@@ -3535,6 +3548,8 @@ try {
                 }
             }
             $validCount++
+            # OWNER 2026-11-10: from 09:00, a row whose current price is not from today (its quote time) builds no OR / OR5 / day range / bar / signal
+            $staleToday=($clock -ge [TimeSpan]::Parse("09:00:00") -and -not (Test-QuoteFromToday (Get-TimeText (Get-TableValue $values $r 2)) $clock))
             if ($null -eq $volume) {$volume=0}; if ($null -eq $vwap) {$vwap=0}; if ($null -eq $bid) {$bid=0}; if ($null -eq $ask) {$ask=0}
             if ($null -eq $bidQty) {$bidQty=0}; if ($null -eq $askQty) {$askQty=0}; if ($null -eq $marketSell) {$marketSell=0}; if ($null -eq $marketBuy) {$marketBuy=0}
             if ($null -eq $over) {$over=0}; if ($null -eq $under) {$under=0}
@@ -3544,27 +3559,28 @@ try {
             $priceDelta = if ($null -ne $prev) {$price-$prev.Price} else {0}
             $uoChange = if ($null -ne $prev) {$underRatio-$prev.UnderRatio} else {0}
 
-            if ($inOr) {
+            if ($inOr -and -not $staleToday) {
                 if (-not $orHigh.ContainsKey($ticker) -or $price -gt $orHigh[$ticker]) {$orHigh[$ticker]=$price}
                 if (-not $orLow.ContainsKey($ticker) -or $price -lt $orLow[$ticker]) {$orLow[$ticker]=$price}
             }
-            if ($inOr5) {
+            if ($inOr5 -and -not $staleToday) {
                 if (-not $or5High.ContainsKey($ticker) -or $price -gt $or5High[$ticker]) {$or5High[$ticker]=$price}
                 if (-not $or5Low.ContainsKey($ticker) -or $price -lt $or5Low[$ticker]) {$or5Low[$ticker]=$price}
             }
-            if ($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("15:30:00")) {
+            if ($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("15:30:00") -and -not $staleToday) {
                 if (-not $dayHigh.ContainsKey($ticker) -or $price -gt $dayHigh[$ticker]) {$dayHigh[$ticker]=$price}
                 if (-not $dayLow.ContainsKey($ticker) -or $price -lt $dayLow[$ticker]) {$dayLow[$ticker]=$price}
             }
 
             if (-not $history.ContainsKey($ticker)) {$history[$ticker]=[Collections.ArrayList]::new()}
             $direction = if ($ask -gt 0 -and $price -ge $ask) {"BUY"} elseif ($bid -gt 0 -and $price -le $bid) {"SELL"} elseif ($priceDelta -gt 0) {"BUY"} elseif ($priceDelta -lt 0) {"SELL"} else {"NEUTRAL"}
-            [void]$history[$ticker].Add([pscustomobject]@{At=$now;Price=$price;Vwap=$vwap;UnderRatio=$underRatio;Direction=$direction;VolumeDelta=$volumeDelta})
+            if (-not $staleToday) {[void]$history[$ticker].Add([pscustomobject]@{At=$now;Price=$price;Vwap=$vwap;UnderRatio=$underRatio;Direction=$direction;VolumeDelta=$volumeDelta})}
             while ($history[$ticker].Count -gt 0 -and ($now-$history[$ticker][0].At).TotalMinutes -gt 10) {$history[$ticker].RemoveAt(0)}
 
             if (-not $minuteBars.ContainsKey($ticker)) {$minuteBars[$ticker]=[Collections.ArrayList]::new()}
             $minuteKey=$now.ToString("yyyy-MM-dd HH:mm")
             $building=$currentMinuteBars[$ticker]
+            if (-not $staleToday) {
             if ($null -eq $building -or $building.Key -ne $minuteKey) {
                 if ($null -ne $building) {
                     [void]$minuteBars[$ticker].Add($building)
@@ -3580,6 +3596,7 @@ try {
             if ($price -lt $building.Low) {$building.Low=$price}
             $building.Close=$price
             $building.Volume=[double]$building.Volume+[double]$volumeDelta
+            }
 
             $crosses=0; $buyFlow=0; $sellFlow=0; $deltas=@()
             for ($h=0; $h -lt $history[$ticker].Count; $h++) {
@@ -3696,6 +3713,7 @@ try {
             $signalBarTime=if($null -ne $lastBar){[string]$lastBar.Key}else{""}
             $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
             if($inPreopen){$signal=$preopenPlan}
+            elseif ($inSession -and $staleToday) {$signal="値が今日のものでない";$strategy="きのうの値の繰り返し・サインなし"}
             elseif ($inSession -and $whipsaw) {$signal="往復ピンタ回避"}
             elseif ($openDecision -eq "初動買い候補") {$signal="初動買い候補"}
             elseif ($openDecision -eq "初動ショート候補") {$signal="初動ショート候補"}
@@ -3742,6 +3760,7 @@ try {
                     $tickPrice=Get-SafeNumber (Get-TableValue $values $r (15+$w*2)) 0.01 10000000
                     $tickTime=Get-TimeText (Get-TableValue $values $r (16+$w*2))
                     if ($null -eq $tickPrice -or [string]::IsNullOrWhiteSpace($tickTime)) {continue}
+                    if (-not (Test-QuoteFromToday $tickTime $clock)) {continue}   # OWNER 2026-11-10: yesterday's trades are not written as today's
                     $tickKey="$ticker|$tickTime|$tickPrice"
                     if (-not $seenTicks.ContainsKey($tickKey)) {
                         $tickDir=if ($ask -gt 0 -and $tickPrice -ge $ask) {"BUY_EST"} elseif ($bid -gt 0 -and $tickPrice -le $bid) {"SELL_EST"} else {"UNKNOWN"}
