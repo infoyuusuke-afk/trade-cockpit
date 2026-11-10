@@ -44,11 +44,16 @@ class StaleSectionsHidden(unittest.TestCase):
         # still only while signals.json is older than 24 hours
         self.assertIn("if (!(Date.now() - sigAt < 864e5)) {", html)
 
-    def test_focus_and_fortune_stay(self):
+    def test_focus_stays_and_fortune_and_rules_are_gone(self):
         html = _html()
-        for keep in ("FOCUS", "本格占い"):
-            self.assertIn(keep, html)
-        # neither is added to the hide list
+        self.assertIn("FOCUS", html)
+        # OWNER 2026-11-10 「占い いらない 運用ルールなんかわからないからいらない」: both panels are taken off
+        for gone in ("本格占い", "<h2>⑫ 運用ルール</h2>", "最大損失を先に固定", "本日の行動管理", "バイオリズム"):
+            self.assertNotIn(gone, html)
+        self.assertIn("<!-- OWNER 2026-11-10 「占い いらない」: the fortune panel removed", html)
+        self.assertIn("<!-- OWNER 2026-11-10 「運用ルールなんかわからないからいらない」: ⑫ 運用ルール removed -->", html)
+        self.assertIn('<section id="selection-logic" class="card"><h2>⑬ 選定ロジック</h2>', html)   # the next panel stays
+        # FOCUS is not added to the hide list
         start = html.index('["entered-signals", "prepared-signals"')
         block = html[start:html.index("forEach", start)]
         self.assertNotIn("focus", block.lower())
