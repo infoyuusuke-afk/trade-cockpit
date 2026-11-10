@@ -4031,7 +4031,8 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     if(!area){area=document.createElement("div");area.id="cap-area";area.className="cap-area";
       area.innerHTML='<button type="button" id="cap-head" class="cap-head"></button><div id="cap-body"></div>';pane.appendChild(area);
       area.querySelector("#cap-head").addEventListener("click",()=>{capOpen=!capOpen;try{localStorage.setItem("cockpitCapOpenV1",capOpen?"1":"0");}catch(_){}paintHead();});}
-    else if(area.parentElement!==pane||area!==pane.lastElementChild)pane.appendChild(area);
+    // OWNER 2026-11-10 整理の案A: the area now lives folded in トレード中 「仮想の成績」; it is put back here only when it is not there (audit 5d4b553)
+    else if(!area.closest("#tl-virtual")&&(area.parentElement!==pane||area!==pane.lastElementChild))pane.appendChild(area);
     return area;
   }
   function paintHead(){
@@ -4377,13 +4378,18 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 <style>
 /* OWNER 2026-11-10 「トレード中の使い方が、やっぱりなんかよくわからない、同じようなものを整理まとめて、使い方を改善」→「整理の案A承認。注文タブは無くす。見る銘柄は切り替え式」 */
 .cockpit-tab[data-tab="order"]{display:none!important}
+/* OWNER 2026-11-10 「REALTIME 5もトレード中に入れてタブは無くす。期待値ランキングは今やることへ、監視銘柄・寄り前・LIVE TOP5は見る銘柄の切り替えへ。説明文は消す」 */
+.cockpit-tab[data-tab="ms2-live"]{display:none!important}
+#signal-ev-ranking>p.warning,#signal-ev-summary,#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}
+#tl-now>#signal-ev-ranking{border:0;padding:0;margin:12px 0 0;background:none;box-shadow:none;width:100%;max-width:none}#tl-now>#signal-ev-ranking>h2{font-size:13px;color:#C4C9D1;border:0;margin:0 0 6px;padding:0}
+#tl-now.tl-empty>#signal-ev-ranking.tl-ev-empty{display:none}
 #trade-watch{display:none!important}
 #attention-order-card{display:none!important}
 .tl-box{width:100%;max-width:none;grid-column:1/-1;box-sizing:border-box;margin:0 0 12px}
 .tl-box>h2{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.tl-box>h2 small{font-size:12px;font-weight:400;color:#9AA0AA}
 .tl-status-lamps{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}.tl-status-lamps>div{flex:1 1 260px;min-width:0}
 .tl-status-lamps .lamp-card,.tl-status-lamps>div>*{margin:0!important}
-#tl-now.tl-empty>section{display:none}
+#tl-now.tl-empty>section:not(#signal-ev-ranking){display:none}
 #tl-now .tl-none{display:none;color:#9AA0AA;font-size:13px;padding:4px 0}#tl-now.tl-empty .tl-none{display:block}
 #tl-now .tl-sub{font-size:13px;color:#C4C9D1;margin:12px 0 6px}
 #tl-now>section.card{border:0;padding:0;margin:0;background:none}
@@ -4410,15 +4416,15 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 // the old 「トレード中に見るところ」 section stays in the page, hidden, because the order-card loader needs its slot.
 (()=>{
   const KEY="cockpitTradeWatchView";
-  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"]];
+  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","LIVE TOP5"],["watchlist-100","監視銘柄"],["premarket-gap-ranking","寄り前"]];
   let view="sp8-panel";
   try{const v=localStorage.getItem(KEY);if(VIEWS.some(x=>x[0]===v))view=v;}catch(_){}
   const box=(id,html,tag)=>{let el=document.getElementById(id);if(!el){el=document.createElement(tag||"section");el.id=id;el.className="card wide tl-box";el.innerHTML=html;}return el;};
   function arrange(){
     const pane=document.querySelector('.tab-pane[data-pane="scalp"]');if(!pane)return;
     // the 注文 tab is gone: a stored or clicked 注文 goes back to トレード中
-    const op=document.querySelector('.tab-pane[data-pane="order"]');
-    if(op&&op.classList.contains("active")){const b=document.querySelector('.cockpit-tab[data-tab="scalp"]');if(b)b.click();try{localStorage.setItem("cockpitTabV5","scalp");}catch(_){}}
+    const op=document.querySelector('.tab-pane[data-pane="order"].active,.tab-pane[data-pane="ms2-live"].active');
+    if(op){const b=document.querySelector('.cockpit-tab[data-tab="scalp"]');if(b)b.click();try{localStorage.setItem("cockpitTabV5","scalp");}catch(_){}}
     // 1 the state line: the lamps next to the band, outside the tabs
     const mode=document.getElementById("unified-mode"),lamps=document.querySelector(".trade-watch-lamps");
     if(mode&&lamps){lamps.classList.add("tl-status-lamps");if(mode.nextElementSibling!==lamps)mode.insertAdjacentElement("afterend",lamps);}
@@ -4426,14 +4432,16 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const wrap=document.querySelector(".unified-mode-wrap.attention-wrap"),guard=document.getElementById("real-guard-line");
     if(wrap&&guard&&wrap.firstElementChild!==guard)wrap.prepend(guard);
     // 3 今やること
-    const now=box("tl-now",'<h2>今やること <small>注文カードと180秒以内のサイン・検証中・参考のみ（注文は出しません。押すと値がコピーされます）</small></h2><div class="tl-none">今はカードもサインもありません（期待値プラスの注目にサインが出ると、ここに出ます）</div>');
+    const now=box("tl-now",'<h2>今やること <small>注文カード・180秒以内のサイン・期待値ランキング・検証中・参考のみ（注文は出しません。押すと値がコピーされます）</small></h2><div class="tl-none">今はカードもサインもありません（期待値プラスの注目にサインが出ると、ここに出ます）</div>');
     const cards=document.getElementById("order-pane-cards"),rows=document.getElementById("order-pane-rows");
     if(cards){const s=cards.closest("section");if(s&&s.parentElement!==now)now.appendChild(s);}
     if(rows){const s=rows.closest("section");if(s&&s.parentElement!==now){const h=s.querySelector("h2");if(h){h.className="tl-sub";h.textContent="サイン（180秒以内・押すとカード）";}now.appendChild(s);}}
+    const ev=document.getElementById("signal-ev-ranking");
+    if(ev){if(ev.parentElement!==now||ev!==now.lastElementChild)now.appendChild(ev);ev.classList.toggle("tl-ev-empty",!ev.querySelector(".rotation-grid,.rotation-box"));}
     const emptyCards=!cards||!!cards.querySelector(":scope > .ob-none")||!cards.children.length,emptyRows=!rows||!!rows.querySelector(":scope > .ob-none")||!rows.children.length;
-    now.classList.toggle("tl-empty",emptyCards&&emptyRows);
+    now.classList.toggle("tl-empty",emptyCards&&emptyRows&&(!ev||ev.classList.contains("tl-ev-empty")));
     // 4 見る銘柄
-    const watch=box("tl-watch",'<h2>見る銘柄 <small>急変・実況・AI注目を切り替え</small></h2><div class="tl-switch">'+VIEWS.map(([id,l])=>'<button type="button" data-tl-view="'+id+'">'+l+'</button>').join("")+'</div><div class="tl-slot"></div>');
+    const watch=box("tl-watch",'<h2>見る銘柄 <small>押して切り替え</small></h2><div class="tl-switch">'+VIEWS.map(([id,l])=>'<button type="button" data-tl-view="'+id+'">'+l+'</button>').join("")+'</div><div class="tl-slot"></div>');
     const slot=watch.querySelector(".tl-slot");
     VIEWS.forEach(([id])=>{const el=document.getElementById(id);if(el){if(el.parentElement!==slot)slot.appendChild(el);el.classList.toggle("tl-show",id===view);}});
     watch.querySelectorAll("[data-tl-view]").forEach(b=>b.classList.toggle("on",b.dataset.tlView===view));

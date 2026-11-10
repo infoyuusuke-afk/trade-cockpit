@@ -18,8 +18,9 @@ class TradeLayout(unittest.TestCase):
         self.assertIn('.cockpit-tab[data-tab="order"]{display:none!important}', block)
         # the pane is still built (its button must exist, or orderPaneMount builds another), so the cards keep being filled
         self.assertIn('if (!nav || !main || document.querySelector(\'.cockpit-tab[data-tab="order"]\')) return;', html)
-        # a stored or open 注文 goes back to トレード中
-        self.assertIn('if(op&&op.classList.contains("active")){const b=document.querySelector(\'.cockpit-tab[data-tab="scalp"]\');if(b)b.click();', block)
+        # a stored or open 注文 (or REALTIME 5) goes back to トレード中
+        self.assertIn("const op=document.querySelector('.tab-pane[data-pane=\"order\"].active,.tab-pane[data-pane=\"ms2-live\"].active');", block)
+        self.assertIn('if(op){const b=document.querySelector(\'.cockpit-tab[data-tab="scalp"]\');if(b)b.click();', block)
         self.assertIn('localStorage.setItem("cockpitTabV5","scalp")', block)
 
     def test_order_from_top_to_bottom(self):
@@ -36,7 +37,7 @@ class TradeLayout(unittest.TestCase):
         _, block = _block()
         self.assertIn('document.getElementById("order-pane-cards")', block)
         self.assertIn('document.getElementById("order-pane-rows")', block)
-        self.assertIn('now.classList.toggle("tl-empty",emptyCards&&emptyRows)', block)
+        self.assertIn('emptyRows=!rows||!!rows.querySelector(":scope > .ob-none")||!rows.children.length;', block)
         self.assertIn("今はカードもサインもありません", block)
         # the old pane's own buttons still work here: 閉じる and copy
         self.assertIn('ev.target.closest("#tl-now")', block)
@@ -48,7 +49,7 @@ class TradeLayout(unittest.TestCase):
 
     def test_watch_is_a_switch(self):
         _, block = _block()
-        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"]];', block)
+        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","LIVE TOP5"],["watchlist-100","監視銘柄"],["premarket-gap-ranking","寄り前"]];', block)
         self.assertIn('el.classList.toggle("tl-show",id===view)', block)
         self.assertIn("#tl-watch .tl-slot>section:not(.tl-show){display:none!important}", block)
         self.assertIn('try{localStorage.setItem(KEY,view);}catch(_){}', block)
@@ -62,6 +63,23 @@ class TradeLayout(unittest.TestCase):
         _, block = _block()
         self.assertIn('["virt-day-line","virt-held-line","cap-area","trade-fx-link"]', block)
         self.assertIn('"details"', block)
+
+    def test_realtime_5_is_folded_in(self):
+        # OWNER 2026-11-10 「REALTIME 5もトレード中に入れてタブは無くす。期待値ランキングは今やることへ、監視銘柄・寄り前・LIVE TOP5は見る銘柄の切り替えへ。説明文は消す」
+        html, block = _block()
+        self.assertIn('.cockpit-tab[data-tab="ms2-live"]{display:none!important}', block)
+        self.assertIn('const ev=document.getElementById("signal-ev-ranking");', block)
+        self.assertIn('ev.classList.toggle("tl-ev-empty",!ev.querySelector(".rotation-grid,.rotation-box"))', block)
+        self.assertIn('now.classList.toggle("tl-empty",emptyCards&&emptyRows&&(!ev||ev.classList.contains("tl-ev-empty")));', block)
+        # the explanations are hidden; the rows and the cards stay
+        self.assertIn("#signal-ev-ranking>p.warning,#signal-ev-summary,#watchlist-100>p.sub,#premarket-gap-ranking>p.sub,#ms2-live-top5>p,#ms2-common-status{display:none!important}", block)
+        for keep in ('id="watchlist-100-rows"', 'id="premarket-gap-rows"', 'id="ms2-live-cards"'):
+            self.assertIn(keep, html)
+
+    def test_cap_area_is_not_pulled_back(self):
+        # audit 5d4b553: capArea() put the area back at the end of the hidden 注文 pane every 3 s
+        html, _ = _block()
+        self.assertIn('else if(!area.closest("#tl-virtual")&&(area.parentElement!==pane||area!==pane.lastElementChild))pane.appendChild(area);', html)
 
     def test_display_only(self):
         _, block = _block()
