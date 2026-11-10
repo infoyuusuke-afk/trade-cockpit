@@ -227,6 +227,18 @@ class JournalPanels(unittest.TestCase):
         self.assertNotIn("Order", block)
         self.assertIn("ルール①②④⑤のサイン・オーバーナイト・スイング・長期の仮想売買です。", js)
 
+    def test_pl_amount_coloured_and_note_on_its_own_line(self):
+        # OWNER 2026-11-10 「含み益・損の金額を色付き（益・緑／損・赤）　文字の改行位置なおして」
+        js = CONTROL_JS.read_text(encoding="utf-8")
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('["含み（100株）",y100===null?"—":money(y100),y100>0?"cc-yen-plus":y100<0?"cc-yen-minus":""],', js)
+        self.assertIn("""'<b'+(x[2]?' class="'+x[2]+'"':"")+'>'+esc(x[1])""", js)
+        self.assertIn('i=s.indexOf("（"),main=i>0?s.slice(0,i):s,note=i>0?s.slice(i+1).replace(/）$/,""):"";', js)
+        self.assertIn("""'<small class="cc-pl-note">'+esc(note)+'</small>'""", js)
+        self.assertIn(".cc-metrics-grid b.cc-yen-plus{color:#35e2ae}.cc-metrics-grid b.cc-yen-minus{color:#ff5a5f}", html)
+        self.assertIn(".cc-pl .cc-pl-main b{white-space:nowrap}", html)
+        self.assertIn(".cc-pl{flex-wrap:wrap;column-gap:12px;row-gap:2px}", html)   # 現在値 goes under when it does not fit
+
 
 if __name__ == "__main__":
     unittest.main()

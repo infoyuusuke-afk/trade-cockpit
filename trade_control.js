@@ -468,7 +468,7 @@
       '<div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name||code||"—")+'</span>'+
       '<span class="cc-symbol">'+esc(code||"")+'</span></div><span class="cc-badge">'+esc(badge)+'</span></div>'+
       (pl||"")+
-      '<div class="cc-metrics-grid">'+metrics.filter(x=>x&&x[1]!=null).map(x=>'<span>'+esc(x[0])+'<b>'+esc(x[1])+'</b></span>').join("")+'</div>'+
+      '<div class="cc-metrics-grid">'+metrics.filter(x=>x&&x[1]!=null).map(x=>'<span>'+esc(x[0])+'<b'+(x[2]?' class="'+x[2]+'"':"")+'>'+esc(x[1])+'</b></span>').join("")+'</div>'+
       (foot?'<div class="cc-foot">'+esc(foot)+'</div>':"")+'</article>';
   }
   const yen=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"円";};
@@ -486,7 +486,9 @@
     const pct=(isShort?1-now/e:now/e-1)*100,sign=pct>0?"+":"";
     return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%"+tag,now};
   }
-  function plLine(u){return '<div class="cc-pl '+u.cls+'"><b>'+esc(u.text)+'</b>'+(u.now!==null?'<small>現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}
+  // OWNER 2026-11-10 「文字の改行位置なおして」: the % stays on one line; the note in （…） (終値の日・最後の値の時刻) goes on its own small line
+  function plLine(u){const s=String(u.text),i=s.indexOf("（"),main=i>0?s.slice(0,i):s,note=i>0?s.slice(i+1).replace(/）$/,""):"";
+    return '<div class="cc-pl '+u.cls+'"><span class="cc-pl-main"><b>'+esc(main)+'</b>'+(note?'<small class="cc-pl-note">'+esc(note)+'</small>':"")+'</span>'+(u.now!==null?'<small class="cc-pl-now">現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}
   const shares=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"株";};
   const signedPct=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toFixed(2)+"%";};
   const openDay=v=>{const s=String(v||"");if(!/^\d{8}$/.test(s))return s||"—";const jst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"");return s===jst?"本日":s.slice(4,6)+"/"+s.slice(6,8);};
@@ -567,7 +569,8 @@
               const y100=u.now!==null&&e!==null?Math.round((u.now-e)*100):null;
               holds.push(holdingCard(String(o.name||code).replace(/（[0-9A-Z]{4}）$/,""),code,badge,[
                 ["売買","買い"],["建値（仮想）",yen(e)],["入った日",String(o.entry_day||"").slice(5).replace("-","/")||"—"],["日数",o.days!=null?o.days+"日目":"—"],
-                ["含み（100株）",y100===null?"—":money(y100)],["損切り／利確",yen(o.stop)+"／"+yen(o.target)]
+                // OWNER 2026-11-10 「含み益・損の金額を色付き（益・緑／損・赤）」
+                ["含み（100株）",y100===null?"—":money(y100),y100>0?"cc-yen-plus":y100<0?"cc-yen-minus":""],["損切り／利確",yen(o.stop)+"／"+yen(o.target)]
               ],foot,"long",plLine(u)));
             });
           });
