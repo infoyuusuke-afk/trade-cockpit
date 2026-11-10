@@ -3515,7 +3515,9 @@ try {
             # OWNER 2026-10-29 「寄りが遅れた銘柄は、寄ってから15分で高値・安値を作る」: a stock still untraded (volume 0, no open) at 09:01
             # builds its OR15 from its first trade + 15 min. Already traded by 09:01, or first seen after 11:30 (a restart), stays 09:00-09:15.
             if(-not $orStart.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:00:00")){
-                $tradedYet=(($null -ne $volume -and $volume -gt 0) -or ($null -ne $openPrice -and $openPrice -gt 0))
+                # OWNER 2026-11-10 (audit 32e1ad2): a row whose price is not today's (MS2 stopped, yesterday's volume still on the sheet) has not
+                # opened yet; like a late open, its OR15 starts at its first price of today (the same as a restart, which rebuilds OR15 from today's ticks)
+                $tradedYet=(($null -ne $volume -and $volume -gt 0) -or ($null -ne $openPrice -and $openPrice -gt 0)) -and (Test-QuoteFromToday (Get-TimeText (Get-TableValue $values $r 2)) $clock)
                 if(-not $tradedYet){if($clock -lt [TimeSpan]::Parse("11:30:00")){$orWaiting[$ticker]=$true}}
                 elseif($orWaiting.ContainsKey($ticker) -and $clock -ge [TimeSpan]::Parse("09:01:00")){$orStart[$ticker]=$clock}
                 else{$orStart[$ticker]=[TimeSpan]::Parse("09:00:00")}

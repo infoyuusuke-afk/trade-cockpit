@@ -39,6 +39,8 @@ class StaleToday(unittest.TestCase):
                      'elseif ($inSession -and $staleToday) {$signal="値が今日のものでない";$strategy="きのうの値の繰り返し・サインなし"}',
                      "if (-not (Test-QuoteFromToday $tickTime $clock)) {continue}"):
             self.assertIn(gate, t)
+        # audit 32e1ad2: a row that is not today's has not opened yet, so OR15 starts at its first price of today (like a late open)
+        self.assertIn("$tradedYet=(($null -ne $volume -and $volume -gt 0) -or ($null -ne $openPrice -and $openPrice -gt 0)) -and (Test-QuoteFromToday (Get-TimeText (Get-TableValue $values $r 2)) $clock)", t)
         # the stale gate comes before every signal branch of the session
         self.assertLess(t.index('elseif ($inSession -and $staleToday)'), t.index('elseif ($inSession -and $whipsaw)'))
         # the minute bar is not touched by a stale price
