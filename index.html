@@ -4407,7 +4407,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 #tl-now>section.card{border:0;padding:0;margin:0;background:none}
 .tl-switch{display:flex;gap:6px;margin:0 0 10px}.tl-switch button{padding:6px 16px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-weight:700;cursor:pointer}
 .tl-switch button.on{background:#E6E8EB;color:#111;border-color:#E6E8EB}
-#tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0;padding:0;background:none;box-shadow:none}
+#tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;background:none;box-shadow:none}/* OWNER 2026-11-10 「急変のところ、文字がおさまってない」: .card keeps its border with !important, so the frame stayed while the padding was 0 */
 #tl-watch .tl-slot>section:not(.tl-show){display:none!important}
 #tl-watch #ai5-cards>.focus-empty{grid-column:1/-1;max-width:none}#tl-history #attention-box{margin:0;border:0;padding:0;background:none}
 #tl-history:not(.tl-all) #attention-rows>*:nth-child(n+4){display:none}

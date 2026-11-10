@@ -56,6 +56,8 @@ class TradeLayout(unittest.TestCase):
         self.assertIn("if(b.dataset.tlView===PRE)b.hidden=!pre;", block)
         self.assertIn('el.classList.toggle("tl-show",id===shown)', block)
         self.assertIn("#tl-watch .tl-slot>section:not(.tl-show){display:none!important}", block)
+        # OWNER 2026-11-10 「急変のところ、文字がおさまってない」: the inner card's frame goes (.card sets its border with !important)
+        self.assertIn("#tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;", block)
         self.assertIn('try{localStorage.setItem(KEY,view);}catch(_){}', block)
 
     def test_history_shows_three_then_all(self):
