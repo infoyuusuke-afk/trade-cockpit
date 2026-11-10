@@ -636,7 +636,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
-   if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ 注意";}
+   // OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」: a day that is not 通常 puts a small plain dot before the name
+   if(d.today_level!=="通常"){b.classList.add("tab-dot");b.textContent="注意";}
  }).catch(()=>{});
  // OWNER 2026-10-24 「ランプの赤を直して」: the badge read the pinned signals.json (10/19) and stayed red.
  // It now reads the public feed meta: red only when the feed stopped syncing (30 min) or a file is old.
@@ -660,7 +661,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 </script>
 <style>.cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important;row-gap:4px}.cockpit-tabs.two-rows .tab-break{flex-basis:100%;height:0;order:50}
-.cockpit-tabs.two-rows .cockpit-brand{order:0}.cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}</style>
+.cockpit-tabs.two-rows .cockpit-brand{order:0}.cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}
+.cockpit-tabs .cockpit-tab.tab-small{min-height:30px!important;padding:5px 11px!important;font-size:11px!important}
+.cockpit-tabs .cockpit-tab.tab-now::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#4CC38A;margin-left:6px;vertical-align:middle}
+/* OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」 */
+.cockpit-tabs .cockpit-tab.tab-dot::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#C4C9D1;margin-right:5px;vertical-align:middle}</style>
 <script>
 // OWNER 2026-11-09 「上のタブを2段にして、横にスクロールしなくても全部見えるようにして。1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・
 // テーマ・アナリスト、2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」:
@@ -668,14 +673,19 @@ document.addEventListener("DOMContentLoaded",()=>{
 // order stay as they are. Tabs added later by other scripts are placed when they appear; anything not listed goes at the end of row 2.
 (()=>{
   // OWNER 2026-11-09 later 「FOCUSは場中に使うので1段目の板の右に移して」
-  const ROW1=["scalp","order","board","focus-owner","ms2-live","pts","overnight","pre-next","analysts"];
-  const ROW2=["kioxia-calendar","events","swing","value","ai-journal","brain","control"];
+  // OWNER 2026-11-10 「タブは毎日使う5つ（トレード中・板・FOCUS・OVERNIGHT 5・AIトレード日記）を1段目、ほかは2段目に小さく、今見るタブに緑の点」
+  const ROW1=["scalp","board","focus-owner","overnight","ai-journal"];
+  const ROW2=["pre-next","pts","analysts","kioxia-calendar","events","swing","value","brain","control"];
+  // the tab to look at now (Tokyo): weekdays トレード中 until 14:00, OVERNIGHT 5 14:00-15:30, AIトレード日記 after; weekends AIトレード日記
+  function nowTab(){const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();
+    if(w===0||w===6)return "ai-journal";return m<840?"scalp":m<930?"overnight":"ai-journal";}
   function arrange(){
     const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
     nav.classList.add("two-rows");
     if(!nav.querySelector(":scope > .tab-break")){const br=document.createElement("span");br.className="tab-break";br.setAttribute("aria-hidden","true");nav.appendChild(br);}
     [...nav.querySelectorAll(":scope > .cockpit-tab[data-tab]")].forEach(b=>{const k=b.dataset.tab,i1=ROW1.indexOf(k),i2=ROW2.indexOf(k);
-      const o=i1>=0?10+i1:i2>=0?60+i2:90;if(b.style.order!==String(o))b.style.order=String(o);});
+      const o=i1>=0?10+i1:i2>=0?60+i2:90;if(b.style.order!==String(o))b.style.order=String(o);
+      b.classList.toggle("tab-small",i1<0);b.classList.toggle("tab-now",k===nowTab());});
     const more=nav.querySelector(":scope > details.secondary-tabs");if(more&&more.style.order!=="95")more.style.order="95";
     indent(nav);
   }
@@ -701,7 +711,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(brand&&window.ResizeObserver)new ResizeObserver(()=>indent(nav)).observe(brand);
     window.addEventListener("resize",()=>nav&&indent(nav));
     // the lamp's text is rewritten in place (its box may be swapped), so check once a second as well; it only writes when off
-    if(nav)setInterval(()=>indent(nav),1000);});
+    if(nav)setInterval(()=>indent(nav),1000);
+    setInterval(arrange,60000);});   // the green dot follows the clock
 })();
 </script>
 <style>#focus-analyst{margin-top:10px}#focus-analyst h3{font-size:14px;margin:6px 0}#focus-analyst .fa-meta{font-size:12px;color:#9aa0a6;margin:2px 0 4px}
@@ -4417,7 +4428,9 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 #tl-virtual .tl-fold-note{font-size:12px;color:#9AA0AA;margin:0 0 8px}
 /* OWNER 2026-11-10 「見た目を1つの決まりにそろえる。上は東証・ブレイン・Grokを1行の状態にまとめ、説明は止まった時だけ。箱は全部同じ角・余白・線・
    見出しの大きさ、見出しの下の線は消す。空の箱は1行」: one rule for every box (radius 14px, padding 16px 18px, line #303033, heading 16px, no rule under it) */
-main .card,#unified-mode,.vd-line{border-radius:14px!important;border:1px solid #303033!important;background:#111113!important;box-shadow:none!important}
+main .card{border-radius:14px!important;border:1px solid #303033!important;background:#111113!important;box-shadow:none!important}
+/* OWNER 2026-11-10 「負け枠・東証の帯・仮想の行の赤と緑は元の色に戻す」: these keep their own colours; only the corner is shared */
+#unified-mode,.vd-line{border-radius:14px!important}
 main .card{padding:16px 18px!important;margin:0 0 12px}
 .tab-pane>.card,.tab-pane>section.card{margin:0!important}.tab-pane{row-gap:12px!important}
 main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;margin:0 0 10px!important}

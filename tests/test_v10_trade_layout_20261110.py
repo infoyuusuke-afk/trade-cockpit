@@ -77,7 +77,10 @@ class TradeLayout(unittest.TestCase):
         # OWNER 2026-11-10 「見た目を1つの決まりにそろえる。上は東証・ブレイン・Grokを1行の状態にまとめ、説明は止まった時だけ。
         # 箱は全部同じ角・余白・線・見出しの大きさ、見出しの下の線は消す。空の箱は1行」
         _, block = _block()
-        self.assertIn("main .card,#unified-mode,.vd-line{border-radius:14px!important;border:1px solid #303033!important;", block)
+        self.assertIn("main .card{border-radius:14px!important;border:1px solid #303033!important;", block)
+        # OWNER 2026-11-10 「負け枠・東証の帯・仮想の行の赤と緑は元の色に戻す」: only the corner is shared, never the colour
+        self.assertIn("#unified-mode,.vd-line{border-radius:14px!important}", block)
+        self.assertNotIn("#unified-mode,.vd-line{border-radius:14px!important;border:", block)
         self.assertIn("main .card{padding:16px 18px!important;margin:0 0 12px}", block)
         self.assertIn("main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;", block)
         # the lamps inside the band, their explanation only when red; the band's own explanation only when stopped in session

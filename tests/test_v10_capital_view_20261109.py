@@ -168,12 +168,20 @@ class Sizing(unittest.TestCase):
         # OWNER 2026-11-09 「上のタブを2段にして…1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・テーマ・アナリスト、
         # (OWNER 2026-11-09 later: 「FOCUSは場中に使うので1段目の板の右に移して」)
         # 2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」
-        self.assertIn('const ROW1=["scalp","order","board","focus-owner","ms2-live","pts","overnight","pre-next","analysts"];', HTML)
-        self.assertIn('const ROW2=["kioxia-calendar","events","swing","value","ai-journal","brain","control"];', HTML)
+        # OWNER 2026-11-10 「タブは毎日使う5つ（トレード中・板・FOCUS・OVERNIGHT 5・AIトレード日記）を1段目、ほかは2段目に小さく、今見るタブに緑の点」
+        self.assertIn('const ROW1=["scalp","board","focus-owner","overnight","ai-journal"];', HTML)
+        self.assertIn('const ROW2=["pre-next","pts","analysts","kioxia-calendar","events","swing","value","brain","control"];', HTML)
+        self.assertIn('b.classList.toggle("tab-small",i1<0);b.classList.toggle("tab-now",k===nowTab());', HTML)
+        self.assertIn('return m<840?"scalp":m<930?"overnight":"ai-journal";', HTML)
+        self.assertIn("setInterval(arrange,60000);", HTML)
+        self.assertIn('.cockpit-tabs .cockpit-tab.tab-now::after{content:"";', HTML)
+        # 注意: no colour, a small plain dot
+        self.assertIn('if(d.today_level!=="通常"){b.classList.add("tab-dot");b.textContent="注意";}', HTML)
+        self.assertNotIn('b.textContent="⚠ 注意"', HTML)
         self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
         self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)
         # OWNER 2026-11-10 「２段になっても先頭はそろえて」: a blank first in row 2, sized from where row 1's first tab starts
-        self.assertIn(".cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}</style>", HTML)
+        self.assertIn(".cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}", HTML)
         self.assertIn("function indent(nav){", HTML)
         self.assertIn("const d=first.getBoundingClientRect().left-second.getBoundingClientRect().left;", HTML)
         self.assertIn("setInterval(()=>indent(nav),1000)", HTML)
