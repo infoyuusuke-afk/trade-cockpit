@@ -174,7 +174,9 @@ class Sizing(unittest.TestCase):
         self.assertIn('b.classList.toggle("tab-small",i1<0);b.classList.toggle("tab-now",k===nowTab());', HTML)
         self.assertIn('return m<840?"scalp":m<930?"overnight":"ai-journal";', HTML)
         self.assertIn("setInterval(arrange,60000);", HTML)
-        self.assertIn('.cockpit-tabs .cockpit-tab.tab-now::after{content:"";', HTML)
+        # OWNER 2026-11-10 later 「今見るタブの表示は枠線緑にして」: a green frame, no dot
+        self.assertIn(".cockpit-tabs .cockpit-tab.tab-now{box-shadow:inset 0 0 0 2px #4CC38A!important}", HTML)
+        self.assertNotIn(".cockpit-tab.tab-now::after", HTML)
         # 注意: no colour, a small plain dot
         self.assertIn('if(d.today_level!=="通常"){b.classList.add("tab-dot");b.textContent="注意";}', HTML)
         self.assertNotIn('b.textContent="⚠ 注意"', HTML)

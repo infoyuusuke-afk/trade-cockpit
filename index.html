@@ -663,7 +663,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>.cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important;row-gap:4px}.cockpit-tabs.two-rows .tab-break{flex-basis:100%;height:0;order:50}
 .cockpit-tabs.two-rows .cockpit-brand{order:0}.cockpit-tabs.two-rows .tab-indent{order:51;flex:0 0 auto;height:1px}
 .cockpit-tabs .cockpit-tab.tab-small{min-height:30px!important;padding:5px 11px!important;font-size:11px!important}
-.cockpit-tabs .cockpit-tab.tab-now::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#4CC38A;margin-left:6px;vertical-align:middle}
+/* OWNER 2026-11-10 「今見るタブの表示は枠線緑にして」: a green frame instead of the dot (inset, so the size does not change) */
+.cockpit-tabs .cockpit-tab.tab-now{box-shadow:inset 0 0 0 2px #4CC38A!important}
 /* OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」 */
 .cockpit-tabs .cockpit-tab.tab-dot::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#C4C9D1;margin-right:5px;vertical-align:middle}</style>
 <script>
