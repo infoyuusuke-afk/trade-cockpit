@@ -177,8 +177,11 @@ class Sizing(unittest.TestCase):
         # OWNER 2026-11-10 later 「今見るタブの表示は枠線緑にして」: a green frame, no dot
         self.assertIn(".cockpit-tabs .cockpit-tab.tab-now{box-shadow:inset 0 0 0 2px #4CC38A!important}", HTML)
         self.assertNotIn(".cockpit-tab.tab-now::after", HTML)
-        # 注意: no colour, a small plain dot
-        self.assertIn('if(d.today_level!=="通常"){b.classList.add("tab-dot");b.textContent="注意";}', HTML)
+        # 注意: no fill, a red frame on an event day
+        # OWNER 2026-11-10 later 「注意タブの●も一緒、注意イベントがある日は枠線を赤」
+        self.assertIn('if(b&&d.today_level!=="通常"){b.classList.add("tab-warn-frame");b.textContent="注意";}', HTML)
+        self.assertIn(".cockpit-tabs .cockpit-tab.tab-warn-frame{box-shadow:inset 0 0 0 2px #F23645!important}", HTML)
+        self.assertNotIn("tab-dot", HTML)
         self.assertNotIn('b.textContent="⚠ 注意"', HTML)
         self.assertIn(".cockpit-tabs.two-rows{flex-wrap:wrap!important;overflow-x:visible!important", HTML)
         self.assertIn("new MutationObserver(arrange).observe(nav,{childList:true})", HTML)

@@ -636,8 +636,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
-   // OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」: a day that is not 通常 puts a small plain dot before the name
-   if(d.today_level!=="通常"){b.classList.add("tab-dot");b.textContent="注意";}
+   // OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」→ later 「注意タブの●も一緒、注意イベントがある日は枠線を赤」:
+   // a day that is not 通常 gives the tab a red frame (no dot, no fill)
+   if(b&&d.today_level!=="通常"){b.classList.add("tab-warn-frame");b.textContent="注意";}
  }).catch(()=>{});
  // OWNER 2026-10-24 「ランプの赤を直して」: the badge read the pinned signals.json (10/19) and stayed red.
  // It now reads the public feed meta: red only when the feed stopped syncing (30 min) or a file is old.
@@ -665,8 +666,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cockpit-tabs .cockpit-tab.tab-small{min-height:30px!important;padding:5px 11px!important;font-size:11px!important}
 /* OWNER 2026-11-10 「今見るタブの表示は枠線緑にして」: a green frame instead of the dot (inset, so the size does not change) */
 .cockpit-tabs .cockpit-tab.tab-now{box-shadow:inset 0 0 0 2px #4CC38A!important}
-/* OWNER 2026-11-10 「注意のタブは色なしで小さな点だけ」 */
-.cockpit-tabs .cockpit-tab.tab-dot::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#C4C9D1;margin-right:5px;vertical-align:middle}</style>
+/* OWNER 2026-11-10 「注意タブの●も一緒、注意イベントがある日は枠線を赤」 */
+.cockpit-tabs .cockpit-tab.tab-warn-frame{box-shadow:inset 0 0 0 2px #F23645!important}</style>
 <script>
 // OWNER 2026-11-09 「上のタブを2段にして、横にスクロールしなくても全部見えるようにして。1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・
 // テーマ・アナリスト、2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」:
