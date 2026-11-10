@@ -26,7 +26,7 @@ class TradeLayout(unittest.TestCase):
     def test_order_from_top_to_bottom(self):
         _, block = _block()
         # 1 the lamps beside the band  2 負け枠 first in the second band
-        self.assertIn('mode.insertAdjacentElement("afterend",lamps)', block)
+        self.assertIn('txt.insertAdjacentElement("afterend",lamps)', block)   # since the one-look version: inside the band
         self.assertIn("wrap.prepend(guard)", block)
         # 3 今やること  4 見る銘柄  5 サインの履歴  6 仮想の成績, in that order at the top of トレード中
         self.assertIn("[now,watch,hist,fold].forEach", block)
@@ -62,7 +62,25 @@ class TradeLayout(unittest.TestCase):
 
     def test_history_shows_three_then_all(self):
         _, block = _block()
-        self.assertIn("#tl-history:not(.tl-all) #attention-rows>*:nth-child(n+4){display:none}", block)
+        self.assertIn("#tl-history:not(.tl-all) #attention-rows .attention-row:nth-child(n+4 of .attention-row){display:none}", block)
+        # an empty history is one line
+        self.assertIn('const n=document.querySelectorAll("#attention-rows .attention-row").length', block)
+        self.assertIn('hist.classList.toggle("tl-empty",n===0);', block)
+        self.assertIn("今日はまだサインがありません", block)
+
+    def test_one_look_and_one_state_line(self):
+        # OWNER 2026-11-10 「見た目を1つの決まりにそろえる。上は東証・ブレイン・Grokを1行の状態にまとめ、説明は止まった時だけ。
+        # 箱は全部同じ角・余白・線・見出しの大きさ、見出しの下の線は消す。空の箱は1行」
+        _, block = _block()
+        self.assertIn("main .card,#unified-mode,.vd-line{border-radius:14px!important;border:1px solid #303033!important;", block)
+        self.assertIn("main .card{padding:16px 18px!important;margin:0 0 12px}", block)
+        self.assertIn("main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;", block)
+        # the lamps inside the band, their explanation only when red; the band's own explanation only when stopped in session
+        self.assertIn('if(txt&&txt.nextElementSibling!==lamps)txt.insertAdjacentElement("afterend",lamps);', block)
+        self.assertIn("#unified-mode .tl-status-lamps .brain-lamp:not(.red) small{display:none!important}", block)
+        self.assertIn("#unified-mode:not(.lamp-down)>div:not(.unified-mode-controls):not(.tl-status-lamps)>:not(#unified-mode-title){display:none!important}", block)
+        # inside the switch, the inner headings and the 急変 rule text go
+        self.assertIn("#tl-watch .tl-slot>section>h2,#opportunity-radar .cc-opportunity-radar-head h2,#opportunity-radar .cc-opportunity-radar-head p,.sp8-rule{display:none!important}", block)
         self.assertIn('"全部見る（"+n+"件）"', block)
 
     def test_virtual_is_folded(self):

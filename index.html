@@ -4410,11 +4410,36 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 #tl-watch .tl-slot>section{width:100%;max-width:none;margin:0;box-sizing:border-box;border:0!important;border-radius:0!important;padding:0;background:none;box-shadow:none}/* OWNER 2026-11-10 「急変のところ、文字がおさまってない」: .card keeps its border with !important, so the frame stayed while the padding was 0 */
 #tl-watch .tl-slot>section:not(.tl-show){display:none!important}
 #tl-watch #ai5-cards>.focus-empty{grid-column:1/-1;max-width:none}#tl-history #attention-box{margin:0;border:0;padding:0;background:none}
-#tl-history:not(.tl-all) #attention-rows>*:nth-child(n+4){display:none}
+#tl-history:not(.tl-all) #attention-rows .attention-row:nth-child(n+4 of .attention-row){display:none}
 .tl-more{margin-top:6px;padding:5px 12px;border-radius:8px;border:1px solid #33373D;background:#141518;color:#C4C9D1;cursor:pointer}
 #tl-virtual>summary{cursor:pointer;font-size:16px;font-weight:700;color:#E6E8EB;list-style:revert}
 #tl-virtual[open]>summary{margin-bottom:10px}
 #tl-virtual .tl-fold-note{font-size:12px;color:#9AA0AA;margin:0 0 8px}
+/* OWNER 2026-11-10 「見た目を1つの決まりにそろえる。上は東証・ブレイン・Grokを1行の状態にまとめ、説明は止まった時だけ。箱は全部同じ角・余白・線・
+   見出しの大きさ、見出しの下の線は消す。空の箱は1行」: one rule for every box (radius 14px, padding 16px 18px, line #303033, heading 16px, no rule under it) */
+main .card,#unified-mode,.vd-line{border-radius:14px!important;border:1px solid #303033!important;background:#111113!important;box-shadow:none!important}
+main .card{padding:16px 18px!important;margin:0 0 12px}
+.tab-pane>.card,.tab-pane>section.card{margin:0!important}.tab-pane{row-gap:12px!important}
+main .card h2{font-size:16px!important;line-height:1.35!important;border-bottom:0!important;padding-bottom:0!important;margin:0 0 10px!important}
+main .card h2 small{font-size:12px!important}
+main .card hr{display:none}
+.vd-line{padding:10px 18px!important;margin:0 0 12px!important}
+/* the inner boxes of the 見る銘柄 switch keep no frame and no padding of their own (the switch is the box) */
+#tl-watch .tl-slot>section{padding:0!important}
+#tl-watch .tl-slot>section>h2,#opportunity-radar .cc-opportunity-radar-head h2,#opportunity-radar .cc-opportunity-radar-head p,.sp8-rule{display:none!important}
+/* the state line: 東証・ブレイン・Grok on one line; the explanations only when stopped (東証 in session without data, a red lamp) */
+#unified-mode{display:flex!important;align-items:center!important;flex-wrap:wrap;gap:6px 18px;padding:10px 18px!important;margin:0 0 12px!important;min-height:0!important}
+#unified-mode:not(.lamp-down)>div:not(.unified-mode-controls):not(.tl-status-lamps)>:not(#unified-mode-title){display:none!important}
+#unified-mode #unified-mode-title{font-size:15px}
+#unified-mode .tl-status-lamps{display:flex!important;flex:0 1 auto;gap:18px;margin:0!important;padding:0!important;border:0!important;background:none!important}
+#unified-mode .tl-status-lamps>div{flex:0 0 auto;min-width:0}
+#unified-mode .tl-status-lamps .brain-lamp{border:0!important;background:none!important;padding:0!important;margin:0!important;min-height:0!important;box-shadow:none!important;gap:8px;align-items:center}
+#unified-mode .tl-status-lamps .brain-lamp b{font-size:14px}
+#unified-mode .tl-status-lamps .brain-lamp:not(.red) small{display:none!important}
+#unified-mode .unified-mode-controls{margin-left:auto}
+/* an empty サインの履歴 is one line */
+#tl-history.tl-empty #attention-box,#tl-history.tl-empty .tl-more{display:none!important}
+#tl-history .tl-none{display:none;color:#9AA0AA;font-size:13px}#tl-history.tl-empty .tl-none{display:block}
 </style>
 <script>
 // OWNER 2026-11-10 「トレード中の使い方が、やっぱりなんかよくわからない、同じようなものを整理まとめて、使い方を改善」
@@ -4442,7 +4467,8 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     if(op){const b=document.querySelector('.cockpit-tab[data-tab="scalp"]');if(b)b.click();try{localStorage.setItem("cockpitTabV5","scalp");}catch(_){}}
     // 1 the state line: the lamps next to the band, outside the tabs
     const mode=document.getElementById("unified-mode"),lamps=document.querySelector(".trade-watch-lamps");
-    if(mode&&lamps){lamps.classList.add("tl-status-lamps");if(mode.nextElementSibling!==lamps)mode.insertAdjacentElement("afterend",lamps);}
+    if(mode&&lamps){lamps.classList.add("tl-status-lamps");const txt=mode.querySelector(":scope > div:not(.unified-mode-controls):not(.tl-status-lamps)");
+      if(txt&&txt.nextElementSibling!==lamps)txt.insertAdjacentElement("afterend",lamps);}
     // 2 the 負け枠 first in the second band (the alerts stay under it)
     const wrap=document.querySelector(".unified-mode-wrap.attention-wrap"),guard=document.getElementById("real-guard-line");
     if(wrap&&guard&&wrap.firstElementChild!==guard)wrap.prepend(guard);
@@ -4470,7 +4496,9 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const hist=box("tl-history",'<h2>サインの履歴 <small>注目：ランキング入り・ルールのサイン（新しい3件・検証中）</small></h2><div class="tl-hist-slot"></div><button type="button" class="tl-more" hidden></button>');
     const att=document.getElementById("attention-box"),hs=hist.querySelector(".tl-hist-slot");
     if(att&&att.parentElement!==hs)hs.appendChild(att);
-    const n=document.querySelectorAll("#attention-rows > *").length,more=hist.querySelector(".tl-more");
+    const n=document.querySelectorAll("#attention-rows .attention-row").length,more=hist.querySelector(".tl-more");
+    if(!hist.querySelector(".tl-none")){const t=document.createElement("div");t.className="tl-none";t.textContent="今日はまだサインがありません";hist.querySelector(".tl-hist-slot").before(t);}
+    hist.classList.toggle("tl-empty",n===0);
     more.hidden=n<=3;more.textContent=hist.classList.contains("tl-all")?"新しい3件だけにする":"全部見る（"+n+"件）";
     // 6 仮想の成績（たたむ）
     const fold=box("tl-virtual",'<summary>仮想の成績（押すと開く）</summary><p class="tl-fold-note">コクピットの仮想売買です。お金は動いていません。</p><div class="tl-fold-slot"></div>',"details");
