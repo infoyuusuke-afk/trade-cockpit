@@ -3857,7 +3857,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const yen=v=>(v>0?"+":"")+Math.round(v).toLocaleString("ja-JP")+"円";
   function card(o,label){
     const v=valued(o);
-    return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:v.pct===null||v.pct>=0?"long":"short",directionLabel:label,freshness:v.price===null?"stale":"fresh",freshnessLabel:v.tag,price:v.price,entry:o.entry,stop:o.stop,target:o.target,
+    return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:v.pct===null||v.pct>=0?"long":"short",directionLabel:label,freshness:v.live?"fresh":v.price===null?"stale":"unknown",freshnessLabel:v.tag,price:v.price,entry:o.entry,stop:o.stop,target:o.target,
       metrics:[{label:"含み損益",value:v.pct===null?"—":sgn(v.pct)},{label:"100株",value:v.yen===null?"—":yen(v.yen)},{label:"日数",value:o.days+"日目"},{label:"入った日",value:String(o.entry_day||"").slice(5).replace("-","/")}],
       foot:"仮想の保有。実口座とは関係ありません（費用なし）"});
   }

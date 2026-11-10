@@ -84,7 +84,8 @@ class SwingCards(unittest.TestCase):
         self.assertIn("return plSum+'<p class=\"ht8-sum\">保有 '", block)
         # drawn again every 10 s from the same file; the file itself every 10 minutes
         self.assertIn("load();setInterval(load,600000);setInterval(paint,10000);", block)
-        self.assertIn('freshness:v.price===null?"stale":"fresh",freshnessLabel:v.tag', block)   # the label says which price it is
+        # audit 90a8553: only a session price gets the green dot; a last price or close is grey (unknown) with its numbers kept
+        self.assertIn('freshness:v.live?"fresh":v.price===null?"stale":"unknown",freshnessLabel:v.tag', block)
         js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
         self.assertIn('(out?"100銘柄にないので終値のまま・":"")', js)
 
