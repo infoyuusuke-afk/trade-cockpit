@@ -561,7 +561,9 @@
               const code=String(o.code||"");
               let u=unrealized(code,o.entry,false,true);
               const e=knownNumber(o.entry),last=knownNumber(o.last);
-              if(u.now===null&&e!==null&&e>0&&last!==null&&last>0){const pct=(last/e-1)*100;u={cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 +":pct<0?"含み損 ":"±0 ")+pct.toFixed(2)+"%（"+String(o.last_day||"").slice(5).replace("-","/")+"の終値）",now:last};}
+              // OWNER 2026-11-10 「100銘柄にない銘柄は終値のまま、そう書く」
+              const lq=window.cockpitLastPrices,out=!!(lq&&lq.rows&&Object.keys(lq.rows).length);
+              if(u.now===null&&e!==null&&e>0&&last!==null&&last>0){const pct=(last/e-1)*100;u={cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 +":pct<0?"含み損 ":"±0 ")+pct.toFixed(2)+"%（"+(out?"100銘柄にないので終値のまま・":"")+String(o.last_day||"").slice(5).replace("-","/")+"の終値）",now:last};}
               const y100=u.now!==null&&e!==null?Math.round((u.now-e)*100):null;
               holds.push(holdingCard(String(o.name||code).replace(/（[0-9A-Z]{4}）$/,""),code,badge,[
                 ["売買","買い"],["建値（仮想）",yen(e)],["入った日",String(o.entry_day||"").slice(5).replace("-","/")||"—"],["日数",o.days!=null?o.days+"日目":"—"],

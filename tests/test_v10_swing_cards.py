@@ -66,6 +66,28 @@ class SwingCards(unittest.TestCase):
         for banned in ("cockpitSpeak", "RssOrder", "renderAttention", "real_positions"):
             self.assertNotIn(banned, block)
 
+    def test_virtual_holds_total_and_session_prices(self):
+        # OWNER 2026-11-10 「上の1行に含み損益の合計（100株ずつ）を出して、場中はMS2の新しい値で動かして（100銘柄にない銘柄は終値のまま、そう書く）」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        block = html.split("「スイング保有と長期保有も出して」", 1)[1].split("})();", 1)[0]
+        # the fresh MS2 row the screen trusts (30 s), then the last MS2 price, then hold_track's close
+        self.assertIn("lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[code]):NaN", block)
+        self.assertIn('tag="場中の値（MS2）";live=true;', block)
+        self.assertIn('tag="最後の値・"+(lq.asof||"時刻不明");', block)
+        self.assertIn('"100銘柄にないので終値のまま・"', block)
+        self.assertIn('return {price:null,pct:null,yen:null,tag:"値なし",live:false};', block)   # no price -> no number
+        # one line at the top: the total of 100 shares each, with what is not in it said
+        self.assertIn("含み損益の合計（100株ずつ）：", block)
+        self.assertIn("known=vs.filter(v=>v.yen!==null)", block)
+        self.assertIn("銘柄は入っていません", block)
+        self.assertIn("銘柄は場中の値ではなく最後の値・終値", block)
+        self.assertIn("return plSum+'<p class=\"ht8-sum\">保有 '", block)
+        # drawn again every 10 s from the same file; the file itself every 10 minutes
+        self.assertIn("load();setInterval(load,600000);setInterval(paint,10000);", block)
+        self.assertIn('freshness:v.price===null?"stale":"fresh",freshnessLabel:v.tag', block)   # the label says which price it is
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn('(out?"100銘柄にないので終値のまま・":"")', js)
+
     def test_volatile_days(self):
         # OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
