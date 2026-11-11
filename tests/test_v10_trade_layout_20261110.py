@@ -30,7 +30,7 @@ class TradeLayout(unittest.TestCase):
         self.assertIn("wrap.prepend(guard)", block)
         # 3 今やること  4 見る銘柄  5 サインの履歴  6 仮想の成績, in that order at the top of トレード中
         self.assertIn("[now,watch,hist,fold].forEach", block)
-        for title in ("<h2>今やること", "<h2>見る銘柄", "<h2>サインの履歴", "<summary>仮想の成績（押すと開く）</summary>"):
+        for title in ("<h2>今やること", "<h2>見る銘柄", "<h2>サインの履歴", "<summary>仮想の成績 <small class=\"tl-fold-hint\">押すと閉じる</small></summary>"):
             self.assertIn(title, block)
 
     def test_now_holds_the_cards_and_the_180s_signals(self):

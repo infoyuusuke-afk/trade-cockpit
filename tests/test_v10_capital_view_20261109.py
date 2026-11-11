@@ -157,7 +157,7 @@ class Sizing(unittest.TestCase):
         # 「並びは 仮想の1行・実口座の行・注目・注文カード・資金別の表・保有中の一覧・手法の成績…たたんで1行…開け閉めは覚えておく」
         self.assertIn("const area=capArea();if(!area)return;", seg)
         self.assertNotIn('line.insertAdjacentElement("afterend",el)', seg)
-        for x in ("function capArea()", "cockpitCapOpenV1", "body.hidden=!capOpen", "資金別・保有中・手法の成績", "押すと開く",
+        for x in ("function capArea()", "let capOpen=true;", "body.hidden=!capOpen", "資金別・保有中・手法の成績", "押すと開く",
                   "pane.appendChild(area)", 'body.prepend(el)', "body.appendChild(sec)"):
             self.assertIn(x, HTML)
         # 「『メルの保有中 5銘柄…』の1行だけは、まだどのタブにも残る作り　OK」: that line stays under the 仮想 line

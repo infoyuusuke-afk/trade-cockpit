@@ -4049,13 +4049,13 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
   // 手法の成績 の順。資金別と手法の成績は最初はたたんで1行（300万と500万の今日の損益）だけ出し、押すと開く。開け閉めは覚えておく」:
   // one folding area at the bottom of the 注文 tab; its body holds the size table (with the 300万/500万 lists), the 100株 holdings line
   // and the method chart, in that order. The open state is kept in this browser.
-  let capOpen=false;try{capOpen=localStorage.getItem("cockpitCapOpenV1")==="1";}catch(_){}
+  let capOpen=true;   // OWNER 2026-11-11: メルの成績 open by default on every load (a press still folds it until the next load)
   function capArea(){
     const pane=document.querySelector('.tab-pane[data-pane="order"]');if(!pane)return null;
     let area=document.getElementById("cap-area");
     if(!area){area=document.createElement("div");area.id="cap-area";area.className="cap-area";
       area.innerHTML='<button type="button" id="cap-head" class="cap-head"></button><div id="cap-body"></div>';pane.appendChild(area);
-      area.querySelector("#cap-head").addEventListener("click",()=>{capOpen=!capOpen;try{localStorage.setItem("cockpitCapOpenV1",capOpen?"1":"0");}catch(_){}paintHead();});}
+      area.querySelector("#cap-head").addEventListener("click",()=>{capOpen=!capOpen;paintHead();});}
     // OWNER 2026-11-10 整理の案A: the area now lives folded in トレード中 「仮想の成績」; it is put back here only when it is not there (audit 5d4b553)
     else if(!area.closest("#tl-virtual")&&(area.parentElement!==pane||area!==pane.lastElementChild))pane.appendChild(area);
     return area;
@@ -4530,7 +4530,10 @@ main .card hr{display:none}
     hist.classList.toggle("tl-empty",n===0);
     more.hidden=n<=3;more.textContent=hist.classList.contains("tl-all")?"新しい3件だけにする":"全部見る（"+n+"件）";
     // 6 仮想の成績（たたむ）
-    const fold=box("tl-virtual",'<summary>仮想の成績（押すと開く）</summary><p class="tl-fold-note">コクピットの仮想売買です。お金は動いていません。</p><div class="tl-fold-slot"></div>',"details");
+    // OWNER 2026-11-11 「メルの成績はずっと見れるようにして開いてる状態がデフォルト、おすと閉じる」: open on every load, a press closes it
+    const fold=box("tl-virtual",'<summary>仮想の成績 <small class="tl-fold-hint">押すと閉じる</small></summary><p class="tl-fold-note">コクピットの仮想売買です。お金は動いていません。</p><div class="tl-fold-slot"></div>',"details");
+    if(!fold.dataset.tlInit){fold.dataset.tlInit="1";fold.open=true;
+      fold.addEventListener("toggle",()=>{const h=fold.querySelector(".tl-fold-hint");if(h)h.textContent=fold.open?"押すと閉じる":"押すと開く";});}
     const fs=fold.querySelector(".tl-fold-slot");
     ["virt-day-line","virt-held-line","cap-area","trade-fx-link"].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentElement!==fs)fs.appendChild(el);});
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them
