@@ -163,8 +163,15 @@ class MelAccount(unittest.TestCase):
         # 「今夜決算の札はカードの中に入れて」: the label inside its own card, framed red
         self.assertIn("return put===String(card)?tag+card:put;", HTML)
         self.assertIn(".earn-card{outline:2px dashed #b47cff!important;outline-offset:-2px}", HTML)   # not red: red is 空売り
-        self.assertIn("<div class=\"earn-tag\">📅 決算またぎ　", HTML)
-        self.assertIn('const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)   # in トレード中 「仮想の成績」
+        self.assertIn("<div class=\"earn-tag\">📅 決算またぎ　'+way+'　", HTML)
+        self.assertIn('<b class="earn-way long">買いで持ち越し</b>', HTML)   # 「どっちでまたいでいるかも一目で」
+        self.assertIn('<b class="earn-way short">空売りで持ち越し</b>', HTML)
+        self.assertIn('const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)
+        # audit 7c97780: a second `const now` in arrange() broke the whole トレード中 layout script (SyntaxError)
+        i = HTML.index('const want=["virt-day-line"')
+        block = HTML[HTML.rindex("<script", 0, i):HTML.index("</script>", i)]
+        self.assertEqual(block.count("const now="), 1)
+        self.assertIn("const inFold=[...fs.children].filter(el=>want.includes(el));", block)   # in トレード中 「仮想の成績」
 
 
 if __name__ == "__main__":

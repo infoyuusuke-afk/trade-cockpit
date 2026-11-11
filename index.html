@@ -2607,7 +2607,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     const foot=(sv.cls==="short"&&window.marginNote?.(x.ticker)?"【"+esc(window.marginNote(x.ticker))+"】":"")+(d.hold_finalized?"15:25候補固定・翌取引日14:00で手じまい":"暫定候補・15:25まで注文しない")+"／後場OR上"+esc(x.pm_above_minutes??"—")+"分・下"+esc(x.pm_below_minutes??"—")+"分・引け位置"+esc(x.close_location_pct??"—")+"%・"+esc(x.market_state??"地合い未確認");
     // OWNER 2026-11-09 「決算またぎは…Bと研究にする」: 今夜決算 / 明日決算 (時刻未確認) in red above the card; nothing is removed
     const es=window.cockpitEarningsSoon,em=es&&es.items?es.items[String(x.ticker||"").replace(/\.T$/,"")]:null;
-    const tag=em?'<div class="earn-tag">📅 決算またぎ　'+esc(em.label)+'・'+esc(em.time?em.time:"時刻未確認")+(es.state==="OLD"?"（予定は"+esc(es.generated_on||"")+"に読んだもの）":"")+'</div>':"";
+    // OWNER 2026-11-11 「どっちでオーバーナイトをまたいでいるかも一目でわからないとだめだぞ」: the side in the label, in the side's colour
+    const way=label.includes("ロング")?'<b class="earn-way long">買いで持ち越し</b>':label.includes("ショート")?'<b class="earn-way short">空売りで持ち越し</b>':'<b class="earn-way">向き未確定</b>';   // from the fixed signal, also when the data is stale
+    const tag=em?'<div class="earn-tag">📅 決算またぎ　'+way+'　'+esc(em.label)+'・'+esc(em.time?em.time:"時刻未確認")+(es.state==="OLD"?"（予定は"+esc(es.generated_on||"")+"に読んだもの）":"")+'</div>':"";
     const card=window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
     // OWNER 2026-11-11 「今夜決算の札はカードの中に入れて」（決算またぎの銘柄が一目でわかる形）: the label inside its own card, the card framed red
     if(!tag)return card;
@@ -3995,7 +3997,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 <style>/* OWNER 2026-11-11 「赤だと空売りと間違いそうだから、別の色や形などでわかるように」: purple dashed frame + 📅 label (red = short, green = buy) */
-.earn-card{outline:2px dashed #b47cff!important;outline-offset:-2px}.earn-card>.earn-tag{display:block;width:max-content;margin:0 0 6px;background:#2a1a40!important;color:#d6b8ff!important;border:1px solid #b47cff}
+.earn-card{outline:2px dashed #b47cff!important;outline-offset:-2px}.earn-way{padding:0 6px;border-radius:4px;color:#e9eef5}.earn-way.long{background:#0d2b23;color:#35e2ae}.earn-way.short{background:#3a1216;color:#ff6b6b}.earn-card>.earn-tag{display:block;width:max-content;margin:0 0 6px;background:#2a1a40!important;color:#d6b8ff!important;border:1px solid #b47cff}
 .earn-tag{display:inline-block;margin:0 0 4px;padding:1px 8px;border-radius:6px;background:#341418;color:#ff5a5f;font-weight:700;font-size:12px}
 .vd-held{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin:-4px 0 8px;padding:5px 12px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-bg-card);color:var(--cc-text-primary);font-size:12.5px}
 .vd-held b{font-variant-numeric:tabular-nums}.vd-held .up{color:var(--cc-long)}.vd-held .dn{color:var(--cc-short)}.vd-held .g{color:var(--cc-text-secondary)}
@@ -4634,8 +4636,8 @@ main .card hr{display:none}
     const fs=fold.querySelector(".tl-fold-slot");
     const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);
     // audit 05a4155: keep the listed order (an element made later, like mel-live, goes to its place, not to the end); moved only when it differs
-    const now=[...fs.children].filter(el=>want.includes(el));   // audit b8efe36: compare only the listed ones
-    if(want.length!==now.length||want.some((el,i)=>now[i]!==el))want.forEach(el=>fs.appendChild(el));
+    const inFold=[...fs.children].filter(el=>want.includes(el));   // audit b8efe36: compare only the listed ones
+    if(want.length!==inFold.length||want.some((el,i)=>inFold[i]!==el))want.forEach(el=>fs.appendChild(el));
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them
     const intro=pane.querySelector(":scope > .pane-intro");
     let at=intro?intro.nextElementSibling:pane.firstElementChild;
