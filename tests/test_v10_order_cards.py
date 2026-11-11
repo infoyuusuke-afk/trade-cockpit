@@ -199,6 +199,12 @@ class OrderCards(unittest.TestCase):
         self.assertIn("（両建て・声なし）", HTML)
         self.assertIn("stopHedged:margin.filter(x=>hc.has(String(x.code))&&gNum(x.pnl)!==null&&gNum(x.pnl)<=-10000)", src)
 
+    def test_new_order_card_is_announced_once(self):
+        # OWNER 2026-11-11 「注文カードがでた場合も、音声でしらせて」
+        self.assertIn('window.cockpitSpeak("注文カード。" + String(s.name || "")', HTML)
+        self.assertIn("const firstRead = !window.orderCardVoiceReady; window.orderCardVoiceReady = true;", HTML)
+        self.assertIn("注文は武蔵で手動です。\", \"HOT\");", HTML)
+
     def test_identity_fallback(self):
         # OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄（東京エレクトロン8035、だめならアドバンテスト6857）でして…どの銘柄で確かめているかを画面に出す」
         root = Path(__file__).resolve().parents[1]

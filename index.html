@@ -1715,7 +1715,17 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
   // (newest first, six at most). A file that does not say real_submit_allowed=false clears everything.
   const held = window.orderCardHeld = window.orderCardHeld || new Map(), nowMs = Date.now();
   if (b && b.real_submit_allowed !== false) held.clear();
-  sigs.forEach(s => { const k = s.ticker + "|" + s.signal_bar + "|" + s.side; if (!held.has(k) && !(window.orderCardClosed && window.orderCardClosed.has(k))) held.set(k, {s, at: nowMs}); });
+  // OWNER 2026-11-11 「注文カードがでた場合も、音声でしらせて」: a card that appears by itself says so once (name and code, side, limit, stop, target).
+  // Not on the first read after the page opens (those cards were already there). Voice only: nothing here sends an order.
+  const firstRead = !window.orderCardVoiceReady; window.orderCardVoiceReady = true;
+  sigs.forEach(s => { const k = s.ticker + "|" + s.signal_bar + "|" + s.side; if (!held.has(k) && !(window.orderCardClosed && window.orderCardClosed.has(k))) {
+    held.set(k, {s, at: nowMs});
+    const buy = Number(s.side) > 0, entry = Number(s.entry), stop = Number(s.stop), target = Number(s.target);
+    if (!firstRead && [entry, stop, target].every(Number.isFinite) && entry > 0 && typeof window.cockpitSpeak === "function") {
+      const up = buy ? "down" : "up", code = String(s.ticker || "").replace(".T", "");
+      window.cockpitSpeak("注文カード。" + String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "") + "（" + code + "）、" + (buy ? "買い" : "空売り") + "。指値" + window.roundTick(entry, up, s.ticker) +
+        "円、損切り" + window.roundTick(stop, up, s.ticker) + "円、利確" + window.roundTick(target, up, s.ticker) + "円。注文は武蔵で手動です。", "HOT");
+    } } });
   held.forEach((v, k) => { if (nowMs - v.at >= window.ORDER_CARD_TTL_MS) held.delete(k); });   // OWNER 2026-11-05 「古くなったのはみえなくてよい」「おれは、ここをなおしたいの」
   window.orderLinesRender();
   box.innerHTML = [...held.values()].sort((x, y) => y.at - x.at).slice(0, 6).map(v => window.orderCardHtml(v.s, v.at, nowMs)).join("") ||
