@@ -120,6 +120,26 @@ class MelAccount(unittest.TestCase):
         r = out["days"][0]
         self.assertEqual((r[1], r[3], r[5]), (-60000, 1, "09:40"))   # −6万 (2% of 300万) is past the 1% line: the 2nd is not entered
 
+    def test_today_live_follows_the_plan(self):
+        # 「売買銘柄、タイミングはリアルタイム監視できる形に」: today's trades as they happen, by today's fixed plan
+        self.write_plan("2026-11-12", plan("2026-11-12", methods=["R4"], size_pct=50, daily_stop_pct=None))
+        lock = live.mel_lock(self.run, self.rec / "2026-11-12", "2026-11-12", "08:40")
+        trades = [
+            {"kind": "day", "rule": "R4", "ticker": "1111.T", "name": "a", "side": 1, "fill": 1000.0, "in": "09:20", "out": "09:40",
+             "ret": 1.0, "exit": 1010.0, "last": 1010.0, "ticks": []},
+            {"kind": "day", "rule": "R5", "ticker": "2222.T", "name": "b", "side": -1, "fill": 1000.0, "in": "09:30", "out": None,
+             "ret": None, "exit": None, "last": 990.0, "ticks": []},
+            {"kind": "day", "rule": "R4", "ticker": "3333.T", "name": "c", "side": 1, "fill": 2000.0, "in": "10:00", "out": None,
+             "ret": None, "exit": None, "last": 1990.0, "ticks": []}]
+        got = live.mel_today(self.rec, trades, lock, {"from": None, "days": []}, "10:05")
+        self.assertEqual(got["state"], "OK")
+        self.assertEqual([r["name"] for r in got["rows"]], ["a", "c"])          # R5 not chosen
+        a, c = got["rows"]
+        self.assertEqual((a["shares"], a["done_yen"], a["out"]), (1500, 15000, "09:40"))
+        self.assertEqual((c["shares"], c["open_yen"], c["out"]), (700, -7000, None))
+        self.assertEqual((got["done"], got["open"]), (15000, -7000))
+        self.assertEqual(live.mel_today(self.rec, trades, None, {"from": None, "days": []}, "10:05")["state"], "まだ始まっていません")
+
     def test_safe_and_screen(self):
         orig = live.mel300
         try:
@@ -128,10 +148,12 @@ class MelAccount(unittest.TestCase):
         finally:
             live.mel300 = orig
         self.assertEqual(got["state"], "UNAVAILABLE")
-        self.assertIn('"mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm),',
+        self.assertIn('"mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm, trades),',
                       (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8"))
         self.assertIn("function melHtml(){", HTML)
         self.assertIn("メル口座（任せる300万・仮想）", HTML)
+        self.assertIn("function melLiveHtml(){", HTML)
+        self.assertIn('["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].forEach(id=>', HTML)   # in トレード中 「仮想の成績」
 
 
 if __name__ == "__main__":

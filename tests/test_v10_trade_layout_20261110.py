@@ -96,7 +96,7 @@ class TradeLayout(unittest.TestCase):
 
     def test_virtual_is_folded(self):
         _, block = _block()
-        self.assertIn('["virt-day-line","virt-held-line","cap-area","trade-fx-link"]', block)
+        self.assertIn('["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"]', block)   # OWNER 2026-11-11: the メル account live, too
         self.assertIn('"details"', block)
 
     def test_realtime_5_is_folded_in(self):

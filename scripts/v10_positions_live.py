@@ -1087,7 +1087,7 @@ def mel_lock(runtime: Path, day_dir: Path, today: str, now_hm: str):
     return out
 
 
-def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str) -> dict:
+def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str, live_trades: list | None = None) -> dict:
     """The メル account: 300万 from the first day with a fixed plan, the days before today replayed under each day's plan
     (the same trades as air300; only the plan's methods; one trade = balance x size_pct; held total up to balance x max_mult;
     overnight entered only when the deciding day's plan said so; once the day's closed loss reaches daily_stop_pct of the
@@ -1101,7 +1101,8 @@ def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str)
         except OSError:
             changed = None
     if _MEL_MEMO.get("date") == today:
-        return dict(_MEL_MEMO, today_plan=lock_today, changed_after_lock=changed)
+        return dict(_MEL_MEMO, today_plan=lock_today, changed_after_lock=changed,
+                    today_live=mel_today(records, live_trades or [], lock_today, _MEL_MEMO, now_hm))
     try:
         names = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
     except OSError:
@@ -1164,12 +1165,63 @@ def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str)
            "trades": [t for t in hist if t[0] >= (rows[-30][0] if len(rows) >= 30 else "")], "real_submit_allowed": False}
     _MEL_MEMO.clear()
     _MEL_MEMO.update(out)
-    return dict(out, today_plan=lock_today, changed_after_lock=changed)
+    return dict(out, today_plan=lock_today, changed_after_lock=changed,
+                today_live=mel_today(records, live_trades or [], lock_today, out, now_hm))
 
 
-def _mel300_safe(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str) -> dict:
+def mel_today(records: Path, trades: list, lock_today, acct: dict, now_hm: str) -> dict:
+    """OWNER 2026-11-11 「売買銘柄、タイミングはリアルタイム監視できる形にしてほしい」: today's メル account trades as they happen,
+    from the same live virtual trades as the 300万 size (trades_of), filtered and sized by today's fixed plan; the overnight
+    holds that end today by the plan of the day they were decided. Balance = the account's last replayed balance."""
+    plan = (lock_today or {}).get("plan")
+    rows = acct.get("days") or []
+    bal = float(rows[-1][2]) if rows else float(AIR_START)
+    if not acct.get("from") and not plan:
+        return {"state": "まだ始まっていません", "rows": []}
+    prev_plans = {}
+    out, taken = [], []
+    stopped_at = None
+    for t in sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"])):
+        if t["kind"] == "overnight":
+            dec = t.get("decided", "")
+            if dec not in prev_plans:
+                try:
+                    prev_plans[dec] = (json.loads((Path(records) / dec / MEL_LOCK).read_text(encoding="utf-8")) or {}).get("plan")
+                except (OSError, ValueError, AttributeError):
+                    prev_plans[dec] = None
+            dp = prev_plans[dec]
+            if not dp or not dp.get("overnight") or t.get("rule") not in dp["methods"]:
+                continue
+            size, mult = dp["size_pct"], dp["max_mult"]
+        else:
+            if not plan or t.get("rule") not in plan["methods"]:
+                continue
+            size, mult = plan["size_pct"], plan["max_mult"]
+            if plan.get("daily_stop_pct"):
+                done = sum(x["y"] for x in taken if x["y"] is not None and x["out"] and x["out"] <= t["in"])
+                if done <= -bal * plan["daily_stop_pct"] / 100:
+                    stopped_at = stopped_at or t["in"]
+                    continue
+        sh = _shares(t["fill"], bal * size / 100)
+        using = sum(x["fill"] * x["sh"] for x in taken if x["in"] <= t["in"] and (x["out"] is None or x["out"] > t["in"]))
+        if sh <= 0 or using + t["fill"] * sh > bal * mult:
+            continue
+        closed = t["out"] is not None and t["out"] <= now_hm
+        y = _closed_yen(t, sh) if closed else None
+        u = None if closed or t.get("last") is None else t["side"] * (t["last"] - t["fill"]) * sh
+        taken.append(dict(t, sh=sh, y=y))
+        out.append({"in": t["in"], "out": t["out"] if closed else None, "name": t.get("name"), "side": t["side"], "rule": t.get("rule"),
+                    "kind": t["kind"], "shares": sh, "amount": round(t["fill"] * sh), "fill": t["fill"], "last": t.get("last"),
+                    "done_yen": None if y is None else round(y), "open_yen": None if u is None else round(u)})
+    done = sum(r["done_yen"] or 0 for r in out)
+    opn = sum(r["open_yen"] or 0 for r in out)
+    return {"state": "OK", "at": now_hm, "balance_start": round(bal), "done": round(done), "open": round(opn),
+            "stopped_at": stopped_at, "rows": out[-60:]}
+
+
+def _mel300_safe(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str, live_trades: list | None = None) -> dict:
     try:
-        return mel300(records, runtime, day_dir, today, now_hm)
+        return mel300(records, runtime, day_dir, today, now_hm, live_trades)
     except Exception as exc:  # noqa: BLE001 - display only
         return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "days": [], "real_submit_allowed": False}
 
@@ -1237,7 +1289,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
             "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
             "air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),
-            "mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm),
+            "mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm, trades),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 

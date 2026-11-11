@@ -4021,6 +4021,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
+.mel-live-box{margin:6px 0 10px;font-size:13px}.mel-live-box .air-tbl{margin-top:4px}.mel-hold{color:#5aa9ff;font-weight:700}
 .mel-today{margin:4px 0 8px;padding:8px 10px;border:1px solid #3a3f4b;border-radius:6px;font-size:13px}.mel-today .g{font-size:12px;margin-top:2px}
 .air-hist details{border-top:1px solid #262a33;padding:6px 0}.air-hist summary{cursor:pointer;font-size:13px}.air-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}.air-tbl th,.air-tbl td{padding:3px 6px;text-align:left;white-space:nowrap}.air-tbl th{color:#9aa0a6;font-weight:600}.air-tbl td:nth-child(n+5){text-align:right}.air-tbl th:nth-child(n+5){text-align:right}.air-hist{overflow-x:auto}
 .cap-on-list{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#C4C9D1;margin:2px 0 6px}.cap-legend{font-size:11px;color:var(--cc-text-secondary)}.cap-legend i{display:inline-block;width:14px;height:3px;margin:0 4px 2px 10px;vertical-align:middle}</style>
@@ -4203,6 +4204,21 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
   }
   // OWNER 2026-11-11 「メルに任せる300万を、今の300万とは別の仮想口座で作って。決めた内容は寄り前に記録、後から変えない」「メル口座 OK」:
   // positions.capital.mel300: today's plan fixed before 9:00, the account from its first plan day, each day's plan and its trades.
+  // OWNER 2026-11-11 「売買銘柄、タイミングはリアルタイム監視できる形にしてほしい」: today's メル account trades as they happen
+  // (mel300.today_live, from the live virtual trades), in the diary tab and in トレード中 「仮想の成績」. Display only, no order.
+  function melLiveHtml(){
+    const m=cap&&cap.mel300,L=m&&m.today_live;
+    const head='<b>メル口座 今日のトレード（リアルタイム・仮想）</b>';
+    if(!L)return head+' <span class="g">まだ読めません</span>';
+    if(L.state!=="OK")return head+' <span class="g">'+esc(L.state)+'（平日8:30にメルが決めた日から動きます）</span>';
+    const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し",ON_SHORT:"持ち越し"};
+    const rows=(L.rows||[]).slice().reverse();
+    return head+'　<span class="g">'+esc(L.at||"")+'時点　朝の残高 '+man(L.balance_start)+'</span>　確定 <b class="'+cls(L.done)+'">'+yen(L.done)+'</b>　含み <b class="'+cls(L.open)+'">'+yen(L.open)+'</b>'+
+      (L.stopped_at?'　<span class="dn">'+esc(L.stopped_at)+'から負けの上限で新しく入らない</span>':'')+
+      (rows.length?'<table class="air-tbl" data-keep-table><tr><th>入った</th><th>出た</th><th>銘柄</th><th>向き</th><th>手法</th><th>株数</th><th>金額</th><th>損益</th></tr>'+rows.map(r=>{
+        const y=r.done_yen!=null?r.done_yen:r.open_yen;
+        return '<tr><td>'+(r.kind==="overnight"?"きのう15:25":esc(r.in))+'</td><td>'+(r.out?esc(r.out):'<span class="mel-hold">保有中</span>')+'</td><td>'+esc(r.name||"")+'</td><td>'+(r.side>0?"買い":"空売り")+'</td><td>'+esc(NAMES[r.rule]||r.rule||"")+'</td><td>'+Number(r.shares).toLocaleString("ja-JP")+'</td><td>'+man(r.amount)+'</td><td class="'+cls(y)+'">'+(y==null?"—":yen(y))+(r.done_yen==null&&y!=null?'<small class="g">（含み）</small>':'')+'</td></tr>';}).join("")+'</table>':'<div class="g">今日はまだ入っていません</div>');
+  }
   function melHtml(){
     const m=cap&&cap.mel300;if(!m||m.state==="UNAVAILABLE")return '<div class="cap-chart mel300"><h4>メル口座（任せる300万・仮想）</h4><p class="g">まだ読めません</p></div>';
     const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し 買い",ON_SHORT:"持ち越し 空売り"};
@@ -4215,6 +4231,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const plans={};(m.plans||[]).forEach(p=>{plans[p[0]]=p;});
     const list=rows.slice().reverse().slice(0,10).map(r=>{const p=plans[r[0]]||[];return '<tr><td>'+esc(r[0].slice(5).replace("-","/"))+'</td><td>'+(p[2]?esc(say(p[2])):'<span class="g">休み（'+esc(p[3]||"")+'）</span>')+'</td><td>'+r[3]+'回'+(r[5]?'・'+esc(r[5])+'から止めた':'')+'</td><td class="'+cls(r[1])+'">'+yen(r[1])+'</td><td>'+man(r[2])+'</td></tr>';}).join("");
     return '<div class="cap-chart mel300"><h4>メル口座（任せる300万・仮想）　'+(m.from?esc(m.from.slice(5).replace("-","/"))+'から　今 <b class="'+cls(diff)+'">'+man(last)+'</b>（<span class="'+cls(diff)+'">'+yen(diff)+'</span>）':'これから始まります')+'</h4>'+todayLine+
+      '<div class="mel-live-box">'+melLiveHtml()+'</div>'+
       (rows.length?'<table class="air-tbl" data-keep-table><tr><th>日付</th><th>メルの決めたこと</th><th>入った回数</th><th>その日</th><th>残高</th></tr>'+list+'</table>':'')+
       airTrades(m,"mel","メル口座のトレード履歴（新しい日から・押すと開く）")+
       '<p class="g" style="font-size:11px">平日8:30にAI（Claude）がメルとして前の日までの結果を振り返り、その日の手法・1回の額・同時の上限・持ち越し・負けの上限を決めます。9:00より前に読んだ中身を指紋（ハッシュ）つきで固め、後から変えません。入るサインは上の300万と同じで、メルが選んだ手法にだけ、決めた額で入ります。その日の数字は翌朝に入ります。コクピットの中だけの検証で、仮想・注文なし。</p></div>';
@@ -4238,6 +4255,9 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       (onClosed.length?'<div class="cap-on-list">'+onClosed.map(x=>{const v=Number(x.pct);return '<span>'+esc(String(x.name||x.ticker||""))+' '+(x.side==="LONG"?"買い":"空売り")+' <b class="'+cls(v)+'">'+(Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2)+"%":"—")+'</b></span>';}).join("")+'</div>':'')+
       legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
       '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();
+    let ml=document.getElementById("mel-live");
+    if(!ml){ml=document.createElement("div");ml.id="mel-live";ml.className="cap-box mel-live-box";document.body.appendChild(ml);}
+    ml.innerHTML=melLiveHtml();
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
   // 勝率・1回の平均（費用込み）・PFを横棒で出し、50%・0・1.0に基準の線、プラスは緑・マイナスは赤、回数も出す。その下に手法ごとの通算損益の線グラフ。
@@ -4606,7 +4626,7 @@ main .card hr{display:none}
     if(!fold.dataset.tlInit){fold.dataset.tlInit="1";fold.open=true;
       fold.addEventListener("toggle",()=>{const h=fold.querySelector(".tl-fold-hint");if(h)h.textContent=fold.open?"押すと閉じる":"押すと開く";});}
     const fs=fold.querySelector(".tl-fold-slot");
-    ["virt-day-line","virt-held-line","cap-area","trade-fx-link"].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentElement!==fs)fs.appendChild(el);});
+    ["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentElement!==fs)fs.appendChild(el);});
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them
     const intro=pane.querySelector(":scope > .pane-intro");
     let at=intro?intro.nextElementSibling:pane.firstElementChild;
