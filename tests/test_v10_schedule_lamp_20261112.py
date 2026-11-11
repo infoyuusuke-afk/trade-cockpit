@@ -34,7 +34,8 @@ class ScheduleLamp(unittest.TestCase):
         i = HTML.index("const renderSched=()=>{")
         block = HTML[i:HTML.index("setInterval(renderSched,60000);", i)]
         self.assertIn('if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){', block)
-        self.assertIn('if(said!==String(j.checked_at)){', block)
+        self.assertIn('if(said!==String(j.checked_at)&&window.__schedSpoken!==String(j.checked_at)){', block)
+        self.assertIn('window.__schedSpoken=String(j.checked_at);', block)   # no repeat every minute without storage
         self.assertIn('localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at))', block)
         self.assertIn("定時の点検。止まっている定時が", block)
 

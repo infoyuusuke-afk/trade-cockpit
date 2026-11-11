@@ -277,8 +277,10 @@ document.addEventListener("DOMContentLoaded",()=>{
      // OWNER 2026-11-12 「あと音声も」: a new check that finds a stop (red) or a delay (yellow) is spoken once (a check is known by its
      // time; the last spoken one is kept in this browser, so a reload does not repeat it). Green and gray are not spoken.
      if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){
-       let said="";try{said=localStorage.getItem("cockpitSchedSpokenV1")||"";}catch(_){}
-       if(said!==String(j.checked_at)){
+       // without storage (blocked or failing) the page's own memory still stops a repeat every minute
+       let said=window.__schedSpoken||"";try{said=localStorage.getItem("cockpitSchedSpokenV1")||said;}catch(_){}
+       if(said!==String(j.checked_at)&&window.__schedSpoken!==String(j.checked_at)){
+         window.__schedSpoken=String(j.checked_at);
          try{localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at));}catch(_){}
          window.cockpitSpeak(cls==="red"?"定時の点検。止まっている定時が"+probs.length+"つあります。画面の定時のランプを見てください。":
            "定時の点検。遅れている定時が"+probs.length+"つあります。",cls==="red"?"HOT":"WATCH");
