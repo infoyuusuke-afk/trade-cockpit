@@ -22,7 +22,7 @@ class VoiceClear(unittest.TestCase):
 
     def test_ir_voice_says_the_judgement_in_plain_words(self):
         # OWNER 2026-11-11 「音声 こうより警戒ってなんかわかりにくい」
-        self.assertIn('"高寄り警戒・押し目確認"{"あしたは高く始まりそうです。いったん下がるのを待ってから"}', SRC)
+        self.assertIn('"高寄り警戒・押し目確認"{"あすは高く始まりそう。押し目待ち"}', SRC)
         self.assertIn('"急騰過熱・翌朝飛び乗り禁止"{"上がりすぎです。あしたの朝は飛び乗らないでください"}', SRC)
         self.assertIn('"パーセント。"+$irSay+"。")', SRC)
         self.assertNotIn('"パーセント。"+$ir.judgement+"。")', SRC)
