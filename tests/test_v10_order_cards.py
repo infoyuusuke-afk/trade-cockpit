@@ -184,12 +184,12 @@ class OrderCards(unittest.TestCase):
         self.assertIn("const hedged=Object.values(by).filter(g=>g.long>0&&g.short>0)", src)
         # OWNER 2026-11-05 「負けの残り枠は、今日入った信用の建玉だけで計算して…」「含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」
         self.assertIn("done:marginDone,open:sum(margin.filter(isToday))", src)
-        self.assertIn("stop:stopTotal<=-10000?plain.filter(x=>gNum(x.pnl)<0)", src)   # OWNER 2026-11-11 「合計で−1万円でなる」
+        self.assertIn("stop:(stopTotal<=-10000||plain.some(x=>gNum(x.pnl)<=-10000))?plain.filter(x=>gNum(x.pnl)<0)", src)   # OWNER 2026-11-11 「両方：どちらかで鳴る」
         self.assertIn("別枠 持ち越し含み", HTML)
         self.assertIn('"stop-loss-band"', HTML)
         col = (Path(__file__).resolve().parents[1] / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
         self.assertIn('Invoke-SerializedSpeak $speaker "損切り"', col)
-        self.assertIn("$slPlain.Count -gt 0 -and $slTotal -le -10000", col)
+        self.assertIn("$slPlain.Count -gt 0 -and ($slOne -or $slTotal -le -10000)", col)
         # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして」
         self.assertIn("-not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code)", col)
 
