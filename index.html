@@ -272,7 +272,8 @@ document.addEventListener("DOMContentLoaded",()=>{
      const [cls,label,line]=h==null||h>limit?["gray","定時：点検が古い","最後の点検 "+String(j.checked_at).slice(5,16).replace("T"," ")]:
        j.state==="STOPPED"?["red","定時：止まりあり",names+"　点検 "+at]:
        j.state==="LATE"?["yellow","定時：遅れあり",names+"　点検 "+at]:
-       ["green","定時：正常","全"+(j.checked||0)+"本 時刻どおり　点検 "+at];
+       j.state==="OK"&&j.checked>0?["green","定時：正常","全"+j.checked+"本 時刻どおり　点検 "+at]:
+       ["gray","定時：点検が読めない","点検の結果の形が違います　点検 "+at];
      el.innerHTML=freshLamp(cls,label,line);el.title=line;
      // OWNER 2026-11-12 「あと音声も」: a new check that finds a stop (red) or a delay (yellow) is spoken once (a check is known by its
      // time; the last spoken one is kept in this browser, so a reload does not repeat it). Green and gray are not spoken.
@@ -282,11 +283,11 @@ document.addEventListener("DOMContentLoaded",()=>{
        if(said!==String(j.checked_at)&&window.__schedSpoken!==String(j.checked_at)){
          window.__schedSpoken=String(j.checked_at);
          try{localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at));}catch(_){}
-         window.cockpitSpeak(cls==="red"?"定時の点検。止まっている定時が"+probs.length+"つあります。画面の定時のランプを見てください。":
-           "定時の点検。遅れている定時が"+probs.length+"つあります。",cls==="red"?"HOT":"WATCH");
+         try{window.cockpitSpeak(cls==="red"?"定時の点検。止まっている定時が"+probs.length+"つあります。画面の定時のランプを見てください。":
+           "定時の点検。遅れている定時が"+probs.length+"つあります。",cls==="red"?"HOT":"WATCH");}catch(_){}
        }
      }
-   }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");});
+   }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");el.title="";});
  };
  // the lamp row is built by a later script: the first look waits for it
  setTimeout(renderSched,2500);
@@ -1656,7 +1657,7 @@ window.buildTradeWatch = () => {
   sec.id = "trade-watch";
   sec.className = "card wide";
   sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
-    "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：期待値がプラスの注目銘柄とキオクシアHD（285A）にサインが出た時に出る（検証中・参考のみ。執行は自分で）</li>" +
+    "<li><b>上のランプ（ブレイン・Grok・定時）</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：期待値がプラスの注目銘柄とキオクシアHD（285A）にサインが出た時に出る（検証中・参考のみ。執行は自分で）</li>" +
     "<li><b>その下の好機レーダーとAIアナリスト注目TOP5</b>：今動いている銘柄と、AIアナリストが注目した期待値の高い5銘柄（入れ替え自由）・今日フォーカスする手法。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
     "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div><div id='trade-sched-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
   const intro = pane.querySelector(":scope > .pane-intro");

@@ -26,7 +26,10 @@ class ScheduleLamp(unittest.TestCase):
         self.assertIn("limit=offDay?66:26", block)
         self.assertIn('j.state==="STOPPED"?["red","定時：止まりあり"', block)
         self.assertIn('j.state==="LATE"?["yellow","定時：遅れあり"', block)
-        self.assertIn('["green","定時：正常"', block)
+        self.assertIn('j.state==="OK"&&j.checked>0?["green","定時：正常"', block)   # audit b8bb448: unknown states are gray
+        self.assertIn('["gray","定時：点検が読めない"', block)
+        self.assertIn('try{window.cockpitSpeak(cls==="red"?', block)
+        self.assertIn('el.title="";', HTML[i:HTML.index("setInterval(renderSched,60000);", i)])
         self.assertNotIn("innerHTML=\"+", block)
 
     def test_voice_once_per_check(self):
