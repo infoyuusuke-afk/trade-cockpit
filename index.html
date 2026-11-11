@@ -298,6 +298,24 @@ document.addEventListener("DOMContentLoaded",()=>{
      }
    }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");el.title="";});
  };
+ // OWNER 2026-11-12 「コクピットに今日の相場の型を一言で出す版を作って（8:11の記録から、意味を一文で、検証中と書く、売買サインにしない）」:
+ // /market_types.json = the PC's 8:11 record of today's market types (研究・検証中). One line next to the lamps, only for today's
+ // record; nothing before it is written. Neutral colour (not red or green), no arrow, no order. The voice is the 8:40 morning voice.
+ const renderTypes=()=>{
+   const el=document.getElementById("trade-type-line");if(!el)return;
+   fetch("/market_types.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+     const today=typeof window.jstParts==="function"?window.jstParts(Date.now()).day:"";
+     if(!j||String(j.day||"")!==today){el.innerHTML="";el.title="";return;}
+     const ts=Array.isArray(j.types)?j.types:[];
+     const names=ts.map(x=>String(x.name||"")).join("・");
+     const meaning=[...new Set(ts.map(x=>String(x.meaning||"")))].join("／");
+     const text=ts.length?"今日の型："+names+"　"+meaning+"（研究・検証中・売買サインではない）":"今日の型：なし（研究・検証中）";
+     el.innerHTML='<span class="type-line">'+esc(text)+'</span>';el.title="8:11の記録（"+esc(String(j.recorded_at||""))+"）から。予測ではありません";
+   }).catch(()=>{el.innerHTML="";});
+ };
+ {const st=document.createElement("style");st.textContent="#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:nowrap}";document.head.appendChild(st);}
+ setTimeout(renderTypes,2500);
+ setInterval(renderTypes,60000);
  // the list under the 定時 lamp (opened by a press)
  {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
  // the lamp row is built by a later script: the first look waits for it
@@ -1670,7 +1688,7 @@ window.buildTradeWatch = () => {
   sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
     "<li><b>上のランプ（ブレイン・Grok・定時）</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：期待値がプラスの注目銘柄とキオクシアHD（285A）にサインが出た時に出る（検証中・参考のみ。執行は自分で）</li>" +
     "<li><b>その下の好機レーダーとAIアナリスト注目TOP5</b>：今動いている銘柄と、AIアナリストが注目した期待値の高い5銘柄（入れ替え自由）・今日フォーカスする手法。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
-    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div><div id='trade-sched-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
+    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div><div id='trade-sched-lamp'></div><div id='trade-type-line'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
   const intro = pane.querySelector(":scope > .pane-intro");
   if (intro) intro.insertAdjacentElement("afterend", sec); else pane.prepend(sec);
 };

@@ -995,6 +995,30 @@ function Get-SoxProxyView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-12 「コクピットに今日の相場の型を一言で出す版を作って（8:11の記録から、意味を一文で、検証中と書く、売買サインにしない）」:
+# RuntimeDir\market_types_today_v1.json, written on this PC by the research script at about 8:11 (never in the repo), served as-is when its flags are safe.
+function Get-MarketTypesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'market_types_today_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'MARKET_TYPES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 8192) {
+            return (& $fail 'MARKET_TYPES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-market-types-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'MARKET_TYPES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'MARKET_TYPES_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-12 「AIコクピットのステータスランプでおれは状況確認はしたい」: RuntimeDir\schedule_watch_v1.json, written on this PC by
 # the research script that checks every scheduled job (never in the repo), is served as-is when its flags are safe (the 定時 lamp).
 function Get-ScheduleWatchView([string]$RuntimeDir) {
@@ -3201,6 +3225,11 @@ try {
             if ($path -eq '/sox_proxy.json') {
                 $soxProxyView = Get-SoxProxyView $RuntimeDir
                 Send-Response $stream $soxProxyView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$soxProxyView.body))
+                continue
+            }
+            if ($path -eq '/market_types.json') {
+                $typesView = Get-MarketTypesView $RuntimeDir
+                Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
                 continue
             }
             if ($path -eq '/schedule_watch.json') {
