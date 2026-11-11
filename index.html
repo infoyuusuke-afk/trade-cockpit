@@ -274,7 +274,10 @@ document.addEventListener("DOMContentLoaded",()=>{
        j.state==="LATE"?["yellow","定時：遅れあり",names+"　点検 "+at]:
        j.state==="OK"&&j.checked>0?["green","定時：正常","全"+j.checked+"本 時刻どおり　点検 "+at]:
        ["gray","定時：点検が読めない","点検の結果の形が違います　点検 "+at];
-     el.innerHTML=freshLamp(cls,label,line);el.title=line;
+     const items=Array.isArray(j.items)?j.items:[];
+     el.innerHTML=freshLamp(cls,label,line)+(window.__schedOpen?'<div class="sched-list">'+(items.length?items.map(x=>'<div class="'+(x.ok?"ok":"ng")+'">'+(x.ok?"○ ":"✕ ")+esc(String(x.name||""))+'<small>'+esc(String(x.msg||""))+'</small></div>').join(""):'<div>一覧はまだありません（次の点検から）</div>')+'</div>':"");
+     el.title=line+"（押すと一覧）";el.style.cursor="pointer";
+     if(!el.dataset.schedClick){el.dataset.schedClick="1";el.addEventListener("click",()=>{window.__schedOpen=!window.__schedOpen;renderSched();});}
      // OWNER 2026-11-12 「あと音声も」: a new check that finds a stop (red) or a delay (yellow) is spoken once (a check is known by its
      // time; the last spoken one is kept in this browser, so a reload does not repeat it). Green and gray are not spoken.
      if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){
@@ -289,6 +292,8 @@ document.addEventListener("DOMContentLoaded",()=>{
      }
    }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");el.title="";});
  };
+ // the list under the 定時 lamp (opened by a press)
+ {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
  // the lamp row is built by a later script: the first look waits for it
  setTimeout(renderSched,2500);
  setInterval(renderSched,60000);

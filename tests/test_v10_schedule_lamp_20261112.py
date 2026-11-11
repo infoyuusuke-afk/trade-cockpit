@@ -42,6 +42,15 @@ class ScheduleLamp(unittest.TestCase):
         self.assertIn('localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at))', block)
         self.assertIn("定時の点検。止まっている定時が", block)
 
+    def test_press_opens_the_list(self):
+        # OWNER 2026-11-12 「定時ランプ（緑・黄・赤、押すと一覧）」
+        i = HTML.index("const renderSched=()=>{")
+        block = HTML[i:HTML.index("setInterval(renderSched,60000);", i)]
+        self.assertIn("window.__schedOpen=!window.__schedOpen;renderSched();", block)
+        self.assertIn("esc(String(x.name||\"\"))", block)
+        self.assertIn("esc(String(x.msg||\"\"))", block)
+        self.assertIn(".sched-list{", block)
+
 
 if __name__ == "__main__":
     unittest.main()
