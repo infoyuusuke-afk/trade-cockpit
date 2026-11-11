@@ -894,14 +894,14 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
             e = _num(r.get("entry"))
             if e and e > 0:
                 sig.setdefault((r.get("ticker"), r.get("rule")), []).append((str(r.get("captured_at") or "")[11:19], e))
-        for t in v.get("trades") or []:
-            if t.get("status") != "CLOSED" or t.get("yen") is None or not t.get("rule"):
+        for t in (v.get("trades") if isinstance(v, dict) else None) or []:
+            if not isinstance(t, dict) or t.get("status") != "CLOSED" or _num(t.get("yen")) is None or not t.get("rule"):
                 continue
             ft = str(t.get("fill_time") or "")[:8]
             cand = [e for at, e in sig.get((t.get("ticker"), t.get("rule")), []) if at <= ft]
             if not cand:
                 continue
-            y100 = float(t["yen"])
+            y100 = float(_num(t.get("yen")))
             trades.setdefault(d, []).append({"kind": "day", "rule": t["rule"], "in": ft[:5], "out": str(t.get("exit_time") or "")[:5],
                                              "fill": cand[-1], "y100": y100, "pct": y100 / (cand[-1] * 100) * 100})
     for r in _rows(Path(runtime) / HISTORY_FILE):
@@ -954,6 +954,14 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
         tmp.replace(f)
     return out
+
+
+def _air300_safe(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
+    """audit 0f33e32: a broken record file must never take the capital view down; the screen then says 「まだ記録がありません」."""
+    try:
+        return air300(records, runtime, day_dir, today)
+    except Exception as exc:  # noqa: BLE001 - display only
+        return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "days": [], "real_submit_allowed": False}
 
 
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
@@ -1010,7 +1018,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         tmp.replace(day_dir / DAY_FILE)
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
             "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
-            "air300": air300(records, day_dir.parent.parent, day_dir, today),
+            "air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 

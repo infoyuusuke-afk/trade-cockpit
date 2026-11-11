@@ -51,8 +51,28 @@ class Air300(unittest.TestCase):
         self.assertEqual(a["by_rule"]["R4"], [30000, 1, 1])
         self.assertEqual(a["peak"], 3_030_000)
 
+    def test_broken_files_never_break_the_capital_view(self):
+        # audit 0f33e32: a non-numeric yen and a list at the top level
+        with tempfile.TemporaryDirectory() as d:
+            rec, today = self._build(Path(d))
+            f = rec / "2026-11-04" / live.OWNER_RULES_FILE
+            f.write_text(json.dumps({"trades": [{"ticker": "1111.T", "rule": "R4", "status": "CLOSED", "fill_time": "09:20:00",
+                                                 "exit_time": "09:40:00", "yen": "abc"}, "x"]}), encoding="utf-8")
+            a = live.air300(rec, Path(d), today, "2026-11-12")
+            self.assertEqual([r[0] for r in a["days"]], ["2026-11-05", "2026-11-11"])
+            f.write_text("[1, 2]", encoding="utf-8")
+            (today / live.AIR_FILE).unlink(missing_ok=True)
+            self.assertEqual(live.air300(rec, Path(d), today, "2026-11-11")["days"][0][0], "2026-11-05")
+        orig = live.air300
+        try:
+            live.air300 = lambda *a: 1 / 0
+            got = live._air300_safe(Path("."), Path("."), Path("."), "2026-11-11")
+        finally:
+            live.air300 = orig
+        self.assertEqual((got["state"], got["reason"], got["days"]), ("UNAVAILABLE", "ZeroDivisionError", []))
+
     def test_diary_tab_shows_it(self):
-        self.assertIn('"air300": air300(records, day_dir.parent.parent, day_dir, today),', (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8"))
+        self.assertIn('"air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),', (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8"))
         self.assertIn("function airHtml(){", HTML)
         self.assertIn("エアトレード（資金300万から・メル・仮想）", HTML)
         self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml();", HTML)
