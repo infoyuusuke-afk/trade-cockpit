@@ -17,7 +17,24 @@ class VoiceClear(unittest.TestCase):
         self.assertNotIn('[Math]::Round([double]$_.preopen_gap_pct,1))', SRC)
 
     def test_bridge_watch_voice_is_slower_with_longer_pauses(self):
-        self.assertIn('"WATCH"  { return @{length=1.25;weight=0.50;split=0.80} }', BRIDGE)
+        self.assertIn('"WATCH"  { return @{length=1.35;weight=0.50;split=0.95} }', BRIDGE)   # OWNER 2026-11-11 「音声がききとりにくい」: slower again
+        self.assertIn('"HOT"    { return @{length=1.12;weight=0.70;split=0.50} }', BRIDGE)
+
+    @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "no PowerShell")
+    def test_bridge_reads_names_for_every_voice(self):
+        # OWNER 2026-11-11 「音声がききとりにくい、銘柄名など」: the screen's voices go to the bridge directly, so it reads names too
+        start = BRIDGE.index("function U(") if "function U(" in BRIDGE else BRIDGE.index("function Normalize-SpeechText")
+        fn = BRIDGE[start:BRIDGE.index("function Get-Profile")]
+        text = "ショートリバ上がり切り。HENNGE（4475）。SCREEN HD（7735）、三菱UFJ FG（8306）。"
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "o.txt"
+            ps = Path(d) / "t.ps1"
+            ps.write_text(fn + "\n$o=Normalize-SpeechText '%s'\n[IO.File]::WriteAllText('%s',$o,[Text.UTF8Encoding]::new($false))\n"
+                          % (text, out), encoding="utf-8-sig")
+            exe = shutil.which("pwsh") or shutil.which("powershell")
+            subprocess.run([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps)], capture_output=True, timeout=120)
+            got = out.read_text(encoding="utf-8")
+        self.assertEqual(got, "ショートリバ上がり切り。ヘンゲ。スクリーン ホールディングス、三菱ユーエフジェイ フィナンシャルグループ。")
 
     @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "no PowerShell")
     def test_names_are_read_without_codes_and_english_in_katakana(self):

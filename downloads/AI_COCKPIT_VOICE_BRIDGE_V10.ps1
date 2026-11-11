@@ -96,15 +96,46 @@ function Normalize-SpeechText([string]$text){
         @((U @(27497,12415,20516)),(U @(12354,12422,12415,12397)))
     )
     foreach($pair in $pairs){ $s=$s.Replace([string]$pair[0],[string]$pair[1]) }
+    # OWNER 2026-11-11 "voice hard to catch, stock names": for every voice (the screen's too, not only the Collector's), the
+    # 4-character code in brackets after a name is not read, and Latin-letter names are read in katakana (longer names first;
+    # the same readings as the Collector's SpeechNameReadings).
+    $s=[regex]::Replace($s,"[（(][0-9][0-9A-Z]{3}[）)]","")
+    $names = @(
+        @("KOKUSAI ELECTRIC",(U @(12467,12463,12469,12452,32,12456,12524,12463,12488,12522,12483,12463))),
+        @("Terra Drone",(U @(12486,12521,12489,12525,12540,12531))),
+        @((U @(19977,33777,85,70,74,32,70,71)),(U @(19977,33777,12518,12540,12456,12501,12472,12455,12452,32,12501,12451,12490,12531,12471,12515,12523,12464,12523,12540,12503))),
+        @("SCREEN HD",(U @(12473,12463,12522,12540,12531,32,12507,12540,12523,12487,12451,12531,12464,12473))),
+        @("DOWA HD",(U @(12489,12540,12527,32,12507,12540,12523,12487,12451,12531,12464,12473))),
+        @((U @(74,82,26481,26085,26412)),(U @(12472,12455,12452,12450,12540,12523,26481,26085,26412))),
+        @((U @(74,88,37329,23646)),(U @(12472,12455,12452,12456,12483,12463,12473,37329,23646))),
+        @("HENNGE",(U @(12504,12531,12466))),
+        @("INPEX",(U @(12452,12531,12506,12483,12463,12473))),
+        @("SUMCO",(U @(12469,12512,12467))),
+        @("Sansan",(U @(12469,12531,12469,12531))),
+        @("SHIFT",(U @(12471,12501,12488))),
+        @("MS&AD",(U @(12456,12512,12456,12473,12450,12531,12489,12456,12540,12487,12451,12540))),
+        @("KDDI",(U @(12465,12540,12487,12451,12540,12487,12451,12540,12450,12452))),
+        @("HOYA",(U @(12507,12540,12516))),
+        @("SWCC",(U @(12456,12473,12480,12502,12522,12517,12540,12471,12540,12471,12540))),
+        @("IHI",(U @(12450,12452,12456,12452,12481,12450,12452))),
+        @("NEC",(U @(12456,12492,12452,12540,12471,12540))),
+        @("NTT",(U @(12456,12492,12486,12451,12540,12486,12451,12540))),
+        @("TDK",(U @(12486,12451,12540,12487,12451,12540,12465,12540))),
+        @("THK",(U @(12486,12451,12540,12456,12452,12481,12465,12540))),
+        @("HD",(U @(12507,12540,12523,12487,12451,12531,12464,12473))),
+        @("FG",(U @(12501,12451,12490,12531,12471,12515,12523,12464,12523,12540,12503)))
+    )
+    foreach($pair in $names){ $s=$s.Replace([string]$pair[0],[string]$pair[1]) }
     return $s.Replace("%",(U @(12497,12540,12475,12531,12488)))
 }
 
 function Get-Profile([string]$level){
     switch(($level+"").ToUpperInvariant()){
-        "HOT"    { return @{length=1.03;weight=0.70;split=0.35} }
-        "DANGER" { return @{length=1.10;weight=0.80;split=0.45} }
-        "WATCH"  { return @{length=1.25;weight=0.50;split=0.80} }   # OWNER 2026-11-02 「はっきりしゃべらせて」: slower, longer pauses
-        default  { return @{length=1.20;weight=0.35;split=0.60} }
+        # OWNER 2026-11-11 「音声がききとりにくい、銘柄名など」: every level a little slower with longer pauses
+        "HOT"    { return @{length=1.12;weight=0.70;split=0.50} }
+        "DANGER" { return @{length=1.20;weight=0.80;split=0.60} }
+        "WATCH"  { return @{length=1.35;weight=0.50;split=0.95} }   # OWNER 2026-11-02 「はっきりしゃべらせて」: slower, longer pauses
+        default  { return @{length=1.30;weight=0.35;split=0.75} }
     }
 }
 
