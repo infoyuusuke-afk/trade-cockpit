@@ -78,6 +78,16 @@ class Air300(unittest.TestCase):
         sh = t[7]
         self.assertAlmostEqual(t[9], round((0.12 * 100 - 0.011 * 3 / 365 * 100) / 100 * 500 * sh), delta=1)
 
+    def test_zero_reference_price_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            rec, today = self._build(Path(d))
+            h = Path(d) / live.HISTORY_FILE
+            h.write_text(h.read_text(encoding="utf-8") + '"2026-11-06","t","2","6666.T","q","LONG","70","0","0","2026-11-06","2026-11-08","","","","","","1","","","勝ち","検証済み"\n',
+                         encoding="utf-8")
+            a = live.air300(rec, Path(d), today, "2026-11-11")
+        self.assertEqual(a["weekend_moved_unpriced"], 1)
+        self.assertNotIn("state", a)
+
     def test_memo_once_a_day_without_the_day_folder(self):
         with tempfile.TemporaryDirectory() as d:
             rec, today = self._build(Path(d))

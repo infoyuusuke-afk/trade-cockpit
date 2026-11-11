@@ -940,6 +940,8 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         try:
             wd = datetime.strptime(d, "%Y-%m-%d").weekday()
             ref = float(r.get("reference_price_1525"))
+            if not (math.isfinite(ref) and ref > 0):   # audit eedf17d: no division by 0
+                continue
             if wd >= 5:
                 nd = date.fromisoformat(d) + timedelta(days=7 - wd)
                 while nd.weekday() >= 5 or nd.isoformat() in EXCHANGE_HOLIDAYS:
