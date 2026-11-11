@@ -43,7 +43,9 @@ def test_same_colours_and_shorter_ir_voice():
     assert '.tab-pane[data-pane="ms2-live"] .warning,.tab-pane[data-pane="pre-next"] .warning{background:#0E1013' in html
     col = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
     assert "TDnet原文と翌朝の気配を確認してください" not in col
-    assert '+$ir.judgement+"。")' in col
+    # OWNER 2026-11-11 「音声 こうより警戒ってなんかわかりにくい」: the voice still ends with the judgement, said in plain words ($irSay)
+    assert '+$irSay+"。")' in col
+    assert 'default{[string]$ir.judgement}' in col
 
 
 def test_grok1_score_roles_and_stages_only_with_a_record_line():
