@@ -995,6 +995,30 @@ function Get-SoxProxyView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-12 「AIコクピットのステータスランプでおれは状況確認はしたい」: RuntimeDir\schedule_watch_v1.json, written on this PC by
+# the research script that checks every scheduled job (never in the repo), is served as-is when its flags are safe (the 定時 lamp).
+function Get-ScheduleWatchView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'schedule_watch_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SCHEDULE_WATCH_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 16384) {
+            return (& $fail 'SCHEDULE_WATCH_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-schedule-watch-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SCHEDULE_WATCH_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SCHEDULE_WATCH_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: RuntimeDir\realized_csv_today_v1.json (today's total from the
 # OWNER's Rakuten 実現損益 CSV on this PC, written by the Brain observer) is served as-is when its flags are safe.
 function Get-RealizedCsvView([string]$RuntimeDir) {
@@ -3177,6 +3201,11 @@ try {
             if ($path -eq '/sox_proxy.json') {
                 $soxProxyView = Get-SoxProxyView $RuntimeDir
                 Send-Response $stream $soxProxyView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$soxProxyView.body))
+                continue
+            }
+            if ($path -eq '/schedule_watch.json') {
+                $schedView = Get-ScheduleWatchView $RuntimeDir
+                Send-Response $stream $schedView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$schedView.body))
                 continue
             }
             if ($path -eq '/realized_csv.json') {

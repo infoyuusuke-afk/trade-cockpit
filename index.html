@@ -257,6 +257,28 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  renderBrain();
  setInterval(renderBrain,5000);
+ // OWNER 2026-11-12 「AIコクピットのステータスランプでおれは状況確認はしたい」: the 定時 lamp next to ブレイン and Grok.
+ // /schedule_watch.json = the PC's check of every scheduled job (9:30・12:30・18:30 on weekdays): green = all on time,
+ // yellow = late (after its deadline / not locked in time), red = stopped (no output, failed, missed), gray = no check or an old one.
+ // The names of the jobs with a problem show when red, and on hover. Display only.
+ const renderSched=()=>{
+   const el=document.getElementById("trade-sched-lamp");if(!el||typeof freshLamp!=="function")return;
+   fetch("/schedule_watch.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+     if(!j||!j.checked_at){el.innerHTML=freshLamp("gray","定時：点検なし","定時の点検の記録がまだありません");el.title="";return;}
+     const t=Date.parse(j.checked_at),h=Number.isFinite(t)?(Date.now()-t)/3600000:null,at=String(j.checked_at).slice(11,16);
+     const probs=Array.isArray(j.problems)?j.problems:[],names=probs.map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／");
+     // the check runs on weekdays only: from Friday 18:30 to Monday 9:30 an older check is still the latest
+     const np=typeof window.jstParts==="function"?window.jstParts(Date.now()):null,offDay=np&&(np.wd===0||np.wd===6||(np.wd===1&&np.min<600)),limit=offDay?66:26;
+     const [cls,label,line]=h==null||h>limit?["gray","定時：点検が古い","最後の点検 "+String(j.checked_at).slice(5,16).replace("T"," ")]:
+       j.state==="STOPPED"?["red","定時：止まりあり",names+"　点検 "+at]:
+       j.state==="LATE"?["yellow","定時：遅れあり",names+"　点検 "+at]:
+       ["green","定時：正常","全"+(j.checked||0)+"本 時刻どおり　点検 "+at];
+     el.innerHTML=freshLamp(cls,label,line);el.title=line;
+   }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");});
+ };
+ // the lamp row is built by a later script: the first look waits for it
+ setTimeout(renderSched,2500);
+ setInterval(renderSched,60000);
 
  const eventIntro=document.createElement("section");
  eventIntro.className="card wide";
@@ -1624,7 +1646,7 @@ window.buildTradeWatch = () => {
   sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
     "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：期待値がプラスの注目銘柄とキオクシアHD（285A）にサインが出た時に出る（検証中・参考のみ。執行は自分で）</li>" +
     "<li><b>その下の好機レーダーとAIアナリスト注目TOP5</b>：今動いている銘柄と、AIアナリストが注目した期待値の高い5銘柄（入れ替え自由）・今日フォーカスする手法。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
-    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
+    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div><div id='trade-sched-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
   const intro = pane.querySelector(":scope > .pane-intro");
   if (intro) intro.insertAdjacentElement("afterend", sec); else pane.prepend(sec);
 };
