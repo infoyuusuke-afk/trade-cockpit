@@ -29,6 +29,15 @@ class ScheduleLamp(unittest.TestCase):
         self.assertIn('["green","定時：正常"', block)
         self.assertNotIn("innerHTML=\"+", block)
 
+    def test_voice_once_per_check(self):
+        # OWNER 2026-11-12 「あと音声も」
+        i = HTML.index("const renderSched=()=>{")
+        block = HTML[i:HTML.index("setInterval(renderSched,60000);", i)]
+        self.assertIn('if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){', block)
+        self.assertIn('if(said!==String(j.checked_at)){', block)
+        self.assertIn('localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at))', block)
+        self.assertIn("定時の点検。止まっている定時が", block)
+
 
 if __name__ == "__main__":
     unittest.main()

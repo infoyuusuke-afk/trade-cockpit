@@ -274,6 +274,16 @@ document.addEventListener("DOMContentLoaded",()=>{
        j.state==="LATE"?["yellow","定時：遅れあり",names+"　点検 "+at]:
        ["green","定時：正常","全"+(j.checked||0)+"本 時刻どおり　点検 "+at];
      el.innerHTML=freshLamp(cls,label,line);el.title=line;
+     // OWNER 2026-11-12 「あと音声も」: a new check that finds a stop (red) or a delay (yellow) is spoken once (a check is known by its
+     // time; the last spoken one is kept in this browser, so a reload does not repeat it). Green and gray are not spoken.
+     if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){
+       let said="";try{said=localStorage.getItem("cockpitSchedSpokenV1")||"";}catch(_){}
+       if(said!==String(j.checked_at)){
+         try{localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at));}catch(_){}
+         window.cockpitSpeak(cls==="red"?"定時の点検。止まっている定時が"+probs.length+"つあります。画面の定時のランプを見てください。":
+           "定時の点検。遅れている定時が"+probs.length+"つあります。",cls==="red"?"HOT":"WATCH");
+       }
+     }
    }).catch(()=>{el.innerHTML=freshLamp("gray","定時：読めない","点検の記録が読めません");});
  };
  // the lamp row is built by a later script: the first look waits for it
