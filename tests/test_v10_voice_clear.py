@@ -29,12 +29,20 @@ class VoiceClear(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "o.txt"
             ps = Path(d) / "t.ps1"
-            ps.write_text(fn + "\n$o=Normalize-SpeechText '%s'\n[IO.File]::WriteAllText('%s',$o,[Text.UTF8Encoding]::new($false))\n"
-                          % (text, out), encoding="utf-8-sig")
-            exe = shutil.which("pwsh") or shutil.which("powershell")
+            # audit 95654e8: the script is written WITHOUT a BOM, as the bridge runs (Windows PowerShell reads it in the system
+            # code page); the input text comes from a UTF-8 file so only the function's own characters are read like the bridge's
+            src = Path(d) / "in.txt"
+            src.write_text(text, encoding="utf-8")
+            ps.write_text(fn + "\n$o=Normalize-SpeechText ([IO.File]::ReadAllText('%s',[Text.Encoding]::UTF8))\n[IO.File]::WriteAllText('%s',$o,[Text.UTF8Encoding]::new($false))\n"
+                          % (src, out), encoding="utf-8")
+            exe = shutil.which("powershell") or shutil.which("pwsh")
             subprocess.run([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps)], capture_output=True, timeout=120)
             got = out.read_text(encoding="utf-8")
-        self.assertEqual(got, "ショートリバ上がり切り。ヘンゲ。スクリーン ホールディングス、三菱ユーエフジェイ フィナンシャルグループ。")
+        # OWNER 2026-11-11 「コードもよんで」: the code is read one character at a time after the name
+        self.assertEqual(got, "ショートリバ上がり切り。ヘンゲ,コード よん よん なな ご。スクリーン ホールディングス,コード なな なな さん ご、"
+                              "三菱ユーエフジェイ フィナンシャルグループ,コード はち さん ぜろ ろく。")
+        self.assertTrue(all(ord(c) < 128 for c in fn.split("\n")[0]))
+        self.assertNotIn("（", fn)   # no raw full-width bracket in the bridge's code (it would be garbled under cp932)
 
     @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "no PowerShell")
     def test_names_are_read_without_codes_and_english_in_katakana(self):
@@ -49,8 +57,9 @@ class VoiceClear(unittest.TestCase):
             exe = shutil.which("pwsh") or shutil.which("powershell")
             subprocess.run([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps)], capture_output=True, timeout=120)
             got = out.read_text(encoding="utf-8")
-        self.assertEqual(got, "きおくしあ ホールディングス、マイナス15パーセント。スクリーン ホールディングス、マイナス12パーセント。"
-                              "コクサイ エレクトリック、マイナス10パーセント。三井住友フィナンシャルグループ。ティアフォー。")
+        # OWNER 2026-11-11 「コードもよんで」: the code is read one character at a time after the name (it was dropped on 11/02)
+        self.assertEqual(got, "きおくしあ ホールディングス、コード に はち ご エー、マイナス15パーセント。スクリーン ホールディングス、コード なな なな さん ご、マイナス12パーセント。"
+                              "コクサイ エレクトリック、コード ろく ご に ご、マイナス10パーセント。三井住友フィナンシャルグループ、コード はち さん いち ろく。ティアフォー、コード ご きゅう さん エー。")
 
 
 if __name__ == "__main__":

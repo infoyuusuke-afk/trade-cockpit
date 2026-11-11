@@ -97,9 +97,14 @@ function Normalize-SpeechText([string]$text){
     )
     foreach($pair in $pairs){ $s=$s.Replace([string]$pair[0],[string]$pair[1]) }
     # OWNER 2026-11-11 "voice hard to catch, stock names": for every voice (the screen's too, not only the Collector's), the
-    # 4-character code in brackets after a name is not read, and Latin-letter names are read in katakana (longer names first;
+    # code after a name is read character by character, and Latin-letter names are read in katakana (longer names first;
     # the same readings as the Collector's SpeechNameReadings).
-    $s=[regex]::Replace($s,"[（(][0-9][0-9A-Z]{3}[）)]","")
+    # OWNER 2026-11-11 "read the code too": the code is read one character at a time (",code 4 4 7 5,")
+    $codeRead=@{"0"=(U @(12380,12429));"1"=(U @(12356,12385));"2"=(U @(12395));"3"=(U @(12373,12435));"4"=(U @(12424,12435));"5"=(U @(12372));"6"=(U @(12429,12367));"7"=(U @(12394,12394));"8"=(U @(12399,12385));"9"=(U @(12365,12421,12358));"A"=(U @(12456,12540));"B"=(U @(12499,12540));"C"=(U @(12471,12540));"D"=(U @(12487,12451,12540));"E"=(U @(12452,12540));"F"=(U @(12456,12501));"G"=(U @(12472,12540));"H"=(U @(12456,12452,12481));"I"=(U @(12450,12452));"J"=(U @(12472,12455,12540));"K"=(U @(12465,12540));"L"=(U @(12456,12523));"M"=(U @(12456,12512));"N"=(U @(12456,12492));"O"=(U @(12458,12540));"P"=(U @(12500,12540));"Q"=(U @(12461,12517,12540));"R"=(U @(12450,12540,12523));"S"=(U @(12456,12473));"T"=(U @(12486,12451,12540));"U"=(U @(12518,12540));"V"=(U @(12502,12452));"W"=(U @(12480,12502,12522,12517,12540));"X"=(U @(12456,12483,12463,12473));"Y"=(U @(12527,12452));"Z"=(U @(12476,12483,12488))}
+    $codeWord=","+(U @(12467,12540,12489))+" "
+    $s=[regex]::Replace($s,"[\uFF08(]([0-9][0-9A-Z]{3})[\uFF09)]",[System.Text.RegularExpressions.MatchEvaluator]{ param($m)
+        $codeWord+((@($m.Groups[1].Value.ToCharArray() | ForEach-Object { $codeRead[[string]$_] })) -join " ")+"," })
+    $s=$s.Replace(","+(U @(12289)),(U @(12289))).Replace(","+(U @(12290)),(U @(12290)))
     $names = @(
         @("KOKUSAI ELECTRIC",(U @(12467,12463,12469,12452,32,12456,12524,12463,12488,12522,12483,12463))),
         @("Terra Drone",(U @(12486,12521,12489,12525,12540,12531))),
@@ -131,7 +136,7 @@ function Normalize-SpeechText([string]$text){
 
 function Get-Profile([string]$level){
     switch(($level+"").ToUpperInvariant()){
-        # OWNER 2026-11-11 「音声がききとりにくい、銘柄名など」: every level a little slower with longer pauses
+        # OWNER 2026-11-11 "voice hard to catch, stock names": every level a little slower with longer pauses
         "HOT"    { return @{length=1.12;weight=0.70;split=0.50} }
         "DANGER" { return @{length=1.20;weight=0.80;split=0.60} }
         "WATCH"  { return @{length=1.35;weight=0.50;split=0.95} }   # OWNER 2026-11-02 「はっきりしゃべらせて」: slower, longer pauses
