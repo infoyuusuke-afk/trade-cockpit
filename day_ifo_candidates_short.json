@@ -1,62 +1,7 @@
 {
-  "updated_at": "2026-11-11 07:52:14 JST",
+  "updated_at": "2026-11-11 11:35:50 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 3,
-  "candidates": [
-    {
-      "name": "川崎重工業（7012）",
-      "code": "7012",
-      "ticker": "7012.T",
-      "side": "SHORT",
-      "score": 75,
-      "trigger": 1958.0,
-      "stop": 2180.0,
-      "target1": 1625.0,
-      "target2": 1403.0,
-      "rvol": 2.63,
-      "atr_pct": 4.46,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-8.7%／出来高比2.63倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    },
-    {
-      "name": "NEC（6701）",
-      "code": "6701",
-      "ticker": "6701.T",
-      "side": "SHORT",
-      "score": 68,
-      "trigger": 4345.0,
-      "stop": 4585.0,
-      "target1": 3985.0,
-      "target2": 3745.0,
-      "rvol": 1.51,
-      "atr_pct": 5.54,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-12.9%／出来高比1.51倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    },
-    {
-      "name": "名村造船所（7014）",
-      "code": "7014",
-      "ticker": "7014.T",
-      "side": "SHORT",
-      "score": 68,
-      "trigger": 3495.0,
-      "stop": 3845.0,
-      "target1": 2970.0,
-      "target2": 2620.0,
-      "rvol": 3.09,
-      "atr_pct": 6.29,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-13.6%／出来高比3.09倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    }
-  ]
+  "count": 0,
+  "candidates": []
 }
