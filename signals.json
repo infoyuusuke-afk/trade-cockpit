@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-11 23:40:58 JST",
+  "updated_at": "2026-11-12 07:53:45 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -1214,7 +1214,7 @@
       "ma5": 7618.8,
       "rvol": 0.68,
       "ret20": 18.65,
-      "atr_pct": 4.22,
+      "atr_pct": 4.23,
       "signal_date": "2026-11-11",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.68倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -1577,7 +1577,7 @@
         {
           "o": 7831.0,
           "h": 8041.0,
-          "l": 7743.0,
+          "l": 7735.0,
           "c": 7857.0
         }
       ],
@@ -2002,8 +2002,8 @@
   "overnight_short": [],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-11-11T23:40:51+09:00",
-    "decision_at": "2026-11-11T23:40:51+09:00",
+    "generated_at": "2026-11-12T07:53:40+09:00",
+    "decision_at": "2026-11-12T07:53:40+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -3873,7 +3873,7 @@
         },
         {
           "o": 3215.0,
-          "h": 3262.0,
+          "h": 3261.0,
           "l": 3173.0,
           "c": 3190.0
         }
@@ -5446,7 +5446,7 @@
         {
           "o": 3420.0,
           "h": 3477.0,
-          "l": 3394.0,
+          "l": 3391.0,
           "c": 3418.0
         }
       ],
