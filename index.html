@@ -2610,7 +2610,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     const tag=em?'<div class="earn-tag">📅 決算またぎ　'+esc(em.label)+'・'+esc(em.time?em.time:"時刻未確認")+(es.state==="OLD"?"（予定は"+esc(es.generated_on||"")+"に読んだもの）":"")+'</div>':"";
     const card=window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
     // OWNER 2026-11-11 「今夜決算の札はカードの中に入れて」（決算またぎの銘柄が一目でわかる形）: the label inside its own card, the card framed red
-    return tag?String(card).replace(/^(\s*<[a-zA-Z]+)([^>]*)>/,(m,open,attrs)=>open+(/class="/.test(attrs)?attrs.replace('class="','class="earn-card '):attrs+' class="earn-card"')+'>'+tag):card;
+    if(!tag)return card;
+    const put=String(card).replace(/^(\s*<[a-zA-Z]+)([^>]*)>/,(m,open,attrs)=>open+(/class="/.test(attrs)?attrs.replace('class="','class="earn-card '):attrs+' class="earn-card"')+'>'+tag);
+    return put===String(card)?tag+card:put;   // audit b8efe36: never lose the label
    }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
    if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日14:00基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝当日15:30終値から翌取引日14:00の値段まで（14:00の値段が無い日は終値）。場中はMFE・MAEも別記録。"});
@@ -4632,7 +4634,8 @@ main .card hr{display:none}
     const fs=fold.querySelector(".tl-fold-slot");
     const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);
     // audit 05a4155: keep the listed order (an element made later, like mel-live, goes to its place, not to the end); moved only when it differs
-    if(want.some((el,i)=>fs.children[i]!==el))want.forEach(el=>fs.appendChild(el));
+    const now=[...fs.children].filter(el=>want.includes(el));   // audit b8efe36: compare only the listed ones
+    if(want.length!==now.length||want.some((el,i)=>now[i]!==el))want.forEach(el=>fs.appendChild(el));
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them
     const intro=pane.querySelector(":scope > .pane-intro");
     let at=intro?intro.nextElementSibling:pane.firstElementChild;
