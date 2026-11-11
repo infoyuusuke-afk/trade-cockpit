@@ -300,7 +300,10 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  // OWNER 2026-11-12 「コクピットに今日の相場の型を一言で出す版を作って（8:11の記録から、意味を一文で、検証中と書く、売買サインにしない）」:
  // /market_types.json = the PC's 8:11 record of today's market types (研究・検証中). One line next to the lamps, only for today's
- // record; nothing before it is written. Neutral colour (not red or green), no arrow, no order. The voice is the 8:40 morning voice.
+ // record; nothing before it is written. Neutral colour (not red or green), no arrow, no order.
+ // OWNER 2026-11-12 「画面の『今日の型：型〇（検証中）』1行と声の1文を一緒に版にして」: on a day with a type, one sentence is spoken
+ // once, from 8:40 until 9:00 (Tokyo time); the day is kept in this browser and in the page, so a reload or blocked storage does
+ // not repeat it. Not while the real account's stop-loss band is on (its voice comes first; it waits for the next look).
  const renderTypes=()=>{
    const el=document.getElementById("trade-type-line");if(!el)return;
    fetch("/market_types.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
@@ -309,11 +312,21 @@ document.addEventListener("DOMContentLoaded",()=>{
      const ts=Array.isArray(j.types)?j.types:[];
      const names=ts.map(x=>String(x.name||"")).join("・");
      const meaning=[...new Set(ts.map(x=>String(x.meaning||"")))].join("／");
-     const text=ts.length?"今日の型："+names+"　"+meaning+"（研究・検証中・売買サインではない）":"今日の型：なし（研究・検証中）";
-     el.innerHTML='<span class="type-line">'+esc(text)+'</span>';el.title="8:11の記録（"+esc(String(j.recorded_at||""))+"）から。予測ではありません";
-   }).catch(()=>{el.innerHTML="";});
+     const text=ts.length?"今日の型："+names+"（検証中）　"+meaning+"・売買サインではない":"今日の型：なし（検証中）";
+     el.innerHTML='<span class="type-line">'+esc(text)+'</span>';el.title=text+"\n8:11の記録（"+String(j.recorded_at||"")+"）から。研究で、予測ではありません";
+     const np=window.jstParts(Date.now());
+     if(ts.length&&np.min>=520&&np.min<540&&typeof window.cockpitSpeak==="function"){
+       let said=window.__typesSpoken||"";try{said=localStorage.getItem("cockpitTypesSpokenV1")||said;}catch(_){}
+       const g=typeof window.realGuardFresh==="function"?window.realGuardFresh():null,stopOn=!!(g&&Array.isArray(g.stop)&&g.stop.length);
+       if(said!==today&&window.__typesSpoken!==today&&!stopOn){
+         window.__typesSpoken=today;try{localStorage.setItem("cockpitTypesSpokenV1",today);}catch(_){}
+         try{window.cockpitSpeak("今日の相場の型は、"+ts.map(x=>String(x.name||"")).join("と")+"。研究では、"+meaning.replace(/／/g,"、")+"です。検証中で、予測ではありません。","WATCH");}catch(_){}
+       }
+     }
+   }).catch(()=>{el.innerHTML="";el.title="";});
  };
- {const st=document.createElement("style");st.textContent="#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:nowrap}";document.head.appendChild(st);}
+ // audit cb25546: a long line is cut with … inside the band (1130 px) instead of running out of it
+ {const st=document.createElement("style");st.textContent="#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}";document.head.appendChild(st);}
  setTimeout(renderTypes,2500);
  setInterval(renderTypes,60000);
  // the list under the 定時 lamp (opened by a press)

@@ -19,9 +19,15 @@ class MarketTypesLine(unittest.TestCase):
         i = HTML.index("const renderTypes=()=>{")
         block = HTML[i:HTML.index("setInterval(renderTypes,60000);", i)]
         self.assertIn('if(!j||String(j.day||"")!==today){el.innerHTML="";', block)   # only today's 8:11 record
-        self.assertIn("（研究・検証中・売買サインではない）", block)
+        self.assertIn('"今日の型："+names+"（検証中）　"+meaning+"・売買サインではない"', block)
+        self.assertIn('"今日の型：なし（検証中）"', block)
+        self.assertIn("max-width:520px;overflow:hidden;text-overflow:ellipsis", HTML)   # audit cb25546
         self.assertIn("esc(text)", block)
-        self.assertNotIn("cockpitSpeak", block)   # the voice is the 8:40 morning voice, not the screen
+        # 「声の1文を一緒に版にして」: once a day, 8:40-9:00, only with a type, after the stop-loss band
+        self.assertIn("if(ts.length&&np.min>=520&&np.min<540&&typeof window.cockpitSpeak===\"function\"){", block)
+        self.assertIn('if(said!==today&&window.__typesSpoken!==today&&!stopOn){', block)
+        self.assertIn('localStorage.setItem("cockpitTypesSpokenV1",today)', block)
+        self.assertIn("検証中で、予測ではありません。", block)
         self.assertNotIn("#35e2ae", block)
         self.assertNotIn("#f23645", block)
 
