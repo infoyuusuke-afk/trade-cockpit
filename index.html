@@ -4149,6 +4149,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '</table>'+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+evLine(cap.rule_ev)+'</div>';
   }
   // AIトレード日記タブ：資金の条件と線グラフ
+  chartSvg.n=0;
   function chartSvg(pts,from,to){
     const W=1000,H=200,L=58,R=8,T=10,B=22,toMin=hm=>{const [h,m]=String(hm).split(":").map(Number);return h*60+m;};
     const x0=toMin(from),x1=toMin(to),xs=v=>L+(toMin(v)-x0)/(x1-x0)*(W-L-R);
@@ -4158,7 +4159,10 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     let ticks="";for(let m=x0;m<=x1;m+=60){const hm=String(Math.floor(m/60)).padStart(2,"0")+":00";ticks+='<text x="'+xs(hm).toFixed(1)+'" y="'+(H-6)+'" fill="#9aa0a6" font-size="11" text-anchor="'+(xs(hm)>W-R-20?"end":"middle")+'">'+hm+'</text>';}
     return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img"><line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(0).toFixed(1)+'" y2="'+ys(0).toFixed(1)+'" stroke="#3a3f4b" stroke-dasharray="4 4"/>'+
       '<text x="4" y="'+(T+10)+'" fill="#9aa0a6" font-size="11">'+esc(yen(hi))+'</text><text x="4" y="'+(H-B)+'" fill="#9aa0a6" font-size="11">'+esc(yen(lo))+'</text>'+ticks+
-      (pts.length?'<path d="'+path(1)+'" fill="none" stroke="#5aa9ff" stroke-width="2"/><path d="'+path(2)+'" fill="none" stroke="#f5c542" stroke-width="2"/>':'')+'</svg>';
+      // OWNER 2026-11-11 「ーの時は赤、プラスになったら緑ラインにして」: the 確定＋含み line is green above 0 and red below 0 (a gradient split at the 0 line)
+      (pts.length?(()=>{const id="capg"+(++chartSvg.n),z=Math.max(0,Math.min(1,(ys(0)-T)/(H-T-B)));
+        return '<defs><linearGradient id="'+id+'" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="'+T+'" y2="'+(H-B)+'"><stop offset="0" stop-color="#35e2ae"/><stop offset="'+z.toFixed(4)+'" stop-color="#35e2ae"/><stop offset="'+z.toFixed(4)+'" stop-color="#ff5a5f"/><stop offset="1" stop-color="#ff5a5f"/></linearGradient></defs>'+
+          '<path d="'+path(1)+'" fill="none" stroke="#5aa9ff" stroke-width="2" stroke-dasharray="6 4"/><path d="'+path(2)+'" fill="none" stroke="url(#'+id+')" stroke-width="2.5"/>';})():'')+'</svg>';
   }
   // OWNER 2026-11-11 「AIコクピットはかえない　AIトレード日記タブに資金３００万からスタートした場合のエアトレードを追加」:
   // positions.capital.air300 (the days before today, 300万 that grows with the results) + today's 300万 figure. Display only, no order.
@@ -4253,7 +4257,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const S=sizes(),s=S.find(x=>x.label===mode)||S[0];
     const cond='<ul class="g-decided"><li>100株：1回100株ずつ（今までと同じ）</li><li>300万・信用：1回は300万円分まで（100株単位）、同時に持つ合計は約990万円まで</li><li>500万・信用：1回は500万円分まで（100株単位）、同時に持つ合計は約1,650万円まで</li><li>入れない時（枠が足りない・1単元が資金より高い）は入らずに数える。デイは費用込み、持ち越しは持った日数分の金利込み、含みは費用前。仮想・注文なし</li></ul>';
     if(!s){sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>資金の条件と1日の損益</h2></div>'+cond+'<p class="g">まだ読めません（コクピットの記録から1分ほどで出ます）</p>';return;}
-    const legend='<div class="cap-legend"><i style="background:#5aa9ff"></i>確定<i style="background:#f5c542"></i>確定＋含み</div>';
+    const legend='<div class="cap-legend"><i style="background:repeating-linear-gradient(90deg,#5aa9ff 0 6px,transparent 6px 10px)"></i>確定<i style="background:linear-gradient(90deg,#35e2ae 50%,#ff5a5f 50%)"></i>確定＋含み（プラスは緑・マイナスは赤）</div>';
     sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>資金の条件と1日の損益（メル・仮想）</h2><p>'+esc(cap.note||"")+'</p></div>'+cond+
       '<div class="cap-modes">'+S.map(x=>'<button type="button" data-cap="'+esc(x.label)+'" class="'+(x.label===s.label?"on":"")+'">'+esc(x.label)+(x.capital?"・信用":"")+'</button>').join("")+'</div>'+
       '<div class="cap-chart"><h4>デイ　9:00〜15:30　今日 '+yen(s.rows.day.done+s.rows.day.open)+'（確定 '+yen(s.rows.day.done)+'）</h4>'+legend+chartSvg(s.day_curve||[],"09:00","15:30")+'</div>'+

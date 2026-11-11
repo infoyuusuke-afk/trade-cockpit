@@ -47,6 +47,12 @@ class OvernightChartText(unittest.TestCase):
         # audit ace1aed: only the label at the right edge is anchored at its end (15:00 on the 15:30 chart stays centred)
         self.assertIn("""text-anchor="'+(xs(hm)>W-R-20?"end":"middle")+'">'""", HTML)
 
+    def test_line_green_above_zero_red_below(self):
+        # OWNER 2026-11-11 「ーの時は赤、プラスになったら緑ラインにして」
+        self.assertIn('<stop offset="0" stop-color="#35e2ae"/>', HTML)
+        self.assertIn("stroke=\"url(#'+id+')\" stroke-width=\"2.5\"", HTML)
+        self.assertIn("確定＋含み（プラスは緑・マイナスは赤）", HTML)
+
     def test_heading_says_the_size_and_lists_the_holds(self):
         self.assertIn("で入った場合）　きのう15:25に入り、今日14:00に決済　合計 ", HTML)
         self.assertIn("onClosed=Array.isArray(p.overnight_closed)?p.overnight_closed:[];", HTML)
