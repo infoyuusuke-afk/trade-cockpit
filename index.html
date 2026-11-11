@@ -718,7 +718,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 <style>#focus-analyst{margin-top:10px}#focus-analyst h3{font-size:14px;margin:6px 0}#focus-analyst .fa-meta{font-size:12px;color:#9aa0a6;margin:2px 0 4px}
-#focus-analyst .fa-tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;background:#1c2a3a;color:#8ec5ff;margin-right:6px}</style>
+#focus-analyst .fa-tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;background:#1c2a3a;color:#8ec5ff;margin-right:6px}
+#focus-analyst .fa-side{display:inline-block;font-size:12px;font-weight:800;padding:1px 8px;border-radius:6px;background:#2a2e39;color:#C4C9D1}
+#focus-analyst .fa-side.long{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b3a}#focus-analyst .fa-side.short{background:#3a1216;color:#ff6b6b;border:1px solid #7a2a30}
+#focus-analyst .focus-pin.fa-long .cc-card{box-shadow:inset 3px 0 0 #35e2ae}#focus-analyst .focus-pin.fa-short .cc-card{box-shadow:inset 3px 0 0 #ff5a5f}</style>
 <script>
 // OWNER 2026-11-09 「FOCUSの空いた枠に、8:50と12:20にアナリストの今日の8銘柄から自信の高い順でMS2の100銘柄に入っているものを自動で入れて。
 // 自分で固定した銘柄が先で外さない。カードに誰が挙げたか・自信・入る条件を出す。表示と記録だけで注文はしない」:
@@ -747,7 +750,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       const row=rows.get(x.ticker),foot="AIアナリスト "+x.who+"・自信 "+x.conf+"・"+x.side+"・"+x.entry;
       const card=lastLive&&row&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,foot},{label:x.side==="買い"?"BUY":"SHORT",cls:x.side==="買い"?"long":"short"},"1m")
         :(typeof window.renderCockpitCard==="function"?window.renderCockpitCard({symbol:x.code,company:x.name,direction:"block",failClosed:"MS2入力未認証・鮮度切れ・値段なし",freshness:"stale",price:null,foot}):"");
-      return '<div class="focus-pin"><span class="fa-tag">アナリスト・自信'+String(x.conf).replace(/[<>&"']/g,"")+'</span>'+card+'</div>';}).join("")+'</div>';
+      // OWNER 2026-11-11 「アナリスト銘柄はLONG方向か、一目でわかるように」: the side as a coloured chip above the card (also while the card is closed), and the card edge in the side's colour
+      const buy=x.side==="買い",sell=/売/.test(String(x.side||""))&&!buy,dir=buy?"long":sell?"short":"";
+      const chip=dir?'<span class="fa-side '+dir+'">'+(buy?"▲ LONG（買い）":"▼ SHORT（空売り）")+'</span>':'<span class="fa-side">向き未確認</span>';
+      return '<div class="focus-pin fa-'+(dir||"none")+'"><span class="fa-tag">アナリスト・自信'+String(x.conf).replace(/[<>&"']/g,"")+'</span>'+chip+card+'</div>';}).join("")+'</div>';
   }
   document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{};lastLive=window.cockpitMs2ScreenReady?.(d)===true;
     rows=new Map((Array.isArray(d.all_targets)?d.all_targets:[]).filter(r=>r&&typeof r.ticker==="string").map(r=>[r.ticker,r]));paint();});

@@ -1,5 +1,6 @@
 """OWNER 2026-11-09 「FOCUSのアナリスト銘柄を書き出すPCの仕組みと16:00の記録をGitHubに上げて監査に回して」. Synthetic data only."""
 import unittest
+from pathlib import Path
 
 from scripts import v10_focus_analyst_build as fa
 from scripts import v10_positions_live as pos
@@ -114,3 +115,12 @@ class Record(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FocusAnalystSide(unittest.TestCase):
+    def test_side_chip_on_every_analyst_card(self):
+        # OWNER 2026-11-11 「アナリスト銘柄はLONG方向か、一目でわかるように」: a coloured chip above the card, also while the card is closed
+        html = (Path(__file__).resolve().parents[1] / "index.html").read_text(encoding="utf-8")
+        self.assertIn('(buy?"▲ LONG（買い）":"▼ SHORT（空売り）")', html)
+        self.assertIn("#focus-analyst .fa-side.long{", html)
+        self.assertIn("'<div class=\"focus-pin fa-'+(dir||\"none\")+'\">", html)
