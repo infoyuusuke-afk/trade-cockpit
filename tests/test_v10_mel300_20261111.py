@@ -160,7 +160,10 @@ class MelAccount(unittest.TestCase):
         self.assertIn("function melHtml(){", HTML)
         self.assertIn("メル口座（任せる300万・仮想）", HTML)
         self.assertIn("function melLiveHtml(){", HTML)
-        self.assertIn('["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].forEach(id=>', HTML)   # in トレード中 「仮想の成績」
+        # 「今夜決算の札はカードの中に入れて」: the label inside its own card, framed red
+        self.assertIn("return tag?String(card).replace(", HTML)
+        self.assertIn(".earn-card{box-shadow:inset 0 0 0 2px #F23645!important}", HTML)
+        self.assertIn('const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)   # in トレード中 「仮想の成績」
 
 
 if __name__ == "__main__":

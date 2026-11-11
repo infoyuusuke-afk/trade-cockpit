@@ -2608,7 +2608,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     // OWNER 2026-11-09 「決算またぎは…Bと研究にする」: 今夜決算 / 明日決算 (時刻未確認) in red above the card; nothing is removed
     const es=window.cockpitEarningsSoon,em=es&&es.items?es.items[String(x.ticker||"").replace(/\.T$/,"")]:null;
     const tag=em?'<div class="earn-tag">'+esc(em.label)+'・'+esc(em.time?em.time:"時刻未確認")+(es.state==="OLD"?"（予定は"+esc(es.generated_on||"")+"に読んだもの）":"")+'</div>':"";
-    return tag+window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
+    const card=window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
+    // OWNER 2026-11-11 「今夜決算の札はカードの中に入れて」（決算またぎの銘柄が一目でわかる形）: the label inside its own card, the card framed red
+    return tag?String(card).replace(/^(\s*<[a-zA-Z]+)([^>]*)>/,(m,open,attrs)=>open+(/class="/.test(attrs)?attrs.replace('class="','class="earn-card '):attrs+' class="earn-card"')+'>'+tag):card;
    }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
    if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日14:00基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝当日15:30終値から翌取引日14:00の値段まで（14:00の値段が無い日は終値）。場中はMFE・MAEも別記録。"});
@@ -3990,7 +3992,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{loadHolds();setInterval(loadHolds,600000);setInterval(()=>{render();renderGuard();},3000);});
 })();
 </script>
-<style>.earn-tag{display:inline-block;margin:0 0 4px;padding:1px 8px;border-radius:6px;background:#341418;color:#ff5a5f;font-weight:700;font-size:12px}
+<style>.earn-card{box-shadow:inset 0 0 0 2px #F23645!important}.earn-card>.earn-tag{display:block;width:max-content;margin:0 0 6px}
+.earn-tag{display:inline-block;margin:0 0 4px;padding:1px 8px;border-radius:6px;background:#341418;color:#ff5a5f;font-weight:700;font-size:12px}
 .vd-held{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin:-4px 0 8px;padding:5px 12px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-bg-card);color:var(--cc-text-primary);font-size:12.5px}
 .vd-held b{font-variant-numeric:tabular-nums}.vd-held .up{color:var(--cc-long)}.vd-held .dn{color:var(--cc-short)}.vd-held .g{color:var(--cc-text-secondary)}
 .cap-box{margin:0 0 8px;padding:6px 12px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-bg-card);color:var(--cc-text-primary);font-size:12.5px}
@@ -4256,7 +4259,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
       '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();
     let ml=document.getElementById("mel-live");
-    if(!ml){ml=document.createElement("div");ml.id="mel-live";ml.className="cap-box mel-live-box";document.body.appendChild(ml);}
+    if(!ml){ml=document.createElement("div");ml.id="mel-live";ml.className="cap-box mel-live-box";(document.querySelector("#tl-virtual .tl-fold-slot")||document.body).appendChild(ml);}
     ml.innerHTML=melLiveHtml();
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
@@ -4626,7 +4629,9 @@ main .card hr{display:none}
     if(!fold.dataset.tlInit){fold.dataset.tlInit="1";fold.open=true;
       fold.addEventListener("toggle",()=>{const h=fold.querySelector(".tl-fold-hint");if(h)h.textContent=fold.open?"押すと閉じる":"押すと開く";});}
     const fs=fold.querySelector(".tl-fold-slot");
-    ["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentElement!==fs)fs.appendChild(el);});
+    const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);
+    // audit 05a4155: keep the listed order (an element made later, like mel-live, goes to its place, not to the end); moved only when it differs
+    if(want.some((el,i)=>fs.children[i]!==el))want.forEach(el=>fs.appendChild(el));
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them
     const intro=pane.querySelector(":scope > .pane-intro");
     let at=intro?intro.nextElementSibling:pane.firstElementChild;
