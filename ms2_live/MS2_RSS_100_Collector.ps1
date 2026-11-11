@@ -3433,7 +3433,10 @@ try {
                 $slShort = @($rpMarginRows | Where-Object { ([string]$_.side).Contains("売") } | ForEach-Object { [string]$_.code })
                 $slLong = @(@($rpMarginRows | Where-Object { -not ([string]$_.side).Contains("売") }) + @($rpCashRows) | ForEach-Object { [string]$_.code })
                 # OWNER 2026-11-07 「現物の一覧が読めないときは、両建てを『現物が読めていない』と表示し、損切りの声も止める」
-                if ($slInSession -and $null -ne $rpCash -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and @($rpMarginRows | Where-Object { $null -ne $_.pnl -and [double]$_.pnl -le -10000 -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) }).Count -gt 0) {
+                # OWNER 2026-11-11 「合計で−1万円でなる」: the total open loss of the margin positions that are not hedged (was: one position at −1万)
+                $slPlain = @($rpMarginRows | Where-Object { $null -ne $_.pnl -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) })
+                $slTotal = [double](($slPlain | Measure-Object -Property pnl -Sum).Sum)
+                if ($slInSession -and $null -ne $rpCash -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and $slPlain.Count -gt 0 -and $slTotal -le -10000) {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
                 }

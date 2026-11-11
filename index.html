@@ -3971,7 +3971,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!band){band=document.createElement("div");band.id="stop-loss-band";band.style.cssText="position:sticky;top:0;z-index:9999;background:#C62828;color:#fff;font-size:20px;font-weight:800;padding:8px 12px;text-align:center;display:none";document.body.prepend(band);}
     const acctDown=Number(window.cockpitAccountFailSeconds)>=60;   // OWNER 2026-11-06 「読めない状態が1分続いたら、声と赤い表示で『口座が読めていません』と知らせる」
     band.style.display=hits.length||acctDown?"block":"none";
-    band.innerHTML=(acctDown?['口座が読めていません（'+Math.floor(window.cockpitAccountFailSeconds/60)+'分）']:[]).concat(hits.map(h=>'損切り　'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)+(g.cashRead===false?'（現物が読めていない・声なし）':(g.hedged||[]).some(x=>String(x.code)===String(h.code))?'（両建て・声なし）':''))).join("<br>");
+    // OWNER 2026-11-11 「合計で−1万円でなる」: one line with the total, then each losing position (hedged ones are not in the total)
+    band.innerHTML=(acctDown?['口座が読めていません（'+Math.floor(window.cockpitAccountFailSeconds/60)+'分）']:[]).concat(hits.length?['損切り　信用の含み 合計 '+yen(g.stopTotal)+(g.cashRead===false?'（現物が読めていない・声なし）':'')]:[]).concat(hits.map(h=>'<span style="font-size:15px">'+clean(h.name)+'('+clean(h.code)+') '+clean(h.side)+' 含み '+yen(h.pnl)+'</span>')).join("<br>");
     let el=document.getElementById("real-guard-line");
     if(!el){el=document.createElement("div");el.id="real-guard-line";el.className="vd-line";box.insertAdjacentElement("beforebegin",el);}
     if(!g){el.className=acctDown?"vd-line over":"vd-line";el.textContent="実口座 今日の負け枠："+(acctDown?"読めません（口座が読めていません）":"読めません（V10停止中・MS2未接続・設定OFF）");return;}

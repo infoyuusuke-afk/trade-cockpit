@@ -709,8 +709,10 @@
       const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10).replace(/-/g,""),isToday=x=>String(x.open_date||"").replace(/\D/g,"")===today,sum=a=>a.reduce((t,x)=>t+(gNum(x.pnl)||0),0);
       [...margin.map(x=>({x,short:String(x.side||"").includes("売")})),...cash.map(x=>({x,short:false}))].forEach(({x,short})=>{
         const g=by[x.code]=by[x.code]||{code:x.code,name:x.name,long:0,short:0,pnl:0};g[short?"short":"long"]+=gNum(x.qty)||0;g.pnl+=gNum(x.pnl)||0;});
-      return {at:Date.now(),cashRead:acct.cash_state==="OK",done:marginDone,open:sum(margin.filter(isToday)),carry:sum(margin.filter(x=>!isToday(x))),cash:sum(cash),limit:-30000,hedged:Object.values(by).filter(g=>g.long>0&&g.short>0),
-        stop:margin.filter(x=>gNum(x.pnl)!==null&&gNum(x.pnl)<=-10000).map(x=>({code:x.code,name:x.name,side:x.side,pnl:gNum(x.pnl)}))};})():null;
+      // OWNER 2026-11-11 「合計で−1万円でなる」: the band (and the voice in the Collector) go by the total open loss of the margin positions that are not hedged
+      const hedged=Object.values(by).filter(g=>g.long>0&&g.short>0),hc=new Set(hedged.map(g=>String(g.code))),plain=margin.filter(x=>!hc.has(String(x.code))&&gNum(x.pnl)!==null),stopTotal=sum(plain);
+      return {at:Date.now(),cashRead:acct.cash_state==="OK",done:marginDone,open:sum(margin.filter(isToday)),carry:sum(margin.filter(x=>!isToday(x))),cash:sum(cash),limit:-30000,hedged,stopTotal,
+        stop:stopTotal<=-10000?plain.filter(x=>gNum(x.pnl)<0).map(x=>({code:x.code,name:x.name,side:x.side,pnl:gNum(x.pnl)})):[]};})():null;
     const csvAt=csvToday?String(rcsv.csv_saved_at||"").slice(11,16):"";
     const csvWhy=!rcsv||!rcsv.state?"":({NOT_CONFIGURED:"CSVの置き場所が未設定",NO_CSV:"楽天CSVがまだありません",CSV_OLD:"今日の楽天CSVがまだありません",NO_TODAY_ROWS:"楽天CSVに今日の行がありません",FORMAT_UNKNOWN:"楽天CSVの形が読めません",FOLDER_MISSING:"CSVの置き場所がありません"}[rcsv.state]||"");
     let html='<div class="g-tiles">'+
