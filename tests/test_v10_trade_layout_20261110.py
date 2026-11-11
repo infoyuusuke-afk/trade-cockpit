@@ -49,7 +49,7 @@ class TradeLayout(unittest.TestCase):
 
     def test_watch_is_a_switch(self):
         _, block = _block()
-        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"]];', block)
+        self.assertIn('const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"],["mel-live","メル300万"]];', block)   # OWNER 2026-11-11: メル300万 too
         # 寄り前 only 8:00-9:00 on weekdays (Tokyo); outside it the button is hidden and a stored 寄り前 shows 急変
         self.assertIn("return w>=1&&w<=5&&m>=480&&m<540;", block)
         # OWNER 2026-11-10 「見る銘柄は、8:00〜9:00は寄り前、9:00からは今動いている5を自動で開く。押して変えたら、その日はそのまま」
@@ -96,7 +96,8 @@ class TradeLayout(unittest.TestCase):
 
     def test_virtual_is_folded(self):
         _, block = _block()
-        self.assertIn('["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"]', block)   # OWNER 2026-11-11: the メル account live, too
+        self.assertIn('["virt-day-line","virt-held-line","cap-area","trade-fx-link"]', block)   # OWNER 2026-11-11: the メル account live moved to 見る銘柄
+        self.assertIn('["mel-live","メル300万"]', block)
         self.assertIn('"details"', block)
 
     def test_realtime_5_is_folded_in(self):

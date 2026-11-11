@@ -4288,7 +4288,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
       '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();
     let ml=document.getElementById("mel-live");
-    if(!ml){ml=document.createElement("div");ml.id="mel-live";ml.className="cap-box mel-live-box";(document.querySelector("#tl-virtual .tl-fold-slot")||document.body).appendChild(ml);}
+    if(!ml){ml=document.createElement("section");ml.id="mel-live";ml.className="cap-box mel-live-box";(document.querySelector("#tl-watch .tl-slot")||document.body).appendChild(ml);}
     ml.innerHTML=melLiveHtml();
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
@@ -4601,7 +4601,8 @@ main .card hr{display:none}
 // the old 「トレード中に見るところ」 section stays in the page, hidden, because the order-card loader needs its slot.
 (()=>{
   const KEY="cockpitTradeWatchView";
-  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"]];
+  const VIEWS=[["sp8-panel","急変"],["opportunity-radar","実況"],["ai-top5","AI注目"],["ms2-live-top5","今動いている5"],["premarket-gap-ranking","寄り前"],["watchlist-100","その他100銘柄"],["mel-live","メル300万"]];
+  // OWNER 2026-11-11 「３００万資金のメルトレード、ここで切替ボタンない」: the メル account's trades today (mel-live) are one of the switch's views
   // 寄り前 is shown 8:00-9:00 (Tokyo time) only; outside that, a stored 寄り前 shows 急変 (the stored choice is kept for the next morning)
   const PRE="premarket-gap-ranking";
   const preOpen=()=>{const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();return w>=1&&w<=5&&m>=480&&m<540;};
@@ -4658,8 +4659,9 @@ main .card hr{display:none}
     if(!fold.dataset.tlInit){fold.dataset.tlInit="1";fold.open=true;
       fold.addEventListener("toggle",()=>{const h=fold.querySelector(".tl-fold-hint");if(h)h.textContent=fold.open?"押すと閉じる":"押すと開く";});}
     const fs=fold.querySelector(".tl-fold-slot");
-    const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);
-    // audit 05a4155: keep the listed order (an element made later, like mel-live, goes to its place, not to the end); moved only when it differs
+    const want=["virt-day-line","virt-held-line","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);
+    // audit 05a4155: keep the listed order (an element made later goes to its place, not to the end); moved only when it differs
+    // (mel-live left this list on 2026-11-11: it is in 見る銘柄 「メル300万」 now)
     const inFold=[...fs.children].filter(el=>want.includes(el));   // audit b8efe36: compare only the listed ones
     if(want.length!==inFold.length||want.some((el,i)=>inFold[i]!==el))want.forEach(el=>fs.appendChild(el));
     // order inside トレード中: 3 4 5 6 at the top, the rest (the hidden old section etc.) after them

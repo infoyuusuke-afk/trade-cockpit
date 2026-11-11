@@ -166,7 +166,11 @@ class MelAccount(unittest.TestCase):
         self.assertIn("<div class=\"earn-tag\">📅 決算またぎ　'+way+'　", HTML)
         self.assertIn('<b class="earn-way long">買いで持ち越し</b>', HTML)   # 「どっちでまたいでいるかも一目で」
         self.assertIn('<b class="earn-way short">空売りで持ち越し</b>', HTML)
-        self.assertIn('const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)
+        self.assertIn('const want=["virt-day-line","virt-held-line","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)
+        # OWNER 2026-11-11 「３００万資金のメルトレード、ここで切替ボタンない」: the live メル trades are a view of 見る銘柄 (a section, so the switch shows/hides it)
+        self.assertIn('["watchlist-100","その他100銘柄"],["mel-live","メル300万"]];', HTML)
+        self.assertIn('ml=document.createElement("section");ml.id="mel-live";ml.className="cap-box mel-live-box";(document.querySelector("#tl-watch .tl-slot")||document.body).appendChild(ml);', HTML)
+        self.assertNotIn('"virt-held-line","mel-live"', HTML)
         # audit 7c97780: a second `const now` in arrange() broke the whole トレード中 layout script (SyntaxError)
         i = HTML.index('const want=["virt-day-line"')
         block = HTML[HTML.rindex("<script", 0, i):HTML.index("</script>", i)]
