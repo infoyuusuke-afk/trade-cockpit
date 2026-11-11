@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-11 21:59:23 JST",
+  "updated_at": "2026-11-11 23:41:29 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -6176,22 +6176,6 @@
       "already_watched": false
     },
     {
-      "code": "2702",
-      "name": "McDonald's Holdings Company (Japan), Ltd.",
-      "exchange": "TSE",
-      "price": 9361,
-      "change_pct": 1.3533997401472497,
-      "volume": 1878200,
-      "relative_volume": 0.90953114255552,
-      "atr_pct": 3.15,
-      "vwap": 9388,
-      "high": 9715,
-      "low": 9088,
-      "market_cap": 1228009179688,
-      "sector": "Consumer Services",
-      "already_watched": false
-    },
-    {
       "code": "4344",
       "name": "Sourcenext Corporation",
       "exchange": "TSE",
@@ -6205,6 +6189,22 @@
       "low": 90,
       "market_cap": 12937702606,
       "sector": "Technology Services",
+      "already_watched": false
+    },
+    {
+      "code": "2702",
+      "name": "McDonald's Holdings Company (Japan), Ltd.",
+      "exchange": "TSE",
+      "price": 9361,
+      "change_pct": 1.3533997401472497,
+      "volume": 1878200,
+      "relative_volume": 0.90953114255552,
+      "atr_pct": 3.15,
+      "vwap": 9388,
+      "high": 9715,
+      "low": 9088,
+      "market_cap": 1228009179688,
+      "sector": "Consumer Services",
       "already_watched": false
     },
     {
