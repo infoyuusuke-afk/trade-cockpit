@@ -1721,7 +1721,10 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
   sigs.forEach(s => { const k = s.ticker + "|" + s.signal_bar + "|" + s.side; if (!held.has(k) && !(window.orderCardClosed && window.orderCardClosed.has(k))) {
     held.set(k, {s, at: nowMs});
     const buy = Number(s.side) > 0, entry = Number(s.entry), stop = Number(s.stop), target = Number(s.target);
-    if (!firstRead && [entry, stop, target].every(Number.isFinite) && entry > 0 && typeof window.cockpitSpeak === "function") {
+    // audit 08d2951: a pick that stays lit gets a new bar every minute or so; the same stock and side is said at most once in 10 minutes
+    const spoken = window.orderCardSpoken = window.orderCardSpoken || {}, sk = s.ticker + "|" + s.side, again = nowMs - (spoken[sk] || 0) < 600000;
+    if (!firstRead && !again && [entry, stop, target].every(Number.isFinite) && entry > 0 && typeof window.cockpitSpeak === "function") {
+      spoken[sk] = nowMs;
       const up = buy ? "down" : "up", code = String(s.ticker || "").replace(".T", "");
       window.cockpitSpeak("注文カード。" + String(s.name || "").replace(/（[0-9A-Z]{4}）$/, "") + "（" + code + "）、" + (buy ? "買い" : "空売り") + "。指値" + window.roundTick(entry, up, s.ticker) +
         "円、損切り" + window.roundTick(stop, up, s.ticker) + "円、利確" + window.roundTick(target, up, s.ticker) + "円。注文は武蔵で手動です。", "HOT");

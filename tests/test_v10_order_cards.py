@@ -203,6 +203,7 @@ class OrderCards(unittest.TestCase):
         # OWNER 2026-11-11 「注文カードがでた場合も、音声でしらせて」
         self.assertIn('window.cockpitSpeak("注文カード。" + String(s.name || "")', HTML)
         self.assertIn("const firstRead = !window.orderCardVoiceReady; window.orderCardVoiceReady = true;", HTML)
+        self.assertIn('sk = s.ticker + "|" + s.side, again = nowMs - (spoken[sk] || 0) < 600000;', HTML)   # once in 10 minutes per stock and side
         self.assertIn("注文は武蔵で手動です。\", \"HOT\");", HTML)
 
     def test_identity_fallback(self):
