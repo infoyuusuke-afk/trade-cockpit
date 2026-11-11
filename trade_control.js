@@ -714,6 +714,8 @@
       const hedged=Object.values(by).filter(g=>g.long>0&&g.short>0),hc=new Set(hedged.map(g=>String(g.code))),plain=margin.filter(x=>!hc.has(String(x.code))&&gNum(x.pnl)!==null),stopTotal=sum(plain);
       return {at:Date.now(),cashRead:acct.cash_state==="OK",done:marginDone,open:sum(margin.filter(isToday)),carry:sum(margin.filter(x=>!isToday(x))),cash:sum(cash),limit:-30000,hedged,stopTotal,
         stopOne:plain.some(x=>gNum(x.pnl)<=-10000),
+        // OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして」 (kept, audit e95cedb): a hedged position at −1万 shows in the band, no voice
+        stopHedged:margin.filter(x=>hc.has(String(x.code))&&gNum(x.pnl)!==null&&gNum(x.pnl)<=-10000).map(x=>({code:x.code,name:x.name,side:x.side,pnl:gNum(x.pnl)})),
         stop:(stopTotal<=-10000||plain.some(x=>gNum(x.pnl)<=-10000))?plain.filter(x=>gNum(x.pnl)<0).map(x=>({code:x.code,name:x.name,side:x.side,pnl:gNum(x.pnl)})):[]};})():null;
     const csvAt=csvToday?String(rcsv.csv_saved_at||"").slice(11,16):"";
     const csvWhy=!rcsv||!rcsv.state?"":({NOT_CONFIGURED:"CSVの置き場所が未設定",NO_CSV:"楽天CSVがまだありません",CSV_OLD:"今日の楽天CSVがまだありません",NO_TODAY_ROWS:"楽天CSVに今日の行がありません",FORMAT_UNKNOWN:"楽天CSVの形が読めません",FOLDER_MISSING:"CSVの置き場所がありません"}[rcsv.state]||"");
