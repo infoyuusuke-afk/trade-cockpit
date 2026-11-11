@@ -192,6 +192,10 @@ class OrderCards(unittest.TestCase):
         self.assertIn("$slPlain.Count -gt 0 -and ($slOne -or $slTotal -le -10000)", col)
         # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして」
         self.assertIn("-not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code)", col)
+        # OWNER 2026-11-11 「合計で−1万円でなる」「両方：どちらかで鳴る」: the band says the total and which line was reached; hedged rows are outside the list
+        self.assertIn("'損切り　信用の含み 合計 '+yen(g.stopTotal)+(g.stopTotal<=-10000?'（合計で−1万）':'')+(g.stopOne?'（1銘柄で−1万）':'')", HTML)
+        self.assertIn("stopOne:plain.some(x=>gNum(x.pnl)<=-10000),", src)
+        self.assertNotIn("（両建て・声なし）", HTML)
 
     def test_identity_fallback(self):
         # OWNER 2026-11-06 「285Aがまだ寄っていない時は、値段の本物確認を別の銘柄（東京エレクトロン8035、だめならアドバンテスト6857）でして…どの銘柄で確かめているかを画面に出す」
