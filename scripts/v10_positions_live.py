@@ -893,17 +893,21 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         for r in _rows(Path(records) / d / RULE_SIGNALS_FILE):
             e = _num(r.get("entry"))
             if e and e > 0:
-                sig.setdefault((r.get("ticker"), r.get("rule")), []).append((str(r.get("captured_at") or "")[11:19], e))
+                sig.setdefault((r.get("ticker"), r.get("rule")), []).append((str(r.get("captured_at") or "")[11:19], e,
+                                                                            -1 if "空売り" in str(r.get("signal") or "") else 1))
         for t in (v.get("trades") if isinstance(v, dict) else None) or []:
-            if not isinstance(t, dict) or t.get("status") != "CLOSED" or _num(t.get("yen")) is None or not t.get("rule"):
+            yv = _num(t.get("yen")) if isinstance(t, dict) else None
+            if yv is None or not math.isfinite(yv) or t.get("status") != "CLOSED" or not t.get("rule"):   # audit bcfb9de: no inf
                 continue
             ft = str(t.get("fill_time") or "")[:8]
-            cand = [e for at, e in sig.get((t.get("ticker"), t.get("rule")), []) if at <= ft]
+            cand = [(e, sd) for at, e, sd in sig.get((t.get("ticker"), t.get("rule")), []) if at <= ft]
             if not cand:
                 continue
-            y100 = float(_num(t.get("yen")))
+            y100 = float(yv)
+            fill, sd = cand[-1]
             trades.setdefault(d, []).append({"kind": "day", "rule": t["rule"], "in": ft[:5], "out": str(t.get("exit_time") or "")[:5],
-                                             "fill": cand[-1], "y100": y100, "pct": y100 / (cand[-1] * 100) * 100})
+                                             "fill": fill, "y100": y100, "pct": y100 / (fill * 100) * 100,
+                                             "name": str(t.get("name") or t.get("ticker") or ""), "side": sd})
     for r in _rows(Path(runtime) / HISTORY_FILE):
         d = str(r.get("evaluation_date") or "")
         if r.get("status") != "検証済み" or len(d) != 10 or d >= today:
@@ -919,8 +923,10 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         side = 1 if r.get("side") == "LONG" else -1
         pct = ret - (LONG_RATE if side > 0 else SHORT_RATE) * _days_between(str(r.get("decision_date") or ""), d) / 365 * 100
         trades.setdefault(d, []).append({"kind": "overnight", "rule": "ON_LONG" if side > 0 else "ON_SHORT", "in": "09:00", "out": EXIT_AT,
-                                         "fill": ref, "y100": pct / 100 * ref * 100, "pct": pct})
-    bal, peak, dd, past, rows, by = float(AIR_START), float(AIR_START), 0.0, {}, [], {}
+                                         "fill": ref, "y100": pct / 100 * ref * 100, "pct": pct,
+                                         "name": str(r.get("name") or r.get("ticker") or ""), "side": side,
+                                         "decided": str(r.get("decision_date") or "")})
+    bal, peak, dd, past, rows, by, hist = float(AIR_START), float(AIR_START), 0.0, {}, [], {}, []
     for d in sorted(trades):
         cap, ev = bal, {k: sum(v) / len(v) for k, v in past.items() if v}
         limit = cap * MARGIN_MULT
@@ -936,6 +942,9 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
             taken.append(dict(t, sh=sh))
             y = t["y100"] * sh / 100
             pnl += y
+            # OWNER 2026-11-11 「AIトレード日記タブにメルが資金３００万からはじめたトレード履歴を追加」: one row per trade taken
+            hist.append([d, t.get("decided", "") if t["kind"] == "overnight" else "", t["in"], t["out"], t.get("name", ""),
+                         t.get("side", 1), t["rule"], sh, round(t["fill"] * sh), round(y)])
             b = by.setdefault(t["rule"], [0.0, 0, 0])
             b[0] += y
             b[1] += 1
@@ -948,6 +957,7 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         rows.append([d, round(pnl), round(bal), len(taken), skipped])
     out = {"date": today, "start": AIR_START, "from": rows[0][0] if rows else None, "days": rows,
            "by_rule": {k: [round(v[0]), v[1], v[2]] for k, v in by.items()}, "max_dd": round(dd), "peak": round(peak),
+           "trades": hist,
            "real_submit_allowed": False}
     if day_dir.is_dir():
         tmp = f.with_name(f.name + ".tmp")

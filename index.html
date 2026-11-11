@@ -4021,6 +4021,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
+.air-hist details{border-top:1px solid #262a33;padding:6px 0}.air-hist summary{cursor:pointer;font-size:13px}.air-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}.air-tbl th,.air-tbl td{padding:3px 6px;text-align:left;white-space:nowrap}.air-tbl th{color:#9aa0a6;font-weight:600}.air-tbl td:nth-child(n+5){text-align:right}.air-tbl th:nth-child(n+5){text-align:right}.air-hist{overflow-x:auto}
 .cap-on-list{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#C4C9D1;margin:2px 0 6px}.cap-legend{font-size:11px;color:var(--cc-text-secondary)}.cap-legend i{display:inline-block;width:14px;height:3px;margin:0 4px 2px 10px;vertical-align:middle}</style>
 <script>
 // OWNER 2026-11-09 「メルの保有中の金額と保有中銘柄をここに表示して」「資金別で比較でき、みやすい画面にしてね」
@@ -4171,12 +4172,32 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     return '<div class="cap-chart air300"><h4>エアトレード（資金300万から・メル・仮想）　'+esc(String(a.from||"").slice(5).replace("-","/"))+'に300万で始めた場合　今 <b class="'+cls(diff)+'">'+man(now)+'</b>（<span class="'+cls(diff)+'">'+yen(diff)+'・'+(diff>=0?"+":"")+(diff/a.start*100).toFixed(1)+'%</span>）</h4>'+svg+
       '<div class="cap-on-list"><span>いちばん多い時 '+man(a.peak)+'</span><span>いちばん減った幅 <b class="dn">'+yen(a.max_dd)+'</b></span><span>勝った日 '+wins+'・負けた日 '+losses+'</span></div>'+
       '<div class="cap-on-list">'+rules+'</div>'+
+      airTrades(a)+
       '<p class="g" style="font-size:11px">もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
+  }
+  // OWNER 2026-11-11 「AIトレード日記タブにメルが資金３００万からはじめたトレード履歴を追加」: every trade of the replay, newest day first,
+  // one fold per day (the newest open; a day the OWNER opens or closes stays so across the redraws)
+  let airOpen=null;
+  function airTrades(a){
+    const T=Array.isArray(a.trades)?a.trades:[];if(!T.length)return '';
+    const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し",ON_SHORT:"持ち越し"};
+    const by={};T.forEach(t=>{(by[t[0]]=by[t[0]]||[]).push(t);});
+    const days=Object.keys(by).sort().reverse();if(airOpen===null)airOpen=new Set([days[0]]);
+    const bal={};(a.days||[]).forEach(r=>{bal[r[0]]=r;});
+    return '<div class="air-hist"><h4>トレード履歴（300万から・新しい日から・押すと開く）</h4>'+days.map(d=>{
+      const r=bal[d],xs=by[d].slice().sort((p,q)=>String(p[2]).localeCompare(String(q[2])));
+      return '<details data-airday="'+esc(d)+'"'+(airOpen.has(d)?' open':'')+'><summary>'+esc(d.slice(5).replace("-","/"))+'　'+xs.length+'回　その日 <b class="'+cls(r?r[1]:0)+'">'+yen(r?r[1]:null)+'</b>　残高 '+man(r?r[2]:null)+'</summary>'+
+        '<table class="air-tbl" data-keep-table><tr><th>時刻</th><th>銘柄</th><th>向き</th><th>手法</th><th>株数</th><th>金額</th><th>損益</th></tr>'+
+        xs.map(t=>{const [,dec,tin,tout,name,side,rule,sh,amt,y]=t;
+          const when=rule.indexOf("ON_")===0?esc(String(dec||"").slice(5).replace("-","/"))+' 15:25 → '+esc(tout):esc(tin)+' → '+esc(tout||"—");
+          return '<tr><td>'+when+'</td><td>'+esc(name)+'</td><td>'+(side>0?"買い":"空売り")+'</td><td>'+esc(NAMES[rule]||rule)+'</td><td>'+Number(sh).toLocaleString("ja-JP")+'</td><td>'+man(amt)+'</td><td class="'+cls(y)+'">'+yen(y)+'</td></tr>';}).join("")+
+        '</table></details>';}).join("")+'<p class="g" style="font-size:11px">入った回だけ（枠が足りずに入らなかったサインは出ません）。今日の分は、明日の朝にここへ入ります。持ち越しの損益は金利込み、デイトレは費用込み。仮想・注文なし。</p></div>';
   }
   function renderJournal(){
     const pane=document.querySelector('.tab-pane[data-pane="ai-journal"]');if(!pane)return;
     let sec=document.getElementById("cap-journal");
     if(!sec){sec=document.createElement("section");sec.id="cap-journal";sec.className="card wide";const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
+      sec.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.dataset.airday||!airOpen)return;if(d.open)airOpen.add(d.dataset.airday);else airOpen.delete(d.dataset.airday);},true);
       sec.addEventListener("click",e=>{const b=e.target.closest("button[data-cap]");if(!b)return;mode=b.dataset.cap;try{localStorage.setItem("cockpitCapModeV1",mode);}catch(_){}renderJournal();});}
     const S=sizes(),s=S.find(x=>x.label===mode)||S[0];
     const cond='<ul class="g-decided"><li>100株：1回100株ずつ（今までと同じ）</li><li>300万・信用：1回は300万円分まで（100株単位）、同時に持つ合計は約990万円まで</li><li>500万・信用：1回は500万円分まで（100株単位）、同時に持つ合計は約1,650万円まで</li><li>入れない時（枠が足りない・1単元が資金より高い）は入らずに数える。デイは費用込み、持ち越しは持った日数分の金利込み、含みは費用前。仮想・注文なし</li></ul>';

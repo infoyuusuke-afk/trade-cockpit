@@ -50,6 +50,10 @@ class Air300(unittest.TestCase):
         self.assertLess(d2[1], -30000)                   # −1% of 300万 and one day of interest
         self.assertEqual(a["by_rule"]["R4"], [30000, 1, 1])
         self.assertEqual(a["peak"], 3_030_000)
+        # 「トレード履歴を追加」: one row per trade taken (day, decided, in, out, name, side, rule, shares, amount, yen)
+        self.assertEqual(a["trades"][0], ["2026-11-04", "", "09:20", "09:40", "1111.T", 1, "R4", 3000, 3_000_000, 30000])
+        self.assertEqual(a["trades"][1][:7], ["2026-11-05", "2026-11-04", "09:00", "14:00", "y", 1, "ON_LONG"])
+        self.assertEqual(len(a["trades"]), 2)
 
     def test_broken_files_never_break_the_capital_view(self):
         # audit 0f33e32: a non-numeric yen and a list at the top level
@@ -57,7 +61,9 @@ class Air300(unittest.TestCase):
             rec, today = self._build(Path(d))
             f = rec / "2026-11-04" / live.OWNER_RULES_FILE
             f.write_text(json.dumps({"trades": [{"ticker": "1111.T", "rule": "R4", "status": "CLOSED", "fill_time": "09:20:00",
-                                                 "exit_time": "09:40:00", "yen": "abc"}, "x"]}), encoding="utf-8")
+                                                 "exit_time": "09:40:00", "yen": "abc"}, "x",
+                                                {"ticker": "1111.T", "rule": "R4", "status": "CLOSED", "fill_time": "09:20:00",
+                                                 "exit_time": "09:40:00", "yen": "inf"}]}), encoding="utf-8")
             a = live.air300(rec, Path(d), today, "2026-11-12")
             self.assertEqual([r[0] for r in a["days"]], ["2026-11-05", "2026-11-11"])
             f.write_text("[1, 2]", encoding="utf-8")
@@ -74,6 +80,9 @@ class Air300(unittest.TestCase):
     def test_diary_tab_shows_it(self):
         self.assertIn('"air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),', (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8"))
         self.assertIn("function airHtml(){", HTML)
+        self.assertIn("function airTrades(a){", HTML)
+        self.assertIn('<table class="air-tbl" data-keep-table>', HTML)   # the card adapter must leave the history as a table
+        self.assertIn('sec.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.dataset.airday||!airOpen)return;', HTML)
         self.assertIn("エアトレード（資金300万から・メル・仮想）", HTML)
         self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml();", HTML)
 
