@@ -28,19 +28,22 @@ class ScheduleLamp(unittest.TestCase):
         self.assertIn('j.state==="LATE"?["yellow","定時：遅れあり"', block)
         self.assertIn('j.state==="OK"&&j.checked>0?["green","定時：正常"', block)   # audit b8bb448: unknown states are gray
         self.assertIn('["gray","定時：点検が読めない"', block)
-        self.assertIn('try{window.cockpitSpeak(cls==="red"?', block)
+        self.assertIn('try{window.cockpitSpeak(stopped?', block)
         self.assertIn('el.title="";', HTML[i:HTML.index("setInterval(renderSched,60000);", i)])
         self.assertNotIn("innerHTML=\"+", block)
 
-    def test_voice_once_per_check(self):
-        # OWNER 2026-11-12 「あと音声も」
+    def test_voice_once_per_job_per_day_after_the_stop_loss(self):
+        # OWNER 2026-11-12 「あと音声も」「黄か赤に変わった時に1回だけ声で知らせる（同じ定時は1日1回、損切りの声が優先）」
         i = HTML.index("const renderSched=()=>{")
         block = HTML[i:HTML.index("setInterval(renderSched,60000);", i)]
         self.assertIn('if((cls==="red"||cls==="yellow")&&typeof window.cockpitSpeak==="function"){', block)
-        self.assertIn('if(said!==String(j.checked_at)&&window.__schedSpoken!==String(j.checked_at)){', block)
-        self.assertIn('window.__schedSpoken=String(j.checked_at);', block)   # no repeat every minute without storage
-        self.assertIn('localStorage.setItem("cockpitSchedSpokenV1",String(j.checked_at))', block)
+        self.assertIn("const fresh=probs.filter(p=>p&&p.name&&!mem.names.includes(String(p.name)));", block)
+        self.assertIn('localStorage.setItem("cockpitSchedSpokenV2",JSON.stringify(mem))', block)
+        self.assertIn("window.__schedSpoken=mem;", block)   # no repeat without storage
+        self.assertIn("stopOn=!!(g&&Array.isArray(g.stop)&&g.stop.length);", block)
+        self.assertIn("if(fresh.length&&!stopOn){", block)   # the stop-loss voice comes first
         self.assertIn("定時の点検。止まっている定時が", block)
+        self.assertNotIn("cockpitSchedSpokenV1", block)
 
     def test_press_opens_the_list(self):
         # OWNER 2026-11-12 「定時ランプ（緑・黄・赤、押すと一覧）」
