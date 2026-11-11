@@ -20,6 +20,14 @@ class VoiceClear(unittest.TestCase):
         self.assertIn('"WATCH"  { return @{length=1.35;weight=0.50;split=0.95} }', BRIDGE)   # OWNER 2026-11-11 「音声がききとりにくい」: slower again
         self.assertIn('"HOT"    { return @{length=1.12;weight=0.70;split=0.50} }', BRIDGE)
 
+    def test_ir_voice_says_the_judgement_in_plain_words(self):
+        # OWNER 2026-11-11 「音声 こうより警戒ってなんかわかりにくい」
+        self.assertIn('"高寄り警戒・押し目確認"{"あしたは高く始まりそうです。いったん下がるのを待ってから"}', SRC)
+        self.assertIn('"急騰過熱・翌朝飛び乗り禁止"{"上がりすぎです。あしたの朝は飛び乗らないでください"}', SRC)
+        self.assertIn('"パーセント。"+$irSay+"。")', SRC)
+        self.assertNotIn('"パーセント。"+$ir.judgement+"。")', SRC)
+        self.assertIn('judgement=$judgement;pts_date=$ptsMatch.pts_date}', SRC)   # the screen and the CSV keep the label
+
     @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "no PowerShell")
     def test_bridge_reads_names_for_every_voice(self):
         # OWNER 2026-11-11 「音声がききとりにくい、銘柄名など」: the screen's voices go to the bridge directly, so it reads names too

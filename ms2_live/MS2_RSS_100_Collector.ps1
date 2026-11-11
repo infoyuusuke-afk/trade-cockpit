@@ -4436,7 +4436,9 @@ try {
             foreach($ir in @($irPtsTop5|Select-Object -First 3)){
                 $irVoiceKey=[string]$ir.code+'|'+[string]$ir.disclosure_time+'|'+[string]$ir.title
                 if(-not $lastIrVoiceCodes.ContainsKey($irVoiceKey)){
-                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。")
+                    # OWNER 2026-11-11 「音声 こうより警戒ってなんかわかりにくい」: the voice says the judgement in plain words (the screen and the CSV keep the short label)
+                    $irSay=switch([string]$ir.judgement){"急騰過熱・翌朝飛び乗り禁止"{"上がりすぎです。あしたの朝は飛び乗らないでください"}"高寄り警戒・押し目確認"{"あしたは高く始まりそうです。いったん下がるのを待ってから"}"公式材料＋PTS反応"{"会社の発表に、PTSが反応しています"}default{[string]$ir.judgement}}
+                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$irSay+"。")
                     $lastIrVoiceCodes[$irVoiceKey]=$now
                 }
             }
