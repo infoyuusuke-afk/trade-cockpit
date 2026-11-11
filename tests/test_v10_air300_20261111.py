@@ -121,11 +121,11 @@ class Air300(unittest.TestCase):
     def test_diary_tab_shows_it(self):
         self.assertIn('"air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),', (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8"))
         self.assertIn("function airHtml(){", HTML)
-        self.assertIn("function airTrades(a){", HTML)
+        self.assertIn("function airTrades(a,tag,title){", HTML)
         self.assertIn('<table class="air-tbl" data-keep-table>', HTML)   # the card adapter must leave the history as a table
-        self.assertIn('sec.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.dataset.airday||!airOpen)return;', HTML)
+        self.assertIn('sec.addEventListener("toggle",e=>{const d=e.target,o=d.dataset&&d.dataset.airday?airOpen[d.dataset.airtag||"air"]:null;if(!o)return;', HTML)
         self.assertIn("エアトレード（資金300万から・メル・仮想）", HTML)
-        self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml();", HTML)
+        self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();", HTML)
 
 
 if __name__ == "__main__":

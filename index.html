@@ -4021,6 +4021,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
 .cap-modes{display:flex;gap:6px;margin:6px 0}.cap-modes button{border:1px solid var(--cc-border);background:transparent;color:var(--cc-text-secondary);border-radius:6px;padding:3px 10px;font-weight:700;cursor:pointer}
 .cap-modes button.on{background:#0d2b23;color:#35e2ae;border-color:#1f6b3a}
 .cap-chart{margin:4px 0 10px}.cap-chart h4{margin:6px 0 2px;font-size:13px}.cap-chart svg{width:100%;height:200px;display:block}
+.mel-today{margin:4px 0 8px;padding:8px 10px;border:1px solid #3a3f4b;border-radius:6px;font-size:13px}.mel-today .g{font-size:12px;margin-top:2px}
 .air-hist details{border-top:1px solid #262a33;padding:6px 0}.air-hist summary{cursor:pointer;font-size:13px}.air-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}.air-tbl th,.air-tbl td{padding:3px 6px;text-align:left;white-space:nowrap}.air-tbl th{color:#9aa0a6;font-weight:600}.air-tbl td:nth-child(n+5){text-align:right}.air-tbl th:nth-child(n+5){text-align:right}.air-hist{overflow-x:auto}
 .cap-on-list{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#C4C9D1;margin:2px 0 6px}.cap-legend{font-size:11px;color:var(--cc-text-secondary)}.cap-legend i{display:inline-block;width:14px;height:3px;margin:0 4px 2px 10px;vertical-align:middle}</style>
 <script>
@@ -4165,7 +4166,13 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(a.start).toFixed(1)+'" y2="'+y(a.start).toFixed(1)+'" stroke="#6b7280" stroke-dasharray="5 4"/>';
     const every=Math.max(1,Math.ceil(pts.length/8));
     pts.forEach((p,k)=>{if(k%every===0||k===pts.length-1)svg+='<text x="'+x(k).toFixed(1)+'" y="'+(H-6)+'" fill="#9aa0a6" font-size="12" text-anchor="'+(k===pts.length-1?"end":k===0?"start":"middle")+'">'+esc(p[0]==="今日"?"今日":p[0].slice(5).replace("-","/"))+'</text>';});
-    svg+='<path d="'+pts.map((p,k)=>(k?"L":"M")+x(k).toFixed(1)+" "+y(p[1]).toFixed(1)).join("")+'" fill="none" stroke="'+(diff>=0?"#35e2ae":"#ff5a5f")+'" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+    svg+='<path d="'+pts.map((p,k)=>(k?"L":"M")+x(k).toFixed(1)+" "+y(p[1]).toFixed(1)).join("")+'" fill="none" stroke="'+(diff>=0?"#35e2ae":"#ff5a5f")+'" stroke-width="2.5" stroke-linejoin="round"/>';
+    // OWNER 2026-11-11 「メル口座 OK」: the メル account (任せる300万) on the same days, in yellow, when it has days
+    const mel=cap.mel300,mb={};if(mel&&Array.isArray(mel.days))mel.days.forEach(r=>{mb[r[0]]=r[2];});
+    const mp=pts.map((p,k)=>[k,mb[p[0]]]).filter(q=>q[1]!=null);
+    if(mp.length){const k0=pts.findIndex(p=>p[0]===mel.from);const start=k0>0?[[k0-1,mel.start]]:[];
+      svg+='<path d="'+start.concat(mp).map((q,i)=>(i?"L":"M")+x(q[0]).toFixed(1)+" "+y(Math.max(lo,Math.min(hi,q[1]))).toFixed(1)).join("")+'" fill="none" stroke="#f5c542" stroke-width="2.5" stroke-dasharray="6 3"/>';}
+    svg+='</svg>';
     const wins=a.days.filter(r=>r[1]>0).length,losses=a.days.filter(r=>r[1]<0).length;
     const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し 買い",ON_SHORT:"持ち越し 空売り"};
     const rules=Object.entries(a.by_rule||{}).sort((p,q)=>p[1][0]-q[1][0]).map(([k,v])=>'<span>'+esc(NAMES[k]||k)+' <b class="'+cls(v[0])+'">'+yen(v[0])+'</b>（'+v[1]+'回・'+v[2]+'勝）</span>').join("");
@@ -4173,31 +4180,50 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<div class="cap-on-list"><span>いちばん多い時 '+man(a.peak)+'</span><span>いちばん減った幅 <b class="dn">'+yen(a.max_dd)+'</b></span><span>勝った日 '+wins+'・負けた日 '+losses+'</span></div>'+
       '<div class="cap-on-list">'+rules+'</div>'+
       airTrades(a)+
-      '<p class="g" style="font-size:11px">もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。金曜の銘柄は、記録の日付が土日になっているので、次の営業日の引けの値段で計算。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
+      '<p class="g" style="font-size:11px">'+(mp.length?'黄色の点線はメル口座（任せる300万）。':'')+'もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。金曜の銘柄は、記録の日付が土日になっているので、次の営業日の引けの値段で計算。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
   }
   // OWNER 2026-11-11 「AIトレード日記タブにメルが資金３００万からはじめたトレード履歴を追加」: every trade of the replay, newest day first,
   // one fold per day (the newest open; a day the OWNER opens or closes stays so across the redraws)
-  let airOpen=null;
-  function airTrades(a){
+  const airOpen={};
+  function airTrades(a,tag,title){
+    tag=tag||"air";
     const T=Array.isArray(a.trades)?a.trades:[];if(!T.length)return '';
     const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し",ON_SHORT:"持ち越し"};
     const by={};T.forEach(t=>{(by[t[0]]=by[t[0]]||[]).push(t);});
-    const days=Object.keys(by).sort().reverse();if(airOpen===null)airOpen=new Set([days[0]]);
+    const days=Object.keys(by).sort().reverse();if(!airOpen[tag])airOpen[tag]=new Set([days[0]]);
     const bal={};(a.days||[]).forEach(r=>{bal[r[0]]=r;});
-    return '<div class="air-hist"><h4>トレード履歴（300万から・新しい日から・押すと開く）</h4>'+days.map(d=>{
+    return '<div class="air-hist"><h4>'+esc(title||"トレード履歴（300万から・新しい日から・押すと開く）")+'</h4>'+days.map(d=>{
       const r=bal[d],xs=by[d].slice().sort((p,q)=>String(p[2]).localeCompare(String(q[2])));
-      return '<details data-airday="'+esc(d)+'"'+(airOpen.has(d)?' open':'')+'><summary>'+esc(d.slice(5).replace("-","/"))+'　'+xs.length+'回　その日 <b class="'+cls(r?r[1]:0)+'">'+yen(r?r[1]:null)+'</b>　残高 '+man(r?r[2]:null)+'</summary>'+
+      return '<details data-airtag="'+esc(tag)+'" data-airday="'+esc(d)+'"'+(airOpen[tag].has(d)?' open':'')+'><summary>'+esc(d.slice(5).replace("-","/"))+'　'+xs.length+'回　その日 <b class="'+cls(r?r[1]:0)+'">'+yen(r?r[1]:null)+'</b>　残高 '+man(r?r[2]:null)+'</summary>'+
         '<table class="air-tbl" data-keep-table><tr><th>時刻</th><th>銘柄</th><th>向き</th><th>手法</th><th>株数</th><th>金額</th><th>損益</th></tr>'+
         xs.map(t=>{const [,dec,tin,tout,name,side,rule,sh,amt,y]=t;
           const when=rule.indexOf("ON_")===0?esc(String(dec||"").slice(5).replace("-","/"))+' 15:25 → '+esc(tout):esc(tin)+' → '+esc(tout||"—");
           return '<tr><td>'+when+'</td><td>'+esc(name)+'</td><td>'+(side>0?"買い":"空売り")+'</td><td>'+esc(NAMES[rule]||rule)+'</td><td>'+Number(sh).toLocaleString("ja-JP")+'</td><td>'+man(amt)+'</td><td class="'+cls(y)+'">'+yen(y)+'</td></tr>';}).join("")+
         '</table></details>';}).join("")+'<p class="g" style="font-size:11px">入った回だけ（枠が足りずに入らなかったサインは出ません）。今日の分は、明日の朝にここへ入ります。持ち越しの損益は金利込み、デイトレは費用込み。仮想・注文なし。</p></div>';
   }
+  // OWNER 2026-11-11 「メルに任せる300万を、今の300万とは別の仮想口座で作って。決めた内容は寄り前に記録、後から変えない」「メル口座 OK」:
+  // positions.capital.mel300: today's plan fixed before 9:00, the account from its first plan day, each day's plan and its trades.
+  function melHtml(){
+    const m=cap&&cap.mel300;if(!m||m.state==="UNAVAILABLE")return '<div class="cap-chart mel300"><h4>メル口座（任せる300万・仮想）</h4><p class="g">まだ読めません</p></div>';
+    const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し 買い",ON_SHORT:"持ち越し 空売り"};
+    const say=p=>p?(p.methods.length?p.methods.map(k=>NAMES[k]||k).join("・"):"今日は休む")+'　1回は残高の'+p.size_pct+'%　同時は残高の'+p.max_mult+'倍まで　持ち越し'+(p.overnight?"する":"しない")+'　負けの上限 '+(p.daily_stop_pct!=null?p.daily_stop_pct+'%':'なし'):"";
+    const tp=m.today_plan;
+    const todayLine=!tp?'<p class="g">今日の決めたこと：まだありません（平日8:30に決めて、9:00より前に固めます）</p>':
+      '<div class="mel-today"><b>今日の決めたこと（'+esc(String(tp.locked_at||""))+'に固定）</b>　'+(tp.plan?esc(say(tp.plan))+'<div class="g">理由：'+esc(tp.plan.reason||"")+'</div>':'<span class="dn">休み</span>（'+esc(tp.why||"")+'）')+
+      (m.changed_after_lock?'<div class="dn">固めた後に決めたことのファイルが書き換えられています（使っていません）</div>':'')+'</div>';
+    const rows=Array.isArray(m.days)?m.days:[],last=rows.length?rows[rows.length-1][2]:m.start,diff=last-m.start;
+    const plans={};(m.plans||[]).forEach(p=>{plans[p[0]]=p;});
+    const list=rows.slice().reverse().slice(0,10).map(r=>{const p=plans[r[0]]||[];return '<tr><td>'+esc(r[0].slice(5).replace("-","/"))+'</td><td>'+(p[2]?esc(say(p[2])):'<span class="g">休み（'+esc(p[3]||"")+'）</span>')+'</td><td>'+r[3]+'回'+(r[5]?'・'+esc(r[5])+'から止めた':'')+'</td><td class="'+cls(r[1])+'">'+yen(r[1])+'</td><td>'+man(r[2])+'</td></tr>';}).join("");
+    return '<div class="cap-chart mel300"><h4>メル口座（任せる300万・仮想）　'+(m.from?esc(m.from.slice(5).replace("-","/"))+'から　今 <b class="'+cls(diff)+'">'+man(last)+'</b>（<span class="'+cls(diff)+'">'+yen(diff)+'</span>）':'これから始まります')+'</h4>'+todayLine+
+      (rows.length?'<table class="air-tbl" data-keep-table><tr><th>日付</th><th>メルの決めたこと</th><th>入った回数</th><th>その日</th><th>残高</th></tr>'+list+'</table>':'')+
+      airTrades(m,"mel","メル口座のトレード履歴（新しい日から・押すと開く）")+
+      '<p class="g" style="font-size:11px">平日8:30にAI（Claude）がメルとして前の日までの結果を振り返り、その日の手法・1回の額・同時の上限・持ち越し・負けの上限を決めます。9:00より前に読んだ中身を指紋（ハッシュ）つきで固め、後から変えません。入るサインは上の300万と同じで、メルが選んだ手法にだけ、決めた額で入ります。その日の数字は翌朝に入ります。コクピットの中だけの検証で、仮想・注文なし。</p></div>';
+  }
   function renderJournal(){
     const pane=document.querySelector('.tab-pane[data-pane="ai-journal"]');if(!pane)return;
     let sec=document.getElementById("cap-journal");
     if(!sec){sec=document.createElement("section");sec.id="cap-journal";sec.className="card wide";const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
-      sec.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.dataset.airday||!airOpen)return;if(d.open)airOpen.add(d.dataset.airday);else airOpen.delete(d.dataset.airday);},true);
+      sec.addEventListener("toggle",e=>{const d=e.target,o=d.dataset&&d.dataset.airday?airOpen[d.dataset.airtag||"air"]:null;if(!o)return;if(d.open)o.add(d.dataset.airday);else o.delete(d.dataset.airday);},true);
       sec.addEventListener("click",e=>{const b=e.target.closest("button[data-cap]");if(!b)return;mode=b.dataset.cap;try{localStorage.setItem("cockpitCapModeV1",mode);}catch(_){}renderJournal();});}
     const S=sizes(),s=S.find(x=>x.label===mode)||S[0];
     const cond='<ul class="g-decided"><li>100株：1回100株ずつ（今までと同じ）</li><li>300万・信用：1回は300万円分まで（100株単位）、同時に持つ合計は約990万円まで</li><li>500万・信用：1回は500万円分まで（100株単位）、同時に持つ合計は約1,650万円まで</li><li>入れない時（枠が足りない・1単元が資金より高い）は入らずに数える。デイは費用込み、持ち越しは持った日数分の金利込み、含みは費用前。仮想・注文なし</li></ul>';
@@ -4211,7 +4237,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<div class="cap-chart"><h4>オーバーナイト（'+esc(s.label)+(s.capital?'・信用':'')+'で入った場合）　きのう15:25に入り、今日14:00に決済　合計 <span class="'+cls(s.rows.overnight.done+s.rows.overnight.open)+'">'+yen(s.rows.overnight.done+s.rows.overnight.open)+'</span>（'+s.rows.overnight.n+'銘柄）</h4>'+
       (onClosed.length?'<div class="cap-on-list">'+onClosed.map(x=>{const v=Number(x.pct);return '<span>'+esc(String(x.name||x.ticker||""))+' '+(x.side==="LONG"?"買い":"空売り")+' <b class="'+cls(v)+'">'+(Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2)+"%":"—")+'</b></span>';}).join("")+'</div>':'')+
       legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
-      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml();
+      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
   // 勝率・1回の平均（費用込み）・PFを横棒で出し、50%・0・1.0に基準の線、プラスは緑・マイナスは赤、回数も出す。その下に手法ごとの通算損益の線グラフ。

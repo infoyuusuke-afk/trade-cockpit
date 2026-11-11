@@ -21,6 +21,7 @@ real_submit_allowed is always false.
 from __future__ import annotations
 
 import csv
+import hashlib
 from datetime import date, datetime, timedelta, timezone
 import io
 import json
@@ -880,24 +881,8 @@ def _day_closes(path: Path) -> dict:
     return out
 
 
-def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
-    """OWNER 2026-11-11 「AIコクピットはかえない　AIトレード日記タブに資金３００万からスタートした場合のエアトレードを追加」:
-    the days before today replayed with 300万 that grows with the results (virtual, display only, no order, nothing on the
-    trading side changes). The same rules as the 300万 size: one trade up to the balance (100-share units), held total up
-    to the balance x MARGIN_MULT, the overnight first, same-minute signals by the rule's mean % of the earlier days, a rule not
-    above 0 only when one more full trade still fits. Day trades: owner_rules_virtual.json yen (100 shares, after cost)
-    scaled by shares; the entry price is the matching signal's entry (the record has no fill price). Overnight:
-    overnight_hold_history.csv 検証済み return_close_pct (to the next close) minus interest per day, held 09:00-14:00 for the
-    room. The Brain has no per-day record, so it is not in. Fixed once a day in records/<today>/air300_v1.json."""
-    f = day_dir / AIR_FILE
-    if _AIR_MEMO.get("date") == today:   # also when the day folder is not made yet (early morning): once per day
-        return dict(_AIR_MEMO)
-    try:
-        got = json.loads(f.read_text(encoding="utf-8"))
-        if got.get("date") == today:
-            return got
-    except (OSError, ValueError):
-        pass
+def _air_trades(records: Path, runtime: Path, today: str) -> tuple:
+    """The virtual trades of the days before today for the replays (air300 and the メル account): ({day: [trade]}, unpriced)."""
     try:
         names = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
     except OSError:
@@ -970,6 +955,28 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
                                          "fill": ref, "y100": pct / 100 * ref * 100, "pct": pct,
                                          "name": str(r.get("name") or r.get("ticker") or ""), "side": side,
                                          "decided": str(r.get("decision_date") or "")})
+    return trades, bad
+
+
+def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
+    """OWNER 2026-11-11 「AIコクピットはかえない　AIトレード日記タブに資金３００万からスタートした場合のエアトレードを追加」:
+    the days before today replayed with 300万 that grows with the results (virtual, display only, no order, nothing on the
+    trading side changes). The same rules as the 300万 size: one trade up to the balance (100-share units), held total up
+    to the balance x MARGIN_MULT, the overnight first, same-minute signals by the rule's mean % of the earlier days, a rule not
+    above 0 only when one more full trade still fits. Day trades: owner_rules_virtual.json yen (100 shares, after cost)
+    scaled by shares; the entry price is the matching signal's entry (the record has no fill price). Overnight:
+    overnight_hold_history.csv 検証済み return_close_pct (to the next close) minus interest per day, held 09:00-14:00 for the
+    room. The Brain has no per-day record, so it is not in. Fixed once a day in records/<today>/air300_v1.json."""
+    f = day_dir / AIR_FILE
+    if _AIR_MEMO.get("date") == today:   # also when the day folder is not made yet (early morning): once per day
+        return dict(_AIR_MEMO)
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+        if got.get("date") == today:
+            return got
+    except (OSError, ValueError):
+        pass
+    trades, bad = _air_trades(records, runtime, today)
     bal, peak, dd, past, rows, by, hist = float(AIR_START), float(AIR_START), 0.0, {}, [], {}, []
     for d in sorted(trades):
         cap, ev = bal, {k: sum(v) / len(v) for k, v in past.items() if v}
@@ -1011,6 +1018,160 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
         tmp.replace(f)
     return out
+
+
+# OWNER 2026-11-11 「メルに任せる300万を、今の300万とは別の仮想口座で作って。決めた内容は寄り前に記録、後から変えない」「メル口座 OK」:
+# every weekday at 8:30 Claude, as メル, looks back at the results and writes files/mel300/plan_<day>.json (MEL_PLAN_V1). The
+# first read before 9:00 is fixed in records/<day>/mel_plan_lock.json with its sha256; a plan written or changed later is
+# never used (the day is 休み and the change is noted). Virtual only, no order: the plan only filters and sizes the same
+# signals as the 300万 replay.
+MEL_DIR = "mel300"
+MEL_LOCK = "mel_plan_lock.json"
+MEL_SCHEMA = "MEL_PLAN_V1"
+MEL_METHODS = ("R1", "R2", "R4", "R5", "ON_LONG", "ON_SHORT")
+MEL_LOCK_BY = "09:00"
+_MEL_MEMO: dict = {}
+
+
+def mel_plan_check(plan, day: str):
+    """(plan in a fixed shape, None) or (None, why it is not usable)."""
+    if not isinstance(plan, dict) or plan.get("schema") != MEL_SCHEMA or plan.get("date") != day:
+        return None, "形か日付が違う"
+    methods = plan.get("methods")
+    if not isinstance(methods, list) or any(m not in MEL_METHODS for m in methods) or len(set(methods)) != len(methods):
+        return None, "手法が違う"
+    size, mult = _num(plan.get("size_pct")), _num(plan.get("max_mult"))
+    if size is None or not 10 <= size <= 100 or mult is None or not 0 < mult <= MARGIN_MULT:
+        return None, "額か上限が範囲の外"
+    stop = None
+    if plan.get("daily_stop_pct") is not None:
+        stop = _num(plan.get("daily_stop_pct"))
+        if stop is None or not 0.5 <= stop <= 10:
+            return None, "負けの上限が範囲の外"
+    if not isinstance(plan.get("overnight"), bool):
+        return None, "持ち越しの答えが無い"
+    return {"methods": list(methods), "size_pct": round(size), "max_mult": round(mult, 2), "daily_stop_pct": stop,
+            "overnight": plan["overnight"], "reason": str(plan.get("reason") or "")[:400]}, None
+
+
+def mel_lock(runtime: Path, day_dir: Path, today: str, now_hm: str):
+    """The day's fixed plan: read once before 9:00 and kept; after 9:00 without a lock the day is 休み."""
+    lock = day_dir / MEL_LOCK
+    try:
+        got = json.loads(lock.read_text(encoding="utf-8"))
+        if got.get("date") == today:
+            return got
+    except (OSError, ValueError):
+        pass
+    if datetime.strptime(today, "%Y-%m-%d").weekday() >= 5 or today in EXCHANGE_HOLIDAYS or not day_dir.parent.is_dir():
+        return None
+    src = Path(runtime) / MEL_DIR / ("plan_%s.json" % today)
+    out = {"date": today, "locked_at": now_hm, "plan": None, "sha256": None, "state": "休み", "why": None}
+    if now_hm < MEL_LOCK_BY:
+        try:
+            raw = src.read_bytes()
+        except OSError:
+            return None   # not written yet: look again on the next pass
+        out["sha256"] = hashlib.sha256(raw).hexdigest()
+        try:
+            plan, why = mel_plan_check(json.loads(raw.decode("utf-8-sig")), today)
+        except (ValueError, UnicodeDecodeError):
+            plan, why = None, "読めない"
+        out.update(plan=plan, state="決定" if plan else "休み", why=why)
+    else:
+        out["why"] = "9:00までに決めた記録が無い"
+    day_dir.mkdir(exist_ok=True)   # the Collector makes it too; before 9:00 it may not be there yet
+    tmp = lock.with_name(lock.name + ".tmp")
+    tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(lock)
+    return out
+
+
+def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str) -> dict:
+    """The メル account: 300万 from the first day with a fixed plan, the days before today replayed under each day's plan
+    (the same trades as air300; only the plan's methods; one trade = balance x size_pct; held total up to balance x max_mult;
+    overnight entered only when the deciding day's plan said so; once the day's closed loss reaches daily_stop_pct of the
+    balance no new day trade). Today: the fixed plan only (its trades come in tomorrow)."""
+    lock_today = mel_lock(runtime, day_dir, today, now_hm)
+    changed = None
+    if lock_today and lock_today.get("sha256"):
+        try:
+            cur = hashlib.sha256((Path(runtime) / MEL_DIR / ("plan_%s.json" % today)).read_bytes()).hexdigest()
+            changed = cur != lock_today["sha256"]
+        except OSError:
+            changed = None
+    if _MEL_MEMO.get("date") == today:
+        return dict(_MEL_MEMO, today_plan=lock_today, changed_after_lock=changed)
+    try:
+        names = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
+    except OSError:
+        names = []
+    locks = {}
+    for d in names:
+        try:
+            got = json.loads((Path(records) / d / MEL_LOCK).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(got, dict) and got.get("date") == d:
+            locks[d] = got
+    first = next((d for d in sorted(locks) if locks[d].get("plan")), None)
+    rows, hist, by, plans = [], [], {}, []
+    bal = peak = float(AIR_START)
+    dd = 0.0
+    if first:
+        trades, _bad = _air_trades(records, runtime, today)
+        for d in [x for x in names if x >= first and datetime.strptime(x, "%Y-%m-%d").weekday() < 5 and x not in EXCHANGE_HOLIDAYS]:
+            lk = locks.get(d) or {"state": "休み", "why": "決めた記録が無い"}
+            plan = lk.get("plan")
+            plans.append([d, lk.get("state"), plan, lk.get("why")])
+            cap, pnl, taken, skipped, stopped_at = bal, 0.0, [], 0, None
+            for t in sorted(trades.get(d, []), key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"])):
+                if t["kind"] == "overnight":
+                    dp = (locks.get(t.get("decided", "")) or {}).get("plan")
+                    if not dp or not dp.get("overnight") or t["rule"] not in dp["methods"]:
+                        continue
+                    size, mult = dp["size_pct"], dp["max_mult"]
+                else:
+                    if not plan or t["rule"] not in plan["methods"]:
+                        continue
+                    size, mult = plan["size_pct"], plan["max_mult"]
+                    if plan.get("daily_stop_pct"):
+                        done = sum(x["y"] for x in taken if x["out"] and x["out"] <= t["in"])
+                        if done <= -cap * plan["daily_stop_pct"] / 100:
+                            stopped_at = stopped_at or t["in"]
+                            skipped += 1
+                            continue
+                sh = _shares(t["fill"], cap * size / 100)
+                using = sum(x["fill"] * x["sh"] for x in taken if x["in"] <= t["in"] and x["out"] > t["in"])
+                if sh <= 0 or using + t["fill"] * sh > cap * mult:
+                    skipped += 1
+                    continue
+                y = t["y100"] * sh / 100
+                taken.append(dict(t, sh=sh, y=y))
+                pnl += y
+                hist.append([d, t.get("decided", "") if t["kind"] == "overnight" else "", t["in"], t["out"], t.get("name", ""),
+                             t.get("side", 1), t["rule"], sh, round(t["fill"] * sh), round(y)])
+                b = by.setdefault(t["rule"], [0.0, 0, 0])
+                b[0] += y
+                b[1] += 1
+                b[2] += y > 0
+            bal += pnl
+            peak = max(peak, bal)
+            dd = min(dd, bal - peak)
+            rows.append([d, round(pnl), round(bal), len(taken), skipped, stopped_at])
+    out = {"date": today, "start": AIR_START, "from": first, "days": rows, "plans": plans[-30:],
+           "by_rule": {k: [round(v[0]), v[1], v[2]] for k, v in by.items()}, "max_dd": round(dd), "peak": round(peak),
+           "trades": [t for t in hist if t[0] >= (rows[-30][0] if len(rows) >= 30 else "")], "real_submit_allowed": False}
+    _MEL_MEMO.clear()
+    _MEL_MEMO.update(out)
+    return dict(out, today_plan=lock_today, changed_after_lock=changed)
+
+
+def _mel300_safe(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str) -> dict:
+    try:
+        return mel300(records, runtime, day_dir, today, now_hm)
+    except Exception as exc:  # noqa: BLE001 - display only
+        return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "days": [], "real_submit_allowed": False}
 
 
 def _air300_safe(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
@@ -1076,6 +1237,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
             "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
             "air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),
+            "mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 
