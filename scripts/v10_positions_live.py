@@ -859,6 +859,25 @@ def focus_analyst(runtime: Path, today: str, now_hm: str) -> dict:
 
 AIR_FILE = "air300_v1.json"
 AIR_START = 3_000_000
+_AIR_MEMO: dict = {}
+
+
+def _day_closes(path: Path) -> dict:
+    """{ticker: the day's last fresh trade price up to 15:30} from one ticks.csv (stale ticks of an earlier day dropped)."""
+    out, at = {}, {}
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                t = str(row.get("exchange_time") or "")[:8]
+                p = _num(row.get("price"))
+                if not p or p <= 0 or t > "15:30:59" or not _tick_from_today(t, str(row.get("captured_at") or "")):
+                    continue
+                k = str(row.get("ticker") or "")
+                if t >= at.get(k, ""):
+                    at[k], out[k] = t, p
+    except OSError:
+        return {}
+    return out
 
 
 def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
@@ -871,6 +890,8 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
     overnight_hold_history.csv 検証済み return_close_pct (to the next close) minus interest per day, held 09:00-14:00 for the
     room. The Brain has no per-day record, so it is not in. Fixed once a day in records/<today>/air300_v1.json."""
     f = day_dir / AIR_FILE
+    if _AIR_MEMO.get("date") == today:   # also when the day folder is not made yet (early morning): once per day
+        return dict(_AIR_MEMO)
     try:
         got = json.loads(f.read_text(encoding="utf-8"))
         if got.get("date") == today:
@@ -908,15 +929,36 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
             trades.setdefault(d, []).append({"kind": "day", "rule": t["rule"], "in": ft[:5], "out": str(t.get("exit_time") or "")[:5],
                                              "fill": fill, "y100": y100, "pct": y100 / (fill * 100) * 100,
                                              "name": str(t.get("name") or t.get("ticker") or ""), "side": sd})
+    # OWNER 2026-11-11 「300万の検証が2回で数字が違う…正しい方に1本化」: a Friday pick is stamped 検証済み on the Saturday/Sunday with the
+    # Friday close as the "next close" (no market), so its return is not the trade's. It is moved to the next weekday and priced
+    # at that day's last recorded trade (ticks.csv, stale ticks dropped); without a price there it is left out and counted.
+    weekend, bad = {}, 0
     for r in _rows(Path(runtime) / HISTORY_FILE):
         d = str(r.get("evaluation_date") or "")
         if r.get("status") != "検証済み" or len(d) != 10 or d >= today:
             continue
         try:
-            if datetime.strptime(d, "%Y-%m-%d").weekday() >= 5:
-                continue
-            ref, ret = float(r.get("reference_price_1525")), float(r.get("return_close_pct"))
+            wd = datetime.strptime(d, "%Y-%m-%d").weekday()
+            ref = float(r.get("reference_price_1525"))
+            if wd >= 5:
+                nd = date.fromisoformat(d) + timedelta(days=7 - wd)
+                while nd.weekday() >= 5 or nd.isoformat() in EXCHANGE_HOLIDAYS:
+                    nd += timedelta(days=1)
+                d = nd.isoformat()
+                if d >= today:
+                    continue
+                if d not in weekend:
+                    weekend[d] = _day_closes(Path(records) / d / TICKS_FILE)
+                close = weekend[d].get(str(r.get("ticker") or ""))
+                if close is None:
+                    bad += 1
+                    continue
+                ret = (close / ref - 1) * 100 * (1 if r.get("side") == "LONG" else -1)
+            else:
+                ret = float(r.get("return_close_pct"))
         except (TypeError, ValueError):
+            continue
+        if not (math.isfinite(ref) and math.isfinite(ret)):
             continue
         if ref <= 0:
             continue
@@ -957,8 +999,11 @@ def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
         rows.append([d, round(pnl), round(bal), len(taken), skipped])
     out = {"date": today, "start": AIR_START, "from": rows[0][0] if rows else None, "days": rows,
            "by_rule": {k: [round(v[0]), v[1], v[2]] for k, v in by.items()}, "max_dd": round(dd), "peak": round(peak),
-           "trades": hist,
+           "trades": [t for t in hist if t[0] >= (rows[-30][0] if len(rows) >= 30 else "")],   # audit 1c38e0b: the last 30 days
+           "weekend_moved_unpriced": bad,
            "real_submit_allowed": False}
+    _AIR_MEMO.clear()
+    _AIR_MEMO.update(out)
     if day_dir.is_dir():
         tmp = f.with_name(f.name + ".tmp")
         tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")

@@ -4173,7 +4173,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<div class="cap-on-list"><span>いちばん多い時 '+man(a.peak)+'</span><span>いちばん減った幅 <b class="dn">'+yen(a.max_dd)+'</b></span><span>勝った日 '+wins+'・負けた日 '+losses+'</span></div>'+
       '<div class="cap-on-list">'+rules+'</div>'+
       airTrades(a)+
-      '<p class="g" style="font-size:11px">もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
+      '<p class="g" style="font-size:11px">もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。金曜の銘柄は、記録の日付が土日になっているので、次の営業日の引けの値段で計算。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
   }
   // OWNER 2026-11-11 「AIトレード日記タブにメルが資金３００万からはじめたトレード履歴を追加」: every trade of the replay, newest day first,
   // one fold per day (the newest open; a day the OWNER opens or closes stays so across the redraws)

@@ -15,6 +15,9 @@ HIST_HEAD = '"decision_date","finalized_at","rank","ticker","name","side","hold_
 
 
 class Air300(unittest.TestCase):
+    def setUp(self):
+        live._AIR_MEMO.clear()
+
     def _build(self, tmp: Path):
         rec = tmp / "records"
         d1 = rec / "2026-11-04"
@@ -42,7 +45,7 @@ class Air300(unittest.TestCase):
         self.assertEqual(a, again)
         self.assertEqual(a["start"], 3_000_000)
         self.assertFalse(a["real_submit_allowed"])
-        self.assertEqual([r[0] for r in a["days"]], ["2026-11-04", "2026-11-05"])   # 11/08 is a Sunday, 11/11 is today
+        self.assertEqual([r[0] for r in a["days"]], ["2026-11-04", "2026-11-05"])   # 11/08 (Sunday) moves to 11/09, which has no ticks; 11/11 is today
         d1, d2 = a["days"]
         self.assertEqual(d1[1], 1000 * 3000 // 100)      # 3,000 shares (300万 / 1,000円) of the 100-share yen
         self.assertEqual(d1[2], 3_000_000 + 30_000)
@@ -54,6 +57,34 @@ class Air300(unittest.TestCase):
         self.assertEqual(a["trades"][0], ["2026-11-04", "", "09:20", "09:40", "1111.T", 1, "R4", 3000, 3_000_000, 30000])
         self.assertEqual(a["trades"][1][:7], ["2026-11-05", "2026-11-04", "09:00", "14:00", "y", 1, "ON_LONG"])
         self.assertEqual(len(a["trades"]), 2)
+        self.assertEqual(a["weekend_moved_unpriced"], 1)
+
+    def test_weekend_stamped_pick_is_priced_on_the_next_weekday(self):
+        # OWNER 2026-11-11 「どこが違うか一行ずつ照らして、正しい方に1本化」: the Friday pick stamped on Sunday 11/08
+        with tempfile.TemporaryDirectory() as d:
+            rec, today = self._build(Path(d))
+            mon = rec / "2026-11-09"
+            mon.mkdir()
+            (mon / live.TICKS_FILE).write_text("captured_at,ticker,name,exchange_time,price\n"
+                                               "2026-11-09 09:00:04.5,4444.T,z,15:24:59,999\n"        # Friday's close seen at 09:00: dropped
+                                               "2026-11-09 15:00:00.0,4444.T,z,14:59:59,450\n"
+                                               "2026-11-09 15:30:05.0,4444.T,z,15:30:00,440\n", encoding="utf-8")
+            a = live.air300(rec, Path(d), today, "2026-11-11")
+        self.assertEqual([r[0] for r in a["days"]], ["2026-11-04", "2026-11-05", "2026-11-09"])
+        self.assertEqual(a["weekend_moved_unpriced"], 0)
+        t = [x for x in a["trades"] if x[0] == "2026-11-09"][0]
+        self.assertEqual(t[:7], ["2026-11-09", "2026-11-06", "09:00", "14:00", "z", -1, "ON_SHORT"])
+        self.assertGreater(t[9], 0)                      # short from 500 to 440 (12%) minus 3 days of interest
+        sh = t[7]
+        self.assertAlmostEqual(t[9], round((0.12 * 100 - 0.011 * 3 / 365 * 100) / 100 * 500 * sh), delta=1)
+
+    def test_memo_once_a_day_without_the_day_folder(self):
+        with tempfile.TemporaryDirectory() as d:
+            rec, today = self._build(Path(d))
+            missing = rec / "2026-11-12"
+            a = live.air300(rec, Path(d), missing, "2026-11-12")
+            (rec / "2026-11-04" / live.OWNER_RULES_FILE).write_text("{}", encoding="utf-8")
+            self.assertEqual(live.air300(rec, Path(d), missing, "2026-11-12"), a)   # not recomputed the same day
 
     def test_broken_files_never_break_the_capital_view(self):
         # audit 0f33e32: a non-numeric yen and a list at the top level
