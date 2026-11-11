@@ -4149,6 +4149,30 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<text x="4" y="'+(T+10)+'" fill="#9aa0a6" font-size="11">'+esc(yen(hi))+'</text><text x="4" y="'+(H-B)+'" fill="#9aa0a6" font-size="11">'+esc(yen(lo))+'</text>'+ticks+
       (pts.length?'<path d="'+path(1)+'" fill="none" stroke="#5aa9ff" stroke-width="2"/><path d="'+path(2)+'" fill="none" stroke="#f5c542" stroke-width="2"/>':'')+'</svg>';
   }
+  // OWNER 2026-11-11 「AIコクピットはかえない　AIトレード日記タブに資金３００万からスタートした場合のエアトレードを追加」:
+  // positions.capital.air300 (the days before today, 300万 that grows with the results) + today's 300万 figure. Display only, no order.
+  function airHtml(){
+    const a=cap&&cap.air300;if(!a||!Array.isArray(a.days)||!a.days.length)return '<div class="cap-chart air300"><h4>エアトレード（資金300万から・メル・仮想）</h4><p class="g">まだ記録がありません</p></div>';
+    const t=sizes().find(x=>x.label==="300万"),last=a.days[a.days.length-1][2],todayYen=t?t.done+t.open:null;
+    const pts=a.days.map(r=>[r[0],r[2]]);if(todayYen!=null)pts.push(["今日",last+todayYen]);
+    const now=pts[pts.length-1][1],diff=now-a.start;
+    const W=1000,H=220,L=78,R=14,T=12,B=24,vals=pts.map(p=>p[1]).concat([a.start]);let lo=Math.min(...vals),hi=Math.max(...vals);
+    const raw=(hi-lo)/4||1,mag=Math.pow(10,Math.floor(Math.log10(raw))),step=[1,2,5,10].map(k=>k*mag).find(v=>v>=raw)||raw;
+    lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;const sp=hi-lo||1,y=v=>T+(hi-v)/sp*(H-T-B),x=k=>L+(pts.length===1?0.5:k/(pts.length-1))*(W-L-R);
+    let svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img">';
+    for(let v=lo;v<=hi+step/2;v+=step)svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="#262a33"/><text x="'+(L-6)+'" y="'+(y(v)+4).toFixed(1)+'" fill="#9aa0a6" font-size="12" text-anchor="end">'+esc(man(v))+'</text>';
+    svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(a.start).toFixed(1)+'" y2="'+y(a.start).toFixed(1)+'" stroke="#6b7280" stroke-dasharray="5 4"/>';
+    const every=Math.max(1,Math.ceil(pts.length/8));
+    pts.forEach((p,k)=>{if(k%every===0||k===pts.length-1)svg+='<text x="'+x(k).toFixed(1)+'" y="'+(H-6)+'" fill="#9aa0a6" font-size="12" text-anchor="'+(k===pts.length-1?"end":k===0?"start":"middle")+'">'+esc(p[0]==="今日"?"今日":p[0].slice(5).replace("-","/"))+'</text>';});
+    svg+='<path d="'+pts.map((p,k)=>(k?"L":"M")+x(k).toFixed(1)+" "+y(p[1]).toFixed(1)).join("")+'" fill="none" stroke="'+(diff>=0?"#35e2ae":"#ff5a5f")+'" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+    const wins=a.days.filter(r=>r[1]>0).length,losses=a.days.filter(r=>r[1]<0).length;
+    const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し 買い",ON_SHORT:"持ち越し 空売り"};
+    const rules=Object.entries(a.by_rule||{}).sort((p,q)=>p[1][0]-q[1][0]).map(([k,v])=>'<span>'+esc(NAMES[k]||k)+' <b class="'+cls(v[0])+'">'+yen(v[0])+'</b>（'+v[1]+'回・'+v[2]+'勝）</span>').join("");
+    return '<div class="cap-chart air300"><h4>エアトレード（資金300万から・メル・仮想）　'+esc(String(a.from||"").slice(5).replace("-","/"))+'に300万で始めた場合　今 <b class="'+cls(diff)+'">'+man(now)+'</b>（<span class="'+cls(diff)+'">'+yen(diff)+'・'+(diff>=0?"+":"")+(diff/a.start*100).toFixed(1)+'%</span>）</h4>'+svg+
+      '<div class="cap-on-list"><span>いちばん多い時 '+man(a.peak)+'</span><span>いちばん減った幅 <b class="dn">'+yen(a.max_dd)+'</b></span><span>勝った日 '+wins+'・負けた日 '+losses+'</span></div>'+
+      '<div class="cap-on-list">'+rules+'</div>'+
+      '<p class="g" style="font-size:11px">もうけと損を資金に足していく形（1回は残高と同じ額まで、同時に持つ合計は残高の3.3倍まで、ほかは300万・信用と同じ決まり）。前の日までは毎朝に固めた数字、「今日」は上の300万・信用の今日の数字（確定＋含み）を足したもの。持ち越しは翌日の引けの値段で計算（画面の14:00とは少しずれます）。デイトレの入った値段はサインの値段で代わり。ブレインは日ごとの記録が無いので入っていません。仮想・注文なし。</p></div>';
+  }
   function renderJournal(){
     const pane=document.querySelector('.tab-pane[data-pane="ai-journal"]');if(!pane)return;
     let sec=document.getElementById("cap-journal");
@@ -4166,7 +4190,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<div class="cap-chart"><h4>オーバーナイト（'+esc(s.label)+(s.capital?'・信用':'')+'で入った場合）　きのう15:25に入り、今日14:00に決済　合計 <span class="'+cls(s.rows.overnight.done+s.rows.overnight.open)+'">'+yen(s.rows.overnight.done+s.rows.overnight.open)+'</span>（'+s.rows.overnight.n+'銘柄）</h4>'+
       (onClosed.length?'<div class="cap-on-list">'+onClosed.map(x=>{const v=Number(x.pct);return '<span>'+esc(String(x.name||x.ticker||""))+' '+(x.side==="LONG"?"買い":"空売り")+' <b class="'+cls(v)+'">'+(Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2)+"%":"—")+'</b></span>';}).join("")+'</div>':'')+
       legend+chartSvg(s.overnight_curve||[],"09:00","14:00")+
-      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>';
+      '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml();
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
   // 勝率・1回の平均（費用込み）・PFを横棒で出し、50%・0・1.0に基準の線、プラスは緑・マイナスは赤、回数も出す。その下に手法ごとの通算損益の線グラフ。

@@ -857,6 +857,105 @@ def focus_analyst(runtime: Path, today: str, now_hm: str) -> dict:
     return {"state": "OK", "slot": key, "made_at": str(slot.get("made_at") or "")[:5], "items": items}
 
 
+AIR_FILE = "air300_v1.json"
+AIR_START = 3_000_000
+
+
+def air300(records: Path, runtime: Path, day_dir: Path, today: str) -> dict:
+    """OWNER 2026-11-11 「AIコクピットはかえない　AIトレード日記タブに資金３００万からスタートした場合のエアトレードを追加」:
+    the days before today replayed with 300万 that grows with the results (virtual, display only, no order, nothing on the
+    trading side changes). The same rules as the 300万 size: one trade up to the balance (100-share units), held total up
+    to the balance x MARGIN_MULT, the overnight first, same-minute signals by the rule's mean % of the earlier days, a rule not
+    above 0 only when one more full trade still fits. Day trades: owner_rules_virtual.json yen (100 shares, after cost)
+    scaled by shares; the entry price is the matching signal's entry (the record has no fill price). Overnight:
+    overnight_hold_history.csv 検証済み return_close_pct (to the next close) minus interest per day, held 09:00-14:00 for the
+    room. The Brain has no per-day record, so it is not in. Fixed once a day in records/<today>/air300_v1.json."""
+    f = day_dir / AIR_FILE
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+        if got.get("date") == today:
+            return got
+    except (OSError, ValueError):
+        pass
+    try:
+        names = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and p.name < today)
+    except OSError:
+        names = []
+    trades = {}
+    for d in names:
+        try:
+            if datetime.strptime(d, "%Y-%m-%d").weekday() >= 5:
+                continue
+            v = json.loads((Path(records) / d / OWNER_RULES_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        sig = {}
+        for r in _rows(Path(records) / d / RULE_SIGNALS_FILE):
+            e = _num(r.get("entry"))
+            if e and e > 0:
+                sig.setdefault((r.get("ticker"), r.get("rule")), []).append((str(r.get("captured_at") or "")[11:19], e))
+        for t in v.get("trades") or []:
+            if t.get("status") != "CLOSED" or t.get("yen") is None or not t.get("rule"):
+                continue
+            ft = str(t.get("fill_time") or "")[:8]
+            cand = [e for at, e in sig.get((t.get("ticker"), t.get("rule")), []) if at <= ft]
+            if not cand:
+                continue
+            y100 = float(t["yen"])
+            trades.setdefault(d, []).append({"kind": "day", "rule": t["rule"], "in": ft[:5], "out": str(t.get("exit_time") or "")[:5],
+                                             "fill": cand[-1], "y100": y100, "pct": y100 / (cand[-1] * 100) * 100})
+    for r in _rows(Path(runtime) / HISTORY_FILE):
+        d = str(r.get("evaluation_date") or "")
+        if r.get("status") != "検証済み" or len(d) != 10 or d >= today:
+            continue
+        try:
+            if datetime.strptime(d, "%Y-%m-%d").weekday() >= 5:
+                continue
+            ref, ret = float(r.get("reference_price_1525")), float(r.get("return_close_pct"))
+        except (TypeError, ValueError):
+            continue
+        if ref <= 0:
+            continue
+        side = 1 if r.get("side") == "LONG" else -1
+        pct = ret - (LONG_RATE if side > 0 else SHORT_RATE) * _days_between(str(r.get("decision_date") or ""), d) / 365 * 100
+        trades.setdefault(d, []).append({"kind": "overnight", "rule": "ON_LONG" if side > 0 else "ON_SHORT", "in": "09:00", "out": EXIT_AT,
+                                         "fill": ref, "y100": pct / 100 * ref * 100, "pct": pct})
+    bal, peak, dd, past, rows, by = float(AIR_START), float(AIR_START), 0.0, {}, [], {}
+    for d in sorted(trades):
+        cap, ev = bal, {k: sum(v) / len(v) for k, v in past.items() if v}
+        limit = cap * MARGIN_MULT
+        rank = lambda t: -(ev.get(t["rule"]) if ev.get(t["rule"]) is not None else -1e9)
+        taken, pnl, skipped = [], 0.0, 0
+        for t in sorted(trades[d], key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"], rank(t))):
+            sh = _shares(t["fill"], cap)
+            using = sum(x["fill"] * x["sh"] for x in taken if x["in"] <= t["in"] and x["out"] > t["in"])
+            reserve = cap if not ((ev.get(t["rule"]) or 0) > 0) else 0
+            if sh <= 0 or using + t["fill"] * sh + reserve > limit:
+                skipped += 1
+                continue
+            taken.append(dict(t, sh=sh))
+            y = t["y100"] * sh / 100
+            pnl += y
+            b = by.setdefault(t["rule"], [0.0, 0, 0])
+            b[0] += y
+            b[1] += 1
+            b[2] += y > 0
+        for t in trades[d]:
+            past.setdefault(t["rule"], []).append(t["pct"])
+        bal += pnl
+        peak = max(peak, bal)
+        dd = min(dd, bal - peak)
+        rows.append([d, round(pnl), round(bal), len(taken), skipped])
+    out = {"date": today, "start": AIR_START, "from": rows[0][0] if rows else None, "days": rows,
+           "by_rule": {k: [round(v[0]), v[1], v[2]] for k, v in by.items()}, "max_dd": round(dd), "peak": round(peak),
+           "real_submit_allowed": False}
+    if day_dir.is_dir():
+        tmp = f.with_name(f.name + ".tmp")
+        tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(f)
+    return out
+
+
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
     points = marks()
     past = _past(records, today)
@@ -911,6 +1010,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         tmp.replace(day_dir / DAY_FILE)
     return {"from": (past[0].get("date") if past else today), "margin_mult": MARGIN_MULT, "sizes": sizes,
             "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
+            "air300": air300(records, day_dir.parent.parent, day_dir, today),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 
