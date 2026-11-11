@@ -1072,11 +1072,12 @@ def mel_lock(runtime: Path, day_dir: Path, today: str, now_hm: str):
             raw = src.read_bytes()
         except OSError:
             return None   # not written yet: look again on the next pass
-        out["sha256"] = hashlib.sha256(raw).hexdigest()
         try:
-            plan, why = mel_plan_check(json.loads(raw.decode("utf-8-sig")), today)
+            got = json.loads(raw.decode("utf-8-sig"))
         except (ValueError, UnicodeDecodeError):
-            plan, why = None, "読めない"
+            return None   # audit 8a6127a: maybe half written; read again on the next pass (from 9:00 the day is 休み)
+        out["sha256"] = hashlib.sha256(raw).hexdigest()
+        plan, why = mel_plan_check(got, today)
         out.update(plan=plan, state="決定" if plan else "休み", why=why)
     else:
         out["why"] = "9:00までに決めた記録が無い"

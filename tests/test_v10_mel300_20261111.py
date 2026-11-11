@@ -69,6 +69,13 @@ class MelAccount(unittest.TestCase):
         self.write_plan("2026-11-12", plan("2026-11-12"))
         self.assertEqual(live.mel_lock(self.run, day, "2026-11-12", "09:10")["state"], "休み")
 
+    def test_half_written_plan_is_read_again(self):
+        f = self.run / live.MEL_DIR / "plan_2026-11-12.json"
+        f.write_text('{"schema":"MEL_PL', encoding="utf-8")
+        self.assertIsNone(live.mel_lock(self.run, self.rec / "2026-11-12", "2026-11-12", "08:31"))
+        self.write_plan("2026-11-12", plan("2026-11-12"))
+        self.assertEqual(live.mel_lock(self.run, self.rec / "2026-11-12", "2026-11-12", "08:32")["state"], "決定")
+
     def test_bad_plan_is_a_rest_day(self):
         self.write_plan("2026-11-12", plan("2026-11-12", size_pct=500))
         got = live.mel_lock(self.run, self.rec / "2026-11-12", "2026-11-12", "08:40")
