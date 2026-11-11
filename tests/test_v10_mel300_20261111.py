@@ -162,7 +162,8 @@ class MelAccount(unittest.TestCase):
         self.assertIn("function melLiveHtml(){", HTML)
         # 「今夜決算の札はカードの中に入れて」: the label inside its own card, framed red
         self.assertIn("return tag?String(card).replace(", HTML)
-        self.assertIn(".earn-card{box-shadow:inset 0 0 0 2px #F23645!important}", HTML)
+        self.assertIn(".earn-card{outline:2px dashed #b47cff!important;outline-offset:-2px}", HTML)   # not red: red is 空売り
+        self.assertIn("<div class=\"earn-tag\">📅 決算またぎ　", HTML)
         self.assertIn('const want=["virt-day-line","virt-held-line","mel-live","cap-area","trade-fx-link"].map(id=>document.getElementById(id)).filter(Boolean);', HTML)   # in トレード中 「仮想の成績」
 
 
