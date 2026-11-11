@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-11T01:37:20.214859+09:00",
+  "updated_at": "2026-11-11T11:15:02.709411+09:00",
   "calendar": [
     {
       "code": "1723",
@@ -26163,9 +26163,15 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表",
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261111572782.pdf",
+          "https://www.release.tdnet.info/inbs/140120261105566474.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -26462,9 +26468,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261109569592.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -29525,10 +29535,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2011.0,
-        "return_5d_pct": -2.38,
-        "return_20d_pct": -2.99,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2035.0,
+        "return_5d_pct": -1.55,
+        "return_20d_pct": -3.1,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29555,10 +29565,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4110.0,
-        "return_5d_pct": 2.37,
-        "return_20d_pct": 10.63,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4215.0,
+        "return_5d_pct": 0.6,
+        "return_20d_pct": 19.74,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29585,10 +29595,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 154.0,
-        "return_5d_pct": -4.35,
-        "return_20d_pct": -7.78,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 162.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -3.57,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29615,8 +29625,8 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 538.0,
-        "return_5d_pct": -1.1,
+        "last_close": 539.0,
+        "return_5d_pct": -0.74,
         "return_20d_pct": 0.0,
         "momentum_direction": "中立"
       }
@@ -29645,10 +29655,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2999.0,
-        "return_5d_pct": -8.57,
-        "return_20d_pct": -16.35,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3210.0,
+        "return_5d_pct": 0.63,
+        "return_20d_pct": -10.08,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29675,10 +29685,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1709.0,
-        "return_5d_pct": -5.63,
-        "return_20d_pct": -4.95,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1699.0,
+        "return_5d_pct": -1.51,
+        "return_20d_pct": -5.08,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29705,10 +29715,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 559.0,
-        "return_5d_pct": -6.37,
-        "return_20d_pct": -17.91,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 568.0,
+        "return_5d_pct": 2.71,
+        "return_20d_pct": -16.22,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -29735,10 +29745,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 584.0,
-        "return_5d_pct": 0.69,
-        "return_20d_pct": -26.54,
-        "momentum_direction": "中立"
+        "last_close": 627.0,
+        "return_5d_pct": 6.09,
+        "return_20d_pct": -18.04,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -29765,9 +29775,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3514.0,
-        "return_5d_pct": -13.55,
-        "return_20d_pct": -3.06,
+        "last_close": 3575.0,
+        "return_5d_pct": -7.96,
+        "return_20d_pct": -4.16,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -29795,9 +29805,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1491.0,
-        "return_5d_pct": -14.65,
-        "return_20d_pct": -11.41,
+        "last_close": 1553.0,
+        "return_5d_pct": -6.16,
+        "return_20d_pct": -9.71,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -29825,10 +29835,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2963.0,
-        "return_5d_pct": -9.25,
-        "return_20d_pct": -8.41,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3090.0,
+        "return_5d_pct": -1.59,
+        "return_20d_pct": -7.49,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29855,9 +29865,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1720.5,
-        "return_5d_pct": -1.71,
-        "return_20d_pct": 0.32,
+        "last_close": 1752.0,
+        "return_5d_pct": 0.89,
+        "return_20d_pct": 1.62,
         "momentum_direction": "中立"
       }
     },
@@ -29885,10 +29895,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 706.0,
-        "return_5d_pct": -2.08,
-        "return_20d_pct": -2.62,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 714.0,
+        "return_5d_pct": 1.56,
+        "return_20d_pct": -0.42,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29915,10 +29925,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2735.5,
-        "return_5d_pct": 2.84,
-        "return_20d_pct": 7.27,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2726.0,
+        "return_5d_pct": 1.21,
+        "return_20d_pct": 5.43,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -29945,9 +29955,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6780.0,
-        "return_5d_pct": -8.5,
-        "return_20d_pct": -5.44,
+        "last_close": 6800.0,
+        "return_5d_pct": -3.55,
+        "return_20d_pct": -4.23,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -29975,9 +29985,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3915.0,
-        "return_5d_pct": -1.76,
-        "return_20d_pct": 4.96,
+        "last_close": 3995.0,
+        "return_5d_pct": -0.12,
+        "return_20d_pct": 3.9,
         "momentum_direction": "中立"
       }
     },
@@ -30005,10 +30015,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3100.0,
-        "return_5d_pct": -4.62,
-        "return_20d_pct": -5.78,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3190.0,
+        "return_5d_pct": 0.95,
+        "return_20d_pct": -4.49,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30035,10 +30045,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 847.0,
-        "return_5d_pct": -1.05,
-        "return_20d_pct": 1.32,
-        "momentum_direction": "中立"
+        "last_close": 867.0,
+        "return_5d_pct": 2.0,
+        "return_20d_pct": 2.12,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30065,10 +30075,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 314.0,
-        "return_5d_pct": -2.79,
-        "return_20d_pct": -1.88,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 315.0,
+        "return_5d_pct": -1.56,
+        "return_20d_pct": -1.56,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30095,10 +30105,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1226.0,
-        "return_5d_pct": -1.13,
-        "return_20d_pct": 2.77,
-        "momentum_direction": "中立"
+        "last_close": 1279.0,
+        "return_5d_pct": 3.4,
+        "return_20d_pct": 6.05,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30125,10 +30135,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2043.0,
-        "return_5d_pct": -4.49,
-        "return_20d_pct": -3.27,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2101.0,
+        "return_5d_pct": -0.52,
+        "return_20d_pct": -3.71,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30155,10 +30165,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1173.0,
-        "return_5d_pct": -5.71,
-        "return_20d_pct": -3.22,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1213.0,
+        "return_5d_pct": -0.57,
+        "return_20d_pct": -2.8,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30185,10 +30195,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2715.0,
-        "return_5d_pct": -8.06,
-        "return_20d_pct": -9.65,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2860.0,
+        "return_5d_pct": -0.1,
+        "return_20d_pct": -6.38,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30215,9 +30225,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 533.0,
-        "return_5d_pct": -9.51,
-        "return_20d_pct": -20.45,
+        "last_close": 547.0,
+        "return_5d_pct": -5.69,
+        "return_20d_pct": -14.13,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30245,9 +30255,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 259.0,
-        "return_5d_pct": -14.24,
-        "return_20d_pct": -31.12,
+        "last_close": 263.0,
+        "return_5d_pct": -9.62,
+        "return_20d_pct": -23.99,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30275,9 +30285,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3250.0,
-        "return_5d_pct": -10.71,
-        "return_20d_pct": -14.13,
+        "last_close": 3395.0,
+        "return_5d_pct": -2.86,
+        "return_20d_pct": -13.5,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30305,10 +30315,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 481.0,
-        "return_5d_pct": -2.04,
-        "return_20d_pct": -7.14,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 483.0,
+        "return_5d_pct": 0.63,
+        "return_20d_pct": -6.94,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30335,9 +30345,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 614.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -2.69,
+        "last_close": 625.0,
+        "return_5d_pct": 1.96,
+        "return_20d_pct": -0.95,
         "momentum_direction": "中立"
       }
     },
@@ -30365,10 +30375,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 243.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": 4.29,
-        "momentum_direction": "中立"
+        "last_close": 252.0,
+        "return_5d_pct": 5.44,
+        "return_20d_pct": 2.86,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30395,10 +30405,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 587.0,
-        "return_5d_pct": 0.69,
-        "return_20d_pct": -3.61,
-        "momentum_direction": "中立"
+        "last_close": 604.0,
+        "return_5d_pct": 2.2,
+        "return_20d_pct": 0.5,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30425,10 +30435,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 744.0,
-        "return_5d_pct": -4.74,
-        "return_20d_pct": -3.63,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 742.0,
+        "return_5d_pct": -1.98,
+        "return_20d_pct": -4.63,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30455,9 +30465,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 819.0,
-        "return_5d_pct": 0.61,
-        "return_20d_pct": -0.12,
+        "last_close": 814.0,
+        "return_5d_pct": 1.75,
+        "return_20d_pct": -1.33,
         "momentum_direction": "中立"
       }
     },
@@ -30485,10 +30495,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 303.0,
-        "return_5d_pct": -6.77,
-        "return_20d_pct": -15.6,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 309.0,
+        "return_5d_pct": -1.28,
+        "return_20d_pct": -11.97,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30515,10 +30525,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2493.0,
-        "return_5d_pct": 3.94,
-        "return_20d_pct": 5.26,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2475.5,
+        "return_5d_pct": 0.71,
+        "return_20d_pct": 2.78,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30545,9 +30555,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4337.0,
-        "return_5d_pct": 0.67,
-        "return_20d_pct": 3.86,
+        "last_close": 4283.0,
+        "return_5d_pct": 0.92,
+        "return_20d_pct": 0.61,
         "momentum_direction": "中立"
       }
     },
@@ -30575,10 +30585,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 203.0,
-        "return_5d_pct": -5.58,
-        "return_20d_pct": -12.5,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 214.0,
+        "return_5d_pct": 2.88,
+        "return_20d_pct": -7.36,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30605,10 +30615,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 203.0,
-        "return_5d_pct": -4.25,
-        "return_20d_pct": -6.02,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 205.0,
+        "return_5d_pct": -0.49,
+        "return_20d_pct": -7.24,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30635,9 +30645,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 381.0,
-        "return_5d_pct": -8.63,
-        "return_20d_pct": -15.52,
+        "last_close": 382.0,
+        "return_5d_pct": -2.3,
+        "return_20d_pct": -17.67,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30665,10 +30675,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 527.0,
-        "return_5d_pct": -6.06,
-        "return_20d_pct": -11.13,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 541.0,
+        "return_5d_pct": -1.1,
+        "return_20d_pct": -11.17,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30696,8 +30706,8 @@
       "momentum": {
         "available": true,
         "last_close": 1508.0,
-        "return_5d_pct": 0.13,
-        "return_20d_pct": -0.53,
+        "return_5d_pct": 1.0,
+        "return_20d_pct": -2.01,
         "momentum_direction": "中立"
       }
     },
@@ -30725,9 +30735,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1326.0,
-        "return_5d_pct": 11.9,
-        "return_20d_pct": 3.43,
+        "last_close": 1299.0,
+        "return_5d_pct": 4.34,
+        "return_20d_pct": -0.84,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30759,9 +30769,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 100.0,
-        "return_5d_pct": 42.86,
-        "return_20d_pct": -2.91,
+        "last_close": 82.0,
+        "return_5d_pct": 30.16,
+        "return_20d_pct": -17.17,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30789,9 +30799,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 239.0,
-        "return_5d_pct": -8.43,
-        "return_20d_pct": -12.77,
+        "last_close": 248.0,
+        "return_5d_pct": -2.75,
+        "return_20d_pct": -10.47,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30819,10 +30829,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2594.0,
-        "return_5d_pct": -7.03,
-        "return_20d_pct": -12.72,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2702.0,
+        "return_5d_pct": 0.19,
+        "return_20d_pct": -10.83,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30849,10 +30859,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 621.0,
-        "return_5d_pct": 0.32,
-        "return_20d_pct": -2.36,
-        "momentum_direction": "中立"
+        "last_close": 626.0,
+        "return_5d_pct": 2.12,
+        "return_20d_pct": -2.95,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -30879,10 +30889,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 152.0,
-        "return_5d_pct": -4.4,
-        "return_20d_pct": -5.0,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 153.0,
+        "return_5d_pct": -0.65,
+        "return_20d_pct": -4.97,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30909,10 +30919,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3585.0,
-        "return_5d_pct": -5.28,
-        "return_20d_pct": -19.44,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3690.0,
+        "return_5d_pct": -1.07,
+        "return_20d_pct": -19.08,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30939,9 +30949,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1668.0,
-        "return_5d_pct": -3.25,
-        "return_20d_pct": -8.1,
+        "last_close": 1715.0,
+        "return_5d_pct": -2.17,
+        "return_20d_pct": -4.83,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -30969,10 +30979,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 81.0,
-        "return_5d_pct": -6.9,
-        "return_20d_pct": -12.9,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 82.0,
+        "return_5d_pct": -1.2,
+        "return_20d_pct": -10.87,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -30999,9 +31009,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 372.0,
-        "return_5d_pct": -1.06,
-        "return_20d_pct": 3.33,
+        "last_close": 376.0,
+        "return_5d_pct": 1.9,
+        "return_20d_pct": 3.01,
         "momentum_direction": "中立"
       }
     },
@@ -31029,10 +31039,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1091.0,
-        "return_5d_pct": -3.88,
-        "return_20d_pct": -0.73,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1111.0,
+        "return_5d_pct": -1.86,
+        "return_20d_pct": 0.82,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31059,9 +31069,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1095.0,
-        "return_5d_pct": 0.55,
-        "return_20d_pct": -3.78,
+        "last_close": 1114.0,
+        "return_5d_pct": -0.89,
+        "return_20d_pct": -3.97,
         "momentum_direction": "中立"
       }
     },
@@ -31089,9 +31099,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2028.0,
-        "return_5d_pct": -1.79,
-        "return_20d_pct": -10.31,
+        "last_close": 2035.0,
+        "return_5d_pct": -1.36,
+        "return_20d_pct": -10.35,
         "momentum_direction": "中立"
       }
     },
@@ -31119,10 +31129,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 354.0,
-        "return_5d_pct": -6.84,
-        "return_20d_pct": -10.38,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 371.0,
+        "return_5d_pct": 1.09,
+        "return_20d_pct": -7.02,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31149,10 +31159,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2489.0,
-        "return_5d_pct": -6.5,
-        "return_20d_pct": -10.01,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2616.0,
+        "return_5d_pct": 0.42,
+        "return_20d_pct": -6.7,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31179,9 +31189,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2155.0,
-        "return_5d_pct": -1.51,
-        "return_20d_pct": -1.46,
+        "last_close": 2180.0,
+        "return_5d_pct": 1.25,
+        "return_20d_pct": 0.79,
         "momentum_direction": "中立"
       }
     },
@@ -31209,9 +31219,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2400.0,
-        "return_5d_pct": -7.16,
-        "return_20d_pct": -12.6,
+        "last_close": 2439.0,
+        "return_5d_pct": -2.44,
+        "return_20d_pct": -13.2,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31239,10 +31249,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 137.0,
-        "return_5d_pct": -3.52,
-        "return_20d_pct": -2.84,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 140.0,
+        "return_5d_pct": -1.41,
+        "return_20d_pct": -1.41,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31269,9 +31279,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2236.0,
-        "return_5d_pct": 3.9,
-        "return_20d_pct": 11.86,
+        "last_close": 2327.0,
+        "return_5d_pct": 7.83,
+        "return_20d_pct": 14.01,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31299,10 +31309,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2790.0,
-        "return_5d_pct": -7.92,
-        "return_20d_pct": -3.93,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2897.0,
+        "return_5d_pct": 3.17,
+        "return_20d_pct": -6.7,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -31329,9 +31339,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3080.0,
-        "return_5d_pct": -1.75,
-        "return_20d_pct": -0.96,
+        "last_close": 3105.0,
+        "return_5d_pct": -0.48,
+        "return_20d_pct": -0.16,
         "momentum_direction": "中立"
       }
     },
@@ -31359,9 +31369,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1463.0,
-        "return_5d_pct": -1.55,
-        "return_20d_pct": -2.6,
+        "last_close": 1465.0,
+        "return_5d_pct": -0.68,
+        "return_20d_pct": -2.46,
         "momentum_direction": "中立"
       }
     },
@@ -31389,10 +31399,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2128.0,
-        "return_5d_pct": -7.76,
-        "return_20d_pct": -14.74,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2208.0,
+        "return_5d_pct": -1.08,
+        "return_20d_pct": -13.21,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31419,9 +31429,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1628.0,
-        "return_5d_pct": -1.09,
-        "return_20d_pct": 0.0,
+        "last_close": 1644.0,
+        "return_5d_pct": 0.55,
+        "return_20d_pct": -0.48,
         "momentum_direction": "中立"
       }
     },
@@ -31449,9 +31459,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3752.0,
-        "return_5d_pct": 3.3,
-        "return_20d_pct": 15.95,
+        "last_close": 3718.0,
+        "return_5d_pct": 2.0,
+        "return_20d_pct": 11.42,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31479,10 +31489,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 581.0,
-        "return_5d_pct": -2.02,
-        "return_20d_pct": -3.17,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 602.0,
+        "return_5d_pct": 2.91,
+        "return_20d_pct": 1.86,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -31509,10 +31519,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 522.0,
-        "return_5d_pct": -2.79,
-        "return_20d_pct": -2.25,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 529.0,
+        "return_5d_pct": 0.57,
+        "return_20d_pct": -2.04,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31539,9 +31549,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 505.0,
-        "return_5d_pct": -8.51,
-        "return_20d_pct": -9.66,
+        "last_close": 515.0,
+        "return_5d_pct": -10.12,
+        "return_20d_pct": -8.85,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31569,10 +31579,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 425.0,
-        "return_5d_pct": -7.0,
-        "return_20d_pct": -18.58,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 439.0,
+        "return_5d_pct": 1.62,
+        "return_20d_pct": -17.48,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31599,10 +31609,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1676.0,
-        "return_5d_pct": -1.24,
-        "return_20d_pct": -5.63,
-        "momentum_direction": "中立"
+        "last_close": 1716.0,
+        "return_5d_pct": 3.12,
+        "return_20d_pct": -3.92,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -31629,9 +31639,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1159.0,
-        "return_5d_pct": -11.73,
-        "return_20d_pct": -22.16,
+        "last_close": 1155.0,
+        "return_5d_pct": -14.44,
+        "return_20d_pct": -15.38,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31663,9 +31673,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1708.0,
-        "return_5d_pct": 0.35,
-        "return_20d_pct": -1.73,
+        "last_close": 1732.0,
+        "return_5d_pct": 0.7,
+        "return_20d_pct": -0.86,
         "momentum_direction": "中立"
       }
     },
@@ -31693,9 +31703,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3180.0,
-        "return_5d_pct": -25.44,
-        "return_20d_pct": -44.11,
+        "last_close": 3100.0,
+        "return_5d_pct": -19.9,
+        "return_20d_pct": -40.5,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31723,10 +31733,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2610.0,
-        "return_5d_pct": 1.36,
-        "return_20d_pct": 6.97,
-        "momentum_direction": "中立"
+        "last_close": 2622.0,
+        "return_5d_pct": 2.62,
+        "return_20d_pct": 5.17,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -31753,9 +31763,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1174.0,
-        "return_5d_pct": -1.51,
-        "return_20d_pct": -2.49,
+        "last_close": 1183.0,
+        "return_5d_pct": 0.25,
+        "return_20d_pct": -2.23,
         "momentum_direction": "中立"
       }
     },
@@ -31783,9 +31793,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2539.0,
-        "return_5d_pct": -0.43,
-        "return_20d_pct": -1.97,
+        "last_close": 2560.0,
+        "return_5d_pct": 0.23,
+        "return_20d_pct": -1.04,
         "momentum_direction": "中立"
       }
     },
@@ -31813,9 +31823,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1135.0,
-        "return_5d_pct": -21.34,
-        "return_20d_pct": -21.18,
+        "last_close": 1262.0,
+        "return_5d_pct": -5.18,
+        "return_20d_pct": -11.99,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -31843,10 +31853,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2827.0,
-        "return_5d_pct": -14.59,
-        "return_20d_pct": -39.2,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3180.0,
+        "return_5d_pct": -0.31,
+        "return_20d_pct": -31.98,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -31873,9 +31883,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3050.0,
-        "return_5d_pct": -0.65,
-        "return_20d_pct": -1.45,
+        "last_close": 3105.0,
+        "return_5d_pct": -1.58,
+        "return_20d_pct": -1.74,
         "momentum_direction": "中立"
       }
     },
@@ -31903,9 +31913,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 582.0,
-        "return_5d_pct": -0.34,
-        "return_20d_pct": -1.69,
+        "last_close": 580.0,
+        "return_5d_pct": -1.19,
+        "return_20d_pct": -2.52,
         "momentum_direction": "中立"
       }
     },
@@ -31933,9 +31943,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 820.0,
-        "return_5d_pct": -1.2,
-        "return_20d_pct": -6.29,
+        "last_close": 850.0,
+        "return_5d_pct": 1.19,
+        "return_20d_pct": -2.86,
         "momentum_direction": "中立"
       }
     },
@@ -31963,10 +31973,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 375.0,
-        "return_5d_pct": -2.6,
-        "return_20d_pct": -9.2,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 384.0,
+        "return_5d_pct": 3.78,
+        "return_20d_pct": -5.19,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -31993,9 +32003,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5090.0,
-        "return_5d_pct": 4.95,
-        "return_20d_pct": 14.25,
+        "last_close": 5160.0,
+        "return_5d_pct": 4.67,
+        "return_20d_pct": 10.37,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32023,10 +32033,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 151.0,
-        "return_5d_pct": -3.82,
-        "return_20d_pct": -3.82,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 152.0,
+        "return_5d_pct": -1.94,
+        "return_20d_pct": -3.8,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32053,9 +32063,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1077.0,
-        "return_5d_pct": 0.65,
-        "return_20d_pct": 6.95,
+        "last_close": 1090.0,
+        "return_5d_pct": 1.87,
+        "return_20d_pct": 7.07,
         "momentum_direction": "中立"
       }
     },
@@ -32083,9 +32093,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 961.0,
-        "return_5d_pct": -1.64,
-        "return_20d_pct": -3.9,
+        "last_close": 959.0,
+        "return_5d_pct": -1.03,
+        "return_20d_pct": -4.67,
         "momentum_direction": "中立"
       }
     },
@@ -32113,10 +32123,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1575.0,
-        "return_5d_pct": -0.32,
-        "return_20d_pct": 1.61,
-        "momentum_direction": "中立"
+        "last_close": 1624.0,
+        "return_5d_pct": 3.7,
+        "return_20d_pct": 3.37,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -32143,9 +32153,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 403.0,
-        "return_5d_pct": -8.62,
-        "return_20d_pct": -15.16,
+        "last_close": 401.0,
+        "return_5d_pct": -9.07,
+        "return_20d_pct": -14.5,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32173,10 +32183,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1495.0,
-        "return_5d_pct": 2.26,
-        "return_20d_pct": 9.44,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1492.0,
+        "return_5d_pct": 1.63,
+        "return_20d_pct": 6.42,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32203,10 +32213,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3778.0,
-        "return_5d_pct": 4.51,
-        "return_20d_pct": 6.93,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3662.0,
+        "return_5d_pct": -1.16,
+        "return_20d_pct": 2.43,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32233,10 +32243,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2262.0,
-        "return_5d_pct": -2.29,
-        "return_20d_pct": -5.28,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2288.0,
+        "return_5d_pct": 0.88,
+        "return_20d_pct": -5.26,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32263,9 +32273,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 208.0,
-        "return_5d_pct": -12.24,
-        "return_20d_pct": -6.73,
+        "last_close": 202.0,
+        "return_5d_pct": -13.3,
+        "return_20d_pct": -8.18,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32293,10 +32303,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 325.0,
-        "return_5d_pct": -2.4,
-        "return_20d_pct": -4.41,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 330.0,
+        "return_5d_pct": -0.9,
+        "return_20d_pct": -2.08,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32323,10 +32333,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 834.0,
-        "return_5d_pct": -2.57,
-        "return_20d_pct": -1.07,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 859.0,
+        "return_5d_pct": 2.14,
+        "return_20d_pct": -1.94,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -32353,10 +32363,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2281.0,
-        "return_5d_pct": -14.41,
-        "return_20d_pct": -24.6,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2495.0,
+        "return_5d_pct": -1.96,
+        "return_20d_pct": -17.93,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32383,10 +32393,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 138.0,
-        "return_5d_pct": -9.21,
-        "return_20d_pct": -15.85,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 148.0,
+        "return_5d_pct": 0.68,
+        "return_20d_pct": -11.38,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32413,10 +32423,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 19.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -29.63,
-        "momentum_direction": "中立"
+        "last_close": 21.0,
+        "return_5d_pct": 16.67,
+        "return_20d_pct": -19.23,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -32443,10 +32453,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 533.0,
-        "return_5d_pct": -3.96,
-        "return_20d_pct": -8.42,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 544.0,
+        "return_5d_pct": 0.18,
+        "return_20d_pct": -8.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32473,9 +32483,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 435.0,
-        "return_5d_pct": -0.23,
-        "return_20d_pct": 1.16,
+        "last_close": 434.0,
+        "return_5d_pct": 1.17,
+        "return_20d_pct": -1.59,
         "momentum_direction": "中立"
       }
     },
@@ -32503,10 +32513,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 7030.0,
-        "return_5d_pct": -8.7,
-        "return_20d_pct": -29.42,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 7410.0,
+        "return_5d_pct": 2.21,
+        "return_20d_pct": -24.16,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -32533,9 +32543,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1147.0,
-        "return_5d_pct": -13.5,
-        "return_20d_pct": -24.04,
+        "last_close": 1197.0,
+        "return_5d_pct": -3.78,
+        "return_20d_pct": -21.87,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32563,9 +32573,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2021.0,
-        "return_5d_pct": -7.29,
-        "return_20d_pct": -9.09,
+        "last_close": 2059.0,
+        "return_5d_pct": -2.19,
+        "return_20d_pct": -8.73,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32593,9 +32603,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2186.0,
-        "return_5d_pct": 2.77,
-        "return_20d_pct": 5.5,
+        "last_close": 2198.0,
+        "return_5d_pct": 3.39,
+        "return_20d_pct": 3.1,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32624,8 +32634,8 @@
       "momentum": {
         "available": true,
         "last_close": 645.0,
-        "return_5d_pct": -5.01,
-        "return_20d_pct": 0.47,
+        "return_5d_pct": -3.59,
+        "return_20d_pct": 1.1,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32653,9 +32663,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 129.0,
-        "return_5d_pct": -10.42,
-        "return_20d_pct": -18.35,
+        "last_close": 133.0,
+        "return_5d_pct": -2.21,
+        "return_20d_pct": -13.64,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32683,10 +32693,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2685.0,
-        "return_5d_pct": -10.2,
-        "return_20d_pct": -11.82,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2804.0,
+        "return_5d_pct": -1.3,
+        "return_20d_pct": -9.98,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32713,9 +32723,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 452.0,
-        "return_5d_pct": -4.44,
-        "return_20d_pct": -1.74,
+        "last_close": 442.0,
+        "return_5d_pct": -4.95,
+        "return_20d_pct": -11.6,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32743,9 +32753,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 91.0,
-        "return_5d_pct": -20.18,
-        "return_20d_pct": -22.88,
+        "last_close": 90.0,
+        "return_5d_pct": -10.0,
+        "return_20d_pct": -23.08,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32773,9 +32783,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1809.0,
-        "return_5d_pct": -24.5,
-        "return_20d_pct": -19.13,
+        "last_close": 1835.0,
+        "return_5d_pct": -6.85,
+        "return_20d_pct": -20.97,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32803,9 +32813,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 268.0,
-        "return_5d_pct": 0.37,
-        "return_20d_pct": -5.63,
+        "last_close": 269.0,
+        "return_5d_pct": 1.89,
+        "return_20d_pct": -2.54,
         "momentum_direction": "中立"
       }
     },
@@ -32833,9 +32843,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 439.0,
-        "return_5d_pct": -17.48,
-        "return_20d_pct": -25.09,
+        "last_close": 467.0,
+        "return_5d_pct": -9.5,
+        "return_20d_pct": -20.44,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32863,10 +32873,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1150.0,
-        "return_5d_pct": -6.35,
-        "return_20d_pct": -6.2,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1177.0,
+        "return_5d_pct": -0.51,
+        "return_20d_pct": -6.22,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32893,9 +32903,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 816.0,
-        "return_5d_pct": -6.31,
-        "return_20d_pct": -9.43,
+        "last_close": 847.0,
+        "return_5d_pct": -2.87,
+        "return_20d_pct": -6.62,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32923,9 +32933,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1098.0,
-        "return_5d_pct": -7.73,
-        "return_20d_pct": 0.83,
+        "last_close": 1104.0,
+        "return_5d_pct": -5.8,
+        "return_20d_pct": -0.81,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32953,9 +32963,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1300.0,
-        "return_5d_pct": 4.84,
-        "return_20d_pct": 4.33,
+        "last_close": 1318.0,
+        "return_5d_pct": 5.02,
+        "return_20d_pct": -0.6,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -32983,10 +32993,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1044.0,
-        "return_5d_pct": -2.97,
-        "return_20d_pct": -6.37,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1059.0,
+        "return_5d_pct": 0.57,
+        "return_20d_pct": -7.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -32998,9 +33008,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261105565045.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -33013,9 +33027,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 753.0,
-        "return_5d_pct": -1.05,
-        "return_20d_pct": -3.59,
+        "last_close": 773.0,
+        "return_5d_pct": 1.44,
+        "return_20d_pct": -0.64,
         "momentum_direction": "中立"
       }
     },
@@ -33043,9 +33057,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 904.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -10.58,
+        "last_close": 901.0,
+        "return_5d_pct": -0.77,
+        "return_20d_pct": -12.95,
         "momentum_direction": "中立"
       }
     },
@@ -33073,9 +33087,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 842.0,
-        "return_5d_pct": -1.75,
-        "return_20d_pct": -1.06,
+        "last_close": 845.0,
+        "return_5d_pct": -1.17,
+        "return_20d_pct": -0.94,
         "momentum_direction": "中立"
       }
     },
@@ -33103,10 +33117,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 767.0,
-        "return_5d_pct": -5.43,
-        "return_20d_pct": -1.67,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 798.0,
+        "return_5d_pct": 2.57,
+        "return_20d_pct": -0.37,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33133,10 +33147,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 434.0,
-        "return_5d_pct": -4.19,
-        "return_20d_pct": -10.7,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 455.0,
+        "return_5d_pct": -0.66,
+        "return_20d_pct": -2.99,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33163,10 +33177,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 499.0,
-        "return_5d_pct": 0.2,
-        "return_20d_pct": 1.63,
-        "momentum_direction": "中立"
+        "last_close": 511.0,
+        "return_5d_pct": 2.4,
+        "return_20d_pct": 4.93,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33193,10 +33207,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3030.0,
-        "return_5d_pct": -15.48,
-        "return_20d_pct": -9.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3200.0,
+        "return_5d_pct": -1.84,
+        "return_20d_pct": -9.6,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33223,10 +33237,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3475.0,
-        "return_5d_pct": -3.47,
-        "return_20d_pct": -5.31,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3515.0,
+        "return_5d_pct": -0.85,
+        "return_20d_pct": -5.64,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33253,10 +33267,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4235.0,
-        "return_5d_pct": -4.51,
-        "return_20d_pct": -7.33,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4385.0,
+        "return_5d_pct": 0.92,
+        "return_20d_pct": -4.88,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33283,10 +33297,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6190.0,
-        "return_5d_pct": -0.48,
-        "return_20d_pct": 3.34,
-        "momentum_direction": "中立"
+        "last_close": 6290.0,
+        "return_5d_pct": 2.61,
+        "return_20d_pct": 0.48,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33313,9 +33327,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 523.0,
-        "return_5d_pct": 0.77,
-        "return_20d_pct": 1.16,
+        "last_close": 522.0,
+        "return_5d_pct": 0.38,
+        "return_20d_pct": 0.38,
         "momentum_direction": "中立"
       }
     },
@@ -33343,9 +33357,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1199.0,
-        "return_5d_pct": -16.91,
-        "return_20d_pct": -21.27,
+        "last_close": 1306.0,
+        "return_5d_pct": -3.83,
+        "return_20d_pct": -15.52,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -33373,10 +33387,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1112.0,
-        "return_5d_pct": -2.11,
-        "return_20d_pct": -7.18,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1110.0,
+        "return_5d_pct": -1.77,
+        "return_20d_pct": -7.42,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33403,9 +33417,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 720.0,
-        "return_5d_pct": -11.66,
-        "return_20d_pct": -10.0,
+        "last_close": 700.0,
+        "return_5d_pct": -13.37,
+        "return_20d_pct": -12.83,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -33433,10 +33447,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1569.0,
-        "return_5d_pct": -7.76,
-        "return_20d_pct": -24.64,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1719.0,
+        "return_5d_pct": 5.52,
+        "return_20d_pct": -14.26,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33463,10 +33477,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4315.0,
-        "return_5d_pct": -11.03,
-        "return_20d_pct": -21.69,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4865.0,
+        "return_5d_pct": 1.99,
+        "return_20d_pct": -12.18,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33493,10 +33507,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 393.0,
-        "return_5d_pct": -4.84,
-        "return_20d_pct": -7.09,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 398.0,
+        "return_5d_pct": -1.49,
+        "return_20d_pct": -6.13,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33523,10 +33537,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4280.0,
-        "return_5d_pct": -8.35,
-        "return_20d_pct": -20.45,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4600.0,
+        "return_5d_pct": 1.32,
+        "return_20d_pct": -14.18,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33553,10 +33567,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1109.0,
-        "return_5d_pct": -10.35,
-        "return_20d_pct": -13.9,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1170.0,
+        "return_5d_pct": -1.18,
+        "return_20d_pct": -10.34,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33583,10 +33597,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4620.0,
-        "return_5d_pct": -9.41,
-        "return_20d_pct": -18.37,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4740.0,
+        "return_5d_pct": -0.21,
+        "return_20d_pct": -14.44,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33613,10 +33627,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 718.0,
-        "return_5d_pct": -4.01,
-        "return_20d_pct": 1.56,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 740.0,
+        "return_5d_pct": 2.64,
+        "return_20d_pct": -1.99,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33643,10 +33657,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 710.0,
-        "return_5d_pct": -3.4,
-        "return_20d_pct": -8.62,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 730.0,
+        "return_5d_pct": 0.55,
+        "return_20d_pct": -8.52,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33673,10 +33687,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 343.0,
-        "return_5d_pct": -5.25,
-        "return_20d_pct": 7.19,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 355.0,
+        "return_5d_pct": 7.58,
+        "return_20d_pct": 8.23,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33703,10 +33717,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1885.0,
-        "return_5d_pct": -3.33,
-        "return_20d_pct": -6.03,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1920.0,
+        "return_5d_pct": 1.53,
+        "return_20d_pct": -3.86,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33733,9 +33747,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1905.0,
-        "return_5d_pct": 0.9,
-        "return_20d_pct": 2.86,
+        "last_close": 1899.0,
+        "return_5d_pct": 0.64,
+        "return_20d_pct": 1.01,
         "momentum_direction": "中立"
       }
     },
@@ -33763,10 +33777,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 480.0,
-        "return_5d_pct": -10.45,
-        "return_20d_pct": -22.95,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 521.0,
+        "return_5d_pct": -1.7,
+        "return_20d_pct": -17.69,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33793,9 +33807,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1011.0,
-        "return_5d_pct": -1.17,
-        "return_20d_pct": -4.71,
+        "last_close": 1029.0,
+        "return_5d_pct": 0.98,
+        "return_20d_pct": -4.55,
         "momentum_direction": "中立"
       }
     },
@@ -33823,10 +33837,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1332.0,
-        "return_5d_pct": -3.62,
-        "return_20d_pct": -3.97,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1368.0,
+        "return_5d_pct": -0.15,
+        "return_20d_pct": -1.3,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33853,9 +33867,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2739.0,
-        "return_5d_pct": 3.44,
-        "return_20d_pct": 2.35,
+        "last_close": 2803.0,
+        "return_5d_pct": 7.19,
+        "return_20d_pct": 3.85,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -33883,10 +33897,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3190.0,
-        "return_5d_pct": -1.09,
-        "return_20d_pct": -0.62,
-        "momentum_direction": "中立"
+        "last_close": 3510.0,
+        "return_5d_pct": 7.5,
+        "return_20d_pct": 9.18,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -33913,9 +33927,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1074.0,
-        "return_5d_pct": -14.15,
-        "return_20d_pct": -21.03,
+        "last_close": 1110.0,
+        "return_5d_pct": -3.9,
+        "return_20d_pct": -20.26,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -33943,10 +33957,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 255.0,
-        "return_5d_pct": -7.61,
-        "return_20d_pct": 2.82,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 258.0,
+        "return_5d_pct": -0.39,
+        "return_20d_pct": 3.2,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -33973,10 +33987,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1677.0,
-        "return_5d_pct": -3.84,
-        "return_20d_pct": -8.81,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1732.0,
+        "return_5d_pct": 0.29,
+        "return_20d_pct": -8.79,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34003,9 +34017,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 995.0,
-        "return_5d_pct": -3.4,
-        "return_20d_pct": -6.04,
+        "last_close": 1001.0,
+        "return_5d_pct": -2.25,
+        "return_20d_pct": -6.8,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34033,10 +34047,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2217.0,
-        "return_5d_pct": -4.6,
-        "return_20d_pct": -9.25,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2260.0,
+        "return_5d_pct": 0.76,
+        "return_20d_pct": -5.2,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34063,10 +34077,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1190.0,
-        "return_5d_pct": -1.24,
-        "return_20d_pct": 1.45,
-        "momentum_direction": "中立"
+        "last_close": 1198.0,
+        "return_5d_pct": 3.63,
+        "return_20d_pct": 1.44,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -34093,10 +34107,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2392.0,
-        "return_5d_pct": -3.55,
-        "return_20d_pct": -2.21,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2388.0,
+        "return_5d_pct": 0.13,
+        "return_20d_pct": -8.01,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34123,9 +34137,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 436.0,
-        "return_5d_pct": -11.38,
-        "return_20d_pct": -9.92,
+        "last_close": 455.0,
+        "return_5d_pct": -2.36,
+        "return_20d_pct": -8.82,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34153,9 +34167,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 166.0,
-        "return_5d_pct": -16.58,
-        "return_20d_pct": -16.16,
+        "last_close": 183.0,
+        "return_5d_pct": -5.18,
+        "return_20d_pct": -10.29,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34183,9 +34197,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 917.0,
-        "return_5d_pct": -4.28,
-        "return_20d_pct": -7.37,
+        "last_close": 930.0,
+        "return_5d_pct": -2.52,
+        "return_20d_pct": -6.72,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34213,9 +34227,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 428.0,
-        "return_5d_pct": -18.01,
-        "return_20d_pct": -23.3,
+        "last_close": 429.0,
+        "return_5d_pct": -12.45,
+        "return_20d_pct": -21.86,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34243,9 +34257,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2248.0,
-        "return_5d_pct": -11.64,
-        "return_20d_pct": -20.34,
+        "last_close": 2245.0,
+        "return_5d_pct": -3.61,
+        "return_20d_pct": -26.87,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34273,10 +34287,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1205.0,
-        "return_5d_pct": -2.67,
-        "return_20d_pct": 7.4,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1262.0,
+        "return_5d_pct": 3.27,
+        "return_20d_pct": 12.58,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -34303,9 +34317,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1223.0,
-        "return_5d_pct": -6.85,
-        "return_20d_pct": -18.14,
+        "last_close": 1227.0,
+        "return_5d_pct": -4.07,
+        "return_20d_pct": -18.31,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34333,9 +34347,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 810.0,
-        "return_5d_pct": -0.12,
-        "return_20d_pct": -1.1,
+        "last_close": 819.0,
+        "return_5d_pct": 0.99,
+        "return_20d_pct": 0.0,
         "momentum_direction": "中立"
       }
     },
@@ -34363,9 +34377,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 220.0,
-        "return_5d_pct": -11.65,
-        "return_20d_pct": -26.91,
+        "last_close": 225.0,
+        "return_5d_pct": -3.43,
+        "return_20d_pct": -24.5,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34393,10 +34407,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1069.0,
-        "return_5d_pct": -9.64,
-        "return_20d_pct": -20.87,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1133.0,
+        "return_5d_pct": -0.79,
+        "return_20d_pct": -16.07,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34423,9 +34437,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 187.0,
-        "return_5d_pct": -5.56,
-        "return_20d_pct": -11.79,
+        "last_close": 183.0,
+        "return_5d_pct": -5.18,
+        "return_20d_pct": -12.02,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34453,10 +34467,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 464.0,
-        "return_5d_pct": -7.2,
-        "return_20d_pct": -6.26,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 483.0,
+        "return_5d_pct": -1.43,
+        "return_20d_pct": -3.21,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34483,9 +34497,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4055.0,
-        "return_5d_pct": 0.12,
-        "return_20d_pct": 0.12,
+        "last_close": 4060.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": 0.0,
         "momentum_direction": "中立"
       }
     },
@@ -34513,9 +34527,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2455.0,
-        "return_5d_pct": 2.89,
-        "return_20d_pct": 1.78,
+        "last_close": 2547.0,
+        "return_5d_pct": 10.16,
+        "return_20d_pct": 7.7,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34543,10 +34557,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 705.0,
-        "return_5d_pct": -3.29,
-        "return_20d_pct": -4.6,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 730.0,
+        "return_5d_pct": 2.24,
+        "return_20d_pct": -0.95,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -34573,9 +34587,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 271.0,
-        "return_5d_pct": -1.81,
-        "return_20d_pct": -5.57,
+        "last_close": 277.0,
+        "return_5d_pct": 1.09,
+        "return_20d_pct": -2.81,
         "momentum_direction": "中立"
       }
     },
@@ -34603,9 +34617,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1750.0,
-        "return_5d_pct": -10.21,
-        "return_20d_pct": -15.91,
+        "last_close": 1809.0,
+        "return_5d_pct": -2.48,
+        "return_20d_pct": -15.07,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34633,9 +34647,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3745.0,
-        "return_5d_pct": 9.02,
-        "return_20d_pct": 21.2,
+        "last_close": 3625.0,
+        "return_5d_pct": 5.07,
+        "return_20d_pct": 15.26,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34663,9 +34677,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2780.0,
-        "return_5d_pct": 1.46,
-        "return_20d_pct": 2.68,
+        "last_close": 2731.0,
+        "return_5d_pct": -0.51,
+        "return_20d_pct": -2.32,
         "momentum_direction": "中立"
       }
     },
@@ -34693,9 +34707,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2548.0,
-        "return_5d_pct": 5.97,
-        "return_20d_pct": 10.37,
+        "last_close": 2531.5,
+        "return_5d_pct": 6.81,
+        "return_20d_pct": 8.72,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34724,8 +34738,8 @@
       "momentum": {
         "available": true,
         "last_close": 50.0,
-        "return_5d_pct": -15.25,
-        "return_20d_pct": -29.58,
+        "return_5d_pct": -9.09,
+        "return_20d_pct": -27.54,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34753,9 +34767,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 140.0,
-        "return_5d_pct": -6.04,
-        "return_20d_pct": -11.95,
+        "last_close": 147.0,
+        "return_5d_pct": -2.0,
+        "return_20d_pct": -8.7,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34784,8 +34798,8 @@
       "momentum": {
         "available": true,
         "last_close": 59.0,
-        "return_5d_pct": -7.81,
-        "return_20d_pct": -18.06,
+        "return_5d_pct": -6.35,
+        "return_20d_pct": -15.71,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34813,9 +34827,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 224.0,
-        "return_5d_pct": -17.95,
-        "return_20d_pct": -25.33,
+        "last_close": 240.0,
+        "return_5d_pct": -5.51,
+        "return_20d_pct": -18.92,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34843,10 +34857,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 23.0,
-        "return_5d_pct": -14.81,
-        "return_20d_pct": -25.81,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 25.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -7.41,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34873,10 +34887,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2549.0,
-        "return_5d_pct": -3.3,
-        "return_20d_pct": -0.12,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2608.0,
+        "return_5d_pct": -0.27,
+        "return_20d_pct": 0.81,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34903,9 +34917,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1076.0,
-        "return_5d_pct": -4.1,
-        "return_20d_pct": -3.32,
+        "last_close": 1082.0,
+        "return_5d_pct": -4.59,
+        "return_20d_pct": -4.75,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -34933,10 +34947,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 840.0,
-        "return_5d_pct": -3.56,
-        "return_20d_pct": -5.19,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 874.0,
+        "return_5d_pct": 0.92,
+        "return_20d_pct": 0.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34963,10 +34977,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2229.0,
-        "return_5d_pct": -11.72,
-        "return_20d_pct": -3.51,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2438.0,
+        "return_5d_pct": -1.73,
+        "return_20d_pct": 4.41,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -34993,10 +35007,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4522.0,
-        "return_5d_pct": -8.41,
-        "return_20d_pct": -9.54,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4773.0,
+        "return_5d_pct": -0.48,
+        "return_20d_pct": -5.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35024,8 +35038,8 @@
       "momentum": {
         "available": true,
         "last_close": 896.0,
-        "return_5d_pct": 1.7,
-        "return_20d_pct": 3.46,
+        "return_5d_pct": 1.36,
+        "return_20d_pct": 0.22,
         "momentum_direction": "中立"
       }
     },
@@ -35053,10 +35067,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 959.0,
-        "return_5d_pct": -8.58,
-        "return_20d_pct": -16.46,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1016.0,
+        "return_5d_pct": 0.1,
+        "return_20d_pct": -4.6,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35083,9 +35097,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6703.0,
-        "return_5d_pct": -8.32,
-        "return_20d_pct": -7.31,
+        "last_close": 6689.0,
+        "return_5d_pct": -3.87,
+        "return_20d_pct": -10.27,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35113,9 +35127,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1447.0,
-        "return_5d_pct": -1.9,
-        "return_20d_pct": -3.28,
+        "last_close": 1485.0,
+        "return_5d_pct": 1.71,
+        "return_20d_pct": -3.45,
         "momentum_direction": "中立"
       }
     },
@@ -35143,9 +35157,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 236.0,
-        "return_5d_pct": -0.84,
-        "return_20d_pct": -0.42,
+        "last_close": 238.0,
+        "return_5d_pct": 0.42,
+        "return_20d_pct": 0.0,
         "momentum_direction": "中立"
       }
     },
@@ -35173,10 +35187,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1559.0,
-        "return_5d_pct": -2.68,
-        "return_20d_pct": -2.56,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1572.0,
+        "return_5d_pct": 0.06,
+        "return_20d_pct": -3.44,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35203,9 +35217,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3090.0,
-        "return_5d_pct": 5.42,
-        "return_20d_pct": 3.97,
+        "last_close": 3100.0,
+        "return_5d_pct": 6.13,
+        "return_20d_pct": -0.8,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35233,9 +35247,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 842.0,
-        "return_5d_pct": -11.37,
-        "return_20d_pct": -16.63,
+        "last_close": 867.0,
+        "return_5d_pct": -4.3,
+        "return_20d_pct": -15.83,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35263,9 +35277,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1912.0,
-        "return_5d_pct": -5.91,
-        "return_20d_pct": -9.6,
+        "last_close": 1944.0,
+        "return_5d_pct": -2.11,
+        "return_20d_pct": -7.91,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35293,10 +35307,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1822.0,
-        "return_5d_pct": 0.77,
-        "return_20d_pct": 2.71,
-        "momentum_direction": "中立"
+        "last_close": 1815.0,
+        "return_5d_pct": 4.13,
+        "return_20d_pct": 0.17,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35323,9 +35337,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1526.0,
-        "return_5d_pct": -23.16,
-        "return_20d_pct": -24.49,
+        "last_close": 1636.0,
+        "return_5d_pct": -19.8,
+        "return_20d_pct": -14.35,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35353,10 +35367,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 38.0,
-        "return_5d_pct": -5.0,
-        "return_20d_pct": -15.56,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 40.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -9.09,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35383,10 +35397,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 26.0,
-        "return_5d_pct": -7.14,
-        "return_20d_pct": -16.13,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 29.0,
+        "return_5d_pct": 11.54,
+        "return_20d_pct": -3.33,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35413,9 +35427,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2239.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -3.78,
+        "last_close": 2301.0,
+        "return_5d_pct": -0.56,
+        "return_20d_pct": -1.41,
         "momentum_direction": "中立"
       }
     },
@@ -35443,9 +35457,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 108.0,
-        "return_5d_pct": -11.48,
-        "return_20d_pct": -15.62,
+        "last_close": 112.0,
+        "return_5d_pct": -3.45,
+        "return_20d_pct": -11.81,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35473,10 +35487,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2049.0,
-        "return_5d_pct": -4.12,
-        "return_20d_pct": -3.49,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2071.0,
+        "return_5d_pct": -0.91,
+        "return_20d_pct": -5.43,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35503,9 +35517,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2014.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": 120.11,
+        "last_close": 2015.0,
+        "return_5d_pct": 0.1,
+        "return_20d_pct": 119.98,
         "momentum_direction": "中立"
       }
     },
@@ -35533,10 +35547,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2435.0,
-        "return_5d_pct": -3.79,
-        "return_20d_pct": -6.17,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2482.0,
+        "return_5d_pct": 0.49,
+        "return_20d_pct": -7.73,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35563,10 +35577,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1709.0,
-        "return_5d_pct": -5.21,
-        "return_20d_pct": 6.81,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1743.0,
+        "return_5d_pct": 2.71,
+        "return_20d_pct": 3.87,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35593,9 +35607,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4268.0,
-        "return_5d_pct": 7.05,
-        "return_20d_pct": 9.94,
+        "last_close": 4220.0,
+        "return_5d_pct": 5.24,
+        "return_20d_pct": 6.78,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35623,9 +35637,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6120.0,
-        "return_5d_pct": -0.81,
-        "return_20d_pct": -1.61,
+        "last_close": 6140.0,
+        "return_5d_pct": 1.99,
+        "return_20d_pct": -4.06,
         "momentum_direction": "中立"
       }
     },
@@ -35653,9 +35667,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 898.0,
-        "return_5d_pct": -1.32,
-        "return_20d_pct": -0.99,
+        "last_close": 903.0,
+        "return_5d_pct": 0.44,
+        "return_20d_pct": -1.42,
         "momentum_direction": "中立"
       }
     },
@@ -35683,10 +35697,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1650.0,
-        "return_5d_pct": -9.14,
-        "return_20d_pct": -14.86,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1787.0,
+        "return_5d_pct": 1.25,
+        "return_20d_pct": -11.27,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35713,10 +35727,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 165.0,
-        "return_5d_pct": -3.51,
-        "return_20d_pct": -9.34,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 170.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -7.61,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35743,10 +35757,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3800.0,
-        "return_5d_pct": 0.8,
-        "return_20d_pct": -5.47,
-        "momentum_direction": "中立"
+        "last_close": 3845.0,
+        "return_5d_pct": 4.34,
+        "return_20d_pct": -4.23,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35773,9 +35787,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2439.0,
-        "return_5d_pct": 6.23,
-        "return_20d_pct": 24.31,
+        "last_close": 2388.0,
+        "return_5d_pct": 7.96,
+        "return_20d_pct": 17.06,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35803,10 +35817,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1182.0,
-        "return_5d_pct": -3.75,
-        "return_20d_pct": -6.71,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1207.0,
+        "return_5d_pct": -0.25,
+        "return_20d_pct": -6.65,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35833,10 +35847,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1140.0,
-        "return_5d_pct": -4.36,
-        "return_20d_pct": -5.94,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1162.0,
+        "return_5d_pct": 0.17,
+        "return_20d_pct": -6.52,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35863,10 +35877,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1180.0,
-        "return_5d_pct": -2.8,
-        "return_20d_pct": -1.58,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1190.0,
+        "return_5d_pct": -1.41,
+        "return_20d_pct": -2.06,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35893,9 +35907,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 639.0,
-        "return_5d_pct": -5.89,
-        "return_20d_pct": -10.63,
+        "last_close": 634.0,
+        "return_5d_pct": -4.66,
+        "return_20d_pct": -12.43,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -35923,9 +35937,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 950.0,
-        "return_5d_pct": -1.66,
-        "return_20d_pct": -3.36,
+        "last_close": 953.0,
+        "return_5d_pct": -1.45,
+        "return_20d_pct": -3.25,
         "momentum_direction": "中立"
       }
     },
@@ -35954,9 +35968,9 @@
       "momentum": {
         "available": true,
         "last_close": 1969.0,
-        "return_5d_pct": -0.91,
-        "return_20d_pct": -4.09,
-        "momentum_direction": "中立"
+        "return_5d_pct": -4.18,
+        "return_20d_pct": -4.04,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35983,9 +35997,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3175.0,
-        "return_5d_pct": -6.2,
-        "return_20d_pct": -21.99,
+        "last_close": 3195.0,
+        "return_5d_pct": -3.03,
+        "return_20d_pct": -22.83,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36013,10 +36027,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5540.0,
-        "return_5d_pct": -1.77,
-        "return_20d_pct": -9.03,
-        "momentum_direction": "中立"
+        "last_close": 5660.0,
+        "return_5d_pct": 2.35,
+        "return_20d_pct": -6.6,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36043,10 +36057,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 596.0,
-        "return_5d_pct": -7.17,
-        "return_20d_pct": -16.29,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 620.0,
+        "return_5d_pct": -1.74,
+        "return_20d_pct": -14.95,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36073,10 +36087,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 378.0,
-        "return_5d_pct": -5.97,
-        "return_20d_pct": -6.2,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 384.0,
+        "return_5d_pct": -0.52,
+        "return_20d_pct": -5.88,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36103,10 +36117,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 615.0,
-        "return_5d_pct": -2.69,
-        "return_20d_pct": -9.69,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 659.0,
+        "return_5d_pct": 5.27,
+        "return_20d_pct": -4.63,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36133,10 +36147,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3255.0,
-        "return_5d_pct": -8.7,
-        "return_20d_pct": -15.12,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3390.0,
+        "return_5d_pct": -1.31,
+        "return_20d_pct": -12.4,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36163,10 +36177,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1188.0,
-        "return_5d_pct": 1.19,
-        "return_20d_pct": 1.02,
-        "momentum_direction": "中立"
+        "last_close": 1211.0,
+        "return_5d_pct": 4.94,
+        "return_20d_pct": 1.42,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36193,10 +36207,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1271.0,
-        "return_5d_pct": -2.46,
-        "return_20d_pct": -4.79,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1310.0,
+        "return_5d_pct": 0.31,
+        "return_20d_pct": -0.76,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36223,10 +36237,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 626.0,
-        "return_5d_pct": -1.88,
-        "return_20d_pct": 2.45,
-        "momentum_direction": "中立"
+        "last_close": 642.0,
+        "return_5d_pct": 2.39,
+        "return_20d_pct": -0.16,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36253,9 +36267,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 19950.0,
-        "return_5d_pct": -0.3,
-        "return_20d_pct": -0.2,
+        "last_close": 20000.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": 0.0,
         "momentum_direction": "中立"
       }
     },
@@ -36283,9 +36297,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2298.0,
-        "return_5d_pct": -0.52,
-        "return_20d_pct": 7.48,
+        "last_close": 2264.0,
+        "return_5d_pct": -1.69,
+        "return_20d_pct": 3.62,
         "momentum_direction": "中立"
       }
     },
@@ -36313,9 +36327,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2008.0,
-        "return_5d_pct": 0.85,
-        "return_20d_pct": 2.19,
+        "last_close": 2003.0,
+        "return_5d_pct": 0.6,
+        "return_20d_pct": 0.91,
         "momentum_direction": "中立"
       }
     },
@@ -36343,10 +36357,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1244.0,
-        "return_5d_pct": 1.14,
-        "return_20d_pct": -1.58,
-        "momentum_direction": "中立"
+        "last_close": 1250.0,
+        "return_5d_pct": 2.71,
+        "return_20d_pct": -1.88,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36373,10 +36387,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 693.0,
-        "return_5d_pct": -2.67,
-        "return_20d_pct": -6.6,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 716.0,
+        "return_5d_pct": 1.99,
+        "return_20d_pct": -4.41,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36403,9 +36417,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2118.0,
-        "return_5d_pct": -14.42,
-        "return_20d_pct": -5.23,
+        "last_close": 2181.0,
+        "return_5d_pct": -2.15,
+        "return_20d_pct": -1.67,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36433,10 +36447,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2109.0,
-        "return_5d_pct": -1.22,
-        "return_20d_pct": -2.32,
-        "momentum_direction": "中立"
+        "last_close": 2140.0,
+        "return_5d_pct": 2.05,
+        "return_20d_pct": -3.04,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36463,9 +36477,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 720.0,
-        "return_5d_pct": -8.28,
-        "return_20d_pct": -13.46,
+        "last_close": 708.0,
+        "return_5d_pct": -5.6,
+        "return_20d_pct": -15.01,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36493,10 +36507,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1617.0,
-        "return_5d_pct": -5.77,
-        "return_20d_pct": -9.92,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1719.0,
+        "return_5d_pct": 1.84,
+        "return_20d_pct": -6.93,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36523,9 +36537,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 14090.0,
-        "return_5d_pct": -6.0,
-        "return_20d_pct": -6.07,
+        "last_close": 14240.0,
+        "return_5d_pct": -4.04,
+        "return_20d_pct": -5.07,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36553,10 +36567,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 251.0,
-        "return_5d_pct": -3.09,
-        "return_20d_pct": -10.36,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 262.0,
+        "return_5d_pct": 3.15,
+        "return_20d_pct": -6.09,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36583,9 +36597,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1512.0,
-        "return_5d_pct": -1.37,
-        "return_20d_pct": -6.9,
+        "last_close": 1506.0,
+        "return_5d_pct": -0.4,
+        "return_20d_pct": -7.15,
         "momentum_direction": "中立"
       }
     },
@@ -36613,10 +36627,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1273.0,
-        "return_5d_pct": -4.21,
-        "return_20d_pct": -7.35,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1313.0,
+        "return_5d_pct": -1.43,
+        "return_20d_pct": -5.68,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36643,10 +36657,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 994.0,
-        "return_5d_pct": -10.93,
-        "return_20d_pct": -27.29,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1096.0,
+        "return_5d_pct": 4.88,
+        "return_20d_pct": -16.97,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36673,10 +36687,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2492.0,
-        "return_5d_pct": -13.94,
-        "return_20d_pct": -35.15,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2751.5,
+        "return_5d_pct": 0.84,
+        "return_20d_pct": -25.09,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36703,10 +36717,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2940.0,
-        "return_5d_pct": -2.2,
-        "return_20d_pct": -1.8,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2976.5,
+        "return_5d_pct": -1.15,
+        "return_20d_pct": -2.95,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36733,9 +36747,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1694.0,
-        "return_5d_pct": -16.67,
-        "return_20d_pct": -28.91,
+        "last_close": 1848.0,
+        "return_5d_pct": -2.99,
+        "return_20d_pct": -20.07,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36763,9 +36777,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 920.0,
-        "return_5d_pct": -3.16,
-        "return_20d_pct": -8.09,
+        "last_close": 922.0,
+        "return_5d_pct": -3.96,
+        "return_20d_pct": -7.8,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36793,10 +36807,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1068.0,
-        "return_5d_pct": 11.6,
-        "return_20d_pct": -3.7,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1161.0,
+        "return_5d_pct": -5.15,
+        "return_20d_pct": 6.42,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36823,10 +36837,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1449.0,
-        "return_5d_pct": -2.75,
-        "return_20d_pct": -4.42,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1459.0,
+        "return_5d_pct": -0.75,
+        "return_20d_pct": -7.19,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36853,9 +36867,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3670.0,
-        "return_5d_pct": -14.85,
-        "return_20d_pct": -34.23,
+        "last_close": 3970.0,
+        "return_5d_pct": -6.81,
+        "return_20d_pct": -30.59,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -36883,10 +36897,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2173.0,
-        "return_5d_pct": -9.76,
-        "return_20d_pct": -15.79,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2329.0,
+        "return_5d_pct": -0.96,
+        "return_20d_pct": -9.96,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36913,10 +36927,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1961.0,
-        "return_5d_pct": -2.63,
-        "return_20d_pct": -4.99,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2020.0,
+        "return_5d_pct": 3.38,
+        "return_20d_pct": -2.37,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -36943,10 +36957,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1507.0,
-        "return_5d_pct": -4.68,
-        "return_20d_pct": -9.92,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1552.0,
+        "return_5d_pct": 0.39,
+        "return_20d_pct": -7.78,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -36977,10 +36991,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 964.0,
-        "return_5d_pct": -3.41,
-        "return_20d_pct": -5.3,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 989.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -1.2,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37007,9 +37021,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 440.0,
-        "return_5d_pct": -10.93,
-        "return_20d_pct": -23.48,
+        "last_close": 443.0,
+        "return_5d_pct": -5.34,
+        "return_20d_pct": -22.96,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37037,10 +37051,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3230.0,
-        "return_5d_pct": -7.18,
-        "return_20d_pct": -13.87,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3455.0,
+        "return_5d_pct": -1.29,
+        "return_20d_pct": -8.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37067,10 +37081,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 985.0,
-        "return_5d_pct": -6.37,
-        "return_20d_pct": -12.05,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1015.0,
+        "return_5d_pct": 0.4,
+        "return_20d_pct": -5.76,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37097,9 +37111,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 850.0,
-        "return_5d_pct": -0.7,
-        "return_20d_pct": -7.41,
+        "last_close": 855.0,
+        "return_5d_pct": 0.35,
+        "return_20d_pct": -9.81,
         "momentum_direction": "中立"
       }
     },
@@ -37127,9 +37141,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1230.0,
-        "return_5d_pct": -5.38,
-        "return_20d_pct": -13.56,
+        "last_close": 1245.0,
+        "return_5d_pct": -3.41,
+        "return_20d_pct": -10.5,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37157,10 +37171,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1692.0,
-        "return_5d_pct": -2.31,
-        "return_20d_pct": -4.35,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1700.0,
+        "return_5d_pct": -0.06,
+        "return_20d_pct": -1.9,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37187,10 +37201,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2594.0,
-        "return_5d_pct": -5.57,
-        "return_20d_pct": -1.74,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2620.0,
+        "return_5d_pct": -0.42,
+        "return_20d_pct": -5.76,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37217,9 +37231,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4260.0,
-        "return_5d_pct": 0.47,
-        "return_20d_pct": -0.35,
+        "last_close": 4350.0,
+        "return_5d_pct": 1.4,
+        "return_20d_pct": -1.47,
         "momentum_direction": "中立"
       }
     },
@@ -37247,10 +37261,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1801.0,
-        "return_5d_pct": -3.59,
-        "return_20d_pct": -4.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1830.0,
+        "return_5d_pct": 0.16,
+        "return_20d_pct": -3.84,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37277,10 +37291,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1996.0,
-        "return_5d_pct": -8.52,
-        "return_20d_pct": -17.59,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2225.0,
+        "return_5d_pct": 3.73,
+        "return_20d_pct": -4.22,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37307,9 +37321,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 450.0,
-        "return_5d_pct": -7.22,
-        "return_20d_pct": -5.46,
+        "last_close": 459.0,
+        "return_5d_pct": -3.97,
+        "return_20d_pct": -5.17,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37337,10 +37351,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 519.0,
-        "return_5d_pct": -0.95,
-        "return_20d_pct": -7.65,
-        "momentum_direction": "中立"
+        "last_close": 531.0,
+        "return_5d_pct": 4.12,
+        "return_20d_pct": -5.85,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37367,9 +37381,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1251.0,
-        "return_5d_pct": -13.84,
-        "return_20d_pct": -26.41,
+        "last_close": 1340.0,
+        "return_5d_pct": -3.46,
+        "return_20d_pct": -20.76,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37398,8 +37412,8 @@
       "momentum": {
         "available": true,
         "last_close": 5380.0,
-        "return_5d_pct": -3.06,
-        "return_20d_pct": -3.76,
+        "return_5d_pct": -4.27,
+        "return_20d_pct": -4.27,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37427,10 +37441,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2596.0,
-        "return_5d_pct": -0.95,
-        "return_20d_pct": 0.93,
-        "momentum_direction": "中立"
+        "last_close": 2643.0,
+        "return_5d_pct": 3.53,
+        "return_20d_pct": -0.26,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37457,10 +37471,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2384.0,
-        "return_5d_pct": -3.91,
-        "return_20d_pct": -5.85,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2450.0,
+        "return_5d_pct": 1.53,
+        "return_20d_pct": -5.99,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37487,10 +37501,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2501.0,
-        "return_5d_pct": -5.34,
-        "return_20d_pct": -12.98,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2635.0,
+        "return_5d_pct": -0.38,
+        "return_20d_pct": -11.84,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37517,10 +37531,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3250.0,
-        "return_5d_pct": -5.11,
-        "return_20d_pct": -8.32,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3265.0,
+        "return_5d_pct": -1.8,
+        "return_20d_pct": -9.31,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37547,9 +37561,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1203.0,
-        "return_5d_pct": -1.64,
-        "return_20d_pct": -4.22,
+        "last_close": 1224.0,
+        "return_5d_pct": 0.74,
+        "return_20d_pct": -3.77,
         "momentum_direction": "中立"
       }
     },
@@ -37577,9 +37591,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2926.0,
-        "return_5d_pct": -0.2,
-        "return_20d_pct": -2.63,
+        "last_close": 2988.0,
+        "return_5d_pct": 0.44,
+        "return_20d_pct": -0.57,
         "momentum_direction": "中立"
       }
     },
@@ -37607,10 +37621,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2128.0,
-        "return_5d_pct": 3.8,
-        "return_20d_pct": 4.36,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2118.0,
+        "return_5d_pct": 0.81,
+        "return_20d_pct": 2.72,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37637,10 +37651,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 634.0,
-        "return_5d_pct": -8.91,
-        "return_20d_pct": -16.58,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 692.0,
+        "return_5d_pct": 2.22,
+        "return_20d_pct": -10.71,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37667,10 +37681,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1138.0,
-        "return_5d_pct": -3.23,
-        "return_20d_pct": -5.72,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1151.0,
+        "return_5d_pct": -0.6,
+        "return_20d_pct": -6.8,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37697,10 +37711,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5509.0,
-        "return_5d_pct": 2.78,
-        "return_20d_pct": 5.58,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 5426.0,
+        "return_5d_pct": 0.71,
+        "return_20d_pct": 1.84,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37727,9 +37741,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2989.0,
-        "return_5d_pct": -21.03,
-        "return_20d_pct": -30.0,
+        "last_close": 3125.0,
+        "return_5d_pct": -13.55,
+        "return_20d_pct": -26.73,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37757,10 +37771,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 609.0,
-        "return_5d_pct": -5.58,
-        "return_20d_pct": -9.24,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 630.0,
+        "return_5d_pct": 0.32,
+        "return_20d_pct": -9.74,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37787,10 +37801,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 8770.0,
-        "return_5d_pct": -10.96,
-        "return_20d_pct": -28.29,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 9650.0,
+        "return_5d_pct": 0.52,
+        "return_20d_pct": -23.84,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37817,9 +37831,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3460.0,
-        "return_5d_pct": -7.11,
-        "return_20d_pct": -12.52,
+        "last_close": 3575.0,
+        "return_5d_pct": -2.19,
+        "return_20d_pct": -12.7,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37847,10 +37861,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3985.0,
-        "return_5d_pct": -11.35,
-        "return_20d_pct": -30.94,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4690.0,
+        "return_5d_pct": 6.96,
+        "return_20d_pct": -19.28,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37877,10 +37891,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 712.0,
-        "return_5d_pct": null,
+        "last_close": 583.0,
+        "return_5d_pct": -23.89,
         "return_20d_pct": null,
-        "momentum_direction": "中立"
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -37907,10 +37921,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1435.0,
-        "return_5d_pct": -3.43,
-        "return_20d_pct": -3.04,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1451.0,
+        "return_5d_pct": -1.29,
+        "return_20d_pct": -3.07,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37937,9 +37951,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1451.5,
-        "return_5d_pct": -5.22,
-        "return_20d_pct": 1.5,
+        "last_close": 1468.5,
+        "return_5d_pct": -3.64,
+        "return_20d_pct": -1.18,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -37967,10 +37981,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 710.0,
-        "return_5d_pct": -3.4,
-        "return_20d_pct": -5.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 725.0,
+        "return_5d_pct": 0.28,
+        "return_20d_pct": -6.81,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -37997,9 +38011,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 946.0,
-        "return_5d_pct": -5.96,
-        "return_20d_pct": -14.39,
+        "last_close": 1014.0,
+        "return_5d_pct": -2.41,
+        "return_20d_pct": -8.32,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38027,10 +38041,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 660.0,
-        "return_5d_pct": -4.35,
-        "return_20d_pct": -9.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 698.0,
+        "return_5d_pct": 3.87,
+        "return_20d_pct": -7.18,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38057,9 +38071,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2901.0,
-        "return_5d_pct": -18.4,
-        "return_20d_pct": -29.5,
+        "last_close": 3220.0,
+        "return_5d_pct": -2.72,
+        "return_20d_pct": -24.85,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38087,9 +38101,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1912.0,
-        "return_5d_pct": -20.53,
-        "return_20d_pct": -10.95,
+        "last_close": 2180.0,
+        "return_5d_pct": -10.58,
+        "return_20d_pct": -1.13,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38117,9 +38131,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 779.0,
-        "return_5d_pct": -6.71,
-        "return_20d_pct": -12.57,
+        "last_close": 797.0,
+        "return_5d_pct": -2.8,
+        "return_20d_pct": -7.86,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38147,10 +38161,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 198.0,
-        "return_5d_pct": -2.94,
-        "return_20d_pct": -9.59,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 206.0,
+        "return_5d_pct": 2.49,
+        "return_20d_pct": -6.79,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38177,10 +38191,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1728.0,
-        "return_5d_pct": -10.42,
-        "return_20d_pct": -16.64,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1802.0,
+        "return_5d_pct": 1.81,
+        "return_20d_pct": -14.88,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38207,10 +38221,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3020.0,
-        "return_5d_pct": -5.03,
-        "return_20d_pct": -7.79,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3265.0,
+        "return_5d_pct": 4.82,
+        "return_20d_pct": -1.95,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38237,10 +38251,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 27.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -32.5,
-        "momentum_direction": "中立"
+        "last_close": 35.0,
+        "return_5d_pct": 34.62,
+        "return_20d_pct": -5.41,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38267,10 +38281,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 715.0,
-        "return_5d_pct": -2.46,
-        "return_20d_pct": -7.14,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 712.0,
+        "return_5d_pct": -0.97,
+        "return_20d_pct": -8.6,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38297,9 +38311,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1868.0,
-        "return_5d_pct": -4.11,
-        "return_20d_pct": -4.21,
+        "last_close": 1847.0,
+        "return_5d_pct": -3.3,
+        "return_20d_pct": -7.83,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38327,9 +38341,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5400.0,
-        "return_5d_pct": 4.05,
-        "return_20d_pct": 3.05,
+        "last_close": 5440.0,
+        "return_5d_pct": 3.82,
+        "return_20d_pct": 3.03,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38357,9 +38371,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 459.0,
-        "return_5d_pct": -0.86,
-        "return_20d_pct": -1.29,
+        "last_close": 461.0,
+        "return_5d_pct": -0.22,
+        "return_20d_pct": -1.28,
         "momentum_direction": "中立"
       }
     },
@@ -38387,9 +38401,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3605.0,
-        "return_5d_pct": -14.98,
-        "return_20d_pct": -17.88,
+        "last_close": 3835.0,
+        "return_5d_pct": -4.72,
+        "return_20d_pct": -17.62,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38417,10 +38431,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2630.0,
-        "return_5d_pct": -23.99,
-        "return_20d_pct": -47.35,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3280.0,
+        "return_5d_pct": 4.96,
+        "return_20d_pct": -35.69,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38447,9 +38461,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 8922.0,
-        "return_5d_pct": -21.29,
-        "return_20d_pct": -45.33,
+        "last_close": 10095.0,
+        "return_5d_pct": -5.87,
+        "return_20d_pct": -34.53,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38477,9 +38491,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2151.0,
-        "return_5d_pct": -5.24,
-        "return_20d_pct": -7.48,
+        "last_close": 2165.0,
+        "return_5d_pct": -3.18,
+        "return_20d_pct": -5.95,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38507,9 +38521,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 729.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": -16.69,
+        "last_close": 752.0,
+        "return_5d_pct": -0.53,
+        "return_20d_pct": -15.03,
         "momentum_direction": "中立"
       }
     },
@@ -38537,10 +38551,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3155.0,
-        "return_5d_pct": -2.62,
-        "return_20d_pct": -9.86,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3250.0,
+        "return_5d_pct": 2.04,
+        "return_20d_pct": -7.54,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38567,9 +38581,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3015.0,
-        "return_5d_pct": -15.55,
-        "return_20d_pct": -30.61,
+        "last_close": 3210.0,
+        "return_5d_pct": -6.14,
+        "return_20d_pct": -25.87,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38597,9 +38611,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 185.0,
-        "return_5d_pct": -1.07,
-        "return_20d_pct": -4.64,
+        "last_close": 187.0,
+        "return_5d_pct": 1.08,
+        "return_20d_pct": -2.09,
         "momentum_direction": "中立"
       }
     },
@@ -38627,10 +38641,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5480.0,
-        "return_5d_pct": -7.28,
-        "return_20d_pct": -12.32,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 5700.0,
+        "return_5d_pct": -0.35,
+        "return_20d_pct": -8.95,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38657,9 +38671,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2017.5,
-        "return_5d_pct": -8.11,
-        "return_20d_pct": -9.0,
+        "last_close": 2068.5,
+        "return_5d_pct": -2.59,
+        "return_20d_pct": -8.92,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38687,9 +38701,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 618.0,
-        "return_5d_pct": -12.83,
-        "return_20d_pct": -27.46,
+        "last_close": 652.0,
+        "return_5d_pct": -3.12,
+        "return_20d_pct": -20.39,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38717,10 +38731,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 533.0,
-        "return_5d_pct": -2.02,
-        "return_20d_pct": -6.16,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 548.0,
+        "return_5d_pct": 0.37,
+        "return_20d_pct": -4.7,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38747,9 +38761,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 926.0,
-        "return_5d_pct": -1.59,
-        "return_20d_pct": -1.49,
+        "last_close": 917.0,
+        "return_5d_pct": -1.71,
+        "return_20d_pct": -2.45,
         "momentum_direction": "中立"
       }
     },
@@ -38777,10 +38791,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 877.0,
-        "return_5d_pct": -4.05,
-        "return_20d_pct": -3.31,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 904.0,
+        "return_5d_pct": 0.56,
+        "return_20d_pct": -2.9,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38807,9 +38821,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 375.0,
-        "return_5d_pct": -7.64,
-        "return_20d_pct": -14.58,
+        "last_close": 382.0,
+        "return_5d_pct": -3.05,
+        "return_20d_pct": -10.54,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38837,9 +38851,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 425.0,
-        "return_5d_pct": -14.66,
-        "return_20d_pct": -13.62,
+        "last_close": 442.0,
+        "return_5d_pct": -4.74,
+        "return_20d_pct": -22.46,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38867,10 +38881,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 258.0,
-        "return_5d_pct": -8.51,
-        "return_20d_pct": -22.99,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 262.0,
+        "return_5d_pct": 2.75,
+        "return_20d_pct": -22.02,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38897,10 +38911,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1244.0,
-        "return_5d_pct": -2.05,
-        "return_20d_pct": -4.23,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1254.0,
+        "return_5d_pct": -0.63,
+        "return_20d_pct": -2.94,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -38927,10 +38941,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 855.0,
-        "return_5d_pct": -6.04,
-        "return_20d_pct": -2.51,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 885.0,
+        "return_5d_pct": 2.67,
+        "return_20d_pct": 0.45,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -38957,9 +38971,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2198.0,
-        "return_5d_pct": -6.03,
-        "return_20d_pct": -4.64,
+        "last_close": 2200.0,
+        "return_5d_pct": -4.51,
+        "return_20d_pct": -3.97,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -38987,9 +39001,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1429.0,
-        "return_5d_pct": -1.99,
-        "return_20d_pct": -4.16,
+        "last_close": 1423.0,
+        "return_5d_pct": -0.77,
+        "return_20d_pct": -6.01,
         "momentum_direction": "中立"
       }
     },
@@ -39017,10 +39031,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1414.0,
-        "return_5d_pct": -7.0,
-        "return_20d_pct": -15.93,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1519.5,
+        "return_5d_pct": 2.12,
+        "return_20d_pct": -10.09,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39047,9 +39061,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 379.0,
-        "return_5d_pct": -4.77,
-        "return_20d_pct": -6.65,
+        "last_close": 385.0,
+        "return_5d_pct": -2.28,
+        "return_20d_pct": -4.7,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39077,10 +39091,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1486.0,
-        "return_5d_pct": 1.09,
-        "return_20d_pct": -1.72,
-        "momentum_direction": "中立"
+        "last_close": 1505.0,
+        "return_5d_pct": 2.94,
+        "return_20d_pct": -1.25,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39107,10 +39121,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 101.0,
-        "return_5d_pct": 1.0,
-        "return_20d_pct": -0.98,
-        "momentum_direction": "中立"
+        "last_close": 102.0,
+        "return_5d_pct": 3.03,
+        "return_20d_pct": -1.92,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39137,10 +39151,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 900.0,
-        "return_5d_pct": -2.07,
-        "return_20d_pct": -6.74,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 924.0,
+        "return_5d_pct": 2.21,
+        "return_20d_pct": -5.52,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39167,10 +39181,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 311.0,
-        "return_5d_pct": -2.51,
-        "return_20d_pct": -3.12,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 319.0,
+        "return_5d_pct": 0.31,
+        "return_20d_pct": -2.15,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39197,10 +39211,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1110.0,
-        "return_5d_pct": -2.8,
-        "return_20d_pct": -5.29,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1132.0,
+        "return_5d_pct": 0.62,
+        "return_20d_pct": -2.58,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39227,10 +39241,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1272.0,
-        "return_5d_pct": -5.29,
-        "return_20d_pct": -8.03,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1371.0,
+        "return_5d_pct": 3.08,
+        "return_20d_pct": -3.11,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39257,10 +39271,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 783.0,
-        "return_5d_pct": 0.77,
-        "return_20d_pct": -2.85,
-        "momentum_direction": "中立"
+        "last_close": 800.0,
+        "return_5d_pct": 2.7,
+        "return_20d_pct": -0.37,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39287,10 +39301,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1776.0,
-        "return_5d_pct": -2.68,
-        "return_20d_pct": -6.03,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1819.0,
+        "return_5d_pct": 1.22,
+        "return_20d_pct": -5.51,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39317,9 +39331,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1691.0,
-        "return_5d_pct": 0.12,
-        "return_20d_pct": -0.65,
+        "last_close": 1698.0,
+        "return_5d_pct": 0.41,
+        "return_20d_pct": -0.7,
         "momentum_direction": "中立"
       }
     },
@@ -39347,10 +39361,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 393.0,
-        "return_5d_pct": -2.72,
-        "return_20d_pct": -8.6,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 406.0,
+        "return_5d_pct": 2.27,
+        "return_20d_pct": -5.14,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39377,9 +39391,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1534.0,
-        "return_5d_pct": -12.24,
-        "return_20d_pct": -17.92,
+        "last_close": 1614.0,
+        "return_5d_pct": -2.36,
+        "return_20d_pct": -14.65,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39407,9 +39421,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1784.0,
-        "return_5d_pct": 3.54,
-        "return_20d_pct": 9.05,
+        "last_close": 1788.0,
+        "return_5d_pct": 3.65,
+        "return_20d_pct": 6.24,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39437,9 +39451,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 774.9,
-        "return_5d_pct": 5.1,
-        "return_20d_pct": 13.92,
+        "last_close": 766.0,
+        "return_5d_pct": 3.25,
+        "return_20d_pct": 8.61,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39467,9 +39481,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 745.0,
-        "return_5d_pct": -0.4,
-        "return_20d_pct": -1.32,
+        "last_close": 747.0,
+        "return_5d_pct": -0.66,
+        "return_20d_pct": -0.8,
         "momentum_direction": "中立"
       }
     },
@@ -39497,10 +39511,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 12660.0,
-        "return_5d_pct": 0.8,
-        "return_20d_pct": 11.89,
-        "momentum_direction": "中立"
+        "last_close": 12730.0,
+        "return_5d_pct": 2.13,
+        "return_20d_pct": 8.06,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -39527,9 +39541,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6490.0,
-        "return_5d_pct": 6.39,
-        "return_20d_pct": 24.57,
+        "last_close": 6540.0,
+        "return_5d_pct": 7.57,
+        "return_20d_pct": 20.89,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39557,9 +39571,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3710.0,
-        "return_5d_pct": -0.27,
-        "return_20d_pct": -0.67,
+        "last_close": 3720.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -0.13,
         "momentum_direction": "中立"
       }
     },
@@ -39587,9 +39601,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 564.0,
-        "return_5d_pct": -10.05,
-        "return_20d_pct": -10.9,
+        "last_close": 606.0,
+        "return_5d_pct": -3.66,
+        "return_20d_pct": -11.53,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39617,10 +39631,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1239.0,
-        "return_5d_pct": -3.73,
-        "return_20d_pct": 3.16,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1251.0,
+        "return_5d_pct": -0.64,
+        "return_20d_pct": 3.65,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39647,9 +39661,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3190.0,
-        "return_5d_pct": -14.82,
-        "return_20d_pct": -27.58,
+        "last_close": 3465.0,
+        "return_5d_pct": -3.48,
+        "return_20d_pct": -21.25,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39677,10 +39691,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4110.0,
-        "return_5d_pct": -11.99,
-        "return_20d_pct": -39.02,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4600.0,
+        "return_5d_pct": 0.22,
+        "return_20d_pct": -31.03,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39707,9 +39721,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3190.0,
-        "return_5d_pct": -8.33,
-        "return_20d_pct": -10.89,
+        "last_close": 3330.0,
+        "return_5d_pct": -3.48,
+        "return_20d_pct": -8.26,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39737,9 +39751,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2701.0,
-        "return_5d_pct": 1.24,
-        "return_20d_pct": -1.24,
+        "last_close": 2685.0,
+        "return_5d_pct": 1.47,
+        "return_20d_pct": -0.44,
         "momentum_direction": "中立"
       }
     },
@@ -39767,9 +39781,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1895.0,
-        "return_5d_pct": -13.23,
-        "return_20d_pct": -19.53,
+        "last_close": 1973.0,
+        "return_5d_pct": -6.11,
+        "return_20d_pct": -17.21,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39797,10 +39811,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 184.0,
-        "return_5d_pct": -4.17,
-        "return_20d_pct": -11.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 190.0,
+        "return_5d_pct": -1.55,
+        "return_20d_pct": -12.84,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39827,9 +39841,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 798.0,
-        "return_5d_pct": -0.25,
-        "return_20d_pct": -1.72,
+        "last_close": 796.0,
+        "return_5d_pct": 0.13,
+        "return_20d_pct": -2.69,
         "momentum_direction": "中立"
       }
     },
@@ -39857,9 +39871,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 732.0,
-        "return_5d_pct": -9.96,
-        "return_20d_pct": -26.8,
+        "last_close": 779.0,
+        "return_5d_pct": -4.3,
+        "return_20d_pct": -21.31,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -39887,9 +39901,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 523.0,
-        "return_5d_pct": -0.19,
-        "return_20d_pct": 10.34,
+        "last_close": 516.0,
+        "return_5d_pct": 1.18,
+        "return_20d_pct": 5.74,
         "momentum_direction": "中立"
       }
     },
@@ -39917,10 +39931,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 774.0,
-        "return_5d_pct": -6.52,
-        "return_20d_pct": -15.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 796.0,
+        "return_5d_pct": -1.0,
+        "return_20d_pct": -13.01,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39947,10 +39961,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 925.0,
-        "return_5d_pct": -6.47,
-        "return_20d_pct": -3.04,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 954.0,
+        "return_5d_pct": -0.73,
+        "return_20d_pct": -1.95,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -39977,9 +39991,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 645.0,
-        "return_5d_pct": -1.23,
-        "return_20d_pct": -0.77,
+        "last_close": 646.0,
+        "return_5d_pct": 0.78,
+        "return_20d_pct": -2.71,
         "momentum_direction": "中立"
       }
     },
@@ -40007,9 +40021,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 671.0,
-        "return_5d_pct": -1.76,
-        "return_20d_pct": -0.89,
+        "last_close": 684.0,
+        "return_5d_pct": 1.18,
+        "return_20d_pct": -0.15,
         "momentum_direction": "中立"
       }
     },
@@ -40038,9 +40052,9 @@
       "momentum": {
         "available": true,
         "last_close": 336.0,
-        "return_5d_pct": -3.72,
-        "return_20d_pct": -3.17,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "return_5d_pct": 0.3,
+        "return_20d_pct": -3.45,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40067,9 +40081,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1230.0,
-        "return_5d_pct": 0.24,
-        "return_20d_pct": 0.49,
+        "last_close": 1237.0,
+        "return_5d_pct": 0.81,
+        "return_20d_pct": 0.08,
         "momentum_direction": "中立"
       }
     },
@@ -40097,10 +40111,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 985.0,
-        "return_5d_pct": -6.19,
-        "return_20d_pct": -12.37,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 989.0,
+        "return_5d_pct": -0.8,
+        "return_20d_pct": -10.58,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40127,10 +40141,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2146.0,
-        "return_5d_pct": -3.85,
-        "return_20d_pct": -8.49,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2178.0,
+        "return_5d_pct": 0.93,
+        "return_20d_pct": -9.25,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40157,10 +40171,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3035.0,
-        "return_5d_pct": -4.41,
-        "return_20d_pct": -9.4,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3165.0,
+        "return_5d_pct": 3.26,
+        "return_20d_pct": -5.1,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40187,10 +40201,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 744.0,
-        "return_5d_pct": -3.0,
-        "return_20d_pct": -2.62,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 760.0,
+        "return_5d_pct": 0.4,
+        "return_20d_pct": -2.69,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40217,10 +40231,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4350.0,
-        "return_5d_pct": 0.58,
-        "return_20d_pct": 1.64,
-        "momentum_direction": "中立"
+        "last_close": 4535.0,
+        "return_5d_pct": 5.22,
+        "return_20d_pct": 3.66,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40247,10 +40261,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4620.0,
-        "return_5d_pct": -7.51,
-        "return_20d_pct": 2.33,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4790.0,
+        "return_5d_pct": 2.24,
+        "return_20d_pct": 1.91,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40277,10 +40291,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4175.0,
-        "return_5d_pct": -4.02,
-        "return_20d_pct": -1.18,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4225.0,
+        "return_5d_pct": -1.97,
+        "return_20d_pct": -1.74,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40307,10 +40321,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2677.0,
-        "return_5d_pct": -5.51,
-        "return_20d_pct": -16.47,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2794.0,
+        "return_5d_pct": 2.42,
+        "return_20d_pct": -10.59,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40337,10 +40351,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1660.0,
-        "return_5d_pct": -3.88,
-        "return_20d_pct": -3.88,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1697.0,
+        "return_5d_pct": 0.53,
+        "return_20d_pct": -2.64,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40367,10 +40381,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2357.0,
-        "return_5d_pct": -1.55,
-        "return_20d_pct": -2.48,
-        "momentum_direction": "中立"
+        "last_close": 2432.0,
+        "return_5d_pct": 3.23,
+        "return_20d_pct": -1.62,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40397,10 +40411,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 403.0,
-        "return_5d_pct": -3.82,
-        "return_20d_pct": -4.95,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 405.0,
+        "return_5d_pct": -0.49,
+        "return_20d_pct": -2.88,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40427,9 +40441,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1342.0,
-        "return_5d_pct": -5.43,
-        "return_20d_pct": -5.76,
+        "last_close": 1359.0,
+        "return_5d_pct": -3.27,
+        "return_20d_pct": -5.3,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -40458,8 +40472,8 @@
       "momentum": {
         "available": true,
         "last_close": 290.0,
-        "return_5d_pct": 0.35,
-        "return_20d_pct": 0.0,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -0.34,
         "momentum_direction": "中立"
       }
     },
@@ -40487,10 +40501,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3420.0,
-        "return_5d_pct": -5.66,
-        "return_20d_pct": -7.94,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3700.0,
+        "return_5d_pct": 5.41,
+        "return_20d_pct": -2.63,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40517,10 +40531,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1606.0,
-        "return_5d_pct": -2.76,
-        "return_20d_pct": -5.75,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1694.0,
+        "return_5d_pct": 4.37,
+        "return_20d_pct": -2.22,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40547,10 +40561,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3352.0,
-        "return_5d_pct": -7.04,
-        "return_20d_pct": -16.3,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3603.0,
+        "return_5d_pct": 4.8,
+        "return_20d_pct": -8.25,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40577,10 +40591,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1904.0,
-        "return_5d_pct": -12.98,
-        "return_20d_pct": -23.5,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2081.0,
+        "return_5d_pct": 0.48,
+        "return_20d_pct": -14.11,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40607,10 +40621,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2664.0,
-        "return_5d_pct": -5.36,
-        "return_20d_pct": -8.14,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2826.0,
+        "return_5d_pct": 2.76,
+        "return_20d_pct": -3.02,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40637,10 +40651,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2039.5,
-        "return_5d_pct": -3.11,
-        "return_20d_pct": -18.35,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2179.0,
+        "return_5d_pct": 5.04,
+        "return_20d_pct": -10.29,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40667,10 +40681,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2035.0,
-        "return_5d_pct": -3.0,
-        "return_20d_pct": -8.17,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2116.0,
+        "return_5d_pct": 2.27,
+        "return_20d_pct": -5.96,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40697,10 +40711,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2120.0,
-        "return_5d_pct": -13.36,
-        "return_20d_pct": -25.85,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2342.0,
+        "return_5d_pct": 2.45,
+        "return_20d_pct": -15.85,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40727,10 +40741,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 309.0,
-        "return_5d_pct": -10.17,
-        "return_20d_pct": -22.17,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 334.0,
+        "return_5d_pct": 3.09,
+        "return_20d_pct": -12.57,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40757,10 +40771,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1328.5,
-        "return_5d_pct": 1.41,
-        "return_20d_pct": 2.59,
-        "momentum_direction": "中立"
+        "last_close": 1334.5,
+        "return_5d_pct": 2.3,
+        "return_20d_pct": 1.06,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40787,10 +40801,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 202.0,
-        "return_5d_pct": -2.88,
-        "return_20d_pct": -4.27,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 206.0,
+        "return_5d_pct": 1.48,
+        "return_20d_pct": -2.83,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40817,9 +40831,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 142.8,
-        "return_5d_pct": -0.28,
-        "return_20d_pct": -2.53,
+        "last_close": 143.0,
+        "return_5d_pct": -1.38,
+        "return_20d_pct": -3.83,
         "momentum_direction": "中立"
       }
     },
@@ -40847,9 +40861,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3354.0,
-        "return_5d_pct": 1.98,
-        "return_20d_pct": 6.24,
+        "last_close": 3389.0,
+        "return_5d_pct": 1.86,
+        "return_20d_pct": 5.81,
         "momentum_direction": "中立"
       }
     },
@@ -40877,10 +40891,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 750.0,
-        "return_5d_pct": -3.47,
-        "return_20d_pct": -4.34,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 756.0,
+        "return_5d_pct": -0.79,
+        "return_20d_pct": -4.91,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40907,10 +40921,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2397.5,
-        "return_5d_pct": -1.9,
-        "return_20d_pct": 0.15,
-        "momentum_direction": "中立"
+        "last_close": 2373.5,
+        "return_5d_pct": -2.08,
+        "return_20d_pct": -1.76,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -40937,10 +40951,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1240.0,
-        "return_5d_pct": -2.75,
-        "return_20d_pct": -4.91,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1248.0,
+        "return_5d_pct": -0.95,
+        "return_20d_pct": -5.02,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40967,9 +40981,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 537.0,
-        "return_5d_pct": -0.74,
-        "return_20d_pct": -1.65,
+        "last_close": 538.0,
+        "return_5d_pct": 0.75,
+        "return_20d_pct": -3.24,
         "momentum_direction": "中立"
       }
     },
@@ -40997,9 +41011,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2060.0,
-        "return_5d_pct": -0.63,
-        "return_20d_pct": -5.5,
+        "last_close": 2077.0,
+        "return_5d_pct": 0.05,
+        "return_20d_pct": -1.1,
         "momentum_direction": "中立"
       }
     },
@@ -41027,9 +41041,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3916.0,
-        "return_5d_pct": 7.2,
-        "return_20d_pct": 8.99,
+        "last_close": 3845.0,
+        "return_5d_pct": 3.75,
+        "return_20d_pct": 6.39,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41057,10 +41071,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2976.0,
-        "return_5d_pct": 0.88,
-        "return_20d_pct": 8.02,
-        "momentum_direction": "中立"
+        "last_close": 3000.0,
+        "return_5d_pct": 2.85,
+        "return_20d_pct": 5.45,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -41087,10 +41101,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2966.0,
-        "return_5d_pct": -2.59,
-        "return_20d_pct": -3.07,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2985.0,
+        "return_5d_pct": 0.13,
+        "return_20d_pct": -4.02,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41129,9 +41143,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1137.0,
-        "return_5d_pct": 6.76,
-        "return_20d_pct": -0.26,
+        "last_close": 1139.0,
+        "return_5d_pct": 6.25,
+        "return_20d_pct": 0.0,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41159,9 +41173,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1929.0,
-        "return_5d_pct": 0.84,
-        "return_20d_pct": 1.53,
+        "last_close": 1921.0,
+        "return_5d_pct": 0.58,
+        "return_20d_pct": -0.31,
         "momentum_direction": "中立"
       }
     },
@@ -41189,9 +41203,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4125.0,
-        "return_5d_pct": -1.2,
-        "return_20d_pct": -1.32,
+        "last_close": 4135.0,
+        "return_5d_pct": -0.36,
+        "return_20d_pct": -1.31,
         "momentum_direction": "中立"
       }
     },
@@ -41219,9 +41233,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2308.0,
-        "return_5d_pct": -4.94,
-        "return_20d_pct": -1.87,
+        "last_close": 2325.5,
+        "return_5d_pct": -2.74,
+        "return_20d_pct": -2.62,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41249,9 +41263,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1381.0,
-        "return_5d_pct": 3.91,
-        "return_20d_pct": 10.04,
+        "last_close": 1390.0,
+        "return_5d_pct": 4.67,
+        "return_20d_pct": 8.59,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41279,9 +41293,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2668.0,
-        "return_5d_pct": 1.56,
-        "return_20d_pct": 2.56,
+        "last_close": 2657.5,
+        "return_5d_pct": 0.17,
+        "return_20d_pct": -0.36,
         "momentum_direction": "中立"
       }
     },
@@ -41313,10 +41327,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 788.0,
-        "return_5d_pct": -4.02,
-        "return_20d_pct": -7.51,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 820.0,
+        "return_5d_pct": 1.36,
+        "return_20d_pct": -3.87,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41343,9 +41357,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1100.0,
-        "return_5d_pct": -1.43,
-        "return_20d_pct": -0.99,
+        "last_close": 1118.0,
+        "return_5d_pct": 1.27,
+        "return_20d_pct": -1.32,
         "momentum_direction": "中立"
       }
     },
@@ -41373,10 +41387,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 543.0,
-        "return_5d_pct": -15.02,
-        "return_20d_pct": -29.57,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 601.0,
+        "return_5d_pct": -0.66,
+        "return_20d_pct": -16.53,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41403,9 +41417,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2197.0,
-        "return_5d_pct": 0.0,
-        "return_20d_pct": 0.14,
+        "last_close": 2183.0,
+        "return_5d_pct": -0.68,
+        "return_20d_pct": -0.55,
         "momentum_direction": "中立"
       }
     },
@@ -41433,9 +41447,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 923.0,
-        "return_5d_pct": -0.75,
-        "return_20d_pct": -2.22,
+        "last_close": 948.0,
+        "return_5d_pct": -0.42,
+        "return_20d_pct": 0.32,
         "momentum_direction": "中立"
       }
     },
@@ -41463,10 +41477,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1498.0,
-        "return_5d_pct": -2.47,
-        "return_20d_pct": -0.53,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1516.0,
+        "return_5d_pct": 0.26,
+        "return_20d_pct": -2.26,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41493,10 +41507,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1090.0,
-        "return_5d_pct": -4.72,
-        "return_20d_pct": 0.37,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1111.0,
+        "return_5d_pct": -1.86,
+        "return_20d_pct": -0.89,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41523,10 +41537,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1322.0,
-        "return_5d_pct": -5.77,
-        "return_20d_pct": -2.44,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1334.0,
+        "return_5d_pct": -1.84,
+        "return_20d_pct": -4.99,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41553,9 +41567,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2280.0,
-        "return_5d_pct": -1.72,
-        "return_20d_pct": -1.3,
+        "last_close": 2300.0,
+        "return_5d_pct": 1.1,
+        "return_20d_pct": -3.4,
         "momentum_direction": "中立"
       }
     },
@@ -41583,10 +41597,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 768.0,
-        "return_5d_pct": -2.41,
-        "return_20d_pct": -3.88,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 802.0,
+        "return_5d_pct": 6.08,
+        "return_20d_pct": -0.12,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -41613,9 +41627,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 493.0,
-        "return_5d_pct": -1.79,
-        "return_20d_pct": -3.71,
+        "last_close": 499.0,
+        "return_5d_pct": 0.2,
+        "return_20d_pct": -3.48,
         "momentum_direction": "中立"
       }
     },
@@ -41643,9 +41657,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4610.0,
-        "return_5d_pct": -4.4,
-        "return_20d_pct": -1.43,
+        "last_close": 4605.0,
+        "return_5d_pct": -2.97,
+        "return_20d_pct": -3.7,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41673,9 +41687,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1540.0,
-        "return_5d_pct": -5.81,
-        "return_20d_pct": -4.47,
+        "last_close": 1580.0,
+        "return_5d_pct": -3.36,
+        "return_20d_pct": -3.95,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -41703,9 +41717,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3395.0,
-        "return_5d_pct": -0.15,
-        "return_20d_pct": 14.23,
+        "last_close": 3355.0,
+        "return_5d_pct": -1.03,
+        "return_20d_pct": 11.83,
         "momentum_direction": "中立"
       }
     },
@@ -41734,8 +41748,8 @@
       "momentum": {
         "available": true,
         "last_close": 211.0,
-        "return_5d_pct": -0.94,
-        "return_20d_pct": -3.21,
+        "return_5d_pct": -1.4,
+        "return_20d_pct": -2.76,
         "momentum_direction": "中立"
       }
     },
@@ -41763,10 +41777,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3531.0,
-        "return_5d_pct": -3.34,
-        "return_20d_pct": -2.78,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3596.0,
+        "return_5d_pct": -0.11,
+        "return_20d_pct": -3.59,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41793,10 +41807,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 509.0,
-        "return_5d_pct": -6.95,
-        "return_20d_pct": -7.96,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 531.0,
+        "return_5d_pct": -0.75,
+        "return_20d_pct": -12.23,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41823,10 +41837,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3500.0,
-        "return_5d_pct": -2.64,
-        "return_20d_pct": 6.87,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3585.0,
+        "return_5d_pct": 0.7,
+        "return_20d_pct": 4.52,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41853,10 +41867,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1365.0,
-        "return_5d_pct": -2.85,
-        "return_20d_pct": -1.23,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1387.0,
+        "return_5d_pct": 1.31,
+        "return_20d_pct": -1.56,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41884,8 +41898,8 @@
       "momentum": {
         "available": true,
         "last_close": 593.0,
-        "return_5d_pct": -0.34,
-        "return_20d_pct": -0.67,
+        "return_5d_pct": 0.0,
+        "return_20d_pct": -1.0,
         "momentum_direction": "中立"
       }
     },
@@ -41913,10 +41927,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2718.0,
-        "return_5d_pct": -4.97,
-        "return_20d_pct": 7.22,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2734.0,
+        "return_5d_pct": 0.15,
+        "return_20d_pct": 5.85,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41943,10 +41957,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2256.0,
-        "return_5d_pct": -2.51,
-        "return_20d_pct": -2.3,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2266.0,
+        "return_5d_pct": -0.44,
+        "return_20d_pct": -3.86,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -41973,10 +41987,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2422.0,
-        "return_5d_pct": -0.37,
-        "return_20d_pct": -2.14,
-        "momentum_direction": "中立"
+        "last_close": 2450.0,
+        "return_5d_pct": 2.98,
+        "return_20d_pct": -1.96,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -42003,10 +42017,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1058.0,
-        "return_5d_pct": -5.28,
-        "return_20d_pct": -8.0,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 1103.0,
+        "return_5d_pct": 2.51,
+        "return_20d_pct": -4.17,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -42033,9 +42047,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 6880.0,
+        "last_close": 6840.0,
         "return_5d_pct": 1.18,
-        "return_20d_pct": 3.61,
+        "return_20d_pct": 1.48,
         "momentum_direction": "中立"
       }
     },
@@ -42063,10 +42077,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 312.0,
-        "return_5d_pct": -4.88,
-        "return_20d_pct": -6.31,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 318.0,
+        "return_5d_pct": -0.62,
+        "return_20d_pct": -3.64,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -42123,9 +42137,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1322.0,
-        "return_5d_pct": 7.74,
-        "return_20d_pct": 28.23,
+        "last_close": 1345.0,
+        "return_5d_pct": 6.75,
+        "return_20d_pct": 23.39,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -42153,9 +42167,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 207.0,
-        "return_5d_pct": -0.48,
-        "return_20d_pct": -9.21,
+        "last_close": 206.0,
+        "return_5d_pct": -0.96,
+        "return_20d_pct": -10.04,
         "momentum_direction": "中立"
       }
     },
@@ -42187,10 +42201,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3930.0,
-        "return_5d_pct": -3.2,
-        "return_20d_pct": -2.72,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 4060.0,
+        "return_5d_pct": 1.63,
+        "return_20d_pct": 2.65,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -42217,9 +42231,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2857.0,
-        "return_5d_pct": -4.58,
-        "return_20d_pct": 10.29,
+        "last_close": 2821.0,
+        "return_5d_pct": -2.96,
+        "return_20d_pct": 5.75,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -42247,9 +42261,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1866.0,
-        "return_5d_pct": -6.61,
-        "return_20d_pct": -4.99,
+        "last_close": 1890.0,
+        "return_5d_pct": -3.62,
+        "return_20d_pct": -3.37,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -42277,9 +42291,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1985.0,
-        "return_5d_pct": -1.59,
-        "return_20d_pct": -1.68,
+        "last_close": 2004.0,
+        "return_5d_pct": -0.6,
+        "return_20d_pct": -1.72,
         "momentum_direction": "中立"
       }
     },
@@ -58874,9 +58888,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261111572922.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -66189,6 +66207,90 @@
     }
   ],
   "catalysts": [
+    {
+      "code": "3953",
+      "name": "大村紙業",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-11T11:00:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261105565045.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5702",
+      "name": "大紀アルミ",
+      "title": "2027年３月期 第２四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-11-11T11:00:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261109569592.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9327",
+      "name": "イー・ロジット",
+      "title": "(訂正)「固定資産（倉庫管理システム）の取得に関するお知らせ」の一部訂正について",
+      "published_at": "2026-11-11T11:00:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261111572922.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5076",
+      "name": "インフロニアＨＤ",
+      "title": "2027年３月期第２四半期（中間期）決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-11-11T10:40:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261111572782.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5076",
+      "name": "インフロニアＨＤ",
+      "title": "連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-11T10:40:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261105566474.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2974",
+      "name": "大英産業",
+      "title": "2026年９月期通期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-11T09:50:00+09:00",
+      "date": "2026-11-11",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261111572625.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
     {
       "code": "6794",
       "name": "フォスター電",
@@ -76192,7 +76294,7 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-11-12",
   "momentum_validation": {
-    "resolved_n": 1476,
+    "resolved_n": 1717,
     "hit_rate_pct": 31.0,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
