@@ -329,8 +329,8 @@ document.addEventListener("DOMContentLoaded",()=>{
      }
    }).catch(()=>{el.innerHTML="";el.title="";});
  };
- // audit cb25546: a long line is cut with … inside the band (1130 px) instead of running out of it
- {const st=document.createElement("style");st.textContent="#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}";document.head.appendChild(st);}
+ // audit cb25546: a long line stays inside the band (1130 px). OWNER 2026-11-12 「もじがきれてる」: it wraps onto the next line instead of being cut with …
+ {const st=document.createElement("style");st.textContent="#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:normal;overflow-wrap:anywhere;max-width:100%;line-height:1.5;vertical-align:middle}";document.head.appendChild(st);}
  setTimeout(renderTypes,2500);
  setInterval(renderTypes,60000);
  // the list under the 定時 lamp (opened by a press)

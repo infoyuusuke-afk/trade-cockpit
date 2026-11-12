@@ -21,7 +21,10 @@ class MarketTypesLine(unittest.TestCase):
         self.assertIn('if(!j||String(j.day||"")!==today){el.innerHTML="";', block)   # only today's 8:11 record
         self.assertIn('"今日の型："+names+"（検証中）　"+meaning+"・売買サインではない"', block)
         self.assertIn('"今日の型：なし（検証中）"', block)
-        self.assertIn("max-width:520px;overflow:hidden;text-overflow:ellipsis", HTML)   # audit cb25546
+        # audit cb25546: stays inside the band; OWNER 2026-11-12 「もじがきれてる」: wraps instead of being cut with …
+        self.assertIn("#trade-type-line .type-line{display:inline-block;font-size:13px;color:#cdb8f0;white-space:normal;overflow-wrap:anywhere;max-width:100%;", HTML)
+        i = HTML.index("#trade-type-line .type-line{")
+        self.assertNotIn("text-overflow:ellipsis", HTML[i:i + 300])
         self.assertIn("esc(text)", block)
         # 「声の1文を一緒に版にして」: once a day, 8:40-9:00, only with a type, after the stop-loss band
         self.assertIn("if(ts.length&&np.min>=520&&np.min<540&&typeof window.cockpitSpeak===\"function\"){", block)
