@@ -236,10 +236,23 @@ function Read-State {
     } catch { return $null }
 }
 
+# OWNER 2026-11-12 (cockpit stopped): at 10:50:36 the rename of the state file failed once (the file was busy for a moment, most likely
+# being read by the Gateway); with ErrorActionPreference Stop that went to the final catch, which waits at Read-Host in a hidden
+# window, so the Controller stood still and the screen went fail-closed. A busy file is now retried for about 2 seconds, then
+# written in place; if even that fails, this one write is skipped (the next loop writes again in 2 seconds). Never throws.
 function Save-State($state) {
     $tmp = $StateFile + "." + $PID + ".tmp"
-    [IO.File]::WriteAllText($tmp, ($state | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-    Move-Item -LiteralPath $tmp -Destination $StateFile -Force
+    $json = ($state | ConvertTo-Json -Depth 6)
+    try { [IO.File]::WriteAllText($tmp, $json, [Text.UTF8Encoding]::new($false)) } catch { }
+    for ($i = 0; $i -lt 20; $i++) {
+        try { Move-Item -LiteralPath $tmp -Destination $StateFile -Force -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 100 }
+    }
+    try {
+        [IO.File]::WriteAllText($StateFile, $json, [Text.UTF8Encoding]::new($false))
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    } catch {
+        try { Write-Status "State file busy - this write skipped (next loop writes again)." Yellow } catch { }
+    }
 }
 
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {

@@ -73,7 +73,7 @@ class SwingCards(unittest.TestCase):
         # the fresh MS2 row the screen trusts (30 s), then the last MS2 price, then hold_track's close
         self.assertIn("lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[code]):NaN", block)
         self.assertIn('tag="場中の値（MS2）";live=true;', block)
-        self.assertIn('tag="最後の値・"+(lq.asof||"時刻不明");', block)
+        self.assertIn('tag="今日の最後の値（MS2・"+(lq.asof||"時刻不明")+"）";', block)   # OWNER 2026-11-12: says it is today's MS2 price
         self.assertIn('"100銘柄にないので終値のまま・"', block)
         self.assertIn('return {price:null,pct:null,yen:null,tag:"値なし",live:false};', block)   # no price -> no number
         # one line at the top: the total of 100 shares each, with what is not in it said

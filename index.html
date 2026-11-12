@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      (codes.length?'<strong>'+codes.map(c=>esc(agentNames[c]?agentNames[c]+"("+c+")":c)).join("<br>")+'</strong>':'<small>注目銘柄なし</small>')+'</div>';
  };
  // OWNER 2026-10-24 「専門アナリストも同様　ステータスランプで最新情報なのか過去情報なのかわからないとこわい」「グロックも同様」
+ {const st=document.createElement("style");st.textContent=".dir-chip{display:inline-block;margin:4px 0 6px;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;background:#2a2e39;color:#C4C9D1}.dir-chip.long{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b3a}.dir-chip.short{background:#3a1216;color:#ff6b6b;border:1px solid #7a2a30}.dir-edge-long{border-color:#1f6b3a!important}.dir-edge-short{border-color:#7a2a30!important}";document.head.appendChild(st);}
  globalThis.freshLamp=(cls,label,line)=>'<div class="brain-lamp mini '+cls+'"><span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'</small></div></div>';
  globalThis.jstParts=ms=>{const j=new Date(ms+9*3600000);return {day:j.toISOString().slice(0,10),md:j.toISOString().slice(5,10).replace("-","/"),hm:j.toISOString().slice(11,16),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
  globalThis.parseJstMs=s=>{s=String(s||"").trim().replace(" ","T");if(!s)return NaN;if(!/(Z|[+-]\d{2}:?\d{2})$/.test(s))s+="+09:00";return Date.parse(s);};
@@ -138,8 +139,11 @@ document.addEventListener("DOMContentLoaded",()=>{
        const what=other[0]||"—";
        const sign=v=>v==null?"—":v;
        const cls=v=>v==null?"":/^[\-−]/.test(v)?"down":"up";
-       return '<article class="cc-card cc-card--wait gpt-card"><div class="cc-head"><div class="cc-identity"><span class="gpt-code">'+esc(x.code)+'</span><span class="gpt-name">'+esc(name||"—")+'</span></div>'+
-        '<span class="gpt-role-badge '+esc(role)+'">'+esc(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":(AGENT_ROLE_LABEL[role]||role))+'</span></div>'+
+       // OWNER 2026-11-12 「ロング　ショート　分からない」: the view (強気 = LONG, 弱気 = SHORT) as a large chip and the card edge in its colour
+       const vw=String(x.view||""),gdir=/強気/.test(vw)?"long":/弱気/.test(vw)?"short":"";
+       const gchip='<span class="dir-chip '+(gdir||"none")+'">'+(gdir==="long"?"▲ LONG（買い）":gdir==="short"?"▼ SHORT（空売り）":"― 向き なし")+'</span>';
+       return '<article class="cc-card cc-card--wait gpt-card dir-edge-'+(gdir||"none")+'"><div class="cc-head"><div class="cc-identity"><span class="gpt-code">'+esc(x.code)+'</span><span class="gpt-name">'+esc(name||"—")+'</span></div>'+
+        '<span class="gpt-role-badge '+esc(role)+'">'+esc(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":(AGENT_ROLE_LABEL[role]||role))+'</span></div>'+gchip+
         '<div class="gpt-what">'+esc(what)+'</div>'+
         (supply?'<div class="gpt-supply"><span>買残<b class="'+cls(supply.buy)+'">'+esc(sign(supply.buy))+'</b></span><span>売残<b class="'+cls(supply.sell)+'">'+esc(sign(supply.sell))+'</b></span><span>倍率<b>'+esc(sign(supply.ratio))+'</b></span></div>'+(supply.asof?'<small class="gpt-asof">信用残 '+esc(supply.asof)+'時点（前週比）</small>':''):'')+
         (go.length?'<div class="gpt-cond go"><b>注目</b>'+esc(go.join("、"))+'</div>':'')+(stop.length?'<div class="gpt-cond stop"><b>無効</b>'+esc(stop.join("、"))+'</div>':'')+
@@ -2011,7 +2015,9 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
     const h = age(b.saved_at), old = h == null || h > 36;
     const head = "<b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "<small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
       (old ? "　<span class='down'>古い（36時間より前）</span>" : "") + "　" + e(b.file) + "</small>";
-    const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
+    // OWNER 2026-11-12 「ロング・ショート分からない」: 買い候補・追随候補 = LONG, 空売り候補 = SHORT, the rest (監視継続・見送り…) = 様子見
+    const gk = v => { const k = cls(v); return "<span class='dir-chip " + (k === "long" ? "long'>▲ LONG（買い）" : k === "short" ? "short'>▼ SHORT（空売り）" : "none'>― 様子見") + "</span>"; };
+    const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + " dir-edge-" + (cls(c["判断案"]) === "wait" ? "none" : cls(c["判断案"])) + "'>" + gk(c["判断案"]) + "<div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
       // OWNER 2026-10-26 「文字がきれてるとこある」: the badge shows the 判断案 itself; its （note） goes under the card
       e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(String(c["判断案"] || "—").split("（")[0]) + "</span></div>" +
       (String(c["判断案"] || "").includes("（") ? "<div class='g2-note'>" + e(String(c["判断案"]).slice(String(c["判断案"]).indexOf("（") + 1).replace(/）$/, "")) + "</div>" : "") +
@@ -2651,7 +2657,12 @@ document.addEventListener("DOMContentLoaded",()=>{
    // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: after the close (no fresh rows) the last price of each row is kept apart,
    // with the time of the data, so a carried position can be valued at its last price, labelled as such.
    {const lastRows=Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>Number(x.price)>0).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]));
-    if(Object.keys(lastRows).length)window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),rows:lastRows};}   // OWNER 2026-11-06 「含み益・損がない」: a payload without prices keeps the last ones
+    if(Object.keys(lastRows).length){window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),day:String(d.updated_at||"").slice(0,10),rows:lastRows};
+      // OWNER 2026-11-12 「これってお合ってるの」: after the close the payload carries no rows and the page reloads every 15 minutes, so the
+      // holds fell back to the previous close until 16:00. The day's last MS2 prices are kept in this browser (same day only).
+      try{localStorage.setItem("cockpitLastPricesV1",JSON.stringify(window.cockpitLastPrices));}catch(_){}}
+    else if(!window.cockpitLastPrices){try{const k=JSON.parse(localStorage.getItem("cockpitLastPricesV1")||"null");
+      const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);if(k&&k.day===today&&k.rows)window.cockpitLastPrices=k;}catch(_){}}}   // OWNER 2026-11-06 「含み益・損がない」: a payload without prices keeps the last ones
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
@@ -3975,7 +3986,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const day=String(o.last_day||"").slice(5).replace("-","/");
     let p=NaN,tag="",live=false;
     if(Number.isFinite(fresh)&&fresh>0){p=fresh;tag="場中の値（MS2）";live=true;}
-    else if(Number.isFinite(last)&&last>0){p=last;tag="最後の値・"+(lq.asof||"時刻不明");}
+    else if(Number.isFinite(last)&&last>0){p=last;tag="今日の最後の値（MS2・"+(lq.asof||"時刻不明")+"）";}
     else{p=Number(o.last);const out=(lp&&lp.rows&&Object.keys(lp.rows).length)||(lq&&lq.rows&&Object.keys(lq.rows).length);tag=(out?"100銘柄にないので終値のまま・":"")+day+"の終値";}
     if(!(Number.isFinite(p)&&p>0&&Number.isFinite(e)&&e>0))return {price:null,pct:null,yen:null,tag:"値なし",live:false};
     return {price:p,pct:(p/e-1)*100,yen:Math.round((p-e)*100),tag,live};

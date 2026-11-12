@@ -44,7 +44,8 @@ class CarriedUnrealized(_unittest.TestCase):
         # OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
-        self.assertIn("window.cockpitLastPrices={asof:String(d.updated_at||\"\").slice(11,16),rows:", html)
+        # OWNER 2026-11-12 「これってお合ってるの」: the day is kept with the prices (for the same-day restore after a reload)
+        self.assertIn("window.cockpitLastPrices={asof:String(d.updated_at||\"\").slice(11,16),day:String(d.updated_at||\"\").slice(0,10),rows:", html)
         self.assertIn('tag="（最後の値・"+(lq.asof||"時刻不明")+"）"', js)
         self.assertIn('.concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));', js)
         self.assertIn('p.reference_price,p.side!=="LONG",true))));', js)
