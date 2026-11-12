@@ -693,7 +693,7 @@
       .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
     // OWNER 2026-11-05 「仮想売買の今日の損益を、注目の上に1行で出して」: the figures for that line (virtual, 100 shares)
-    const vCheck=k=>{const a=vHeld.filter(x=>x.kind===k);return {none:a.length>0&&a.every(x=>x.yen100===null),last:a.some(x=>x.lastPrice)};};
+    const vCheck=k=>{const a=vHeld.filter(x=>x.kind===k);return {none:a.length>0&&a.every(x=>x.yen100===null),some:a.some(x=>x.yen100===null),last:a.some(x=>x.lastPrice)};};
     window.cockpitVirtualDay={at:Date.now(),dayDone:vYen,dayN:closed.length,dayOpen:vHeld.filter(x=>x.kind==="仮想").reduce((a,x)=>a+(x.yen100||0),0),dayOpenN:vHeld.filter(x=>x.kind==="仮想").length,
       dayCheck:vCheck("仮想"),onCheck:vCheck("仮想・持越"),onDone:(Array.isArray(pos.overnight_closed)?pos.overnight_closed:[]).reduce((a,x)=>a+(Number(x.yen)||0),0),onOpen:vHeld.filter(x=>x.kind==="仮想・持越").reduce((a,x)=>a+(x.yen100||0),0),onN:vHeld.filter(x=>x.kind==="仮想・持越").length,ref:pos.owner_rules?.limit_reference||null,limit:Number(pos.owner_rules?.daily_limit_yen)||-30000,
       // OWNER 2026-11-09 「メルの保有中の金額と保有中銘柄をここに表示して」: the held virtual positions for the 保有中 line (100 shares)

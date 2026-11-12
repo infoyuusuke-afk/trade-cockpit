@@ -1,5 +1,5 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
-<style>.dir-chip{display:inline-block;margin:4px 0 6px;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;background:#2a2e39;color:#C4C9D1}.dir-chip.long{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b3a}.dir-chip.short{background:#3a1216;color:#ff6b6b;border:1px solid #7a2a30}.dir-edge-long{border-color:#1f6b3a!important}.dir-edge-short{border-color:#7a2a30!important}</style>
+<style>.vd-miss{color:#f7a600;font-weight:700}.dir-chip{display:inline-block;margin:4px 0 6px;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;background:#2a2e39;color:#C4C9D1}.dir-chip.long{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b3a}.dir-chip.short{background:#3a1216;color:#ff6b6b;border:1px solid #7a2a30}.dir-edge-long{border-color:#1f6b3a!important}.dir-edge-short{border-color:#7a2a30!important}</style>
 <style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style><!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
@@ -2661,8 +2661,15 @@ document.addEventListener("DOMContentLoaded",()=>{
       // OWNER 2026-11-12 「これってお合ってるの」: after the close the payload carries no rows and the page reloads every 15 minutes, so the
       // holds fell back to the previous close until 16:00. The day's last MS2 prices are kept in this browser (same day only).
       try{localStorage.setItem("cockpitLastPricesV1",JSON.stringify(window.cockpitLastPrices));}catch(_){}}
-    else if(!window.cockpitLastPrices){try{const k=JSON.parse(localStorage.getItem("cockpitLastPricesV1")||"null");
-      const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);if(k&&k.day===today&&k.rows)window.cockpitLastPrices=k;}catch(_){}}}   // OWNER 2026-11-06 「含み益・損がない」: a payload without prices keeps the last ones
+    else{const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+     if(!(window.cockpitLastPrices&&window.cockpitLastPrices.day===today)){window.cockpitLastPrices=null;try{const k=JSON.parse(localStorage.getItem("cockpitLastPricesV1")||"null");
+      if(k&&k.day===today&&k.rows)window.cockpitLastPrices=k;}catch(_){}
+      // OWNER 2026-11-12 「引け後もゲートウェイが今日の最後の値段（MS2の記録）を渡すように」: a restart after the close keeps the day's last prices
+      if(!window.cockpitLastPrices&&!window.cockpitLastAsk){window.cockpitLastAsk=true;
+       fetch("/last_prices.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(k=>{
+        if(k&&k.schema_version==="100b-v10-last-prices-v1"&&k.real_submit_allowed===false&&k.day===today&&k.rows&&typeof k.rows==="object"&&!window.cockpitLastPrices){
+         window.cockpitLastPrices={asof:String(k.asof||""),day:k.day,rows:k.rows};try{localStorage.setItem("cockpitLastPricesV1",JSON.stringify(window.cockpitLastPrices));}catch(_){}}})
+        .catch(()=>{}).finally(()=>setTimeout(()=>{window.cockpitLastAsk=false;},60000));}}}}   // OWNER 2026-11-06 「含み益・損がない」: a payload without prices keeps the last ones
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
@@ -4064,7 +4071,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     // OWNER 2026-11-06 「含み益・損がない」: no price is 値なし, not 0円; the last price is labelled
     const g=(name,d,o,c)=>'<span><span class="g">'+name+'</span> <span class="'+cls(d)+'">確定 '+yen(d)+'</span> <span class="'+cls(o)+'">含み '+(c&&c.none?'値なし':yen(o)+(c&&c.last?'（最後の値）':''))+'</span></span>';
     el.className="vd-line"+(over?" over":total>0?" plus":"");   // OWNER 2026-11-05 「プラスの場合は緑」
-    el.innerHTML='<span>仮想 今日 <b class="'+cls(total)+'">'+yen(total)+'</b> <span class="g">（確定 '+yen(done)+'・含み '+yen(open)+'）</span></span>'+
+    // OWNER 2026-11-12 「値段がない時は合計に『含み一部なし』と書く」: a hold without a price counts 0 in the total, so the total says so
+    const miss=!!((v.dayCheck&&v.dayCheck.some)||(v.onCheck&&v.onCheck.some));
+    el.innerHTML='<span>仮想 今日 <b class="'+cls(total)+'">'+yen(total)+'</b> <span class="g">（確定 '+yen(done)+'・含み '+yen(open)+(miss?'・<b class="vd-miss">含み一部なし</b>':'')+'）</span></span>'+
       g("デイ",v.dayDone,v.dayOpen,v.dayCheck)+g("オーバーナイト",v.onDone||0,v.onOpen,v.onCheck)+g("スイング",sw.done,sw.open)+g("長期",lg.done,lg.open)+
       (hit?'<span class="vd-mark">−3万到達 '+hit+'、そこから'+yen(total-lim)+'</span>':'')+
       (v.ref&&v.ref.hit_at?'<span class="vd-ref">参考：−3万で止めていたら '+(v.ref.n||0)+'回 '+yen(v.ref.yen||0)+'</span>':'');
@@ -4183,7 +4192,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const area=capArea();if(!area)return;
     const head=area.querySelector("#cap-head"),body=area.querySelector("#cap-body");
     body.hidden=!capOpen;
-    const S=sizes(),pick=l=>S.find(s=>s.label===l),f=s=>s?'<b class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+'</b>':'<span class="g">—</span>';
+    const S=sizes(),pick=l=>S.find(s=>s.label===l),f=s=>s?'<b class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+'</b>'+(s.open_missing>0?' <span class="vd-miss">含み一部なし</span>':''):'<span class="g">—</span>';
     head.innerHTML='<span class="cap-arrow">'+(capOpen?'▼':'▶')+'</span><b>資金別・保有中・手法の成績</b>　<span class="g">今日</span> 300万 '+f(pick("300万"))+'　500万 '+f(pick("500万"))+
       '<span class="g cap-hint">'+(capOpen?'押すとたたむ':'押すと開く')+'</span>';
   }
@@ -4199,7 +4208,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       g.n++;g.amount+=Number(x.entry)>0?Number(x.entry)*100:0;if(x.yen100==null)g.none=true;else g.yen+=x.yen100;if(x.lastPrice)g.last=true;});
     const groups=Object.values(by),amount=groups.reduce((a,g)=>a+g.amount,0),open=held.reduce((a,x)=>a+(x.yen100||0),0);
     const nm=g=>{const n=String(g.name||"");return esc(n.includes(g.code)?n:n+"("+g.code+")");};
-    el.innerHTML='<span>メルの保有中 <b>'+groups.length+'銘柄</b>'+(held.length>groups.length?'<span class="g">（'+held.length+'回分）</span>':'')+'・建て 計 <b>'+man(amount)+'</b>・含み <b class="'+cls(open)+'">'+yen(open)+'</b> <span class="g">（100株換算・仮想）</span></span>'+
+    el.innerHTML='<span>メルの保有中 <b>'+groups.length+'銘柄</b>'+(held.length>groups.length?'<span class="g">（'+held.length+'回分）</span>':'')+'・建て 計 <b>'+man(amount)+'</b>・含み <b class="'+cls(open)+'">'+yen(open)+'</b>'+(groups.some(g=>g.none)?' <span class="vd-miss">含み一部なし</span>':'')+' <span class="g">（100株換算・仮想）</span></span>'+
       groups.map(g=>'<span>'+nm(g)+(g.n>1?'×'+g.n:'')+' <span class="g">'+esc(g.side)+(g.kind==="仮想・持越"?"・持越":"")+'</span> '+man(g.amount)+' <b class="'+cls(g.none?0:g.yen)+'">'+(g.none?"値なし":yen(g.yen))+'</b>'+(g.last?'<span class="g">（最後の値）</span>':'')+'</span>').join("");
   }
   function sizes(){return cap?cap.sizes:[];}
@@ -4241,7 +4250,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
     el.innerHTML='<table data-keep-table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）<br>今日いちばん多く同時に持った建て金額・持ち越し込み</small>')+'</th>').join("")+'</tr>'+
-      row("今日の損益（確定＋含み）",s=>td(s.done+s.open,yen))+
+      row("今日の損益（確定＋含み）",s=>'<td class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+(s.open_missing>0?'<br><small class="vd-miss">含み一部なし</small>':'')+'</td>')+
       row("　うちデイ",s=>td(s.rows.day.done+s.rows.day.open,yen))+
       row("　うちオーバーナイト",s=>td(s.rows.overnight.done+s.rows.overnight.open,yen))+
       row("通算（確定・"+esc(String(cap.from||"").slice(5).replace("-","/"))+"から）",s=>td(s.total_done,yen))+
@@ -4333,7 +4342,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     if(L.state!=="OK")return head+' <span class="g">'+esc(L.state)+'（平日8:30にメルが決めた日から動きます）</span>';
     const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し",ON_SHORT:"持ち越し"};
     const rows=(L.rows||[]).slice().reverse();
-    return head+'　<span class="g">'+esc(L.at||"")+'時点　朝の残高 '+man(L.balance_start)+'</span>　確定 <b class="'+cls(L.done)+'">'+yen(L.done)+'</b>　含み <b class="'+cls(L.open)+'">'+yen(L.open)+'</b>'+
+    return head+'　<span class="g">'+esc(L.at||"")+'時点　朝の残高 '+man(L.balance_start)+'</span>　確定 <b class="'+cls(L.done)+'">'+yen(L.done)+'</b>　含み <b class="'+cls(L.open)+'">'+yen(L.open)+'</b>'+(L.open_missing>0?' <span class="vd-miss">含み一部なし</span>':'')+
       (L.stopped_at?'　<span class="dn">'+esc(L.stopped_at)+'から負けの上限で新しく入らない</span>':'')+
       (rows.length?'<table class="air-tbl" data-keep-table><tr><th>入った</th><th>出た</th><th>銘柄</th><th>向き</th><th>手法</th><th>株数</th><th>金額</th><th>損益</th></tr>'+rows.map(r=>{
         const y=r.done_yen!=null?r.done_yen:r.open_yen;

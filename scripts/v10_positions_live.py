@@ -642,8 +642,8 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
             continue
         taken.append(dict(t, shares=sh))
         peak = max(peak, using + t["fill"] * sh)
-    rows = {"day": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0},
-            "overnight": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0}}
+    rows = {"day": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0, "open_missing": 0},
+            "overnight": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0, "open_missing": 0}}
     held = []
     for t in taken:
         r = rows[t["kind"]]
@@ -660,6 +660,9 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
             held.append({"ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り", "fill": t["fill"], "last": t["last"],
                          "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
                          "open_yen": round(u)})
+        elif t["out"] is None or t["out"] > now_hm:
+            # OWNER 2026-11-12 「値段がない時は合計に『含み一部なし』と書く」: a hold without a price counts 0, and is counted here
+            r["open_missing"] += 1
     using_now = sum(h["amount"] for h in held)
     done_rows = sorted(((t["out"], _closed_yen(t, t["shares"])) for t in taken
                         if t["kind"] == "day" and t["out"] is not None and t["out"] <= now_hm), key=lambda x: x[0])
@@ -1217,6 +1220,7 @@ def mel_today(records: Path, trades: list, lock_today, acct: dict, now_hm: str) 
     done = sum(r["done_yen"] or 0 for r in out)
     opn = sum(r["open_yen"] or 0 for r in out)
     return {"state": "OK", "at": now_hm, "balance_start": round(bal), "done": round(done), "open": round(opn),
+            "open_missing": sum(1 for r in out if r["out"] is None and r["open_yen"] is None),
             "stopped_at": stopped_at, "rows": out[-60:]}
 
 
@@ -1261,6 +1265,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         total_wins = sum(int(x.get("wins") or 0) for x in prev) + wins
         keep["sizes"][label] = {"done": day_done, "closed": closed, "wins": wins}
         sizes.append(dict(s, label=label, capital=capital, done=day_done, open=day_open, closed=closed, wins=wins,
+                          open_missing=s["rows"]["day"]["open_missing"] + s["rows"]["overnight"]["open_missing"],
                           total_done=total_done, total_closed=total_closed, total_wins=total_wins,
                           total_pct=None if capital is None else round(total_done / capital * 100, 2),
                           day_curve=curve(taken, ("day",), points, now_hm),

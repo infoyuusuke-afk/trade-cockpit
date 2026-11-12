@@ -1019,6 +1019,49 @@ function Get-MarketTypesView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-12 "hikego mo gateway ga kyou no saigo no nedan (MS2 no kiroku) wo watasu": after the close the live port carries no
+# rows (fail-closed, unchanged), so a restart after the close lost the day's last prices. This route hands out today's last MS2
+# price of each row from live_ms2.json, only after 15:30 JST, only when the file is from today and the Collector closed today's
+# session (hold_finalized_at is today; on a holiday it is not), and only rows whose quote time is 09:00-15:31. Display only:
+# the page values the virtual holds with it, labelled as the last price. Nothing here is a fresh quote or a trading gate.
+function Get-LastPricesView([string]$LiveJsonPath) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($LiveJsonPath) -or -not (Test-Path -LiteralPath $LiveJsonPath -PathType Leaf)) { return (& $fail 'LIVE_JSON_MISSING') }
+        $now = [DateTime]::UtcNow.AddHours(9)
+        $today = $now.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+        if ($now.TimeOfDay -lt [TimeSpan]::new(15, 30, 0)) { return (& $fail 'BEFORE_CLOSE') }
+        $live = Read-JsonUtf8Cached $LiveJsonPath
+        if ($null -eq $live) { return (& $fail 'LIVE_JSON_UNREADABLE') }
+        if ($live.real_submit_allowed -ne $false) { return (& $fail 'LIVE_FLAGS_INVALID') }
+        $stamp = [string]$live.updated_at
+        if ($stamp.Length -lt 10 -or $stamp.Substring(0, 10) -cne $today) { return (& $fail 'NOT_TODAY') }
+        $closed = [string]$live.hold_finalized_at
+        if ($closed.Length -lt 10 -or $closed.Substring(0, 10) -cne $today) { return (& $fail 'NO_SESSION_TODAY') }
+        $rows = [ordered]@{}
+        $asof = ''
+        foreach ($row in @($live.all_targets)) {
+            $code = ([string]$row.ticker) -replace '\.T$', ''
+            if ($code -cnotmatch '^[0-9A-Z]{4}$') { continue }
+            $ts = [string]$row.source_timestamp
+            if ($ts -notmatch '^\d{2}:\d{2}(:\d{2})?$') { continue }
+            $hm = $ts.Substring(0, 5)
+            if ([string]::CompareOrdinal($hm, '09:00') -lt 0 -or [string]::CompareOrdinal($hm, '15:31') -gt 0) { continue }
+            $price = 0.0
+            if (-not [double]::TryParse([string]$row.price, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$price)) { continue }
+            if ($price -le 0 -or [double]::IsNaN($price) -or [double]::IsInfinity($price)) { continue }
+            $rows[$code] = $price
+            if ([string]::CompareOrdinal($hm, $asof) -gt 0) { $asof = $hm }
+        }
+        if ($rows.Count -eq 0) { return (& $fail 'NO_PRICES') }
+        $view = [ordered]@{ schema_version = '100b-v10-last-prices-v1'; day = $today; asof = $asof; rows = $rows
+            real_submit_allowed = $false; trade_instruction = $false }
+        return @{ status = '200 OK'; body = ($view | ConvertTo-Json -Depth 4 -Compress) }
+    } catch {
+        return (& $fail 'LAST_PRICES_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-12 「AIコクピットのステータスランプでおれは状況確認はしたい」: RuntimeDir\schedule_watch_v1.json, written on this PC by
 # the research script that checks every scheduled job (never in the repo), is served as-is when its flags are safe (the 定時 lamp).
 function Get-ScheduleWatchView([string]$RuntimeDir) {
@@ -3230,6 +3273,11 @@ try {
             if ($path -eq '/market_types.json') {
                 $typesView = Get-MarketTypesView $RuntimeDir
                 Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
+                continue
+            }
+            if ($path -eq '/last_prices.json') {
+                $lastView = Get-LastPricesView $liveJson
+                Send-Response $stream $lastView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$lastView.body))
                 continue
             }
             if ($path -eq '/schedule_watch.json') {
