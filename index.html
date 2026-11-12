@@ -2008,7 +2008,7 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
   if (tg) tg.innerHTML = window.freshLamp(...gsum);
   if (gl) gl.innerHTML = window.freshLamp(...(worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]));
   const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
-  const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
+  const cls = v => { const w = String(v || "").split(/[（(]/)[0]; return /見送り|様子見|監視/.test(w) ? "wait" : /買い|追随/.test(w) ? "long" : /空売り/.test(w) ? "short" : "wait"; };
   const g2Day = v => { const m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(v || "")); return m ? +m[2] + "/" + +m[3] : String(v || "—").split("（")[0]; };
   box.innerHTML = g.bots.map(b => {
     if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "</div>";
@@ -3982,7 +3982,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   // else hold_track's own close; a stock that is not one of the 100 rows says so. Display only.
   function valued(o){
     const code=String(o.code||""),e=Number(o.entry),lp=window.cockpitLivePrices,lq=window.cockpitLastPrices;
-    const fresh=lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[code]):NaN,last=lq?Number(lq.rows&&lq.rows[code]):NaN;
+    const fresh=lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[code]):NaN,last=lq&&lq.day===new Date(Date.now()+9*3600e3).toISOString().slice(0,10)?Number(lq.rows&&lq.rows[code]):NaN;
     const day=String(o.last_day||"").slice(5).replace("-","/");
     let p=NaN,tag="",live=false;
     if(Number.isFinite(fresh)&&fresh>0){p=fresh;tag="場中の値（MS2）";live=true;}

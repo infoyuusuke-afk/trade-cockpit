@@ -29,6 +29,12 @@ class EveningFixes(unittest.TestCase):
         self.assertIn("if(k&&k.day===today&&k.rows)window.cockpitLastPrices=k;", HTML)
         self.assertIn('tag="今日の最後の値（MS2・"+(lq.asof||"時刻不明")+"）";', HTML)
 
+    def test_grok_wait_words_before_the_bracket_win(self):
+        self.assertIn('const w = String(v || "").split(/[（(]/)[0]; return /見送り|様子見|監視/.test(w) ? "wait"', HTML)
+
+    def test_kept_prices_only_for_today(self):
+        self.assertIn("last=lq&&lq.day===new Date(Date.now()+9*3600e3).toISOString().slice(0,10)?Number(lq.rows&&lq.rows[code]):NaN;", HTML)
+
 
 if __name__ == "__main__":
     unittest.main()
