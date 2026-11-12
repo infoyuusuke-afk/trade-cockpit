@@ -222,7 +222,9 @@ class OrderCards(unittest.TestCase):
     def test_missing_price_is_not_zero(self):
         # OWNER 2026-11-06 「含み益・損がない」
         self.assertIn("含み '+(c&&c.none?'値なし':", HTML)
-        self.assertIn("if(Object.keys(lastRows).length)window.cockpitLastPrices=", HTML)
+        # OWNER 2026-11-12: the last prices are now kept with their day; a missing price still never becomes 0
+        self.assertIn("if(Object.keys(lastRows).length){window.cockpitLastPrices=", HTML)
+        self.assertIn('if(!(Number.isFinite(p)&&p>0&&Number.isFinite(e)&&e>0))return {price:null,pct:null,yen:null,tag:"値なし",live:false};', HTML)
 
     def test_copy_buttons(self):
         for label in ('["コード",', '["指値", lim]', '["利確", tp]', '["損切り", sl]'):
