@@ -1034,6 +1034,14 @@ function Get-LastPricesView([string]$LiveJsonPath) {
         # audit 2026-11-12: the Collector's 15:25 close mark is set by the clock alone (also on a weekend or holiday while it runs),
         # so a session of today is proven by today's own trades: records\<today>\ticks.csv holds only today's trades.
         if ($now.DayOfWeek -eq [DayOfWeek]::Saturday -or $now.DayOfWeek -eq [DayOfWeek]::Sunday) { return (& $fail 'MARKET_CLOSED') }
+        # audit 2026-11-12 (2nd): on a weekday holiday the Collector can still write the last session's trades as today's (its session
+        # test is the clock alone), so the exchange's weekday holidays are refused by date. The same list as scripts/v10_positions_live.py
+        # EXCHANGE_HOLIDAYS (a test keeps them equal); after its last day nothing is served until the list is extended.
+        $exchangeHolidays = @('2026-11-23', '2026-12-31', '2027-01-01', '2027-01-11', '2027-02-11', '2027-02-23', '2027-03-22', '2027-04-29',
+            '2027-05-03', '2027-05-04', '2027-05-05', '2027-07-19', '2027-08-11', '2027-09-20', '2027-09-23', '2027-10-11', '2027-11-03',
+            '2027-11-23', '2027-12-31', '2028-01-03')
+        if ($exchangeHolidays -contains $today) { return (& $fail 'MARKET_CLOSED') }
+        if ([string]::CompareOrdinal($today, '2028-01-03') -gt 0) { return (& $fail 'HOLIDAY_LIST_EXPIRED') }
         $todayTicks = Join-Path (Join-Path (Join-Path (Split-Path -Parent $LiveJsonPath) 'records') $today) 'ticks.csv'
         $tickInfo = [IO.FileInfo]::new($todayTicks)
         if (-not $tickInfo.Exists -or $tickInfo.Length -lt 200 -or $tickInfo.LastWriteTimeUtc.AddHours(9).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture) -cne $today) {

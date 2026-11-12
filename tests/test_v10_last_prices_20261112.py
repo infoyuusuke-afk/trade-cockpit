@@ -21,6 +21,14 @@ class LastPrices(unittest.TestCase):
         self.assertIn("'ticks.csv'", block)
         self.assertIn("return (& $fail 'NO_TRADES_TODAY')", block)
         self.assertIn("if ($live.data_conflict -eq $true) { return (& $fail 'DATA_CONFLICT') }", block)
+        # audit 2026-11-12 (2nd): weekday exchange holidays by date, the same list as positions_live
+        import re, sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import v10_positions_live as m
+        listed = set(re.findall(r"'(\d{4}-\d{2}-\d{2})'", block[block.index("$exchangeHolidays = @("):block.index("if ($exchangeHolidays -contains $today)")]))
+        self.assertEqual(listed, set(m.EXCHANGE_HOLIDAYS))
+        self.assertIn("if ($exchangeHolidays -contains $today) { return (& $fail 'MARKET_CLOSED') }", block)
+        self.assertIn("'HOLIDAY_LIST_EXPIRED'", block)
         self.assertIn("[string]::CompareOrdinal($hm, '09:00') -lt 0 -or [string]::CompareOrdinal($hm, '15:31') -gt 0", block)
         self.assertIn("real_submit_allowed = $false; trade_instruction = $false", block)
         self.assertIn("if ($path -eq '/last_prices.json') {", GW)

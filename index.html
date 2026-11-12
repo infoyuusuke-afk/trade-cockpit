@@ -3980,7 +3980,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 // OWNER 2026-11-05 「スイング保有と長期保有も出して」: at the top of the SWING 5 and VALUE 5 tabs, the virtual holds of hold_track.py (/hold_track.json): open holds as cards, waiting candidates and the last closed holds as lines.
 // Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no order.
 // OWNER 2026-11-12 「スイング、長期銘柄もINした日付と時刻まで正確に表示、音声でもIN・OUTを知らせて」: the date and time of the IN and the OUT
-// (hold_track.py: the cockpit's own trades to the second for the 100 stocks, else the Yahoo 5-minute bar 「ごろ」), and during the session
+// (hold_track.py: the cockpit's own trades to the second; OWNER 「記録に時刻がない過去の分は『時刻の記録なし』と書いて、推測で埋めない」), and during the session
 // an IN (price reaches the IN price) or an OUT (stop or target) of a stock with a fresh MS2 price is shown at once and spoken once.
 // What is seen live is marked as such; the 16:00 run (daily bars) stays the record.
 (()=>{
@@ -4004,12 +4004,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   const yen=v=>(v>0?"+":"")+Math.round(v).toLocaleString("ja-JP")+"円";
   const md=d=>String(d||"").slice(5).replace("-","/");
-  const tm=(d,t,src)=>!d?"—":md(d)+" "+(!t?"時刻不明":src==="5分足"?String(t).slice(0,5)+"ごろ":src==="引け"?"15:30 引け":String(t));
+  const tm=(d,t,src)=>!d?"—":md(d)+" "+(!t||!(src==="歩み値"||src==="引け")?"時刻の記録なし":src==="引け"?"15:30 引け":String(t));
   function card(o,label){
     const v=valued(o);
     return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:v.pct===null||v.pct>=0?"long":"short",directionLabel:label,freshness:v.live?"fresh":v.price===null?"stale":"unknown",freshnessLabel:v.tag,price:v.price,entry:o.entry,stop:o.stop,target:o.target,
       metrics:[{label:"含み損益",value:v.pct===null?"—":sgn(v.pct)},{label:"100株",value:v.yen===null?"—":yen(v.yen)},{label:"日数",value:o.days+"日目"},{label:"入った日時",value:tm(o.entry_day,o.entry_time,o.entry_time_src)}],
-      foot:"仮想の保有。実口座とは関係ありません（費用なし）"});
+      foot:"入り "+tm(o.entry_day,o.entry_time,o.entry_time_src)+"・"+num(o.entry)+"円。仮想の保有。実口座とは関係ありません（費用なし）"});
   }
   // what was seen during the session today (kept in this browser for the day), spoken once each
   const LKEY="cockpitHoldLiveV1";
@@ -4029,17 +4029,19 @@ document.addEventListener("DOMContentLoaded",()=>{
       [["swing","スイング"],["value","長期"]].forEach(([k,lab])=>{
         const st=d[k];if(!st)return;
         const now=c=>{const x=Number(lp.rows&&lp.rows[String(c)]);return Number.isFinite(x)&&x>0?x:null;};
+        // audit 2026-11-12: a missing level (null -> 0) never counts as reached
+        const lv=v=>{const x=v==null||v===""?NaN:Number(v);return Number.isFinite(x)&&x>0?x:null;};
         Object.values(st.pending||{}).forEach(q=>{
           const key=k+"|"+q.code+"|IN",px=now(q.code);
           // from the next trading day after the listing, as the 16:00 run counts it
-          if(px!==null&&String(q.added||"")<n.day&&px>=Number(q.trigger)&&!mem.ev[key])
+          if(px!==null&&lv(q.trigger)!==null&&/^\d{4}-\d{2}-\d{2}$/.test(String(q.added||""))&&String(q.added)<n.day&&px>=lv(q.trigger)&&!mem.ev[key])
             mem.ev[key]={kind:k,lab,code:String(q.code),name:q.name,what:"IN",at:n.hms,price:px,level:Number(q.trigger),stop:Number(q.stop),target:Number(q.target),spoken:false};
         });
         (st.open||[]).map(o=>({code:String(o.code),name:o.name,stop:Number(o.stop),target:Number(o.target),after:""}))
           .concat(Object.values(mem.ev).filter(e=>e.kind===k&&e.what==="IN").map(e=>({code:e.code,name:e.name,stop:e.stop,target:e.target,after:e.at})))
           .forEach(o=>{
             const key=k+"|"+o.code+"|OUT",px=now(o.code);if(mem.ev[key]||px===null||!(n.hms>o.after))return;
-            const how=px<=o.stop?"損切り":px>=o.target?"利確":null;     // the stop first, as the 16:00 run
+            const how=lv(o.stop)!==null&&px<=o.stop?"損切り":lv(o.target)!==null&&px>=o.target?"利確":null;     // the stop first, as the 16:00 run
             if(how)mem.ev[key]={kind:k,lab,code:o.code,name:o.name,what:"OUT",how,at:n.hms,price:px,level:how==="損切り"?o.stop:o.target,spoken:false};
           });
       });
@@ -4051,7 +4053,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(e&&!stopOn&&typeof window.cockpitSpeak==="function"){
       e.spoken=true;saveMem();
       const nm=String(e.name||"").replace(/（[0-9A-Z]{4}）$/,"");
-      try{window.cockpitSpeak("仮想の"+e.lab+"保有。"+nm+"が、"+(e.what==="IN"?"インの値段":e.how+"の値段")+"、"+e.level+"円に届きました。","WATCH");}catch(_){}
+      // OWNER 2026-11-12: 『スイング、三菱商事、8058、仮想で入りました、5,375円』（仮想と必ず言う）. cockpitSpeak keeps the voice OFF switch.
+      const yenTxt=Number(e.level).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
+      try{window.cockpitSpeak(e.lab+"、"+nm+"、"+e.code+"、"+(e.what==="IN"?"仮想で入りました、"+yenTxt:"仮想で出ました、"+e.how+"、"+yenTxt),"WATCH");}catch(_){}
     }
   }
   function liveLine(k){
@@ -4070,7 +4074,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     return liveLine(k)+plSum+'<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
       (open.length?'<div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
       (pend.length?'<p class="ht8-sum">IN待ち：'+pend.map(x=>esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(x.code)+") "+num(x.trigger)+"円").join("／")+'</p>':'')+
-      (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り</th><th>出</th><th>結果</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(tm(x.entry_day,x.entry_time,x.entry_time_src))+' '+num(x.entry)+'</td><td>'+esc(tm(x.exit_day,x.exit_time,x.exit_time_src))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
+      (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り（日時・値段）</th><th>出（日時・値段）</th><th>理由</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(tm(x.entry_day,x.entry_time,x.entry_time_src))+' '+num(x.entry)+'</td><td>'+esc(tm(x.exit_day,x.exit_time,x.exit_time_src))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
   }
   let held=null;
   async function load(){
