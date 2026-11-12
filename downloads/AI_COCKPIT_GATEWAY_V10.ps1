@@ -1031,9 +1031,18 @@ function Get-LastPricesView([string]$LiveJsonPath) {
         $now = [DateTime]::UtcNow.AddHours(9)
         $today = $now.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
         if ($now.TimeOfDay -lt [TimeSpan]::new(15, 30, 0)) { return (& $fail 'BEFORE_CLOSE') }
+        # audit 2026-11-12: the Collector's 15:25 close mark is set by the clock alone (also on a weekend or holiday while it runs),
+        # so a session of today is proven by today's own trades: records\<today>\ticks.csv holds only today's trades.
+        if ($now.DayOfWeek -eq [DayOfWeek]::Saturday -or $now.DayOfWeek -eq [DayOfWeek]::Sunday) { return (& $fail 'MARKET_CLOSED') }
+        $todayTicks = Join-Path (Join-Path (Join-Path (Split-Path -Parent $LiveJsonPath) 'records') $today) 'ticks.csv'
+        $tickInfo = [IO.FileInfo]::new($todayTicks)
+        if (-not $tickInfo.Exists -or $tickInfo.Length -lt 200 -or $tickInfo.LastWriteTimeUtc.AddHours(9).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture) -cne $today) {
+            return (& $fail 'NO_TRADES_TODAY')
+        }
         $live = Read-JsonUtf8Cached $LiveJsonPath
         if ($null -eq $live) { return (& $fail 'LIVE_JSON_UNREADABLE') }
         if ($live.real_submit_allowed -ne $false) { return (& $fail 'LIVE_FLAGS_INVALID') }
+        if ($live.data_conflict -eq $true) { return (& $fail 'DATA_CONFLICT') }
         $stamp = [string]$live.updated_at
         if ($stamp.Length -lt 10 -or $stamp.Substring(0, 10) -cne $today) { return (& $fail 'NOT_TODAY') }
         $closed = [string]$live.hold_finalized_at

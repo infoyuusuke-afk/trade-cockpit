@@ -16,6 +16,11 @@ class LastPrices(unittest.TestCase):
         self.assertIn("if ($now.TimeOfDay -lt [TimeSpan]::new(15, 30, 0)) { return (& $fail 'BEFORE_CLOSE') }", block)
         self.assertIn("$stamp.Substring(0, 10) -cne $today) { return (& $fail 'NOT_TODAY') }", block)
         self.assertIn("$closed = [string]$live.hold_finalized_at", block)
+        # audit 2026-11-12: no weekend or holiday prices (today's own trades must exist), no conflicting data
+        self.assertIn("return (& $fail 'MARKET_CLOSED')", block)
+        self.assertIn("'ticks.csv'", block)
+        self.assertIn("return (& $fail 'NO_TRADES_TODAY')", block)
+        self.assertIn("if ($live.data_conflict -eq $true) { return (& $fail 'DATA_CONFLICT') }", block)
         self.assertIn("[string]::CompareOrdinal($hm, '09:00') -lt 0 -or [string]::CompareOrdinal($hm, '15:31') -gt 0", block)
         self.assertIn("real_submit_allowed = $false; trade_instruction = $false", block)
         self.assertIn("if ($path -eq '/last_prices.json') {", GW)
@@ -29,7 +34,10 @@ class LastPrices(unittest.TestCase):
     def test_missing_price_is_written_next_to_the_totals(self):
         self.assertIn("some:a.some(x=>x.yen100===null)", TC)
         self.assertIn("const miss=!!((v.dayCheck&&v.dayCheck.some)||(v.onCheck&&v.onCheck.some));", HTML)
-        self.assertEqual(HTML.count("含み一部なし"), 6)   # 5 places + 1 comment
+        for part in ("(miss?'・<b class=\"vd-miss\">含み一部なし</b>':'')", "(s.open_missing>0?' <span class=\"vd-miss\">含み一部なし</span>':'')",
+                     "(s.open_missing>0?'<br><small class=\"vd-miss\">含み一部なし</small>':'')", "(L.open_missing>0?' <span class=\"vd-miss\">含み一部なし</span>':'')",
+                     "(groups.some(g=>g.none)?' <span class=\"vd-miss\">含み一部なし</span>':'')"):
+            self.assertIn(part, HTML)
         self.assertIn('"open_missing": sum(1 for r in out if r["out"] is None and r["open_yen"] is None)', PL)
         self.assertIn('open_missing=s["rows"]["day"]["open_missing"] + s["rows"]["overnight"]["open_missing"]', PL)
 
