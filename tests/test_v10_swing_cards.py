@@ -63,8 +63,11 @@ class SwingCards(unittest.TestCase):
         self.assertIn('fetch("/hold_track.json?t="+Date.now()', block)
         self.assertIn("d.real_submit_allowed===false", block)
         self.assertIn("実口座とは関係ありません", block)
-        for banned in ("cockpitSpeak", "RssOrder", "renderAttention", "real_positions"):
+        for banned in ("RssOrder", "renderAttention", "real_positions"):
             self.assertNotIn(banned, block)
+        # OWNER 2026-11-12 「音声でもIN・OUTを知らせて」: the voice is allowed now, but only the one IN / OUT sentence,
+        # spoken once per event after the stop-loss voice (checked in test_v10_hold_times_20261112)
+        self.assertEqual(block.count("window.cockpitSpeak("), 1)
 
     def test_virtual_holds_total_and_session_prices(self):
         # OWNER 2026-11-10 「上の1行に含み損益の合計（100株ずつ）を出して、場中はMS2の新しい値で動かして（100銘柄にない銘柄は終値のまま、そう書く）」
@@ -81,7 +84,7 @@ class SwingCards(unittest.TestCase):
         self.assertIn("known=vs.filter(v=>v.yen!==null)", block)
         self.assertIn("銘柄は入っていません", block)
         self.assertIn("銘柄は場中の値ではなく最後の値・終値", block)
-        self.assertIn("return plSum+'<p class=\"ht8-sum\">保有 '", block)
+        self.assertIn("return liveLine(k)+plSum+'<p class=\"ht8-sum\">保有 '", block)   # 2026-11-12: the session's IN / OUT line first
         # drawn again every 10 s from the same file; the file itself every 10 minutes
         self.assertIn("load();setInterval(load,600000);setInterval(paint,10000);", block)
         # audit 90a8553: only a session price gets the green dot; a last price or close is grey (unknown) with its numbers kept

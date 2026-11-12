@@ -3975,10 +3975,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,5000);});
 })();
 </script>
-<style>.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}</style>
+<style>.ht8-live{font-size:13px;margin:4px 0 8px;padding:6px 10px;border:1px solid #f7a600;border-radius:8px;color:#E8EAED}.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}</style>
 <script>
 // OWNER 2026-11-05 「スイング保有と長期保有も出して」: at the top of the SWING 5 and VALUE 5 tabs, the virtual holds of hold_track.py (/hold_track.json): open holds as cards, waiting candidates and the last closed holds as lines.
-// Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no voice, no order.
+// Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no order.
+// OWNER 2026-11-12 「スイング、長期銘柄もINした日付と時刻まで正確に表示、音声でもIN・OUTを知らせて」: the date and time of the IN and the OUT
+// (hold_track.py: the cockpit's own trades to the second for the 100 stocks, else the Yahoo 5-minute bar 「ごろ」), and during the session
+// an IN (price reaches the IN price) or an OUT (stop or target) of a stock with a fresh MS2 price is shown at once and spoken once.
+// What is seen live is marked as such; the 16:00 run (daily bars) stays the record.
 (()=>{
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const num=v=>v==null||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
@@ -3999,23 +4003,74 @@ document.addEventListener("DOMContentLoaded",()=>{
     return {price:p,pct:(p/e-1)*100,yen:Math.round((p-e)*100),tag,live};
   }
   const yen=v=>(v>0?"+":"")+Math.round(v).toLocaleString("ja-JP")+"円";
+  const md=d=>String(d||"").slice(5).replace("-","/");
+  const tm=(d,t,src)=>!d?"—":md(d)+" "+(!t?"時刻不明":src==="5分足"?String(t).slice(0,5)+"ごろ":src==="引け"?"15:30 引け":String(t));
   function card(o,label){
     const v=valued(o);
     return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:v.pct===null||v.pct>=0?"long":"short",directionLabel:label,freshness:v.live?"fresh":v.price===null?"stale":"unknown",freshnessLabel:v.tag,price:v.price,entry:o.entry,stop:o.stop,target:o.target,
-      metrics:[{label:"含み損益",value:v.pct===null?"—":sgn(v.pct)},{label:"100株",value:v.yen===null?"—":yen(v.yen)},{label:"日数",value:o.days+"日目"},{label:"入った日",value:String(o.entry_day||"").slice(5).replace("-","/")}],
+      metrics:[{label:"含み損益",value:v.pct===null?"—":sgn(v.pct)},{label:"100株",value:v.yen===null?"—":yen(v.yen)},{label:"日数",value:o.days+"日目"},{label:"入った日時",value:tm(o.entry_day,o.entry_time,o.entry_time_src)}],
       foot:"仮想の保有。実口座とは関係ありません（費用なし）"});
   }
-  function body(st,label,limit){
+  // what was seen during the session today (kept in this browser for the day), spoken once each
+  const LKEY="cockpitHoldLiveV1";
+  let liveMem=null;
+  const jnow=()=>{const j=new Date(Date.now()+9*3600e3);return {day:j.toISOString().slice(0,10),hms:j.toISOString().slice(11,19),wd:j.getUTCDay()};};
+  function memOf(day){
+    if(!(liveMem&&liveMem.day===day)){let m=null;try{m=JSON.parse(localStorage.getItem(LKEY)||"null");}catch(_){}
+      liveMem=m&&m.day===day&&m.ev&&typeof m.ev==="object"?m:{day,ev:{}};}
+    return liveMem;
+  }
+  const saveMem=()=>{try{localStorage.setItem(LKEY,JSON.stringify(liveMem));}catch(_){}};
+  function watch(){
+    const d=held,lp=window.cockpitLivePrices,n=jnow();
+    if(!d||d.real_submit_allowed!==false)return;
+    const mem=memOf(n.day);
+    if(lp&&Date.now()-lp.at<=30000&&n.wd>=1&&n.wd<=5&&n.hms>="09:00:00"&&n.hms<="15:30:00"){
+      [["swing","スイング"],["value","長期"]].forEach(([k,lab])=>{
+        const st=d[k];if(!st)return;
+        const now=c=>{const x=Number(lp.rows&&lp.rows[String(c)]);return Number.isFinite(x)&&x>0?x:null;};
+        Object.values(st.pending||{}).forEach(q=>{
+          const key=k+"|"+q.code+"|IN",px=now(q.code);
+          // from the next trading day after the listing, as the 16:00 run counts it
+          if(px!==null&&String(q.added||"")<n.day&&px>=Number(q.trigger)&&!mem.ev[key])
+            mem.ev[key]={kind:k,lab,code:String(q.code),name:q.name,what:"IN",at:n.hms,price:px,level:Number(q.trigger),stop:Number(q.stop),target:Number(q.target),spoken:false};
+        });
+        (st.open||[]).map(o=>({code:String(o.code),name:o.name,stop:Number(o.stop),target:Number(o.target),after:""}))
+          .concat(Object.values(mem.ev).filter(e=>e.kind===k&&e.what==="IN").map(e=>({code:e.code,name:e.name,stop:e.stop,target:e.target,after:e.at})))
+          .forEach(o=>{
+            const key=k+"|"+o.code+"|OUT",px=now(o.code);if(mem.ev[key]||px===null||!(n.hms>o.after))return;
+            const how=px<=o.stop?"損切り":px>=o.target?"利確":null;     // the stop first, as the 16:00 run
+            if(how)mem.ev[key]={kind:k,lab,code:o.code,name:o.name,what:"OUT",how,at:n.hms,price:px,level:how==="損切り"?o.stop:o.target,spoken:false};
+          });
+      });
+      saveMem();
+    }
+    // one sentence per look, once per event; not while the real account's stop-loss band is on (its voice comes first, this waits)
+    const g=typeof window.realGuardFresh==="function"?window.realGuardFresh():null,stopOn=!!(g&&Array.isArray(g.stop)&&g.stop.length);
+    const e=Object.values(mem.ev).find(x=>!x.spoken);
+    if(e&&!stopOn&&typeof window.cockpitSpeak==="function"){
+      e.spoken=true;saveMem();
+      const nm=String(e.name||"").replace(/（[0-9A-Z]{4}）$/,"");
+      try{window.cockpitSpeak("仮想の"+e.lab+"保有。"+nm+"が、"+(e.what==="IN"?"インの値段":e.how+"の値段")+"、"+e.level+"円に届きました。","WATCH");}catch(_){}
+    }
+  }
+  function liveLine(k){
+    const m=liveMem&&liveMem.day===jnow().day?Object.values(liveMem.ev).filter(e=>e.kind===k):[];
+    if(!m.length)return "";
+    return '<p class="ht8-live">今日の場中の検出（MS2・16:00の記録で確定）：'+m.map(e=>'<b class="'+(e.what==="IN"||e.how==="利確"?'ht8-up':'ht8-dn')+'">'+(e.what==="IN"?"IN":"OUT "+esc(e.how))+'</b> '+
+      esc(String(e.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(e.code)+') '+esc(e.at)+' '+num(e.price)+'円').join("／")+'</p>';
+  }
+  function body(st,label,limit,k){
     const open=st.open||[],pend=Object.values(st.pending||{}),closed=(st.closed||[]).slice(-5).reverse(),all=st.closed||[];
     const win=all.filter(x=>x.pct>0).length;
     const vs=open.map(valued),known=vs.filter(v=>v.yen!==null),tot=known.reduce((a,v)=>a+v.yen,0),closeOnly=vs.filter(v=>!v.live&&v.yen!==null).length;
     const plSum=open.length?'<p class="ht8-total">含み損益の合計（100株ずつ）：<b class="'+(tot>0?'ht8-up':tot<0?'ht8-dn':'')+'">'+(known.length?yen(tot):'値なし')+'</b>'+
       (known.length<open.length?'<span class="ht8-note">（値のない'+(open.length-known.length)+'銘柄は入っていません）</span>':'')+
       (closeOnly?'<span class="ht8-note">（'+closeOnly+'銘柄は場中の値ではなく最後の値・終値）</span>':'')+'</p>':'';
-    return plSum+'<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
+    return liveLine(k)+plSum+'<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
       (open.length?'<div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
       (pend.length?'<p class="ht8-sum">IN待ち：'+pend.map(x=>esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(x.code)+") "+num(x.trigger)+"円").join("／")+'</p>':'')+
-      (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り</th><th>出</th><th>結果</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(String(x.entry_day).slice(5))+' '+num(x.entry)+'</td><td>'+esc(String(x.exit_day).slice(5))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
+      (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り</th><th>出</th><th>結果</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(tm(x.entry_day,x.entry_time,x.entry_time_src))+' '+num(x.entry)+'</td><td>'+esc(tm(x.exit_day,x.exit_time,x.exit_time_src))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
   }
   let held=null;
   async function load(){
@@ -4024,10 +4079,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   // the file changes once a day; the prices move every few seconds, so the cards are drawn again every 10 s from the same file
   function paint(){
+    try{watch();}catch(_){}
     const d=held;
     [["swing","ht8-swing","スイング保有"],["value","ht8-value","長期保有"]].forEach(([k,id,label])=>{
       const box=document.getElementById(id);if(!box)return;
-      box.querySelector(".ht8-body").innerHTML=d&&d.real_submit_allowed===false&&d[k]?body(d[k],label,k==="swing"?20:60):'<div class="ht8-none">保有の記録を読めません（毎日16:00の検証のあとに作られます）</div>';
+      box.querySelector(".ht8-body").innerHTML=d&&d.real_submit_allowed===false&&d[k]?body(d[k],label,k==="swing"?20:60,k):'<div class="ht8-none">保有の記録を読めません（毎日16:00の検証のあとに作られます）</div>';
     });
   }
   document.addEventListener("DOMContentLoaded",()=>{
