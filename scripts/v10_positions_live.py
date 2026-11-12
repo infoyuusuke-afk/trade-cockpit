@@ -1358,7 +1358,9 @@ def earnings_soon(runtime: Path, today: str, now_hm: str = "15:30") -> dict:
             label = "今夜決算" if d == d0 else "明日決算" if d == d1 else "休みの日に決算"
             items[code] = {"label": label, "date": ds, "time": hm}
     gen = str(doc.get("generated_at") or "")[:10]
-    return {"state": "OK" if gen == today else "OLD", "generated_on": gen, "items": items}
+    # OWNER 2026-11-12 「予定が読めていない時は『決算予定 未確認』と出す」: the cockpit's stocks with no date at all in the list
+    no_date = sorted(universe - {str(c) for c in (doc.get("dates") or {})}) if universe else []
+    return {"state": "OK" if gen == today else "OLD", "generated_on": gen, "items": items, "no_date": no_date}
 
 
 def keep_marks(day_dir: Path, holds: list, soon: dict) -> None:

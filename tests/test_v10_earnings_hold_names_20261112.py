@@ -40,6 +40,23 @@ class EarningsHoldNames(unittest.TestCase):
         self.assertIn("📅 決算またぎ", block)
         self.assertIn('(em?" earn-card":"")', block)
 
+    def test_unknown_schedule_says_so(self):
+        # OWNER 2026-11-12 「予定が読めていない時は『決算予定 未確認』と出す」
+        with tempfile.TemporaryDirectory() as d:
+            rt = Path(d)
+            (rt / "watchlist_100.json").write_text(json.dumps({"stocks": {"a": {"ticker": "4493.T"}, "b": {"ticker": "9983.T"}}}), encoding="utf-8")
+            self.assertEqual(m.earnings_soon(rt, "2026-11-12", "17:00")["state"], "NO_FILE")
+            (rt / m.EARN_FILE).write_text(json.dumps({"schema_version": "100b-v10-earnings-dates-pc-v1", "generated_at": "2026-11-12T11:35:03+09:00",
+                                                      "dates": {"4493": ["2026-11-13"]}}), encoding="utf-8")
+            out = m.earnings_soon(rt, "2026-11-12", "17:00")
+        self.assertEqual(out["items"]["4493"]["label"], "明日決算")
+        self.assertEqual(out["no_date"], ["9983"])
+        for where in ('const tag=em?\'<div class="earn-tag">', "const tag=em?\"<div class='earn-tag'>"):
+            i = HTML.index(where)
+            block = HTML[i - 400:i]
+            self.assertIn('const unk=!em&&(!es||!(es.state==="OK"||es.state==="OLD")||(Array.isArray(es.no_date)&&es.no_date.includes(', block)
+        self.assertEqual(HTML.count("📅 決算予定 未確認"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
