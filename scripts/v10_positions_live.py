@@ -1389,6 +1389,8 @@ def earnings_split(runtime: Path) -> dict:
     except OSError:
         pass
     groups = {"earnings": [], "other": []}
+    # OWNER 2026-11-12 「決算またいだ銘柄がわからない」: the earnings holds are listed by name, day, side and result
+    items = []
     try:
         with open(Path(runtime) / HISTORY_FILE, newline="", encoding="utf-8-sig") as f:
             for r in csv.DictReader(f):
@@ -1403,6 +1405,9 @@ def earnings_split(runtime: Path) -> dict:
                 except (TypeError, ValueError):
                     continue
                 groups["earnings" if m.get(code) else "other"].append(v)
+                if m.get(code):
+                    items.append({"day": str(r.get("decision_date") or ""), "code": code, "name": r.get("name"),
+                                  "side": r.get("side"), "pct": round(v, 2), "label": (m.get(code) or {}).get("label")})
     except OSError:
         pass
 
@@ -1410,7 +1415,7 @@ def earnings_split(runtime: Path) -> dict:
         return {"n": len(xs), "win_pct": round(sum(1 for x in xs if x > 0) / len(xs) * 100, 1) if xs else None,
                 "avg_pct": round(sum(xs) / len(xs), 2) if xs else None}
     return {"from": min(marks_by_day) if marks_by_day else None, "earnings": tally(groups["earnings"]),
-            "other": tally(groups["other"])}
+            "other": tally(groups["other"]), "earnings_items": sorted(items, key=lambda x: x["day"])[-10:]}
 
 
 def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict:

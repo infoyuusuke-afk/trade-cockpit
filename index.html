@@ -2562,7 +2562,11 @@ document.addEventListener("DOMContentLoaded",()=>{
    const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
    const until=e(String(on[0].valid_until||"").replace("next trading day","翌営業日"));
    el.innerHTML="<div class='hold-fixed-note'>15:25確定の持ち越し（仮想・"+on.length+"銘柄）　現在値はMS2が止まっているため出しません。採点 "+until+"</div>"+
-    on.map(x=>{const buy=x.side==="LONG",mn=!buy&&window.marginNote?window.marginNote(x.ticker):"";return "<article class='cc-card cc-card--"+(buy?"long":"short")+"'>"+(mn?"<div class='order-card-warn'>"+e(mn)+"</div>":"")+"<div class='cc-head'><div class='cc-identity'><span class='cc-company'>"+e(x.name)+
+    on.map(x=>{const buy=x.side==="LONG",mn=!buy&&window.marginNote?window.marginNote(x.ticker):"";
+     // OWNER 2026-11-12 「決算またいだ銘柄がわからない」: also while MS2 is stopped, the earnings hold carries its label inside the card
+     const es=window.cockpitEarningsSoon,em=es&&es.items?es.items[String(x.ticker||"").replace(/\.T$/,"")]:null;
+     const tag=em?"<div class='earn-tag'>📅 決算またぎ　<b class='earn-way "+(buy?"long'>買いで持ち越し":"short'>空売りで持ち越し")+"</b>　"+e(em.label)+"・"+e(em.time?em.time:"時刻未確認")+"</div>":"";
+     return "<article class='cc-card cc-card--"+(buy?"long":"short")+(em?" earn-card":"")+"'>"+tag+(mn?"<div class='order-card-warn'>"+e(mn)+"</div>":"")+"<div class='cc-head'><div class='cc-identity'><span class='cc-company'>"+e(x.name)+
      "</span></div><span class='cc-badge'>"+(buy?"買い":"空売り")+"</span></div><div class='cc-metrics-grid'><span>基準（15:25）<b>"+e(Number(x.reference_price).toLocaleString("ja-JP"))+"円</b></span><span>採点<b>"+until+"</b></span></div></article>";}).join("");
   };
   drawHolds(window.__overnightHolds);
@@ -4521,7 +4525,11 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     let el=document.getElementById("hold-earn-split");
     if(!el){el=document.createElement("div");el.id="hold-earn-split";el.className="cap-box";stats.insertAdjacentElement("afterend",el);}
     const t=soon.split,f=x=>x&&x.n?x.n+'件・勝率'+x.win_pct+'%・平均'+(x.avg_pct>0?"+":"")+x.avg_pct+'%':'まだなし';
-    el.innerHTML='<b>決算またぎを分けた成績</b>（'+esc(String(t.from||"").slice(5).replace("-","/"))+'から記録）　決算またぎ：'+f(t.earnings)+'　／　それ以外：'+f(t.other)+
+    // OWNER 2026-11-12 「決算またいだ銘柄がわからない」: which holds were the earnings ones (15:25 day, side, 引け→翌日14:00)
+    const its=Array.isArray(t.earnings_items)?t.earnings_items:[];
+    const list=its.length?'<div class="cap-note">決算またぎの銘柄：'+its.map(x=>esc(String(x.day||"").slice(5).replace("-","/"))+' '+esc(x.name||x.code)+' '+(x.side==="LONG"?"買い":"空売り")+
+      (x.label?'（'+esc(x.label)+'）':'')+' <b class="'+(x.pct>0?"up":x.pct<0?"dn":"g")+'">'+(x.pct>0?"+":"")+esc(x.pct)+'%</b>').join("／")+'　<span class="g">%は15:25の日の引け→翌日14:00</span></div>':'';
+    el.innerHTML='<b>決算またぎを分けた成績</b>（'+esc(String(t.from||"").slice(5).replace("-","/"))+'から記録）　決算またぎ：'+f(t.earnings)+'　／　それ以外：'+f(t.other)+list+
       (soon.state==="OK"?"":'<div class="cap-note">決算の予定が今日読めていません（'+esc(soon.state)+'）</div>');
   }
   // OWNER 2026-11-09 「正常に動いてるときは緑にして、ステータスランプあつかい」「状態のランプに黄も入れて。MS2が正常でも公開の分析データが古い時は黄。
