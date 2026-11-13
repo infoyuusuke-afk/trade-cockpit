@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-13 19:00:54 JST",
+  "updated_at": "2026-11-13 22:27:48 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4240,22 +4240,6 @@
       "already_watched": false
     },
     {
-      "code": "5411",
-      "name": "JFE Holdings, Inc.",
-      "exchange": "TSE",
-      "price": 1840,
-      "change_pct": 0.6839945280437756,
-      "volume": 3219000,
-      "relative_volume": 0.5472898187771923,
-      "atr_pct": 2.31,
-      "vwap": 1828.5,
-      "high": 1843,
-      "low": 1802.5,
-      "market_cap": 1097956512146,
-      "sector": "Non-Energy Minerals",
-      "already_watched": false
-    },
-    {
       "code": "7186",
       "name": "Yokohama Financial Group, Inc.",
       "exchange": "TSE",
@@ -4269,6 +4253,22 @@
       "low": 1733,
       "market_cap": 1925906790527,
       "sector": "Finance",
+      "already_watched": false
+    },
+    {
+      "code": "5411",
+      "name": "JFE Holdings, Inc.",
+      "exchange": "TSE",
+      "price": 1840,
+      "change_pct": 0.6839945280437756,
+      "volume": 3219000,
+      "relative_volume": 0.5472898187771923,
+      "atr_pct": 2.31,
+      "vwap": 1828.5,
+      "high": 1843,
+      "low": 1802.5,
+      "market_cap": 1097956512146,
+      "sector": "Non-Energy Minerals",
       "already_watched": false
     },
     {
