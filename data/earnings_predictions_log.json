@@ -24078,7 +24078,10 @@
     "logged_at": "2026-11-11 01:37:29 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.69,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "1605",
@@ -24207,7 +24210,10 @@
     "logged_at": "2026-11-11 01:37:33 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -2.79,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "1861",
@@ -25677,7 +25683,10 @@
     "logged_at": "2026-11-11 01:38:15 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -10.45,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "4246",
@@ -25722,7 +25731,10 @@
     "logged_at": "2026-11-11 01:38:17 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.09,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "4264",
@@ -25959,7 +25971,10 @@
     "logged_at": "2026-11-11 01:38:23 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.12,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "4480",
@@ -27120,7 +27135,10 @@
     "logged_at": "2026-11-11 01:38:58 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -3.06,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "6351",
@@ -27882,7 +27900,10 @@
     "logged_at": "2026-11-11 01:39:21 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.12,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "7372",
@@ -28347,7 +28368,10 @@
     "logged_at": "2026-11-11 01:39:35 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -5.66,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "8309",
@@ -28548,7 +28572,10 @@
     "logged_at": "2026-11-11 01:39:41 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.63,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "9024",
@@ -28641,7 +28668,10 @@
     "logged_at": "2026-11-11 01:39:44 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 3.91,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "9076",
@@ -36375,6 +36405,60 @@
     "logged_at": "2026-11-13 02:06:05 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -6.38,
+    "status": "pending"
+  },
+  {
+    "code": "2183",
+    "name": "リニカル",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:43 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.02,
+    "status": "pending"
+  },
+  {
+    "code": "5252",
+    "name": "日本ナレッジ",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:49 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 7.72,
+    "status": "pending"
+  },
+  {
+    "code": "6574",
+    "name": "コンヴァノ",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:52 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.52,
+    "status": "pending"
+  },
+  {
+    "code": "7953",
+    "name": "菊水化学工業",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:55 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.52,
+    "status": "pending"
+  },
+  {
+    "code": "8891",
+    "name": "ＡＭＧホールディングス",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:55 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.13,
+    "status": "pending"
+  },
+  {
+    "code": "9229",
+    "name": "サンウェルズ",
+    "target_date": "2026-11-16",
+    "logged_at": "2026-11-14 01:44:56 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.65,
     "status": "pending"
   }
 ]
