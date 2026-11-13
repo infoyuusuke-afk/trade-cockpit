@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-11-13 22:27:49 JST",
-  "phase": "大引け後版（22:27作成）",
+  "updated_at": "2026-11-13 23:52:56 JST",
+  "phase": "大引け後版（23:52作成）",
   "session": "close",
   "active_buybacks": [],
   "buybacks_updated_at": "未取得",
@@ -1968,7 +1968,7 @@
         "high": 4703.0,
         "low": 4632.0,
         "close": 4654.0,
-        "vwap": 4664.21,
+        "vwap": 4664.23,
         "volume": 570100,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -2364,8 +2364,8 @@
         "high": 2998.0,
         "low": 2874.0,
         "close": 2901.0,
-        "vwap": 2926.74,
-        "volume": 392800,
+        "vwap": 2941.74,
+        "volume": 599600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -4695,47 +4695,39 @@
     },
     "NASDAQ": {
       "ok": true,
-      "price": 25366.09,
-      "open": 25092.11,
-      "high": 25597.22,
-      "low": 25068.28,
-      "prev_close": 25466.19,
-      "change_pct": -0.39,
-      "ret5": 4.32,
-      "ret5_prev": -7.14,
-      "ret20": -5.04,
-      "rvol": 1.16,
-      "turnover": 262202675531484,
-      "atr14": 598.81,
-      "atr_pct": 2.36,
-      "ma5": 25146.14,
-      "ma20": 25740.01,
-      "ma60": 26351.55,
-      "from_ma5": 0.87,
-      "from_ma20": -1.45,
-      "touch_ma5": true,
-      "to_high20": -5.28,
-      "to_high52": -8.5,
-      "bb_upper": 27049.73,
-      "bb_lower": 24430.28,
-      "bb_width": 10.18,
-      "bb_width_change": -0.95,
-      "bb_percentile": 88.3,
-      "bb_expansion_score": 19.8,
-      "day_score": 5.94,
-      "swing_score": -1.58,
-      "stable_score": 3.26,
-      "momentum_score": 9.11,
-      "high_score": 3.75,
+      "price": 25223.39,
+      "open": 25408.0,
+      "high": 25423.09,
+      "low": 25196.28,
+      "prev_close": 25366.09,
+      "change_pct": -0.56,
+      "ret5": 2.62,
+      "ret5_prev": -3.37,
+      "ret20": -3.51,
+      "rvol": 0.22,
+      "turnover": 46208163441162,
+      "atr14": 589.9,
+      "atr_pct": 2.34,
+      "ma5": 25274.94,
+      "ma20": 25694.17,
+      "ma60": 26337.49,
+      "from_ma5": -0.2,
+      "from_ma20": -1.83,
+      "touch_ma5": false,
+      "to_high20": -5.81,
+      "to_high52": -9.02,
+      "bb_upper": 27008.84,
+      "bb_lower": 24379.5,
+      "bb_width": 10.23,
+      "bb_width_change": -0.7,
+      "bb_percentile": 89.2,
+      "bb_expansion_score": 13.2,
+      "day_score": 1.79,
+      "swing_score": -2.74,
+      "stable_score": 2.58,
+      "momentum_score": 2.85,
+      "high_score": 2.32,
       "chart": [
-        {
-          "t": "2026-09-18",
-          "o": 26522.09,
-          "h": 26544.93,
-          "l": 26333.98,
-          "c": 26522.54,
-          "v": 13286960000
-        },
         {
           "t": "2026-09-21",
           "o": 26723.19,
@@ -5047,67 +5039,67 @@
           "l": 25068.28,
           "c": 25366.09,
           "v": 10336740000
+        },
+        {
+          "t": "2026-11-13",
+          "o": 25408.0,
+          "h": 25423.09,
+          "l": 25196.28,
+          "c": 25223.39,
+          "v": 1831957000
         }
       ],
-      "data_date": "2026-11-12",
-      "data_age_days": 1,
-      "chart_last_close": 25366.09,
+      "data_date": "2026-11-13",
+      "data_age_days": 0,
+      "chart_last_close": 25223.39,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-12）",
-      "market_supply_score": 58,
-      "market_supply_improved": false,
-      "market_supply_status": "市場需給58点／上昇日出来高÷下落日1.10倍／安値切上げ×",
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
+      "market_supply_score": 62,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給62点／上昇日出来高÷下落日0.98倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "S&P500": {
       "ok": true,
-      "price": 7592.4,
-      "open": 7550.84,
-      "high": 7652.76,
-      "low": 7550.84,
-      "prev_close": 7619.38,
-      "change_pct": -0.35,
-      "ret5": 3.25,
-      "ret5_prev": -4.75,
-      "ret20": -1.96,
-      "rvol": 0.84,
-      "turnover": 35631436437695,
-      "atr14": 120.25,
-      "atr_pct": 1.58,
-      "ma5": 7531.9,
-      "ma20": 7618.15,
-      "ma60": 7671.79,
-      "from_ma5": 0.8,
-      "from_ma20": -0.34,
+      "price": 7572.36,
+      "open": 7616.85,
+      "high": 7621.78,
+      "low": 7566.37,
+      "prev_close": 7592.4,
+      "change_pct": -0.26,
+      "ret5": 2.65,
+      "ret5_prev": -2.68,
+      "ret20": -1.14,
+      "rvol": 0.06,
+      "turnover": 2468709609938,
+      "atr14": 118.61,
+      "atr_pct": 1.57,
+      "ma5": 7571.0,
+      "ma20": 7613.8,
+      "ma60": 7670.64,
+      "from_ma5": 0.02,
+      "from_ma20": -0.54,
       "touch_ma5": true,
-      "to_high20": -2.29,
-      "to_high52": -3.21,
-      "bb_upper": 7835.21,
-      "bb_lower": 7401.09,
+      "to_high20": -2.55,
+      "to_high52": -3.47,
+      "bb_upper": 7830.86,
+      "bb_lower": 7396.73,
       "bb_width": 5.7,
-      "bb_width_change": -0.23,
-      "bb_percentile": 83.3,
-      "bb_expansion_score": 26.4,
-      "day_score": 5.12,
-      "swing_score": -1.51,
-      "stable_score": 3.49,
-      "momentum_score": 8.49,
-      "high_score": 3.26,
+      "bb_width_change": -0.27,
+      "bb_percentile": 84.2,
+      "bb_expansion_score": 21.0,
+      "day_score": 3.81,
+      "swing_score": -2.3,
+      "stable_score": 2.86,
+      "momentum_score": 6.83,
+      "high_score": 2.09,
       "chart": [
-        {
-          "t": "2026-09-18",
-          "o": 7657.17,
-          "h": 7657.17,
-          "l": 7610.52,
-          "c": 7650.5,
-          "v": 8858350000
-        },
         {
           "t": "2026-09-21",
           "o": 7692.83,
@@ -5419,67 +5411,67 @@
           "l": 7550.84,
           "c": 7592.4,
           "v": 4693040000
+        },
+        {
+          "t": "2026-11-13",
+          "o": 7616.85,
+          "h": 7621.78,
+          "l": 7566.37,
+          "c": 7572.36,
+          "v": 326015886
         }
       ],
-      "data_date": "2026-11-12",
-      "data_age_days": 1,
-      "chart_last_close": 7592.4,
+      "data_date": "2026-11-13",
+      "data_age_days": 0,
+      "chart_last_close": 7572.36,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-12）",
-      "market_supply_score": 65,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
+      "market_supply_score": 70,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給65点／上昇日出来高÷下落日1.30倍／安値切上げ×",
+      "market_supply_status": "市場需給70点／上昇日出来高÷下落日1.19倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "SOX": {
       "ok": true,
-      "price": 10506.67,
-      "open": 10174.12,
-      "high": 10688.24,
-      "low": 10174.12,
-      "prev_close": 10564.11,
-      "change_pct": -0.54,
-      "ret5": 16.6,
-      "ret5_prev": -21.77,
-      "ret20": -9.28,
+      "price": 10173.82,
+      "open": 10412.08,
+      "high": 10461.98,
+      "low": 10159.56,
+      "prev_close": 10506.67,
+      "change_pct": -3.17,
+      "ret5": 8.34,
+      "ret5_prev": -12.15,
+      "ret20": -8.65,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 603.03,
-      "atr_pct": 5.74,
-      "ma5": 10098.66,
-      "ma20": 10695.66,
-      "ma60": 11598.02,
-      "from_ma5": 4.04,
-      "from_ma20": -1.77,
-      "touch_ma5": true,
-      "to_high20": -10.44,
-      "to_high52": -28.31,
-      "bb_upper": 12099.84,
-      "bb_lower": 9291.48,
-      "bb_width": 26.26,
-      "bb_width_change": -1.98,
-      "bb_percentile": 90.0,
-      "bb_expansion_score": 3.5,
-      "day_score": 3.37,
-      "swing_score": -2.52,
+      "atr14": 599.04,
+      "atr_pct": 5.89,
+      "ma5": 10255.37,
+      "ma20": 10647.49,
+      "ma60": 11570.92,
+      "from_ma5": -0.8,
+      "from_ma20": -4.45,
+      "touch_ma5": false,
+      "to_high20": -13.28,
+      "to_high52": -30.58,
+      "bb_upper": 12053.87,
+      "bb_lower": 9241.11,
+      "bb_width": 26.42,
+      "bb_width_change": -1.46,
+      "bb_percentile": 90.8,
+      "bb_expansion_score": 3.2,
+      "day_score": -0.73,
+      "swing_score": -2.36,
       "stable_score": -1.9,
-      "momentum_score": 8.2,
+      "momentum_score": 1.63,
       "high_score": 0.0,
       "chart": [
-        {
-          "t": "2026-09-18",
-          "o": 11691.0,
-          "h": 11922.95,
-          "l": 11686.09,
-          "c": 11921.69,
-          "v": 0
-        },
         {
           "t": "2026-09-21",
           "o": 12145.92,
@@ -5791,57 +5783,65 @@
           "l": 10174.12,
           "c": 10506.67,
           "v": 0
+        },
+        {
+          "t": "2026-11-13",
+          "o": 10412.08,
+          "h": 10461.98,
+          "l": 10159.56,
+          "c": 10173.82,
+          "v": 0
         }
       ],
-      "data_date": "2026-11-12",
-      "data_age_days": 1,
-      "chart_last_close": 10506.67,
+      "data_date": "2026-11-13",
+      "data_age_days": 0,
+      "chart_last_close": 10173.82,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-12）",
-      "market_supply_score": 70,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
+      "market_supply_score": 77,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給70点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給77点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "VIX": {
       "ok": true,
-      "price": 18.25,
+      "price": 18.7,
       "open": 18.78,
       "high": 19.09,
-      "low": 18.17,
+      "low": 17.64,
       "prev_close": 18.7,
-      "change_pct": -2.41,
-      "ret5": -28.82,
+      "change_pct": 0.0,
+      "ret5": -27.07,
       "ret5_prev": 32.03,
-      "ret20": -8.7,
+      "ret20": -6.45,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 3.57,
-      "atr_pct": 19.56,
-      "ma5": 18.76,
-      "ma20": 19.33,
-      "ma60": 16.92,
-      "from_ma5": -2.74,
-      "from_ma20": -5.58,
+      "atr14": 3.61,
+      "atr_pct": 19.29,
+      "ma5": 18.85,
+      "ma20": 19.35,
+      "ma60": 16.93,
+      "from_ma5": -0.82,
+      "from_ma20": -3.37,
       "touch_ma5": false,
-      "to_high20": -35.65,
-      "to_high52": -48.3,
-      "bb_upper": 25.04,
-      "bb_lower": 13.62,
-      "bb_width": 59.07,
-      "bb_width_change": -3.26,
+      "to_high20": -34.06,
+      "to_high52": -47.03,
+      "bb_upper": 25.05,
+      "bb_lower": 13.66,
+      "bb_width": 58.86,
+      "bb_width_change": -3.47,
       "bb_percentile": 95.8,
       "bb_expansion_score": 11.5,
-      "day_score": -5.73,
-      "swing_score": -7.98,
+      "day_score": -3.8,
+      "swing_score": -7.41,
       "stable_score": 1.1,
-      "momentum_score": -6.64,
+      "momentum_score": -6.37,
       "high_score": 2.0,
       "chart": [
         {
@@ -6160,60 +6160,60 @@
           "t": "2026-11-13",
           "o": 18.78,
           "h": 19.09,
-          "l": 18.17,
-          "c": 18.25,
+          "l": 17.64,
+          "c": 18.7,
           "v": 0
         }
       ],
       "data_date": "2026-11-13",
       "data_age_days": 0,
-      "chart_last_close": 18.25,
+      "chart_last_close": 18.7,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
-      "market_supply_score": 66,
+      "market_supply_score": 71,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給66点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給71点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "ドル円": {
       "ok": true,
-      "price": 159.91,
+      "price": 159.81,
       "open": 159.82,
       "high": 160.19,
       "low": 159.64,
       "prev_close": 159.73,
-      "change_pct": 0.11,
-      "ret5": 1.53,
+      "change_pct": 0.05,
+      "ret5": 1.47,
       "ret5_prev": -0.19,
-      "ret20": 1.12,
+      "ret20": 1.05,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.95,
       "atr_pct": 0.59,
-      "ma5": 158.93,
-      "ma20": 158.09,
-      "ma60": 157.62,
-      "from_ma5": 0.62,
-      "from_ma20": 1.15,
+      "ma5": 158.9,
+      "ma20": 158.08,
+      "ma60": 157.61,
+      "from_ma5": 0.57,
+      "from_ma20": 1.09,
       "touch_ma5": true,
-      "to_high20": -0.08,
-      "to_high52": -2.48,
-      "bb_upper": 159.65,
-      "bb_lower": 156.53,
-      "bb_width": 1.97,
-      "bb_width_change": 0.59,
-      "bb_percentile": 52.5,
-      "bb_expansion_score": 61.6,
-      "day_score": 1.63,
-      "swing_score": 3.82,
-      "stable_score": 7.2,
-      "momentum_score": 7.62,
+      "to_high20": -0.14,
+      "to_high52": -2.54,
+      "bb_upper": 159.62,
+      "bb_lower": 156.55,
+      "bb_width": 1.94,
+      "bb_width_change": 0.56,
+      "bb_percentile": 50.0,
+      "bb_expansion_score": 62.5,
+      "day_score": 1.55,
+      "swing_score": 3.78,
+      "stable_score": 7.19,
+      "momentum_score": 7.6,
       "high_score": 5.0,
       "chart": [
         {
@@ -6533,69 +6533,61 @@
           "o": 159.82,
           "h": 160.19,
           "l": 159.64,
-          "c": 159.91,
+          "c": 159.81,
           "v": 0
         }
       ],
       "data_date": "2026-11-13",
       "data_age_days": 0,
-      "chart_last_close": 159.91,
+      "chart_last_close": 159.81,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
-      "market_supply_score": 81,
+      "market_supply_score": 79,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給81点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給79点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "米10年金利": {
       "ok": true,
-      "price": 5.1,
-      "open": 5.06,
-      "high": 5.12,
-      "low": 5.02,
-      "prev_close": 5.0,
-      "change_pct": 2.1,
-      "ret5": 5.5,
-      "ret5_prev": -3.05,
-      "ret20": 0.28,
+      "price": 5.17,
+      "open": 5.15,
+      "high": 5.17,
+      "low": 5.12,
+      "prev_close": 5.1,
+      "change_pct": 1.23,
+      "ret5": 6.32,
+      "ret5_prev": -1.42,
+      "ret20": 1.33,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.08,
-      "atr_pct": 1.49,
-      "ma5": 4.96,
+      "atr_pct": 1.51,
+      "ma5": 5.02,
       "ma20": 4.99,
       "ma60": 5.0,
       "from_ma5": 2.85,
-      "from_ma20": 2.3,
+      "from_ma20": 3.49,
       "touch_ma5": false,
-      "to_high20": -0.91,
-      "to_high52": -4.87,
-      "bb_upper": 5.17,
+      "to_high20": 0.31,
+      "to_high52": -3.69,
+      "bb_upper": 5.19,
       "bb_lower": 4.8,
-      "bb_width": 7.41,
-      "bb_width_change": -1.26,
-      "bb_percentile": 60.8,
-      "bb_expansion_score": 40.7,
-      "day_score": 4.61,
-      "swing_score": 0.99,
-      "stable_score": 1.05,
-      "momentum_score": 5.79,
-      "high_score": 0.0,
+      "bb_width": 7.81,
+      "bb_width_change": -0.43,
+      "bb_percentile": 65.8,
+      "bb_expansion_score": 39.0,
+      "day_score": 4.2,
+      "swing_score": 5.54,
+      "stable_score": 1.24,
+      "momentum_score": 6.18,
+      "high_score": 3.0,
       "chart": [
-        {
-          "t": "2026-09-18",
-          "o": 4.98,
-          "h": 5.01,
-          "l": 4.97,
-          "c": 5.0,
-          "v": 0
-        },
         {
           "t": "2026-09-21",
           "o": 4.95,
@@ -6907,17 +6899,25 @@
           "l": 5.02,
           "c": 5.1,
           "v": 0
+        },
+        {
+          "t": "2026-11-13",
+          "o": 5.15,
+          "h": 5.17,
+          "l": 5.12,
+          "c": 5.17,
+          "v": 0
         }
       ],
-      "data_date": "2026-11-12",
-      "data_age_days": 1,
-      "chart_last_close": 5.1,
+      "data_date": "2026-11-13",
+      "data_age_days": 0,
+      "chart_last_close": 5.17,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-12）",
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
       "market_supply_score": 84,
       "market_supply_improved": true,
       "market_supply_status": "市場需給84点／上昇日出来高÷下落日2.00倍／安値切上げ○",
@@ -7308,7 +7308,7 @@
         "high": 9659.0,
         "low": 9362.0,
         "close": 9404.0,
-        "vwap": 9513.63,
+        "vwap": 9513.64,
         "volume": 16259100,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:25 JST"
@@ -8870,7 +8870,7 @@
         "high": 49240.0,
         "low": 47200.0,
         "close": 47440.0,
-        "vwap": 47947.02,
+        "vwap": 47947.2,
         "volume": 1578400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -9644,12 +9644,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 9751.0,
+        "open": 9750.0,
         "high": 9940.0,
-        "low": 9027.0,
+        "low": 9013.0,
         "close": 9122.0,
-        "vwap": 9386.56,
-        "volume": 133282800,
+        "vwap": 9386.46,
+        "volume": 133282900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -10442,7 +10442,7 @@
       "price": 2860.0,
       "open": 3025.0,
       "high": 3030.0,
-      "low": 2841.0,
+      "low": 2840.0,
       "prev_close": 3015.0,
       "change_pct": -5.14,
       "ret5": 2.51,
@@ -10450,8 +10450,8 @@
       "ret20": -16.98,
       "rvol": 0.74,
       "turnover": 4542824000,
-      "atr14": 173.43,
-      "atr_pct": 6.06,
+      "atr14": 173.5,
+      "atr_pct": 6.07,
       "ma5": 3012.8,
       "ma20": 3090.35,
       "ma60": 3418.62,
@@ -10788,7 +10788,7 @@
           "t": "2026-11-13",
           "o": 3025.0,
           "h": 3030.0,
-          "l": 2841.0,
+          "l": 2840.0,
           "c": 2860.0,
           "v": 1588400
         }
@@ -10796,12 +10796,12 @@
       "data_date": "2026-11-13",
       "data_age_days": 0,
       "chart_last_close": 2860.0,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 2860.0,
       "secondary_date": "2026-11-13",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-13終値 2,860.00円",
       "market_supply_score": 30,
       "market_supply_improved": false,
       "market_supply_status": "市場需給30点／上昇日出来高÷下落日0.52倍／安値切上げ×",
@@ -10818,12 +10818,13 @@
         "high": 3030.0,
         "low": 2840.0,
         "close": 2882.0,
-        "vwap": 2898.55,
-        "volume": 2434200,
+        "vwap": 2925.29,
+        "volume": 1343000,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
-      "identity_verified": true
+      "identity_verified": true,
+      "rotation_group": "自動車・モビリティ"
     },
     "セルシス（3663）": {
       "ok": true,
@@ -11206,7 +11207,7 @@
         "high": 1838.0,
         "low": 1785.0,
         "close": 1793.0,
-        "vwap": 1799.86,
+        "vwap": 1799.85,
         "volume": 83800,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -11595,7 +11596,7 @@
         "high": 5328.0,
         "low": 5227.0,
         "close": 5307.0,
-        "vwap": 5305.98,
+        "vwap": 5305.97,
         "volume": 1691900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -12374,7 +12375,7 @@
         "low": 2071.0,
         "close": 2104.0,
         "vwap": 2148.57,
-        "volume": 11278300,
+        "volume": 11278200,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -13929,8 +13930,8 @@
         "high": 5035.0,
         "low": 4878.0,
         "close": 4980.0,
-        "vwap": 4953.79,
-        "volume": 6504900,
+        "vwap": 4938.19,
+        "volume": 11971500,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -14707,7 +14708,7 @@
         "high": 3180.0,
         "low": 2878.0,
         "close": 2920.0,
-        "vwap": 2984.06,
+        "vwap": 2984.05,
         "volume": 44043400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -15096,7 +15097,7 @@
         "high": 2458.0,
         "low": 2266.5,
         "close": 2322.5,
-        "vwap": 2330.77,
+        "vwap": 2330.78,
         "volume": 15768600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -15877,7 +15878,7 @@
         "high": 5015.0,
         "low": 4679.0,
         "close": 4748.0,
-        "vwap": 4792.25,
+        "vwap": 4792.26,
         "volume": 7306900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -17439,7 +17440,7 @@
         "high": 639.3,
         "low": 626.6,
         "close": 636.9,
-        "vwap": 634.61,
+        "vwap": 634.6,
         "volume": 11973400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -18217,7 +18218,7 @@
         "high": 3429.0,
         "low": 3343.0,
         "close": 3429.0,
-        "vwap": 3401.77,
+        "vwap": 3401.78,
         "volume": 12384400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -18995,7 +18996,7 @@
         "high": 3320.0,
         "low": 3210.0,
         "close": 3277.0,
-        "vwap": 3277.31,
+        "vwap": 3277.37,
         "volume": 18062200,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -19773,8 +19774,8 @@
         "high": 3655.0,
         "low": 3601.0,
         "close": 3628.0,
-        "vwap": 3628.13,
-        "volume": 3141300,
+        "vwap": 3629.39,
+        "volume": 6259900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -20940,7 +20941,7 @@
         "high": 75660.0,
         "low": 74570.0,
         "close": 74850.0,
-        "vwap": 75027.35,
+        "vwap": 75027.29,
         "volume": 281600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -21718,7 +21719,7 @@
         "high": 5674.0,
         "low": 5517.0,
         "close": 5538.0,
-        "vwap": 5586.07,
+        "vwap": 5586.08,
         "volume": 3751500,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -24444,8 +24445,8 @@
         "high": 3921.0,
         "low": 3771.0,
         "close": 3777.0,
-        "vwap": 3830.18,
-        "volume": 2179400,
+        "vwap": 3830.19,
+        "volume": 2179600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -24834,7 +24835,7 @@
         "low": 1752.0,
         "close": 1778.0,
         "vwap": 1774.42,
-        "volume": 2449200,
+        "volume": 2450000,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -26781,8 +26782,8 @@
         "high": 5072.0,
         "low": 4941.0,
         "close": 4953.0,
-        "vwap": 4986.75,
-        "volume": 2592600,
+        "vwap": 4989.27,
+        "volume": 1339900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -30671,7 +30672,7 @@
         "high": 4703.0,
         "low": 4632.0,
         "close": 4654.0,
-        "vwap": 4664.21,
+        "vwap": 4664.23,
         "volume": 570100,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -31060,8 +31061,8 @@
         "high": 2998.0,
         "low": 2874.0,
         "close": 2901.0,
-        "vwap": 2926.74,
-        "volume": 392800,
+        "vwap": 2941.74,
+        "volume": 599600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -33786,8 +33787,8 @@
         "high": 1395.0,
         "low": 1206.0,
         "close": 1215.0,
-        "vwap": 1280.61,
-        "volume": 9736100,
+        "vwap": 1245.93,
+        "volume": 19308400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -34567,8 +34568,8 @@
         "high": 1047.0,
         "low": 976.0,
         "close": 983.0,
-        "vwap": 1013.03,
-        "volume": 41200,
+        "vwap": 998.4,
+        "volume": 86600,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -34580,7 +34581,7 @@
       "price": 2244.0,
       "open": 2190.0,
       "high": 2298.0,
-      "low": 2134.0,
+      "low": 2130.0,
       "prev_close": 2185.0,
       "change_pct": 2.7,
       "ret5": -10.85,
@@ -34588,8 +34589,8 @@
       "ret20": -28.65,
       "rvol": 0.74,
       "turnover": 4468926000,
-      "atr14": 269.29,
-      "atr_pct": 12.0,
+      "atr14": 269.57,
+      "atr_pct": 12.01,
       "ma5": 2464.6,
       "ma20": 2996.95,
       "ma60": 2434.03,
@@ -34926,7 +34927,7 @@
           "t": "2026-11-13",
           "o": 2190.0,
           "h": 2298.0,
-          "l": 2134.0,
+          "l": 2130.0,
           "c": 2244.0,
           "v": 1991500
         }
@@ -34934,12 +34935,12 @@
       "data_date": "2026-11-13",
       "data_age_days": 0,
       "chart_last_close": 2244.0,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 2244.0,
       "secondary_date": "2026-11-13",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-13終値 2,244.00円",
       "market_supply_score": 53,
       "market_supply_improved": false,
       "market_supply_status": "市場需給53点／上昇日出来高÷下落日0.95倍／安値切上げ×",
@@ -34956,12 +34957,13 @@
         "high": 2298.0,
         "low": 2130.0,
         "close": 2144.0,
-        "vwap": 2199.81,
+        "vwap": 2199.8,
         "volume": 1432900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
-      "identity_verified": true
+      "identity_verified": true,
+      "rotation_group": "その他"
     },
     "マネーフォワード（3994）": {
       "ok": true,
@@ -35344,8 +35346,8 @@
         "high": 7543.0,
         "low": 7370.0,
         "close": 7463.0,
-        "vwap": 7475.39,
-        "volume": 537200,
+        "vwap": 7464.33,
+        "volume": 320000,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -36906,7 +36908,7 @@
         "high": 2765.0,
         "low": 2645.0,
         "close": 2659.0,
-        "vwap": 2702.64,
+        "vwap": 2702.65,
         "volume": 120700,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -37697,7 +37699,7 @@
       "price": 575.0,
       "open": 605.0,
       "high": 608.0,
-      "low": 565.0,
+      "low": 566.0,
       "prev_close": 601.0,
       "change_pct": -4.33,
       "ret5": -9.45,
@@ -37705,8 +37707,8 @@
       "ret20": -27.4,
       "rvol": 1.86,
       "turnover": 1866105000,
-      "atr14": 53.86,
-      "atr_pct": 9.37,
+      "atr14": 53.79,
+      "atr_pct": 9.35,
       "ma5": 654.0,
       "ma20": 734.0,
       "ma60": 799.9,
@@ -38043,7 +38045,7 @@
           "t": "2026-11-13",
           "o": 605.0,
           "h": 608.0,
-          "l": 565.0,
+          "l": 566.0,
           "c": 575.0,
           "v": 3245400
         }
@@ -38051,12 +38053,12 @@
       "data_date": "2026-11-13",
       "data_age_days": 0,
       "chart_last_close": 575.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 575.0,
       "secondary_date": "2026-11-13",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-11-13終値 575.00円",
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-13）",
       "market_supply_score": 23,
       "market_supply_improved": false,
       "market_supply_status": "市場需給23点／上昇日出来高÷下落日0.34倍／安値切上げ×",
@@ -38078,8 +38080,7 @@
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー"
+      "identity_verified": true
     },
     "FRONTEO（2158）": {
       "ok": true,
@@ -39629,8 +39630,8 @@
         "high": 5685.0,
         "low": 5460.0,
         "close": 5496.0,
-        "vwap": 5551.06,
-        "volume": 1279800,
+        "vwap": 5538.42,
+        "volume": 968800,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -40796,8 +40797,8 @@
         "high": 736.0,
         "low": 712.0,
         "close": 714.0,
-        "vwap": 723.82,
-        "volume": 106100,
+        "vwap": 718.93,
+        "volume": 297200,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -41193,7 +41194,7 @@
         "high": 3489.0,
         "low": 3319.0,
         "close": 3375.0,
-        "vwap": 3393.34,
+        "vwap": 3393.33,
         "volume": 2809400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -42369,7 +42370,7 @@
         "high": 4335.0,
         "low": 4245.0,
         "close": 4330.0,
-        "vwap": 4309.44,
+        "vwap": 4309.42,
         "volume": 164800,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -43539,7 +43540,7 @@
         "high": 8890.0,
         "low": 8620.0,
         "close": 8870.0,
-        "vwap": 8816.51,
+        "vwap": 8816.5,
         "volume": 367500,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -43931,7 +43932,7 @@
         "high": 3225.0,
         "low": 3035.0,
         "close": 3065.0,
-        "vwap": 3133.97,
+        "vwap": 3134.05,
         "volume": 620900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -45101,8 +45102,8 @@
         "high": 2160.0,
         "low": 1962.0,
         "close": 1988.0,
-        "vwap": 2023.44,
-        "volume": 1337800,
+        "vwap": 2025.92,
+        "volume": 2030900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
       },
@@ -45490,7 +45491,7 @@
         "high": 3825.0,
         "low": 3600.0,
         "close": 3660.0,
-        "vwap": 3684.96,
+        "vwap": 3684.97,
         "volume": 841700,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -45503,8 +45504,8 @@
     "status": "合格",
     "market_date": "2026-11-13",
     "universe": 100,
-    "verified": 97,
-    "excluded": 3,
+    "verified": 98,
+    "excluded": 2,
     "requirements": [
       "会社名コード＝ティッカー",
       "一次OHLC＝QUICK",
@@ -45516,8 +45517,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-11-13T22:27:13+09:00",
-    "decision_at": "2026-11-13T22:27:13+09:00",
+    "generated_at": "2026-11-13T23:52:15+09:00",
+    "decision_at": "2026-11-13T23:52:15+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -45835,7 +45836,7 @@
       "name": "リクルートHD（6098）",
       "code": "6098",
       "ticker": "6098.T",
-      "score": 43.6,
+      "score": 44.3,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -45846,7 +45847,7 @@
       "stop": 17250.0,
       "target1": 18950,
       "target2": 19430,
-      "reason": "先回り候補／AI・テクノロジー 流入初期 55点／前日比 +5.06%／出来高比 1.28倍／売買代金 1161億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "reason": "先回り候補／AI・テクノロジー 流入初期 57点／前日比 +5.06%／出来高比 1.28倍／売買代金 1161億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-14",
@@ -46317,7 +46318,7 @@
           "h": 16690.0,
           "l": 16535.0,
           "c": 16535.0,
-          "v": 69900
+          "v": 69700
         },
         {
           "t": "2026-11-12 10:30",
@@ -46325,7 +46326,7 @@
           "h": 16585.0,
           "l": 16510.0,
           "c": 16575.0,
-          "v": 56400
+          "v": 56600
         },
         {
           "t": "2026-11-12 10:35",
@@ -46333,7 +46334,7 @@
           "h": 16620.0,
           "l": 16560.0,
           "c": 16620.0,
-          "v": 40200
+          "v": 39800
         },
         {
           "t": "2026-11-12 10:40",
@@ -46341,7 +46342,7 @@
           "h": 16665.0,
           "l": 16610.0,
           "c": 16640.0,
-          "v": 47200
+          "v": 47600
         },
         {
           "t": "2026-11-12 10:45",
@@ -46621,7 +46622,7 @@
           "h": 16770.0,
           "l": 16740.0,
           "c": 16765.0,
-          "v": 31000
+          "v": 30900
         },
         {
           "t": "2026-11-12 14:35",
@@ -46629,7 +46630,7 @@
           "h": 16810.0,
           "l": 16760.0,
           "c": 16795.0,
-          "v": 55900
+          "v": 56000
         },
         {
           "t": "2026-11-12 14:40",
@@ -46889,7 +46890,7 @@
         },
         {
           "t": "2026-11-13 11:00",
-          "o": 17835.0,
+          "o": 17840.0,
           "h": 17845.0,
           "l": 17805.0,
           "c": 17815.0,
@@ -47213,7 +47214,7 @@
           "h": 17675.0,
           "l": 17630.0,
           "c": 17675.0,
-          "v": 41500
+          "v": 41800
         },
         {
           "t": "2026-11-13 15:20",
@@ -47221,7 +47222,7 @@
           "h": 17715.0,
           "l": 17670.0,
           "c": 17700.0,
-          "v": 79500
+          "v": 79200
         }
       ],
       "intraday_regime": {
@@ -47587,7 +47588,7 @@
           "h": 2539.5,
           "l": 2524.5,
           "c": 2525.0,
-          "v": 1069700
+          "v": 200800
         },
         {
           "t": "2026-11-12 09:10",
@@ -47601,7 +47602,7 @@
           "t": "2026-11-12 09:15",
           "o": 2510.0,
           "h": 2518.5,
-          "l": 2503.0,
+          "l": 2501.0,
           "c": 2517.5,
           "v": 134000
         },
@@ -47639,7 +47640,7 @@
         },
         {
           "t": "2026-11-12 09:40",
-          "o": 2530.0,
+          "o": 2529.5,
           "h": 2535.0,
           "l": 2526.5,
           "c": 2533.0,
@@ -47831,7 +47832,7 @@
         },
         {
           "t": "2026-11-12 12:35",
-          "o": 2535.0,
+          "o": 2534.5,
           "h": 2536.0,
           "l": 2529.0,
           "c": 2533.0,
@@ -47979,7 +47980,7 @@
           "h": 2489.0,
           "l": 2483.5,
           "c": 2483.5,
-          "v": 72600
+          "v": 72300
         },
         {
           "t": "2026-11-12 14:10",
@@ -47987,7 +47988,7 @@
           "h": 2484.0,
           "l": 2479.5,
           "c": 2482.0,
-          "v": 66500
+          "v": 66800
         },
         {
           "t": "2026-11-12 14:15",
@@ -48018,8 +48019,8 @@
           "o": 2480.5,
           "h": 2485.0,
           "l": 2477.5,
-          "c": 2484.0,
-          "v": 84000
+          "c": 2483.5,
+          "v": 83900
         },
         {
           "t": "2026-11-12 14:35",
@@ -48027,7 +48028,7 @@
           "h": 2482.5,
           "l": 2477.0,
           "c": 2479.0,
-          "v": 80200
+          "v": 80300
         },
         {
           "t": "2026-11-12 14:40",
@@ -48047,7 +48048,7 @@
         },
         {
           "t": "2026-11-12 14:50",
-          "o": 2468.5,
+          "o": 2469.5,
           "h": 2473.0,
           "l": 2468.5,
           "c": 2471.5,
@@ -48458,8 +48459,8 @@
           "o": 2287.0,
           "h": 2294.0,
           "l": 2279.0,
-          "c": 2280.5,
-          "v": 292800
+          "c": 2281.0,
+          "v": 292600
         },
         {
           "t": "2026-11-13 13:45",
@@ -48467,11 +48468,11 @@
           "h": 2288.5,
           "l": 2270.5,
           "c": 2273.5,
-          "v": 402600
+          "v": 402800
         },
         {
           "t": "2026-11-13 13:50",
-          "o": 2273.5,
+          "o": 2274.0,
           "h": 2292.0,
           "l": 2272.5,
           "c": 2290.5,
@@ -48639,7 +48640,7 @@
       "name": "ニトリHD（9843）",
       "code": "9843",
       "ticker": "9843.T",
-      "score": 26.8,
+      "score": 26.1,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -48650,7 +48651,7 @@
       "stop": 3305.0,
       "target1": 3805,
       "target2": 3945,
-      "reason": "先回り候補／その他 流出 26点／前日比 -1.78%／出来高比 1.66倍／売買代金 141億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "reason": "先回り候補／その他 流出 22点／前日比 -1.78%／出来高比 1.66倍／売買代金 141億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-14",
@@ -48985,7 +48986,7 @@
           "h": 3466.0,
           "l": 3435.0,
           "c": 3466.0,
-          "v": 121400
+          "v": 32500
         },
         {
           "t": "2026-11-12 09:10",
@@ -49005,7 +49006,7 @@
         },
         {
           "t": "2026-11-12 09:20",
-          "o": 3446.0,
+          "o": 3455.0,
           "h": 3455.0,
           "l": 3434.0,
           "c": 3435.0,
@@ -49641,7 +49642,7 @@
           "h": 3478.0,
           "l": 3473.0,
           "c": 3476.0,
-          "v": 14500
+          "v": 14600
         },
         {
           "t": "2026-11-13 10:35",
@@ -49649,7 +49650,7 @@
           "h": 3479.0,
           "l": 3472.0,
           "c": 3474.0,
-          "v": 26500
+          "v": 26400
         },
         {
           "t": "2026-11-13 10:40",
@@ -49785,7 +49786,7 @@
           "h": 3384.0,
           "l": 3369.0,
           "c": 3381.0,
-          "v": 40600
+          "v": 41400
         },
         {
           "t": "2026-11-13 13:00",
@@ -49793,7 +49794,7 @@
           "h": 3389.0,
           "l": 3376.0,
           "c": 3377.0,
-          "v": 50700
+          "v": 49900
         },
         {
           "t": "2026-11-13 13:05",
@@ -49973,7 +49974,7 @@
         },
         {
           "t": "2026-11-13 14:55",
-          "o": 3355.0,
+          "o": 3358.0,
           "h": 3365.0,
           "l": 3346.0,
           "c": 3365.0,
@@ -50383,7 +50384,7 @@
           "h": 1636.0,
           "l": 1585.0,
           "c": 1589.0,
-          "v": 506200
+          "v": 204000
         },
         {
           "t": "2026-11-12 09:10",
@@ -50843,7 +50844,7 @@
         },
         {
           "t": "2026-11-12 14:50",
-          "o": 1608.0,
+          "o": 1611.0,
           "h": 1615.0,
           "l": 1608.0,
           "c": 1612.0,
@@ -51446,7 +51447,7 @@
       "stop": 1829.0,
       "target1": 2162,
       "target2": 2255,
-      "reason": "期待形成中／AI・テクノロジー 流入初期 55点／前日比 +5.08%／出来高比 1.37倍／売買代金 186億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 流入初期 57点／前日比 +5.08%／出来高比 1.37倍／売買代金 186億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-14",
@@ -51780,8 +51781,8 @@
           "o": 1777.5,
           "h": 1788.5,
           "l": 1766.5,
-          "c": 1769.5,
-          "v": 495600
+          "c": 1770.0,
+          "v": 106500
         },
         {
           "t": "2026-11-12 09:10",
@@ -51789,7 +51790,7 @@
           "h": 1778.0,
           "l": 1761.0,
           "c": 1778.0,
-          "v": 157800
+          "v": 157500
         },
         {
           "t": "2026-11-12 09:15",
@@ -51809,7 +51810,7 @@
         },
         {
           "t": "2026-11-12 09:25",
-          "o": 1826.0,
+          "o": 1825.0,
           "h": 1826.5,
           "l": 1809.0,
           "c": 1821.0,
@@ -52241,7 +52242,7 @@
         },
         {
           "t": "2026-11-12 14:50",
-          "o": 1794.0,
+          "o": 1795.0,
           "h": 1798.0,
           "l": 1792.5,
           "c": 1793.0,
@@ -52653,7 +52654,7 @@
           "h": 1893.5,
           "l": 1887.5,
           "c": 1887.5,
-          "v": 62400
+          "v": 62100
         },
         {
           "t": "2026-11-13 13:45",
@@ -52661,7 +52662,7 @@
           "h": 1888.0,
           "l": 1880.5,
           "c": 1881.0,
-          "v": 95100
+          "v": 95400
         },
         {
           "t": "2026-11-13 13:50",
@@ -52741,7 +52742,7 @@
           "h": 1897.5,
           "l": 1880.0,
           "c": 1885.5,
-          "v": 113800
+          "v": 113700
         },
         {
           "t": "2026-11-13 14:40",
@@ -52749,7 +52750,7 @@
           "h": 1890.0,
           "l": 1885.5,
           "c": 1889.0,
-          "v": 73100
+          "v": 73200
         },
         {
           "t": "2026-11-13 14:45",
@@ -52839,13 +52840,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 159.925,
-    "usd_jpy_change_pct": 0.06,
-    "usd_jpy_ret5": 1.53,
+    "usd_jpy": 159.798,
+    "usd_jpy_change_pct": -0.02,
+    "usd_jpy_ret5": 1.47,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-11-13T22:27:00+09:00",
+    "fx_observed_at": "2026-11-13T23:52:00+09:00",
     "statement_study": {
-      "updated_at": "2026-11-13 22:27:43 JST",
+      "updated_at": "2026-11-13 23:52:49 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55616,7 +55617,7 @@
         "high": 8890.0,
         "low": 8620.0,
         "close": 8870.0,
-        "vwap": 8816.51,
+        "vwap": 8816.5,
         "volume": 367500,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -58935,7 +58936,7 @@
           "high": 5328.0,
           "low": 5227.0,
           "close": 5307.0,
-          "vwap": 5305.98,
+          "vwap": 5305.97,
           "volume": 1691900,
           "data_date": "2026-11-13",
           "data_time": "2026-11-13 15:20 JST"
@@ -59335,7 +59336,7 @@
           "high": 8890.0,
           "low": 8620.0,
           "close": 8870.0,
-          "vwap": 8816.51,
+          "vwap": 8816.5,
           "volume": 367500,
           "data_date": "2026-11-13",
           "data_time": "2026-11-13 15:20 JST"
@@ -60532,7 +60533,7 @@
           "high": 5328.0,
           "low": 5227.0,
           "close": 5307.0,
-          "vwap": 5305.98,
+          "vwap": 5305.97,
           "volume": 1691900,
           "data_date": "2026-11-13",
           "data_time": "2026-11-13 15:20 JST"
@@ -61728,7 +61729,7 @@
           "high": 8890.0,
           "low": 8620.0,
           "close": 8870.0,
-          "vwap": 8816.51,
+          "vwap": 8816.5,
           "volume": 367500,
           "data_date": "2026-11-13",
           "data_time": "2026-11-13 15:20 JST"
@@ -62129,7 +62130,7 @@
           "high": 5328.0,
           "low": 5227.0,
           "close": 5307.0,
-          "vwap": 5305.98,
+          "vwap": 5305.97,
           "volume": 1691900,
           "data_date": "2026-11-13",
           "data_time": "2026-11-13 15:20 JST"
@@ -62978,11 +62979,11 @@
         "tick": 5
       },
       "source": "JPX",
-      "expectation_score": 70,
-      "raw_expectation_score": 75,
+      "expectation_score": 71,
+      "raw_expectation_score": 76,
       "hurdle_risk": 18,
       "score_coverage": 100,
-      "score_detail": "予想EPS成長 +2.4%／EPS予想幅 8.8%／予想売上成長 +12.4%／過去4回サプライズ平均 +26.1%／予想修正 上5／下0／決算前テクニカル 68/100／コンセンサス警戒 18/100（−5.0点）",
+      "score_detail": "予想EPS成長 +2.4%／EPS予想幅 8.8%／予想売上成長 +16.3%／過去4回サプライズ平均 +24.8%／予想修正 上5／下0／決算前テクニカル 68/100／コンセンサス警戒 18/100（−5.0点）",
       "technical_score": 68
     },
     {
@@ -63033,7 +63034,7 @@
         "entry": 635.9,
         "stop": 623.8,
         "target1": 654.0,
-        "target2": 662.5,
+        "target2": 662.4,
         "risk": 12.1,
         "tick": 0.1
       },
@@ -63164,6 +63165,26 @@
       "score_coverage": 10,
       "score_detail": "決算前テクニカル 17/100／コンセンサス警戒 0/100（−0.0点）",
       "technical_score": 17
+    },
+    {
+      "name": "サイバーセキュリティクラウド（4493）",
+      "date": "2026-11-13",
+      "price": 2244.0,
+      "plan": {
+        "entry": 2144,
+        "stop": 1996,
+        "target1": 2366,
+        "target2": 2470,
+        "risk": 148,
+        "tick": 1
+      },
+      "source": "JPX",
+      "expectation_score": 13,
+      "raw_expectation_score": 13,
+      "hurdle_risk": 0,
+      "score_coverage": 10,
+      "score_detail": "決算前テクニカル 13/100／コンセンサス警戒 0/100（−0.0点）",
+      "technical_score": 13
     }
   ],
   "themes": [
@@ -63233,129 +63254,129 @@
     "regime": "混在・切替中",
     "regime_action": "指数ではなく、流入初期または拡大のセクターだけを選ぶ",
     "rate_view": "金利上昇：高PERグロースに逆風",
-    "rate5": 0.27,
-    "breadth": "3/11",
-    "spread": -1.5,
+    "rate5": 0.31,
+    "breadth": "4/11",
+    "spread": 3.3,
     "us_sectors": [
       {
         "sector": "資本財・工業",
         "ticker": "XLI",
         "phase": "流入初期",
-        "score": 63.0,
-        "rel5": 1.04,
-        "rel20": 2.88,
-        "acceleration": 0.79,
-        "from_ma20": 0.99,
-        "action": "最優先監視・初押し"
-      },
-      {
-        "sector": "情報技術・AI",
-        "ticker": "XLK",
-        "phase": "流入初期",
-        "score": 62.8,
-        "rel5": 3.76,
-        "rel20": -6.19,
-        "acceleration": 12.98,
-        "from_ma20": -3.09,
+        "score": 62.0,
+        "rel5": 1.27,
+        "rel20": 1.9,
+        "acceleration": 1.42,
+        "from_ma20": 0.72,
         "action": "最優先監視・初押し"
       },
       {
         "sector": "エネルギー",
         "ticker": "XLE",
         "phase": "流入初期",
-        "score": 56.1,
-        "rel5": 1.13,
-        "rel20": -1.39,
-        "acceleration": 6.68,
-        "from_ma20": -3.02,
+        "score": 57.1,
+        "rel5": 2.01,
+        "rel20": -4.36,
+        "acceleration": 11.33,
+        "from_ma20": -2.5,
         "action": "最優先監視・初押し"
       },
       {
         "sector": "一般消費財",
         "ticker": "XLY",
         "phase": "流出",
-        "score": 49.4,
-        "rel5": -0.85,
-        "rel20": 8.18,
-        "acceleration": -6.84,
-        "from_ma20": 2.99,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "ヘルスケア",
-        "ticker": "XLV",
-        "phase": "流出",
-        "score": 45.7,
-        "rel5": -1.67,
-        "rel20": 7.96,
-        "acceleration": -6.89,
-        "from_ma20": 2.62,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "公益",
-        "ticker": "XLU",
-        "phase": "流出",
-        "score": 42.7,
-        "rel5": -2.07,
-        "rel20": 7.15,
-        "acceleration": -7.19,
-        "from_ma20": 1.93,
+        "score": 53.3,
+        "rel5": -0.11,
+        "rel20": 8.35,
+        "acceleration": -4.7,
+        "from_ma20": 2.73,
         "action": "新規ロング停止"
       },
       {
         "sector": "金融",
         "ticker": "XLF",
         "phase": "流出",
-        "score": 42.1,
-        "rel5": -2.02,
-        "rel20": 7.28,
-        "acceleration": -7.75,
-        "from_ma20": 2.29,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "不動産",
-        "ticker": "XLRE",
-        "phase": "流出",
-        "score": 38.7,
-        "rel5": -3.11,
-        "rel20": 7.6,
-        "acceleration": -10.74,
-        "from_ma20": 2.46,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "コミュニケーション",
-        "ticker": "XLC",
-        "phase": "流出",
-        "score": 38.4,
+        "score": 52.8,
         "rel5": -0.16,
-        "rel20": -2.38,
-        "acceleration": -8.0,
-        "from_ma20": 1.89,
+        "rel20": 6.66,
+        "acceleration": -3.99,
+        "from_ma20": 2.68,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "公益",
+        "ticker": "XLU",
+        "phase": "流出",
+        "score": 51.6,
+        "rel5": -0.75,
+        "rel20": 5.26,
+        "acceleration": -2.74,
+        "from_ma20": 2.05,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "ヘルスケア",
+        "ticker": "XLV",
+        "phase": "流出",
+        "score": 51.5,
+        "rel5": -0.96,
+        "rel20": 7.48,
+        "acceleration": -3.6,
+        "from_ma20": 2.35,
         "action": "新規ロング停止"
       },
       {
         "sector": "生活必需品",
         "ticker": "XLP",
         "phase": "流出",
-        "score": 36.9,
-        "rel5": -3.46,
-        "rel20": 7.01,
-        "acceleration": -11.69,
-        "from_ma20": 2.03,
+        "score": 51.3,
+        "rel5": -0.56,
+        "rel20": 6.09,
+        "acceleration": -3.98,
+        "from_ma20": 2.79,
         "action": "新規ロング停止"
+      },
+      {
+        "sector": "情報技術・AI",
+        "ticker": "XLK",
+        "phase": "流入初期",
+        "score": 49.6,
+        "rel5": 1.08,
+        "rel20": -5.72,
+        "acceleration": 6.63,
+        "from_ma20": -4.37,
+        "action": "最優先監視・初押し"
+      },
+      {
+        "sector": "コミュニケーション",
+        "ticker": "XLC",
+        "phase": "中立",
+        "score": 48.7,
+        "rel5": 1.48,
+        "rel20": 0.05,
+        "acceleration": -6.09,
+        "from_ma20": 3.43,
+        "action": "方向確認待ち"
       },
       {
         "sector": "素材",
         "ticker": "XLB",
         "phase": "流出",
-        "score": 36.4,
-        "rel5": -3.23,
-        "rel20": 5.48,
-        "acceleration": -7.6,
-        "from_ma20": 0.34,
+        "score": 45.6,
+        "rel5": -1.86,
+        "rel20": 3.97,
+        "acceleration": -3.04,
+        "from_ma20": 0.23,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "不動産",
+        "ticker": "XLRE",
+        "phase": "流出",
+        "score": 44.4,
+        "rel5": -1.59,
+        "rel20": 6.61,
+        "acceleration": -6.19,
+        "from_ma20": 2.43,
         "action": "新規ロング停止"
       }
     ],
@@ -63450,13 +63471,13 @@
       {
         "sector": "AI・テクノロジー",
         "phase": "流入初期",
-        "score": 55.0,
-        "rel5": 0.83,
-        "rel20": -7.58,
-        "acceleration": 9.48,
-        "breadth": 28.2,
-        "rvol": 0.92,
-        "members": 39,
+        "score": 57.1,
+        "rel5": 1.28,
+        "rel20": -7.1,
+        "acceleration": 9.85,
+        "breadth": 28.9,
+        "rvol": 0.9,
+        "members": 38,
         "leaders": [
           {
             "name": "FIXER（5129）",
@@ -63508,13 +63529,13 @@
       {
         "sector": "自動車・モビリティ",
         "phase": "流出",
-        "score": 39.8,
-        "rel5": -2.45,
-        "rel20": 6.26,
-        "acceleration": -9.8,
-        "breadth": 100.0,
-        "rvol": 0.61,
-        "members": 4,
+        "score": 32.0,
+        "rel5": -2.84,
+        "rel20": 1.87,
+        "acceleration": -7.61,
+        "breadth": 80.0,
+        "rvol": 0.64,
+        "members": 5,
         "leaders": [
           {
             "name": "ニデック（6594）",
@@ -63527,9 +63548,9 @@
             "rvol": 0.5
           },
           {
-            "name": "トヨタ自動車（7203）",
-            "ret5": 2.4,
-            "rvol": 0.67
+            "name": "GO（581A）",
+            "ret5": 2.51,
+            "rvol": 0.74
           }
         ],
         "action": "新規ロング停止"
@@ -63537,13 +63558,13 @@
       {
         "sector": "その他",
         "phase": "流出",
-        "score": 25.8,
-        "rel5": -4.01,
-        "rel20": 2.15,
-        "acceleration": -7.43,
-        "breadth": 52.6,
-        "rvol": 1.13,
-        "members": 19,
+        "score": 21.5,
+        "rel5": -4.7,
+        "rel20": 0.67,
+        "acceleration": -7.39,
+        "breadth": 50.0,
+        "rvol": 1.11,
+        "members": 20,
         "leaders": [
           {
             "name": "Terra Drone（278A）",
@@ -63586,7 +63607,7 @@
         "name": "ソシオネクスト（6526）",
         "sector": "AI・テクノロジー",
         "phase": "流入初期",
-        "score": 73,
+        "score": 74,
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
@@ -63597,7 +63618,24 @@
           "risk": 71,
           "tick": 1
         },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.83%／出来高比 1.37倍"
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +1.28%／出来高比 1.37倍"
+      },
+      {
+        "name": "SUMCO（3436）",
+        "sector": "AI・テクノロジー",
+        "phase": "流入初期",
+        "score": 73,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 2104,
+          "stop": 1990,
+          "target1": 2275,
+          "target2": 2354,
+          "risk": 114,
+          "tick": 1
+        },
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +1.28%／出来高比 0.94倍"
       },
       {
         "name": "三菱商事（8058）",
@@ -63617,6 +63655,40 @@
         "reason": "資源・素材・商社が拡大／TOPIX比5日 +2.05%／出来高比 0.70倍"
       },
       {
+        "name": "東京エレクトロン（8035）",
+        "sector": "AI・テクノロジー",
+        "phase": "流入初期",
+        "score": 72,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 9400,
+          "stop": 9050,
+          "target1": 9930,
+          "target2": 10170,
+          "risk": 350,
+          "tick": 10
+        },
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +1.28%／出来高比 1.10倍"
+      },
+      {
+        "name": "ディスコ（6146）",
+        "sector": "AI・テクノロジー",
+        "phase": "流入初期",
+        "score": 72,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 47450,
+          "stop": 45550,
+          "target1": 50250,
+          "target2": 51600,
+          "risk": 1900,
+          "tick": 50
+        },
+        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +1.28%／出来高比 0.75倍"
+      },
+      {
         "name": "日鉄鉱業（1515）",
         "sector": "資源・素材・商社",
         "phase": "拡大",
@@ -63632,57 +63704,6 @@
           "tick": 1
         },
         "reason": "資源・素材・商社が拡大／TOPIX比5日 +2.05%／出来高比 0.95倍"
-      },
-      {
-        "name": "東京エレクトロン（8035）",
-        "sector": "AI・テクノロジー",
-        "phase": "流入初期",
-        "score": 71,
-        "material_stage": "期待形成中",
-        "material_action": "高値追い禁止・発動足待ち",
-        "plan": {
-          "entry": 9400,
-          "stop": 9050,
-          "target1": 9930,
-          "target2": 10170,
-          "risk": 350,
-          "tick": 10
-        },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.83%／出来高比 1.10倍"
-      },
-      {
-        "name": "ディスコ（6146）",
-        "sector": "AI・テクノロジー",
-        "phase": "流入初期",
-        "score": 71,
-        "material_stage": "期待形成中",
-        "material_action": "高値追い禁止・発動足待ち",
-        "plan": {
-          "entry": 47450,
-          "stop": 45550,
-          "target1": 50250,
-          "target2": 51600,
-          "risk": 1900,
-          "tick": 50
-        },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.83%／出来高比 0.75倍"
-      },
-      {
-        "name": "SUMCO（3436）",
-        "sector": "AI・テクノロジー",
-        "phase": "流入初期",
-        "score": 71,
-        "material_stage": "期待形成中",
-        "material_action": "高値追い禁止・発動足待ち",
-        "plan": {
-          "entry": 2104,
-          "stop": 1990,
-          "target1": 2275,
-          "target2": 2354,
-          "risk": 114,
-          "tick": 1
-        },
-        "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.83%／出来高比 0.94倍"
       }
     ],
     "kioxia": {
@@ -63690,8 +63711,8 @@
       "status": "流入初期",
       "action": "反転条件だけ再評価",
       "detail": "セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。",
-      "sector_score": 55.0,
-      "sector_rel5": 0.83
+      "sector_score": 57.1,
+      "sector_rel5": 1.28
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -64103,7 +64124,7 @@
             "high": 5674.0,
             "low": 5517.0,
             "close": 5538.0,
-            "vwap": 5586.07,
+            "vwap": 5586.08,
             "volume": 3751500,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
@@ -64511,8 +64532,8 @@
             "high": 3921.0,
             "low": 3771.0,
             "close": 3777.0,
-            "vwap": 3830.18,
-            "volume": 2179400,
+            "vwap": 3830.19,
+            "volume": 2179600,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
           },
@@ -66156,8 +66177,8 @@
             "high": 736.0,
             "low": 712.0,
             "close": 714.0,
-            "vwap": 723.82,
-            "volume": 106100,
+            "vwap": 718.93,
+            "volume": 297200,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
           },
@@ -68627,7 +68648,7 @@
             "high": 9659.0,
             "low": 9362.0,
             "close": 9404.0,
-            "vwap": 9513.63,
+            "vwap": 9513.64,
             "volume": 16259100,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:25 JST"
@@ -69034,12 +69055,12 @@
           "day_bucket": null,
           "intraday": {
             "ok": true,
-            "open": 9751.0,
+            "open": 9750.0,
             "high": 9940.0,
-            "low": 9027.0,
+            "low": 9013.0,
             "close": 9122.0,
-            "vwap": 9386.56,
-            "volume": 133282800,
+            "vwap": 9386.46,
+            "volume": 133282900,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
           },
@@ -69446,7 +69467,7 @@
             "high": 49240.0,
             "low": 47200.0,
             "close": 47440.0,
-            "vwap": 47947.02,
+            "vwap": 47947.2,
             "volume": 1578400,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
@@ -69864,7 +69885,7 @@
             "high": 3180.0,
             "low": 2878.0,
             "close": 2920.0,
-            "vwap": 2984.06,
+            "vwap": 2984.05,
             "volume": 44043400,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
@@ -70272,7 +70293,7 @@
             "high": 2458.0,
             "low": 2266.5,
             "close": 2322.5,
-            "vwap": 2330.77,
+            "vwap": 2330.78,
             "volume": 15768600,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
@@ -70683,7 +70704,7 @@
             "high": 5015.0,
             "low": 4679.0,
             "close": 4748.0,
-            "vwap": 4792.25,
+            "vwap": 4792.26,
             "volume": 7306900,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
@@ -71530,10 +71551,10 @@
           "status": "信用需給待ち",
           "score": 44,
           "plan": {
-            "entry": 4965,
-            "stop": 4840,
-            "target1": 5150,
-            "target2": 5235,
+            "entry": 4950,
+            "stop": 4825,
+            "target1": 5135,
+            "target2": 5220,
             "risk": 125,
             "tick": 5
           },
@@ -71917,8 +71938,8 @@
             "high": 5035.0,
             "low": 4878.0,
             "close": 4980.0,
-            "vwap": 4953.79,
-            "volume": 6504900,
+            "vwap": 4938.19,
+            "volume": 11971500,
             "data_date": "2026-11-13",
             "data_time": "2026-11-13 15:20 JST"
           },
@@ -73954,7 +73975,7 @@
         "high": 5328.0,
         "low": 5227.0,
         "close": 5307.0,
-        "vwap": 5305.98,
+        "vwap": 5305.97,
         "volume": 1691900,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -74753,7 +74774,7 @@
         "high": 3489.0,
         "low": 3319.0,
         "close": 3375.0,
-        "vwap": 3393.34,
+        "vwap": 3393.33,
         "volume": 2809400,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -75154,7 +75175,7 @@
         "high": 3320.0,
         "low": 3210.0,
         "close": 3277.0,
-        "vwap": 3277.31,
+        "vwap": 3277.37,
         "volume": 18062200,
         "data_date": "2026-11-13",
         "data_time": "2026-11-13 15:20 JST"
@@ -76408,7 +76429,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 8870.0,
-      "vwap": 8816.51,
+      "vwap": 8816.5,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -76452,7 +76473,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 3375.0,
-      "vwap": 3393.34,
+      "vwap": 3393.33,
       "pnl_yen": -2000,
       "r": -0.24,
       "R": -0.24,
@@ -76540,7 +76561,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 7463.0,
-      "vwap": 7475.39,
+      "vwap": 7464.33,
       "pnl_yen": null,
       "r": null,
       "R": null,
@@ -76584,7 +76605,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 2920.0,
-      "vwap": 2984.06,
+      "vwap": 2984.05,
       "pnl_yen": null,
       "r": null,
       "R": null,
