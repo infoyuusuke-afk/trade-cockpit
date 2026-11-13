@@ -1,8 +1,8 @@
 {
-  "updated_at": "2026-11-13 15:37:38 JST",
+  "updated_at": "2026-11-13 15:55:10 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 2,
+  "count": 3,
   "candidates": [
     {
       "name": "三菱重工業（7011）",
@@ -14,11 +14,11 @@
       "stop": 3260.0,
       "target1": 2302.0,
       "target2": 1920.0,
-      "rvol": 1.65,
-      "atr_pct": 5.89,
+      "rvol": 1.91,
+      "atr_pct": 5.9,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-13.7%／出来高比1.65倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-13.8%／出来高比1.91倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     },
@@ -32,11 +32,29 @@
       "stop": 2020.0,
       "target1": 1440.0,
       "target2": 1208.0,
-      "rvol": 2.37,
-      "atr_pct": 5.31,
+      "rvol": 2.69,
+      "atr_pct": 5.3,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-14.0%／出来高比2.37倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-13.8%／出来高比2.69倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    },
+    {
+      "name": "NEC（6701）",
+      "code": "6701",
+      "ticker": "6701.T",
+      "side": "SHORT",
+      "score": 61,
+      "trigger": 4265.0,
+      "stop": 4565.0,
+      "target1": 3815.0,
+      "target2": 3515.0,
+      "rvol": 1.38,
+      "atr_pct": 5.49,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-12.8%／出来高比1.38倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     }
