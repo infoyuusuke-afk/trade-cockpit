@@ -943,11 +943,8 @@ try {
             Write-Host ("kioxia_watcher_live.json書き込み失敗（継続します）: " + $_.Exception.Message) -ForegroundColor Yellow
         }
 
-        if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
-            $spoken = if ($signal -eq "買いサイン") { "キオクシア、買いサイン点灯。発動価格 $entry 円。損切り $stop 円。" } else { "キオクシア、空売りサイン点灯。発動価格 $entry 円。損切り $stop 円。" }
-            Invoke-SerializedSpeak $speaker $spoken
-            $lastSpokenSignal = $signal; $lastSpokenAt = Get-Date
-        }
+        # OWNER 2026-10-22 「キオクシアのサイン音声止める」「音声は①②④⑤だけ」: the Watcher no longer
+        # speaks Kioxia buy/short signs. Rule ①②④⑤ voices come only from the Collector.
 
         if ($barTime -ne "-" -and $barTime -ne $lastLoggedBar) {
             $row = $log.Cells($log.Rows.Count,1).End(-4162).Row + 1

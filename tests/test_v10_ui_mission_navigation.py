@@ -1,0 +1,198 @@
+"""V10 UI lane rationalization and OWNER-pinned FOCUS safeguards.
+
+Synthetic-only. No external market data, Excel, broker, network or orders.
+"""
+import json
+import pathlib
+import re
+import shutil
+import subprocess
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+HTML = ROOT / "index.html"
+EARNINGS = ROOT / "earnings-calendar.js"
+
+
+class V10MissionNavigation(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.source = HTML.read_text(encoding="utf-8")
+        cls.earnings = EARNINGS.read_text(encoding="utf-8")
+        cls.nav = cls.source.split('<nav class="cockpit-tabs"', 1)[1].split("</nav>", 1)[0]
+
+    def test_priority_primary_tabs_preserve_strategies_and_owner(self):
+        buttons = re.findall(r'<button class="cockpit-tab(?: active)?" data-tab="([^"]+)"', self.nav)
+        self.assertEqual(buttons[:13], [
+            "control", "brain", "ai-journal", "scalp", "event-hot",
+            "ms2-live", "pre-next", "overnight", "swing", "value",
+            "focus-owner", "kioxia-calendar", "events",
+        ])
+        self.assertEqual(len(buttons), 22)
+        self.assertIn("button.dataset.tab='earnings'", self.earnings)  # Script-injected tab, not statically duplicated.
+
+    def test_reference_preserves_research_without_empty_weekly(self):
+        nav = self.nav
+        self.assertIn('data-tab="correlation"', nav)
+        self.assertIn('data-tab="wick"', nav)
+        self.assertIn('data-tab="expansion"', nav)
+        self.assertIn('data-tab="accumulation"', nav)
+        self.assertIn('data-tab="policy"', nav)
+        self.assertNotIn('data-tab="weekly"', nav)
+        self.assertIn('else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="ai-journal"', self.source)
+
+    def test_research_does_not_auto_promote_into_realtime(self):
+        self.assertIn('if(s.id==="next-theme-radar")k="pre-next"', self.source)
+        self.assertNotIn('s.id==="data-quality-gate"||s.id==="next-theme-radar"', self.source)
+        self.assertIn('実発注', self.source)
+        self.assertIn('role="status"', self.source)
+
+    def test_remove_historical_false_positive_data_quality_panel(self):
+        self.assertNotIn('id="data-quality-gate"', self.source)
+        self.assertNotIn("56 / 100銘柄", self.source)
+        self.assertNotIn('VERIFIED FORECAST TOP 5', self.source)
+        self.assertNotIn('id="action-dashboard"', self.source)
+        self.assertNotIn('id="focus-cards"', self.source)
+
+    def test_focus_persistent_owner_choices_and_no_automatic_replacement(self):
+        s = self.source
+        self.assertIn('const key="cockpitFocusPinnedV10"', s)
+        self.assertIn('pinned.push(value);save();paint()', s)
+        self.assertIn('pinned=pinned.filter(t=>t!==select.value)', s)
+        self.assertIn('if(pinned.length>=5)', s)
+        self.assertIn('^[0-9A-Z]{4,5}', s)
+        self.assertIn('const validMarket=d=>{', s)
+        self.assertIn('lastVerified=validMarket(d)', s)
+        focus = s.split('<section id="focus-owner-panel"', 1)[1].split("</script>", 1)[0]
+        self.assertNotIn("fetch(", focus)
+        self.assertNotIn("cockpitAnnounce", focus)
+        self.assertNotIn("RssOrder", focus)
+
+    def test_focus_row_point_in_time_collector_contract(self):
+        self.assertIn("lastVerified&&eventRecent()&&rowQuoteReady(row)", self.source)
+        self.assertIn('row.source_timestamp_basis!=="COLLECTOR_OBSERVED_CHANGE"', self.source)
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: static source assertions remain")
+        raw = self.source.split("const rowQuoteReady=row=>{", 1)[1].split("\n };", 1)[0]
+        js = "const rowQuoteReady=row=>{" + raw + "\n };" + r"""
+const toJst=ms=>new Date(ms+9*3600000).toISOString().slice(0,19)+"+09:00";
+const at=toJst(Date.now()-20000),obs=toJst(Date.now()-17000);
+const good={source_timestamp_basis:"COLLECTOR_OBSERVED_CHANGE",
+ source_timestamp_at:at,source_timestamp_observed_at:obs,
+ source_timestamp:at.slice(11,19),price:1234};
+const cases=[
+ rowQuoteReady(good),
+ rowQuoteReady({...good,source_timestamp_basis:"UNOBSERVED_SINCE_START"}),
+ rowQuoteReady({...good,source_timestamp_at:null}),
+ rowQuoteReady({...good,source_timestamp_observed_at:null}),
+ rowQuoteReady({...good,source_timestamp:"00:00:00"}),
+ rowQuoteReady({...good,source_timestamp_at:toJst(Date.now()-180000)}),
+ rowQuoteReady({...good,source_timestamp_at:toJst(Date.now()+180000)}),
+ rowQuoteReady({...good,source_timestamp_observed_at:toJst(Date.now()-180000)}),
+ rowQuoteReady({...good,source_timestamp_observed_at:toJst(Date.now()+180000)}),
+ rowQuoteReady({...good,price:0}),
+ rowQuoteReady({...good,price:"1234"}),
+ rowQuoteReady(null),
+];
+process.stdout.write(JSON.stringify(cases));
+"""
+        p = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=15)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
+
+
+    def test_kioxia_285a_in_fixed_scalp_selection(self):
+        # Kioxia is 285A.T. 464A.T is QPS HD (not Kioxia) and left the
+        # watchlist on 2026-10-21 (OWNER-approved 15-row replacement).
+        self.assertIn('const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"]', self.source)
+        self.assertNotIn('"464A.T"', self.source)
+
+    def test_existing_visual_colors_and_modules_kept(self):
+        s = self.source
+        for marker in (
+            "background:#131722f2", "background:#2962ff",
+            "color:#089981", "background:#050506",
+            'src="trade_control.js?v=', 'src="v10_publication_status.js?v=',
+        ):
+            self.assertIn(marker, s)
+
+    def test_only_source_validated_ms2_and_fresh_publication_can_paint_focus(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: static source contract tests still run")
+        raw = self.source.split("const validMarket=d=>{", 1)[1].split("\n };", 1)[0]
+        func = "const validMarket=d=>{" + raw + "\n };"
+        js = func + r"""
+const window={livePriceBlocked:d=>d.source==="MarketSpeed II RSS / local PC"?"":"BAD_SOURCE"};
+const original={
+ stale:false,live_values_available:true,data_conflict:false,
+ real_submit_allowed:false,_transport_fail_closed:false,source:"MarketSpeed II RSS / local PC",
+ connection_source:"自宅PC・MS2 RSS LIVE",
+ live_price_diagnostics:{
+   price_source_status:"OK",source_mode:"MS2_RSS_WORKBOOK",
+   workbook_identity_verified:true,data_conflict:false,
+   live_values_available:true,real_submit_allowed:false
+ },
+ observed_at_offset:new Date(Date.now()-1000).toISOString()
+};
+const cases=[
+ validMarket(original),
+ validMarket({...original,stale:true}),
+ validMarket({...original,source_authenticated:false}),
+ validMarket({...original,live_values_available:false}),
+ validMarket({...original,data_conflict:null}),
+ validMarket({...original,real_submit_allowed:true}),
+ validMarket({...original,_transport_fail_closed:true}),
+ validMarket({...original,source:"Historical data"}),
+ validMarket({...original,observed_at_offset:new Date(Date.now()-3600000).toISOString()}),
+ validMarket({...original,observed_at_offset:new Date(Date.now()+180000).toISOString()}),
+ validMarket({...original,observed_at_offset:"2026-10-20 10:00:00"}),
+ validMarket({...original,observed_at_offset:null}),
+ validMarket({...original,live_price_diagnostics:{price_source_status:"OK"}}),
+ validMarket({...original,connection_source:"公開スナップショット"}),
+ validMarket({...original,source_authenticated:false}),
+];
+process.stdout.write(JSON.stringify(cases));
+"""
+        p = subprocess.run([node, "-e", js], text=True, capture_output=True, timeout=15)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout), [True] + [False] * 14)
+
+
+    def test_all_live_lanes_12s_no_event_expiry(self):
+        """Execute real MS2 LIVE panel handlers and a no-event clock advance."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: all-lane synthetic DOM checks skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_all_live_lanes_silence.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-8500:] + "\n" + p.stderr[-3500:])
+
+    def test_live_provenance_actual_inline_ui_script(self):
+        """Exercise fail-closed observation evidence and no-event expiry in the real inline JS."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: provenance runtime checks skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_ms2_provenance_runtime.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-7000:] + "\n" + p.stderr[-3000:])
+
+    def test_focus_actual_dom_events_and_actions(self):
+        """Exercise the reviewed page FOCUS script, not a hand-written duplicate."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable; synthetic DOM interaction tests skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_focus_owner_runtime.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-5000:] + "\n" + p.stderr[-3500:])
+
+
+if __name__ == "__main__":
+    unittest.main()
