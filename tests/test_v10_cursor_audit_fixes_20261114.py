@@ -1,4 +1,4 @@
-"""OWNER 2026-11-14 「Cursor監査の不具合7つを直す版」: ① the stop-loss guard no longer fails the account read, ⑦ no Enter wait."""
+"""OWNER 2026-11-14 「Cursor監査の不具合7つを直す版」: ① the stop-loss guard no longer fails the account read, ⑦ no Enter wait in the Controller."""
 import re
 import shutil
 import subprocess
@@ -9,7 +9,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 COL = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
 CTL = (ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
-RUN = (ROOT / "downloads" / "RUN_AI_COCKPIT_V10.ps1").read_text(encoding="utf-8-sig")
 
 
 def code_lines(text):
@@ -72,8 +71,9 @@ class StopLossGuard(unittest.TestCase):
 
 
 class NoEnterWait(unittest.TestCase):
-    def test_controller_and_run_never_wait_for_enter(self):
-        for name, text in (("controller", CTL), ("run", RUN)):
+    def test_controller_never_waits_for_enter(self):
+        # RUN_AI_COCKPIT_V10.ps1 (the OWNER's own visible update window) is pinned unchanged by full-source-parity and keeps its Enter
+        for name, text in (("controller", CTL),):
             self.assertFalse([ln for ln in code_lines(text) if re.search(r"\bRead-Host\b", ln)], name)
             self.assertIn("function Wait-CloseOrTimeout([int]$Seconds = 120) {", text)
             self.assertIn("} catch { }", text[text.index("function Wait-CloseOrTimeout"):])

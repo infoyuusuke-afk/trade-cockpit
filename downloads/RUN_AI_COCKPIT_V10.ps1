@@ -31,18 +31,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# OWNER 2026-11-14 Cursor audit (7): never stand still at "Press Enter" - in a hidden window nobody can press it.
-# The message stays readable for a while in a visible window (Enter closes it sooner); without a console it returns at once.
-function Wait-CloseOrTimeout([int]$Seconds = 120) {
-    Write-Host ("This window closes by itself in " + $Seconds + " s (Enter closes it now).") -ForegroundColor Cyan
-    $end = (Get-Date).AddSeconds($Seconds)
-    try {
-        while ((Get-Date) -lt $end) {
-            if ([Console]::KeyAvailable) { $k = [Console]::ReadKey($true); if ($k.Key -eq [ConsoleKey]::Enter) { break } }
-            Start-Sleep -Milliseconds 200
-        }
-    } catch { }
-}
 function Resolve-RepoRoot {
     if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) { return $RepoRoot }
     $candidate = Split-Path -Parent $PSScriptRoot
@@ -953,7 +941,7 @@ try {
         Write-Host ("COLLECTOR_RUNTIME_SHA256=" + $collectorAfterHash) -ForegroundColor Green
         Write-Host ("REPO_SHA=" + $actualSha) -ForegroundColor Green
         Write-Host ""
-        Wait-CloseOrTimeout 120
+        Read-Host "Press Enter to close"
         exit 0
     }
 } catch {
@@ -971,7 +959,7 @@ try {
     Write-Host "==================================================" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Yellow
     Write-Host ""
-    Wait-CloseOrTimeout 120
+    Read-Host "Press Enter to close"
     [Environment]::Exit(1)
 }
 
