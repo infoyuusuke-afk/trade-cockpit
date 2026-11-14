@@ -40,7 +40,14 @@ const card=(r)=>vm.runInContext("agentReportCard("+JSON.stringify(r)+","+NOW+")"
 
 test("unexpired sourced WATCH report is usable as research",()=>{
   assert.deepEqual({...usable(rep({}))},{ok:true,reason:null});
-  assert.match(card(rep({})),/研究用・参照可/);
+  assert.match(card(rep({})),/注目銘柄なし/);   // OWNER 2026-10-23: only watched issues are shown
+});
+
+test("a card shows only the issues a usable WATCH report watches",()=>{
+  const out=card(rep({hypothesis:"Watch 593A, 7012 and 285A on the 2026-10-20 data",conditions:"hold 7012"}));
+  assert.match(out,/<strong>593A<br>7012<br>285A<\/strong>/);
+  assert.doesNotMatch(card(rep({status:"NO_SIGNAL",hypothesis:"7012"})),/7012/);
+  assert.doesNotMatch(card(rep({expires_at:"2026-10-20T00:00:00Z",hypothesis:"7012"})),/7012/);   // expired: hidden
 });
 
 test("expired, unsourced, NO_DATA and UNAVAILABLE are not usable",()=>{
@@ -49,16 +56,22 @@ test("expired, unsourced, NO_DATA and UNAVAILABLE are not usable",()=>{
   assert.equal(usable(rep({evidence:[]})).reason,"NO_SOURCE");
   assert.equal(usable(rep({usable:false,not_usable_reason:"NO_DATA",status:"NO_DATA"})).reason,"NO_DATA");
   assert.equal(usable(rep({usable:false,not_usable_reason:"UNAVAILABLE",status:"UNAVAILABLE"})).reason,"UNAVAILABLE");
-  assert.match(card(rep({expires_at:"2026-10-20T00:00:00Z"})),/期限切れ・利用不可/);
-  assert.match(card(rep({evidence:[]})),/出典なし・利用不可/);
+  assert.match(card(rep({expires_at:"2026-10-20T00:00:00Z"})),/注目銘柄なし/);
+  assert.match(card(rep({evidence:[]})),/注目銘柄なし/);
 });
 
 test("report text and links are escaped; only http(s) links",()=>{
   const bad="<img src=x onerror=alert(1)>";
   const out=card(rep({hypothesis:bad,conditions:bad,invalidation:bad,report_id:bad,
     evidence:[{source_id:bad,source_url:"javascript:alert(1)",available_at:"x"}]}));
-  assert.doesNotMatch(out,/<img|javascript:/);
-  assert.match(out,/href="#"/);
+  assert.doesNotMatch(out,/<img|javascript:|onerror/);
+  // OWNER 2026-10-23: the card shows only watched issues, so no report text or link is
+  // rendered at all; a name taken from the Brain's list is escaped as well.
+  vm.runInContext('agentNames={"7012":"<img src=x onerror=alert(1)>"}',ctx);
+  const named=card(rep({hypothesis:"watch 7012"}));
+  assert.doesNotMatch(named,/<img/);
+  assert.match(named,/&lt;img src=x onerror=alert\(1\)&gt;\(7012\)/);
+  vm.runInContext("agentNames={}",ctx);
 });
 
 test("Revenue Hunter is labelled as project progress",()=>{

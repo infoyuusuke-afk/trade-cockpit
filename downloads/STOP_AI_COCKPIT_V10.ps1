@@ -11,6 +11,16 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 $StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
+# OWNER 2026-11-02 (the start window and log show a normal stop only after a Safe Stop that verified every component
+# and the Excel stopped; a Safe Stop that fails part-way is still an abnormal stop): stage "stopped_verified" is
+# written after those checks pass, "failed" on any later failure, "done" at the end. Writing it never changes what is
+# stopped or kept, and a failed write is ignored.
+function Write-SafeStopMarker([string]$Stage) {
+    try {
+        $json = '{"stage":"' + $Stage + '","at":"' + (Get-Date).ToString("o") + '"}'
+        [IO.File]::WriteAllText((Join-Path $Root "V10_SAFE_STOP_MARKER.json"), $json, [Text.UTF8Encoding]::new($false))
+    } catch {}
+}
 
 if (-not (Test-Path -LiteralPath $StateFile)) {
     Write-Host "No V10 state file found - nothing to stop." -ForegroundColor DarkGray
@@ -273,6 +283,19 @@ public static class AIExcelNative {
         # Runtime RSS writes are transient. Never persist them into the clean
         # canonical workbook during Safe Stop.
         $targetBook.Close($false)
+        # OWNER 2026-10-22 S1: Excel itself is closed only when no other
+        # workbook is open in it. Another open book is the Owner's work: the
+        # V10 book is closed without saving and Excel is left running.
+        $otherBooks = -1
+        try { $otherBooks = [int]$app.Workbooks.Count } catch { $otherBooks = -1 }
+        if ($otherBooks -ne 0) {
+            if ($otherBooks -gt 0) {
+                Write-Host ("V10 workbook closed. Excel PID " + $ExcelPid + " still has " + $otherBooks + " other workbook(s) open, so Excel was left running.") -ForegroundColor Yellow
+                $script:ExcelLeftForOtherBooks = $true
+                return $true
+            }
+            return $false
+        }
         try { $app.Quit() } catch {}
 
         # The window can disappear before EXCEL.EXE exits. Wait briefly; the
@@ -294,6 +317,31 @@ public static class AIExcelNative {
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
     }
+}
+
+# OWNER 2026-10-22 S3: if any Excel other than the V10 Excel is running in
+# this Windows session, Safe Stop stops nothing and refuses. The V10 Excel
+# is found through the shared Excel.Application object, which another Excel
+# can take over; the Owner closes the other Excel first.
+$script:ExcelLeftForOtherBooks = $false
+try {
+    $selfSessionForExcel = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+    $v10ExcelPid = 0
+    [void][int]::TryParse([string]$state.excel_pid, [ref]$v10ExcelPid)
+    $otherExcelAtStop = @(Get-Process EXCEL -ErrorAction Stop | Where-Object {
+        [int]$_.SessionId -eq $selfSessionForExcel -and [int]$_.Id -ne $v10ExcelPid
+    })
+} catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+    $otherExcelAtStop = @()
+} catch {
+    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_CHECK_FAILED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+if ($otherExcelAtStop.Count -gt 0) {
+    Write-Host ("SAFE_STOP_PREFLIGHT=BLOCKED_OTHER_EXCEL (PID " + (($otherExcelAtStop | ForEach-Object { $_.Id }) -join ",") + "); no processes stopped.") -ForegroundColor Red
+    # Japanese text kept as escapes: this file has no BOM (PowerShell 5.1 would misread UTF-8).
+    Write-Host ([regex]::Unescape("V10\u4ee5\u5916\u306eExcel\u304c\u958b\u3044\u3066\u3044\u307e\u3059\u3002\u305d\u306eExcel\u3092\u9589\u3058\u3066\u304b\u3089\u3001\u3082\u3046\u4e00\u5ea6\u5b89\u5168\u505c\u6b62\u3057\u3066\u304f\u3060\u3055\u3044\u3002")) -ForegroundColor Red
+    exit 2
 }
 
 # P0-25: The legacy state produced before independent BRAIN tracking may
@@ -520,19 +568,80 @@ if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridge
     Write-Host "V10 safe stop incomplete; recorded state retained for owner review." -ForegroundColor Red
     exit 2
 }
+Write-SafeStopMarker "stopped_verified"
 
 # A worker may outlive its wrapper via a child JSON bridge, or a new
 # listener may bind before teardown ends. Never claim stopped / delete
 # recovery evidence while any of the V10 ports are still in LISTEN.
+# A JSON bridge runs in a Start-Job child powershell.exe. When its wrapper
+# was killed above, the child can keep LISTEN for a few seconds until it
+# sees the broken job pipe and exits on its own. Wait a bounded time for
+# that; nothing is killed here. A listener that is still there afterwards
+# keeps the state and is named so the Owner run can be diagnosed.
+# OWNER 2026-11-02 (every stop since 10/30 kept the state because 28581 / 28582 stayed in LISTEN with pid=0, the
+# owner process already gone): a listener whose owner is pid 0 is waited for up to 2 minutes and is still an abnormal
+# stop if it remains; a listener with a living owner keeps the 20 s wait above and is abnormal after it, as before.
+# Nothing is killed either way.
+function Get-SafeStopListenerVerdict($Listeners, [int]$ElapsedMs) {
+    $all = @($Listeners)
+    if ($all.Count -eq 0) { return "clear" }
+    $living = @($all | Where-Object { [int]$_.OwningProcess -ne 0 })
+    if ($living.Count -gt 0) {
+        if ($ElapsedMs -ge 20000) { return "fail" }
+        return "wait"
+    }
+    if ($ElapsedMs -ge 120000) { return "fail" }
+    return "wait"
+}
 try {
-    $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
-        Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+    $listeners = @()
+    $orphanSeen = $false
+    $portWaitShown = $false
+    $lastWaitShown = 0
+    $portWatch = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        if (@($listeners | Where-Object { [int]$_.OwningProcess -eq 0 }).Count -gt 0) { $orphanSeen = $true }
+        $verdict = Get-SafeStopListenerVerdict $listeners ([int]$portWatch.ElapsedMilliseconds)
+        if ($verdict -ne "wait") { break }
+        # OWNER 2026-11-02: say in the window that Safe Stop is waiting for the ports (it looked frozen for ~90 s)
+        $waitSec = [int]($portWatch.ElapsedMilliseconds / 1000)
+        if (-not $portWaitShown) {
+            $portWaitShown = $true
+            $lastWaitShown = $waitSec
+            Write-Host ("SAFE_STOP_WAIT=PORTS " + ((@($listeners | ForEach-Object { [int]$_.LocalPort }) | Sort-Object -Unique) -join ",")) -ForegroundColor Yellow
+            Write-Host ([regex]::Unescape("\u30dd\u30fc\u30c8\u304c\u7a7a\u304f\u306e\u3092\u5f85\u3063\u3066\u3044\u307e\u3059\uff08\u6301\u3061\u4e3b\u304c\u7d42\u308f\u3063\u305f\u30dd\u30fc\u30c8\u306f\u6700\u59272\u5206\uff09\u3002\u3053\u306e\u7a93\u306f\u9589\u3058\u306a\u3044\u3067\u304f\u3060\u3055\u3044\u3002")) -ForegroundColor Yellow
+        } elseif ($waitSec -ge $lastWaitShown + 10) {
+            $lastWaitShown = $waitSec
+            Write-Host ([regex]::Unescape("\u5f85\u3063\u3066\u3044\u307e\u3059 ") + $waitSec + [regex]::Unescape("\u79d2")) -ForegroundColor Yellow
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if ($verdict -eq "clear" -and $orphanSeen) {
+        Write-Host ("SAFE_STOP_VERIFY=ORPHAN_PORT_CLEARED after " + [int]($portWatch.ElapsedMilliseconds / 1000) + "s (owner pid 0).") -ForegroundColor Yellow
+    }
     if ($listeners.Count -gt 0) {
+        foreach ($l in $listeners) {
+            $ownerPid = [int]$l.OwningProcess
+            $ownerName = "exited"
+            $ownerParent = 0
+            try {
+                $ownerCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ownerPid) -ErrorAction Stop
+                if ($null -ne $ownerCim) {
+                    $ownerName = [string]$ownerCim.Name
+                    $ownerParent = [int]$ownerCim.ParentProcessId
+                }
+            } catch {}
+            Write-Host ("SAFE_STOP_LISTENER port=" + [int]$l.LocalPort + " pid=" + $ownerPid + " name=" + $ownerName + " parent=" + $ownerParent) -ForegroundColor Red
+        }
         Write-Host "SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state." -ForegroundColor Red
+        Write-SafeStopMarker "failed"
         exit 2
     }
 } catch {
     Write-Host "SAFE_STOP_VERIFY=PORT_AUDIT_FAILED; retained state." -ForegroundColor Red
+    Write-SafeStopMarker "failed"
     exit 2
 }
 foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
@@ -542,6 +651,7 @@ foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
     if ($null -eq $entry -or [int]$entry.Value -le 0) { continue }
     if ($null -ne (Get-Process -Id ([int]$entry.Value) -ErrorAction SilentlyContinue)) {
         Write-Host "SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT; retained state." -ForegroundColor Red
+        Write-SafeStopMarker "failed"
         exit 2
     }
 }
@@ -551,6 +661,12 @@ try {
     if (Test-Path -LiteralPath $StateFile) { throw "STATE_FILE_STILL_PRESENT" }
 } catch {
     Write-Host "V10 state removal failed; cannot report Safe Stop success." -ForegroundColor Red
+    Write-SafeStopMarker "failed"
     exit 2
 }
-Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
+Write-SafeStopMarker "done"
+if ($script:ExcelLeftForOtherBooks) {
+    Write-Host "AI Cockpit V10 managed processes stopped; the V10 workbook was closed and Excel was left open for the other workbook(s)." -ForegroundColor Green
+} else {
+    Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
+}

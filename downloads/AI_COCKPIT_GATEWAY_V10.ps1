@@ -92,6 +92,42 @@ function Read-JsonUtf8([string]$Path) {
     return $text | ConvertFrom-Json
 }
 
+# Audit 2026-10-22 ①: /health took 1.4-12 s because every call re-parsed the
+# 1.2 MB live_ms2.json and other status files. A file is parsed again only
+# when its write time or length changed. The stamp is taken before and after
+# the read; a file written during the read is not cached. Callers only read
+# the returned object.
+$script:FileReadCache = @{}
+function Get-FileStamp([string]$Path) {
+    $item = [IO.FileInfo]::new($Path)
+    $item.Refresh()
+    if (-not $item.Exists) { return $null }
+    return ([string]$item.LastWriteTimeUtc.Ticks + ':' + [string]$item.Length)
+}
+function Read-FileCached([string]$Path, [string]$Kind, [scriptblock]$Parse) {
+    $key = $Kind + '|' + $Path
+    $before = Get-FileStamp $Path
+    $hit = $script:FileReadCache[$key]
+    if ($null -ne $before -and $null -ne $hit -and $hit.stamp -ceq $before) { return $hit.value }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $value = & $Parse $bytes
+    $after = Get-FileStamp $Path
+    if ($null -ne $before -and $before -ceq $after) {
+        $script:FileReadCache[$key] = @{ stamp = $before; value = $value }
+    } else {
+        $script:FileReadCache.Remove($key)
+    }
+    return $value
+}
+function ConvertFrom-Utf8JsonBytes([byte[]]$Bytes) {
+    $text = [Text.Encoding]::UTF8.GetString($Bytes)
+    if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
+    return $text | ConvertFrom-Json
+}
+function Read-JsonUtf8Cached([string]$Path) {
+    return Read-FileCached $Path 'json' { param($b) ConvertFrom-Utf8JsonBytes $b }
+}
+
 
 # A recent publication is NOT a recent market tick, source authentication, or
 # a trading gate. Validate only the producer's exact timestamp contract.
@@ -147,7 +183,7 @@ function Get-V10WatcherPublication([string]$RuntimeDirectory, [bool]$ProcessVeri
             $result.publication_state = 'WATCHER_FILE_SIZE_INVALID'
             return $result
         }
-        $data = Read-JsonUtf8 $file
+        $data = Read-JsonUtf8Cached $file
         if ([string]$data.schema_version -cne 'kioxia-watcher-1.0' -or
             [string]$data.source -cne 'Kioxia_RSS_Live_Watcher (Excel RSS)') {
             $result.publication_state = 'WATCHER_IDENTITY_UNVERIFIED'
@@ -203,7 +239,7 @@ function Get-V10BrainObserverProof([string]$RuntimeDirectory, [int]$ExpectedPid,
             $result.status = 'BRAIN_FILE_UNTRUSTED'
             return $result
         }
-        $data = Read-JsonUtf8 $path
+        $data = Read-JsonUtf8Cached $path
         if ([string]$data.schema_version -cne 'ai-brain-observer-1' -or
             [string]$data.component_role -cne 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE') {
             $result.status = 'BRAIN_SCHEMA_UNVERIFIED'
@@ -329,7 +365,7 @@ function Get-V10ShadowHeartbeatProof([string]$RuntimeDirectory, [int]$ExpectedPi
             $result.status = 'SHADOW_FILE_UNTRUSTED'
             return $result
         }
-        $data = Read-JsonUtf8 $path
+        $data = Read-JsonUtf8Cached $path
         if ([string]$data.schema_version -cne 'ai-shadow-supervisor-1' -or
             $data.ui_independent -ne $true) {
             $result.status = 'SHADOW_IDENTITY_UNVERIFIED'
@@ -402,7 +438,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
     $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
     if (-not (Test-Path -LiteralPath $path)) { return $result }
     try {
-        $status = Read-JsonUtf8 $path
+        $status = Read-JsonUtf8Cached $path
         $written = (Get-Item -LiteralPath $path).LastWriteTime
         $age = ((Get-Date) - $written).TotalSeconds
         $publishedState = [string]$status.state
@@ -442,10 +478,30 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
     }
 }
 
+# Audit 2026-10-22 ①: one /health asked Windows about each of 8 processes
+# separately. The processes are now looked up in one query per /health
+# (Set-HealthProcessMemo), with the same checks applied to each. Outside a
+# /health call the memo is empty and each lookup queries Windows itself.
+$script:HealthProcessMemo = $null
+function Set-HealthProcessMemo([int[]]$ProcessIds) {
+    $script:HealthProcessMemo = $null
+    $ids = @($ProcessIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+    if ($ids.Count -eq 0) { return }
+    $filter = (@($ids | ForEach-Object { "ProcessId = " + [int]$_ }) -join " OR ")
+    $memo = @{}
+    foreach ($p in @(Get-CimInstance Win32_Process -Filter $filter -ErrorAction Stop)) { $memo[[int]$p.ProcessId] = $p }
+    $script:HealthProcessMemo = @{ ids = $ids; found = $memo }
+}
+function Get-HealthProcess([int]$ProcessId) {
+    $memo = $script:HealthProcessMemo
+    if ($null -ne $memo -and $memo.ids -contains $ProcessId) { return $memo.found[$ProcessId] }
+    return Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+}
+
 function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$StateWrittenAt) {
     if ($ProcessId -le 0) { return $false }
     try {
-        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        $process = Get-HealthProcess $ProcessId
         if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
         if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
         return ([string]$process.CommandLine -match [regex]::Escape($ScriptName))
@@ -455,7 +511,7 @@ function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$Sta
 function Test-ControllerHealthProcess([int]$ProcessId, [datetime]$StateWrittenAt) {
     if ($ProcessId -le 0) { return $false }
     try {
-        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        $process = Get-HealthProcess $ProcessId
         if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
         if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
         $cmd = [string]$process.CommandLine
@@ -602,6 +658,32 @@ function Get-BrainPickView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-10-23 夜 「コントロールに保有株をカード表示」: the OWNER's real holdings, read by the
+# Collector with the read-only RSS position lists into RuntimeDir\real_positions_v1.json.
+# Served to this PC's screen only; older than 60 s or not read-only -> 503 (no stale holdings).
+function Get-RealPositionsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'real_positions_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'REAL_POSITIONS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'REAL_POSITIONS_FILE_UNTRUSTED')
+        }
+        if (([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds -gt 60) { return (& $fail 'REAL_POSITIONS_STALE') }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-real-positions-v1' -or $view.read_only -ne $true -or
+            $view.real_submit_allowed -ne $false -or $view.trade_instruction -ne $false) {
+            return (& $fail 'REAL_POSITIONS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'REAL_POSITIONS_UNREADABLE')
+    }
+}
+
 # Night PTS -> next-morning watch candidates, rebuilt by the Brain observer into
 # RuntimeDir\pts_pickup_v1.json. Read-only; watch list only, never a trade signal.
 function Get-PtsPickupView([string]$RuntimeDir) {
@@ -647,6 +729,474 @@ function Get-RuleShadowView([string]$RuntimeDir) {
         return @{ status = '200 OK'; body = $text }
     } catch {
         return (& $fail 'RULE_SHADOW_UNREADABLE')
+    }
+}
+
+# OWNER 2026-10-27 「このページ、今のテーマセキュリティ関連だろ…セキュリティ関連銘柄だして期待値銘柄のカード」: RuntimeDir\theme_watch_v1.json is
+# written on this PC (Claudeブレイン\研究スクリプト\theme_watch.py, Yahoo daily bars) and served as-is when its flags are safe.
+function Get-ThemeWatchView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'theme_watch_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'THEME_WATCH_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'THEME_WATCH_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-theme-watch-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'THEME_WATCH_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'THEME_WATCH_UNREADABLE')
+    }
+}
+
+# OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して…『試験中』として成績だけ出して、合図にはしない」:
+# RuntimeDir	rial_methods_v1.json is written by the Brain observer (scripts10_trial_methods.py) and served as-is
+# when its flags are safe.
+function Get-TrialMethodsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'trial_methods_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'TRIAL_METHODS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 2097152) {
+            return (& $fail 'TRIAL_METHODS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-trial-methods-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'TRIAL_METHODS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'TRIAL_METHODS_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-04 「BNF銘柄もカードタイプで」: RuntimeDir\bnf_candidates_v1.json (written on this PC by the daily BNF screen, never in
+# the repo) is served as-is when its flags are safe. Display only.
+# OWNER 2026-11-05 「場中は特に時間まで記載」: RuntimeDir\earnings_times_v1.json (written on this PC, never in the repo): the last earnings time of the key
+# stocks. Served as-is when its flags are safe. Display only.
+# OWNER 2026-11-05 「制度信用でうれないと注意喚起して」: RuntimeDir\margin_kind_v1.json (JPX's public list, written on this PC). Served as-is when its flags are safe.
+# OWNER 2026-11-05 「スイング保有と長期保有も出して」: RuntimeDir\hold_track_v1.json (virtual holds, written on this PC, no account data). Served as-is when its flags are safe.
+function Get-HoldTrackView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'hold_track_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'HOLD_TRACK_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'HOLD_TRACK_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-hold-track-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'HOLD_TRACK_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'HOLD_TRACK_UNREADABLE')
+    }
+}
+
+function Get-MarginKindView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'margin_kind_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'MARGIN_KIND_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'MARGIN_KIND_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-margin-kind-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'MARGIN_KIND_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'MARGIN_KIND_UNREADABLE')
+    }
+}
+
+function Get-EarningsTimesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'earnings_times_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'EARNINGS_TIMES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'EARNINGS_TIMES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-earnings-times-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'EARNINGS_TIMES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'EARNINGS_TIMES_UNREADABLE')
+    }
+}
+
+function Get-BnfCandidatesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'bnf_candidates_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'BNF_CANDIDATES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'BNF_CANDIDATES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-bnf-candidates-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'BNF_CANDIDATES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'BNF_CANDIDATES_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-03 「急変カードを作って」: RuntimeDir\tdnet_today_v1.json (the day's TDnet list the Collector already reads every
+# 2 minutes) is served as-is when its flags are safe. Display only.
+function Get-TdnetTodayView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'tdnet_today_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'TDNET_TODAY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 4194304) {
+            return (& $fail 'TDNET_TODAY_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-tdnet-today-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'TDNET_TODAY_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'TDNET_TODAY_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: RuntimeDir\analyst_instructions_v1.json
+# (the OWNER's standing GPT instructions, kept on this PC only, never in the repo) is served as-is when its flags are safe.
+function Get-AnalystInstructionsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'analyst_instructions_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'ANALYST_INSTRUCTIONS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return (& $fail 'ANALYST_INSTRUCTIONS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-analyst-instructions-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'ANALYST_INSTRUCTIONS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'ANALYST_INSTRUCTIONS_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-07 「アナリストタブに週間成績の欄を足して。Claudeも入れた7人…毎週金曜に更新」: RuntimeDir\analyst_weekly_v1.json
+# (written on this PC every Friday by the research script, never in the repo) is served as-is when its flags are safe.
+function Get-AnalystWeeklyView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'analyst_weekly_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'ANALYST_WEEKLY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'ANALYST_WEEKLY_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-analyst-weekly-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'ANALYST_WEEKLY_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'ANALYST_WEEKLY_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-14 「アナリストの欄に、Claudeのアナリスト（テクニカル・ファンダ・決算・FOCUS）のカードも足して…答えの中身は変えない」:
+# RuntimeDir\claude_analysts_v1.json (written every 5 minutes on this PC; only the answer files' names and times) is served as-is when its flags are safe.
+function Get-ClaudeAnalystsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'claude_analysts_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'CLAUDE_ANALYSTS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'CLAUDE_ANALYSTS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-claude-analysts-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'CLAUDE_ANALYSTS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'CLAUDE_ANALYSTS_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-08 「AIコクピットで必ず毎朝予測チャートで知りたい。今のキオクシア専用タブからこっちに変更して」: RuntimeDir\sox_scenario_v1.json
+# (written on this PC every morning by the research script, never in the repo) is served as-is when its flags are safe.
+function Get-SoxScenarioView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'sox_scenario_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SOX_SCENARIO_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return (& $fail 'SOX_SCENARIO_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-sox-scenario-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SOX_SCENARIO_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SOX_SCENARIO_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-10 (B: SOX gauge from Nasdaq-100 futures during the session): RuntimeDir\sox_proxy_v1.json, written on this PC every
+# 5 minutes during the session by the research script (never in the repo), is served as-is when its flags are safe.
+function Get-SoxProxyView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'sox_proxy_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SOX_PROXY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 16384) {
+            return (& $fail 'SOX_PROXY_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-sox-proxy-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SOX_PROXY_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SOX_PROXY_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-12 「コクピットに今日の相場の型を一言で出す版を作って（8:11の記録から、意味を一文で、検証中と書く、売買サインにしない）」:
+# RuntimeDir\market_types_today_v1.json, written on this PC by the research script at about 8:11 (never in the repo), served as-is when its flags are safe.
+function Get-MarketTypesView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'market_types_today_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'MARKET_TYPES_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 8192) {
+            return (& $fail 'MARKET_TYPES_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-market-types-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'MARKET_TYPES_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'MARKET_TYPES_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-12 "hikego mo gateway ga kyou no saigo no nedan (MS2 no kiroku) wo watasu": after the close the live port carries no
+# rows (fail-closed, unchanged), so a restart after the close lost the day's last prices. This route hands out today's last MS2
+# price of each row from live_ms2.json, only after 15:30 JST, only when the file is from today and the Collector closed today's
+# session (hold_finalized_at is today; on a holiday it is not), and only rows whose quote time is 09:00-15:31. Display only:
+# the page values the virtual holds with it, labelled as the last price. Nothing here is a fresh quote or a trading gate.
+function Get-LastPricesView([string]$LiveJsonPath) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($LiveJsonPath) -or -not (Test-Path -LiteralPath $LiveJsonPath -PathType Leaf)) { return (& $fail 'LIVE_JSON_MISSING') }
+        $now = [DateTime]::UtcNow.AddHours(9)
+        $today = $now.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+        if ($now.TimeOfDay -lt [TimeSpan]::new(15, 30, 0)) { return (& $fail 'BEFORE_CLOSE') }
+        # audit 2026-11-12: the Collector's 15:25 close mark is set by the clock alone (also on a weekend or holiday while it runs),
+        # so a session of today is proven by today's own trades: records\<today>\ticks.csv holds only today's trades.
+        if ($now.DayOfWeek -eq [DayOfWeek]::Saturday -or $now.DayOfWeek -eq [DayOfWeek]::Sunday) { return (& $fail 'MARKET_CLOSED') }
+        # audit 2026-11-12 (2nd): on a weekday holiday the Collector can still write the last session's trades as today's (its session
+        # test is the clock alone), so the exchange's weekday holidays are refused by date. The same list as scripts/v10_positions_live.py
+        # EXCHANGE_HOLIDAYS (a test keeps them equal); after its last day nothing is served until the list is extended.
+        $exchangeHolidays = @('2026-11-23', '2026-12-31', '2027-01-01', '2027-01-11', '2027-02-11', '2027-02-23', '2027-03-22', '2027-04-29',
+            '2027-05-03', '2027-05-04', '2027-05-05', '2027-07-19', '2027-08-11', '2027-09-20', '2027-09-23', '2027-10-11', '2027-11-03',
+            '2027-11-23', '2027-12-31', '2028-01-03')
+        if ($exchangeHolidays -contains $today) { return (& $fail 'MARKET_CLOSED') }
+        if ([string]::CompareOrdinal($today, '2028-01-03') -gt 0) { return (& $fail 'HOLIDAY_LIST_EXPIRED') }
+        $todayTicks = Join-Path (Join-Path (Join-Path (Split-Path -Parent $LiveJsonPath) 'records') $today) 'ticks.csv'
+        $tickInfo = [IO.FileInfo]::new($todayTicks)
+        if (-not $tickInfo.Exists -or $tickInfo.Length -lt 200 -or $tickInfo.LastWriteTimeUtc.AddHours(9).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture) -cne $today) {
+            return (& $fail 'NO_TRADES_TODAY')
+        }
+        $live = Read-JsonUtf8Cached $LiveJsonPath
+        if ($null -eq $live) { return (& $fail 'LIVE_JSON_UNREADABLE') }
+        if ($live.real_submit_allowed -ne $false) { return (& $fail 'LIVE_FLAGS_INVALID') }
+        if ($live.data_conflict -eq $true) { return (& $fail 'DATA_CONFLICT') }
+        $stamp = [string]$live.updated_at
+        if ($stamp.Length -lt 10 -or $stamp.Substring(0, 10) -cne $today) { return (& $fail 'NOT_TODAY') }
+        $closed = [string]$live.hold_finalized_at
+        if ($closed.Length -lt 10 -or $closed.Substring(0, 10) -cne $today) { return (& $fail 'NO_SESSION_TODAY') }
+        $rows = [ordered]@{}
+        $asof = ''
+        foreach ($row in @($live.all_targets)) {
+            $code = ([string]$row.ticker) -replace '\.T$', ''
+            if ($code -cnotmatch '^[0-9A-Z]{4}$') { continue }
+            $ts = [string]$row.source_timestamp
+            if ($ts -notmatch '^\d{2}:\d{2}(:\d{2})?$') { continue }
+            $hm = $ts.Substring(0, 5)
+            if ([string]::CompareOrdinal($hm, '09:00') -lt 0 -or [string]::CompareOrdinal($hm, '15:31') -gt 0) { continue }
+            $price = 0.0
+            if (-not [double]::TryParse([string]$row.price, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$price)) { continue }
+            if ($price -le 0 -or [double]::IsNaN($price) -or [double]::IsInfinity($price)) { continue }
+            $rows[$code] = $price
+            if ([string]::CompareOrdinal($hm, $asof) -gt 0) { $asof = $hm }
+        }
+        if ($rows.Count -eq 0) { return (& $fail 'NO_PRICES') }
+        $view = [ordered]@{ schema_version = '100b-v10-last-prices-v1'; day = $today; asof = $asof; rows = $rows
+            real_submit_allowed = $false; trade_instruction = $false }
+        return @{ status = '200 OK'; body = ($view | ConvertTo-Json -Depth 4 -Compress) }
+    } catch {
+        return (& $fail 'LAST_PRICES_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-12 「AIコクピットのステータスランプでおれは状況確認はしたい」: RuntimeDir\schedule_watch_v1.json, written on this PC by
+# the research script that checks every scheduled job (never in the repo), is served as-is when its flags are safe (the 定時 lamp).
+function Get-ScheduleWatchView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'schedule_watch_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SCHEDULE_WATCH_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 16384) {
+            return (& $fail 'SCHEDULE_WATCH_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-schedule-watch-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SCHEDULE_WATCH_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SCHEDULE_WATCH_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-02 「楽天のCSVで確定損益を出す形にする」: RuntimeDir\realized_csv_today_v1.json (today's total from the
+# OWNER's Rakuten 実現損益 CSV on this PC, written by the Brain observer) is served as-is when its flags are safe.
+function Get-RealizedCsvView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'realized_csv_today_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'REALIZED_CSV_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'REALIZED_CSV_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-realized-csv-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'REALIZED_CSV_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'REALIZED_CSV_UNREADABLE')
+    }
+}
+
+# OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
+# RuntimeDir\scalp8_board_live_v1.json is written by the Brain observer (scripts10_board_live.py) from the Collector's
+# board / print records and served as-is when its flags are safe. The board data stays on this PC.
+function Get-Scalp8BoardView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'scalp8_board_live_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'SCALP8_BOARD_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 2097152) {
+            return (& $fail 'SCALP8_BOARD_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-scalp8-board-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'SCALP8_BOARD_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'SCALP8_BOARD_UNREADABLE')
+    }
+}
+
+# OWNER 2026-10-27 「コントロールタブに過去実績と俺の分析をいれて」: RuntimeDir\owner_review_v1.json is written on
+# this PC from the OWNER's own 実現損益 CSV (never part of the repo). Served as-is when its flags are safe.
+function Get-OwnerReviewView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'owner_review_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'OWNER_REVIEW_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'OWNER_REVIEW_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-owner-review-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'OWNER_REVIEW_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'OWNER_REVIEW_UNREADABLE')
     }
 }
 
@@ -790,12 +1340,15 @@ function Get-PublishedWorkbookGate {
         [string]$ExpectedPath,
         [string]$Symbol,
         [bool]$ControllerVerified,
-        [string]$PublicationId = ""
+        [string]$PublicationId = "",
+        [bool]$FallbackActive = $false
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
     $identity = "285A.T"
-    if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
+    # OWNER 2026-11-06: 7203 / 8306 / 9432 prove the source only while the Collector declares that 285A has no trade yet.
+    $allowed = $(if ($FallbackActive) { @($identity, "7203.T", "8306.T", "9432.T") } else { @($identity) })
+    if ($allowed -cnotcontains [string]$Symbol) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
     $expectedId = Get-WorkbookPublicationId $ExpectedPath
@@ -1145,6 +1698,31 @@ function Get-BoardAvailability {
         if ($unexpected.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_UNEXPECTED") }
         if ($declaredOk -and $declared -ne $expectedCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
     }
+    # OWNER 2026-10-26 「特別気配の直し」: rows missing only because the stock has no price yet
+    # (特別気配 at the open) do not block the board. Each such row must be listed by the
+    # Collector in missing_rows as PRICE_MISSING with its sheet code matching, at most 5 rows,
+    # no unexpected row, the declared universe equal to the expected one and to present +
+    # pending rows, >= 95% of the expected rows FRESH, and the Collector's FRESH_ROWS_ONLY
+    # declaration (the same as the partial rule). The rows stay reported (missing_*,
+    # quote_pending_*) and are never used; the board becomes AVAILABLE_PARTIAL.
+    $quotePendingMax = 5
+    $quotePending = New-Object System.Collections.Generic.List[string]
+    if ($universeVerified -and $missing.Count -gt 0 -and $missing.Count -le $quotePendingMax -and $unexpected.Count -eq 0 -and
+        $declaredOk -and $declared -eq $expectedCount -and $declared -eq ($rowCount + $missing.Count) -and $null -ne $LiveObj -and
+        [string]$LiveObj.aggregate_basis -ceq "FRESH_ROWS_ONLY" -and
+        $null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts -and $expectedCount -gt 0 -and
+        (100.0 * [int]$RowFreshness.state_counts.FRESH / $expectedCount) -ge 95.0) {
+        $pendingDeclared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($m in @($LiveObj.missing_rows)) {
+            if ($null -ne $m -and [string]$m.reason -ceq "PRICE_MISSING" -and $m.sheet_code_matches -eq $true -and $m.ticker -is [string]) { [void]$pendingDeclared.Add($m.ticker) }
+        }
+        $allPending = $true
+        foreach ($t in $missing) { if (-not $pendingDeclared.Contains([string]$t)) { $allPending = $false } }
+        if ($allPending) {
+            foreach ($t in $missing) { [void]$quotePending.Add([string]$t) }
+            [void]$reasons.RemoveAll([Predicate[string]]{ param($r) $r -ceq "UNIVERSE_ROW_MISSING" -or $r -ceq "UNIVERSE_DECLARED_MISMATCH" })
+        }
+    }
     $unique = @($reasons | Select-Object -Unique)
     $sorted = [string[]]$unique
     if ($null -eq $sorted) { $sorted = [string[]]@() }
@@ -1178,6 +1756,11 @@ function Get-BoardAvailability {
             $status = "AVAILABLE_PARTIAL"
         }
     }
+    if ($quotePending.Count -gt 0) {
+        $partialRows = $true
+        $partialReasons = [string[]]@(@($partialReasons) + @("UNIVERSE_QUOTE_PENDING") | Select-Object -Unique)
+        if ($status -ceq "AVAILABLE") { $status = "AVAILABLE_PARTIAL" }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -1210,6 +1793,8 @@ function Get-BoardAvailability {
         partial_rows = $partialRows
         partial_reasons = @($partialReasons)
         partial_min_fresh_pct = $partialMinFreshPct
+        quote_pending_count = $quotePending.Count
+        quote_pending_sample = @($quotePending | Select-Object -First 10)
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -1228,10 +1813,12 @@ function Read-LiveSnapshot([string]$Path) {
         file_mtime = $item.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
     }
     try {
-        $snap.bytes = [IO.File]::ReadAllBytes($Path)
-        $text = [Text.Encoding]::UTF8.GetString($snap.bytes)
-        if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
-        $snap.obj = $text | ConvertFrom-Json
+        # Parsed again only when the file changed (audit 2026-10-22 ①). The
+        # cached bytes are the bytes that were parsed, so what is judged is
+        # still what is served.
+        $cached = Read-FileCached $Path 'snapshot' { param($b) @{ bytes = $b; obj = (ConvertFrom-Utf8JsonBytes $b) } }
+        $snap.bytes = $cached.bytes
+        $snap.obj = $cached.obj
         $snap.updated_at = [string]$snap.obj.updated_at
         if (-not [string]::IsNullOrWhiteSpace($snap.updated_at)) {
             $clean = $snap.updated_at -replace '\s+JST\s*$',''
@@ -1262,6 +1849,8 @@ function Get-AvailabilitySummary($Availability) {
         missing_count = $Availability.missing_count
         missing_sample = @($Availability.missing_sample)
         unexpected_count = $Availability.unexpected_count
+        quote_pending_count = $Availability.quote_pending_count
+        quote_pending_sample = @($Availability.quote_pending_sample)
         collector_valid_count = $Availability.collector_valid_count
         collector_valid_quality_pass = ($Availability.collector_valid_quality_pass -eq $true)
         order_allowed = $false
@@ -1810,7 +2399,7 @@ function Get-LivePriceRejection {
     $workbookVerified = $false
     try {
         if (Test-Path -LiteralPath $controllerStateFile) {
-            $st = Read-JsonUtf8 $controllerStateFile
+            $st = Read-JsonUtf8Cached $controllerStateFile
             $workbookVerified = ($st.workbook_identity_verified -eq $true)
         }
     } catch { $workbookVerified = $false }
@@ -1832,7 +2421,7 @@ function Get-LivePriceRejection {
     if (-not [string]::IsNullOrWhiteSpace($RuntimeDir)) {
         $canonicalWorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     }
-    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id)
+    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id) ($diag.identity_fallback_active -eq $true)
     if (-not [string]::IsNullOrWhiteSpace($gateText)) {
         foreach ($gateReason in ($gateText -split ",")) {
             if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
@@ -2119,6 +2708,10 @@ if ($startSnapshot.ok) {
 $script:ServedHistoryEmptyAccepted = ($ServedHistoryBootstrap -ceq "ACCEPT_EMPTY_HISTORY") -and ($script:ServedHistoryState -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence
 if (-not $script:ServedHistoryEmptyAccepted) { $script:ServedHistoryStartFloor = $startFloor }
 
+# Audit 2026-10-22 ①: git is asked once at start-up, not on every /health
+# and page load (two git processes per call). A deploy folder is one commit.
+$script:GitInfo = Get-GitInfo $RepoRoot
+
 try {
     $listener.Start()
     Write-Host ("AI Cockpit Gateway V10: http://127.0.0.1:{0}/?live=1" -f $Port) -ForegroundColor Green
@@ -2176,7 +2769,8 @@ try {
             $path = $uri.AbsolutePath
 
             if ($path -eq '/health') {
-                $git = Get-GitInfo $RepoRoot
+                $script:HealthProcessMemo = $null
+                $git = $script:GitInfo
                 $liveExists = if ($liveJson) { Test-Path -LiteralPath $liveJson } else { $false }
                 $liveMtime = if ($liveExists) { (Get-Item -LiteralPath $liveJson).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } else { $null }
                 $runtime = [ordered]@{
@@ -2224,7 +2818,11 @@ try {
                 $brainProcessVerified = $false
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
-                        $st = Read-JsonUtf8 $controllerStateFile
+                        $st = Read-JsonUtf8Cached $controllerStateFile
+                        try {
+                            Set-HealthProcessMemo @([int]$st.controller_pid, [int]$st.shadow_supervisor_pid, [int]$st.brain_observer_pid,
+                                [int]$st.watcher_pid, [int]$st.heartbeat_pid, [int]$st.collector_pid, [int]$st.voice_bridge_pid, [int]$st.sbv2_pid)
+                        } catch { $script:HealthProcessMemo = $null }
                         $runtime.controller_pid = $st.controller_pid
                         $runtime.collector_status = $st.collector_status
                         $runtime.watcher_status = $st.watcher_status
@@ -2274,7 +2872,7 @@ try {
                 $healthLive = $null
                 if ($liveExists) {
                     try {
-                        $healthLive = Read-JsonUtf8 $liveJson
+                        $healthLive = Read-JsonUtf8Cached $liveJson
                         $healthDiag = $healthLive.live_price_diagnostics
                         $runtime.live_updated_at = [string]$healthLive.updated_at
                         $runtime.collector_observed_at_offset = [string]$healthLive.observed_at_offset
@@ -2439,6 +3037,7 @@ try {
                     $execution.shadow_latest_incident = $null
                 }
 
+                $script:HealthProcessMemo = $null
                 $payload = [ordered]@{
                     status           = 'ok'
                     port             = $Port
@@ -2642,6 +3241,11 @@ try {
                 Send-Response $stream $brainView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$brainView.body))
                 continue
             }
+            if ($path -eq '/real_positions.json') {
+                $realView = Get-RealPositionsView $RuntimeDir
+                Send-Response $stream $realView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$realView.body))
+                continue
+            }
             if ($path -eq '/pts_pickup.json') {
                 $ptsView = Get-PtsPickupView $RuntimeDir
                 Send-Response $stream $ptsView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ptsView.body))
@@ -2650,6 +3254,96 @@ try {
             if ($path -eq '/rule_shadow.json') {
                 $ruleView = Get-RuleShadowView $RuntimeDir
                 Send-Response $stream $ruleView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ruleView.body))
+                continue
+            }
+            if ($path -eq '/theme_watch.json') {
+                $themeView = Get-ThemeWatchView $RuntimeDir
+                Send-Response $stream $themeView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$themeView.body))
+                continue
+            }
+            if ($path -eq '/trial_methods.json') {
+                $trialView = Get-TrialMethodsView $RuntimeDir
+                Send-Response $stream $trialView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$trialView.body))
+                continue
+            }
+            if ($path -eq '/hold_track.json') {
+                $holdView = Get-HoldTrackView $RuntimeDir
+                Send-Response $stream $holdView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$holdView.body))
+                continue
+            }
+            if ($path -eq '/margin_kind.json') {
+                $marginView = Get-MarginKindView $RuntimeDir
+                Send-Response $stream $marginView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$marginView.body))
+                continue
+            }
+            if ($path -eq '/earnings_times.json') {
+                $timesView = Get-EarningsTimesView $RuntimeDir
+                Send-Response $stream $timesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$timesView.body))
+                continue
+            }
+            if ($path -eq '/bnf_candidates.json') {
+                $bnfView = Get-BnfCandidatesView $RuntimeDir
+                Send-Response $stream $bnfView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$bnfView.body))
+                continue
+            }
+            if ($path -eq '/tdnet_today.json') {
+                $tdView = Get-TdnetTodayView $RuntimeDir
+                Send-Response $stream $tdView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$tdView.body))
+                continue
+            }
+            if ($path -eq '/analyst_instructions.json') {
+                $instrView = Get-AnalystInstructionsView $RuntimeDir
+                Send-Response $stream $instrView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$instrView.body))
+                continue
+            }
+            if ($path -eq '/claude_analysts.json') {
+                $claudeView = Get-ClaudeAnalystsView $RuntimeDir
+                Send-Response $stream $claudeView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$claudeView.body))
+                continue
+            }
+            if ($path -eq '/analyst_weekly.json') {
+                $weeklyView = Get-AnalystWeeklyView $RuntimeDir
+                Send-Response $stream $weeklyView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$weeklyView.body))
+                continue
+            }
+            if ($path -eq '/sox_scenario.json') {
+                $soxView = Get-SoxScenarioView $RuntimeDir
+                Send-Response $stream $soxView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$soxView.body))
+                continue
+            }
+            if ($path -eq '/sox_proxy.json') {
+                $soxProxyView = Get-SoxProxyView $RuntimeDir
+                Send-Response $stream $soxProxyView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$soxProxyView.body))
+                continue
+            }
+            if ($path -eq '/market_types.json') {
+                $typesView = Get-MarketTypesView $RuntimeDir
+                Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
+                continue
+            }
+            if ($path -eq '/last_prices.json') {
+                $lastView = Get-LastPricesView $liveJson
+                Send-Response $stream $lastView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$lastView.body))
+                continue
+            }
+            if ($path -eq '/schedule_watch.json') {
+                $schedView = Get-ScheduleWatchView $RuntimeDir
+                Send-Response $stream $schedView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$schedView.body))
+                continue
+            }
+            if ($path -eq '/realized_csv.json') {
+                $realizedView = Get-RealizedCsvView $RuntimeDir
+                Send-Response $stream $realizedView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$realizedView.body))
+                continue
+            }
+            if ($path -eq '/scalp8_board.json') {
+                $boardView = Get-Scalp8BoardView $RuntimeDir
+                Send-Response $stream $boardView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$boardView.body))
+                continue
+            }
+            if ($path -eq '/owner_review.json') {
+                $ownerView = Get-OwnerReviewView $RuntimeDir
+                Send-Response $stream $ownerView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ownerView.body))
                 continue
             }
             if ($path -eq '/signal_ev.json') {
@@ -2666,7 +3360,7 @@ try {
             # from the local Git checkout (e.g. .git/config, secrets or private data).
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)
-            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json')
+            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json', 'analyst_scores.json', 'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json', 'swing_watch.json', 'value_watch.json', 'accumulation_watch.json', 'grok_bots.json')
             if ($allowedUiFiles -cnotcontains $relative) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_PUBLIC_PATH_NOT_ALLOWED'))
                 continue
@@ -2686,6 +3380,22 @@ try {
                 continue
             }
 
+            # OWNER 2026-10-23: the public analysis JSON refreshed on main is served from
+            # RuntimeDir\public_feed (copied every 10 minutes by the Brain observer) when a
+            # copy is there; otherwise the checkout's file as before. Display data only.
+            # live_focus / signals / paper_trade_history are not fed (audit 6349440798).
+            $publicFeedFiles = @('correlations.json', 'credit_supply.json', 'earnings_calendar.json', 'event_calendar.json',
+                'kioxia_5m_calendar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json',
+                'next_theme_radar.json', 'weekly_review.json', 'world_market.json',
+                'analyst_scores.json', 'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json', 'swing_watch.json', 'value_watch.json', 'accumulation_watch.json', 'grok_bots.json')
+            if ($RuntimeDir -and $publicFeedFiles -ccontains $relative) {
+                $feedFile = Join-Path (Join-Path $RuntimeDir 'public_feed') $relative
+                $feedItem = Get-Item -LiteralPath $feedFile -Force -ErrorAction SilentlyContinue
+                if ($null -ne $feedItem -and -not $feedItem.PSIsContainer -and
+                    ($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+                    $resolvedFull = $feedItem.FullName
+                }
+            }
             if (-not (Test-Path -LiteralPath $resolvedFull -PathType Leaf)) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('Not found: ' + $relative))
                 continue
@@ -2698,7 +3408,7 @@ try {
 
             $ct = Get-ContentType $resolvedFull
             if ($resolvedFull -match '(?i)index\.html$') {
-                $git = Get-GitInfo $RepoRoot
+                $git = $script:GitInfo
                 $html = Get-Content -LiteralPath $resolvedFull -Raw -Encoding UTF8
                 $html = Add-StaticSnapshotNotice $html (Get-Date)
                 $html = Add-BuildBadge $html $git.branch $git.sha $Build

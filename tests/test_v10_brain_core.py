@@ -33,13 +33,34 @@ def live(rows, *, at="2026-10-22 09:29:55", valid=100, stale=False):
     return {"updated_at": at, "valid": valid, "stale": stale, "all_targets": rows}
 
 
+# The scoring tests below use the rules as scoring rules (R1 as it was before 2026-10-26); the
+# record-only behaviour of the real ev.RULES (OWNER 2026-10-26) has its own tests (RecordOnlyRule).
+SCORING_RULES = {k: {kk: vv for kk, vv in v.items() if kk not in ("record_only", "once_per_ticker_day")}
+                 for k, v in ev.RULES.items()}
 SHADOW = {"schema_version": ev.RULES_SCHEMA, "real_submit_allowed": False, "forward_from": "2026-10-22",
-          "rules": ev.RULES, "forward": {"R1": {"n": 0}}}
+          "rules": SCORING_RULES, "forward": {"R1": {"n": 0}}}
 TABLE = {"schema_version": ev.SCHEMA, "real_submit_allowed": False, "days": ["d"] * 20,
          "by_strategy": {"OR15戻り|空売りサイン": {"n": 100, "ev_pct": 0.2, "status": "OK"},
                          "OR15|買いサイン": {"n": 400, "ev_pct": -0.05, "status": "OK"}},
          "by_strategy_ticker": {"OR15戻り|空売りサイン|B.T": {"n": 30, "ev_pct": 0.5, "status": "OK"},
                                 "OR15戻り|空売りサイン|C.T": {"n": 5, "ev_pct": 3.0, "status": "INSUFFICIENT"}}}
+
+
+class RecordOnlyRule(unittest.TestCase):
+    # OWNER 2026-10-26 「ルール①を記録だけにして、1銘柄1日1回を入れて」
+    def test_rule_one_is_logged_but_never_picked(self):
+        real = dict(SHADOW, rules=ev.RULES)
+        self.assertTrue(ev.RULES["R1"]["record_only"] and ev.RULES["R1"]["once_per_ticker_day"])
+        view = brain.pick(live([target("A.T")]), ev_table=TABLE, rule_shadow=real, now=NOW)
+        self.assertEqual(view["picks"], [])
+        self.assertEqual([(x["rule"], x["record_only"]) for x in view["rule_signals"]], [("R1", True)])
+        self.assertIn("ルール①は記録のみ（ブレインは使わない）", [x["reason"] for x in view["excluded"]])
+        self.assertIsNone(brain.estimate(target("A.T"), ev_table=None, rule_shadow=real, hm="09:20")["rule"])
+
+    def test_attention_label_says_record_only(self):
+        self.assertIn('("（記録のみ）" if got.get("record_only") else "")', (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8"))
+        collector = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("-and $_.record_only -ne $true })", collector)   # never spoken
 
 
 class Pick(unittest.TestCase):
@@ -191,6 +212,60 @@ class LogAndShadow(unittest.TestCase):
         self.assertAlmostEqual(b["recent"][0]["return_pct"], 2.1 - 2.80 / 365, places=6)
 
 
+    def test_attention_list_keeps_the_day_newest_first(self):
+        # OWNER 2026-10-23 「注目」欄: new ranking entries and rule 1/2/4/5 signals, each logged once
+        (self.tmp / "signal_ev_table_v1.json").write_text(json.dumps(TABLE), encoding="utf-8")
+        (self.tmp / "rule_shadow_v1.json").write_text(json.dumps(SHADOW, ensure_ascii=False), encoding="utf-8")
+        rows = [target("A.T"), target("D.T", strategy="OR15押し目")]
+        first = brain.write_pick(self.tmp, live(rows), now=NOW, logged=set(), logged_rules=set())
+        again = brain.write_pick(self.tmp, live(rows, at="2026-10-22 09:30:01"), now=NOW + timedelta(seconds=6),
+                                 logged=set(), logged_rules=set())
+        self.assertEqual((first["logged_rule_new"], again["logged_rule_new"]), (2, 0))   # dedupe survives a restart
+        # the signal is gone later in the day: the list still keeps it
+        later = brain.write_pick(self.tmp, live([], at="2026-10-22 11:00:00"), now=NOW + timedelta(hours=1, minutes=30),
+                                 logged=set(), logged_rules=set())
+        today = later["today"]
+        self.assertEqual(today["date"], "2026-10-22")
+        kinds = [(x["kind"], x["ticker"]) for x in today["attention"]]
+        self.assertIn(("RULE", "A.T"), kinds)
+        self.assertIn(("RULE", "D.T"), kinds)
+        self.assertEqual(today["new_picks_total"], sum(k == "RANKING" for k, _ in kinds))
+        self.assertGreaterEqual(today["new_picks_total"], 1)
+        self.assertEqual(today["rule_signals_total"], 2)
+        stamps = [x["captured_at"] for x in today["attention"]]
+        self.assertEqual(stamps, sorted(stamps, reverse=True))                               # newest first
+        rule = next(x for x in today["attention"] if x["kind"] == "RULE")
+        self.assertTrue(rule["label"].startswith("①"))
+        ranking = next(x for x in today["attention"] if x["kind"] == "RANKING")
+        self.assertTrue(ranking["label"].startswith("ブレインのランキング入り"))
+        nextday = brain.write_pick(self.tmp, live([]), now=NOW + timedelta(days=1), logged=set(), logged_rules=set())
+        self.assertEqual((nextday["today"]["date"], nextday["today"]["attention"]), ("2026-10-23", []))   # a new day starts empty
+        # top of every tab: the box sits between the status bar and <main>
+        self.assertIn('<b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box"', HTML)
+        self.assertIn("if(brainPick?.today?.date===jst)attentionToday=brainPick.today;", HTML)
+        self.assertIn("検証中（Shadow）・実注文には使いません", HTML)
+
+    def test_new_ranking_entry_voice_once_with_verifying(self):
+        text = COLLECTOR.read_text(encoding="utf-8-sig")
+        self.assertIn('("注目、検証中。ブレインのランキングに新しく入りました。"', text)
+        self.assertIn('("注目、検証中。"+$ruleName+"に該当。"', text)
+        self.assertIn("foreach ($x in (Get-BrainNewPicks $brainPickPath (Get-Date))) {", text)
+        self.assertIn("if ($spokenNewPicks.ContainsKey($key)) { continue }", text)
+        # hotfix 2026-10-23: initialised at start-up, before the main loop first uses it
+        self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("if ($spokenNewPicks.ContainsKey($key)) { continue }"))
+        self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("$spokenRuleSignals=@{}; $spokenNewPicks=@{}"))
+        # OWNER 2026-10-23: holdings voice once at 08:50-08:55 and 15:30-15:35, flags set at start-up too
+        self.assertLess(text.index("$holdingVoiceMorningDone = $false; $holdingVoiceCloseDone = $false"),
+                        text.index("if (-not $holdingVoiceMorningDone -and $clockNow -ge $HoldingVoiceMorningFrom"))
+        self.assertIn('Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "朝")', text)
+        self.assertIn('Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "引け")', text)
+        self.assertIn("スイングとバリューは、保有の記録がまだありません。", text)
+        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false", text)
+        body = text[text.index("function Get-BrainNewPicks"):text.index("function Test-RuleSignalStillListed")]
+        self.assertIn("[string]$view.state -cne 'PICK'", body)
+        self.assertIn("Test-BrainPickFresh $view.generated_at $Now", body)
+
+
 class Observer(unittest.TestCase):
     def test_pinned_pass_writes_the_pick_and_prints_on_change_only(self):
         spec = importlib.util.spec_from_file_location("obs_brain_under_test", ROOT / "scripts" / "ai_brain_observer.py")
@@ -235,7 +310,7 @@ class CollectorVoice(unittest.TestCase):
         self.assertIn("[VOICE] 08:55 gap voice skipped: covered=", text)
         self.assertIn("[string]$_.rule -in @('R1','R2','R4','R5')", text)
         self.assertIn("ルール5の対象候補です。", text)
-        self.assertIn("$spokenRuleSignals=@{}; $preopenGapSpoken=$false", text)   # reset each day
+        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false", text)   # reset each day
         # audit 6325885133: live gate, current-row re-check, cap per cycle, rounding, coverage gate
         self.assertIn("if ($publishLiveValues) {", text)
         self.assertIn("$row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal", text)
@@ -296,6 +371,73 @@ $o | ConvertTo-Json -Compress
                          {"cycle_start_ref": "", "pwsh7_datetime": "True", "still_listed": "True", "not_listed": "False",
                           "valid": "A.T:R1", "old": "", "future": "", "nooffset": "", "unsafe": "", "stringflag": "",
                           "notlive": "", "oddstate": "", "missing": "", "broken": ""})
+
+
+class PtsBadgeVoice(unittest.TestCase):
+    """OWNER 2026-10-30: before 9:00, speak only PTS rows whose 買い/空売り badge band matches the pre-open gap."""
+
+    def test_wired_after_gap_voice_once_a_day(self):
+        text = COLLECTOR.read_text(encoding="utf-8-sig")
+        self.assertIn('$ptsPickupPath = Join-Path $PSScriptRoot "pts_pickup_v1.json"', text)
+        self.assertIn("$preopenGapSpoken=$false; $ptsBadgeSpoken=$false", text)
+        call = text.index("$ptsHits=@(Get-PtsBadgeMatches $ptsPickupPath $results (Get-Date))")
+        self.assertLess(text.index("$gapVoiceDoneBeforeCycle=$preopenGapSpoken"), text.index("$inPreopenWindow=("))
+        self.assertIn("if (-not $ptsBadgeSpoken -and $gapVoiceDoneBeforeCycle -and $inPreopenWindow) {", text)
+        block = text[call:call + 1400]
+        self.assertIn("$clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil", block)
+        self.assertIn("注文は武蔵で手動です。", block)
+
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
+    def test_matches_only_same_band_and_fails_silent(self):
+        harness = r"""
+param([string]$Collector, [string]$Dir)
+$t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
+foreach($name in 'Get-PtsGapBand','Get-PtsBadgeMatches'){
+  $fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true))
+  . ([scriptblock]::Create($fn[0].Extent.Text))
+}
+$rows=@(
+ [pscustomobject]@{ticker='285A.T';preopen_gap_pct=-7.5},
+ [pscustomobject]@{ticker='3905.T';preopen_gap_pct=-1.2},
+ [pscustomobject]@{ticker='6525.T';preopen_gap_pct=-2.4},
+ [pscustomobject]@{ticker='4004.T';preopen_gap_pct=$null},
+ [pscustomobject]@{ticker='9984.T';preopen_gap_pct=-25})
+$now=[datetime]'2026-11-02 08:56:00'
+$o=[ordered]@{}
+foreach($n in 'valid','stale_session','same_day','unsafe','stringflag','schema','missing','broken'){
+  $f=Join-Path $Dir ($n+'.json'); if(Test-Path $f){ (Get-Item $f).LastWriteTime=$now.AddMinutes(-3) }
+  $o[$n]=(@(Get-PtsBadgeMatches $f $rows $now) | ForEach-Object { $_.ticker+':'+$_.side }) -join ','
+}
+$old=Join-Path $Dir 'valid.json'; (Get-Item $old).LastWriteTime=$now.AddMinutes(-30)
+$o['old_file']=(@(Get-PtsBadgeMatches $old $rows $now) | ForEach-Object { $_.ticker }) -join ','
+$o['bands']=((-3.5,-3,-2,-1,-0.5,1,2.5,3) | ForEach-Object { [string](Get-PtsGapBand $_) }) -join '|'
+$o | ConvertTo-Json -Compress
+"""
+        rows = [
+            {"ticker": "285A.T", "name": "A", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 1.41},
+            {"ticker": "3905.T", "name": "B", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 1.55},   # quote only -1.2 %
+            {"ticker": "6525.T", "name": "C", "ev_side": "SHORT", "ev_bucket": "−2〜−3%", "ev_pct": 0.65},
+            {"ticker": "4004.T", "name": "D", "ev_side": "BUY", "ev_bucket": "−2〜−3%", "ev_pct": 0.46},     # no quote yet
+            {"ticker": "9984.T", "name": "E", "ev_side": "BUY", "ev_bucket": "−3%以下", "ev_pct": 0.5},      # split-sized gap
+            {"ticker": "6752.T", "name": "F", "ev_side": "SKIP", "ev_bucket": "+3%以上"},
+        ]
+        good = {"schema_version": "100b-v10-pts-pickup-v1", "real_submit_allowed": False, "trade_instruction": False,
+                "pts_session_date": "2026-10-30", "rows": rows}
+        files = {"valid": good, "stale_session": dict(good, pts_session_date="2026-10-27"),
+                 "same_day": dict(good, pts_session_date="2026-11-02"), "unsafe": dict(good, real_submit_allowed=True),
+                 "stringflag": dict(good, trade_instruction="false"), "schema": dict(good, schema_version="other")}
+        with tempfile.TemporaryDirectory() as d:
+            for name, doc in files.items():
+                (Path(d) / (name + ".json")).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+            (Path(d) / "broken.json").write_text("{not json", encoding="utf-8")
+            h = Path(d) / "h.ps1"
+            h.write_text(harness, encoding="utf-8-sig")
+            p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR),
+                                "-Dir", d], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
+                         {"valid": "285A.T:BUY,6525.T:SHORT", "stale_session": "", "same_day": "", "unsafe": "",
+                          "stringflag": "", "schema": "", "missing": "", "broken": "", "old_file": "",
+                          "bands": "−3%以下|−2〜−3%|−1〜−2%|||+1〜2%|+2〜3%|+3%以上"})
 
 
 class JpxMarginPass(unittest.TestCase):
