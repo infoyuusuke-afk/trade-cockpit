@@ -270,7 +270,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    fetch("/schedule_watch.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
      if(!j||!j.checked_at){el.innerHTML=freshLamp("gray","定時：点検なし","定時の点検の記録がまだありません");el.title="";return;}
      const t=Date.parse(j.checked_at),h=Number.isFinite(t)?(Date.now()-t)/3600000:null,at=String(j.checked_at).slice(11,16);
-     const probs=Array.isArray(j.problems)?j.problems:[],names=probs.map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／");
+     // OWNER 2026-11-14 「文字がはみだしている」: the line names the first 3 problems and the count; all of them are in the list (press) and the tooltip
+     const probs=Array.isArray(j.problems)?j.problems:[],allNames=probs.map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／"),
+       names=probs.length+"件："+probs.slice(0,3).map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／")+(probs.length>3?"／ほか"+(probs.length-3)+"件（押すと一覧）":"");
      // the check runs on weekdays only: from Friday 18:30 to Monday 9:30 an older check is still the latest
      const np=typeof window.jstParts==="function"?window.jstParts(Date.now()):null,offDay=np&&(np.wd===0||np.wd===6||(np.wd===1&&np.min<600)),limit=offDay?66:26;
      const [cls,label,line]=h==null||h>limit?["gray","定時：点検が古い","最後の点検 "+String(j.checked_at).slice(5,16).replace("T"," ")]:
@@ -280,7 +282,7 @@ document.addEventListener("DOMContentLoaded",()=>{
        ["gray","定時：点検が読めない","点検の結果の形が違います　点検 "+at];
      const items=Array.isArray(j.items)?j.items:[];
      el.innerHTML=freshLamp(cls,label,line)+(window.__schedOpen?'<div class="sched-list">'+(items.length?items.map(x=>'<div class="'+(x.ok?"ok":"ng")+'">'+(x.ok?"○ ":"✕ ")+esc(String(x.name||""))+'<small>'+esc(String(x.msg||""))+'</small></div>').join(""):'<div>一覧はまだありません（次の点検から）</div>')+'</div>':"");
-     el.title=line+"（押すと一覧）";el.style.cursor="pointer";
+     el.title=(probs.length?allNames:line)+"（押すと一覧）";el.style.cursor="pointer";
      if(!el.dataset.schedClick){el.dataset.schedClick="1";el.addEventListener("click",()=>{window.__schedOpen=!window.__schedOpen;renderSched();});}
      // OWNER 2026-11-12 「黄か赤に変わった時に1回だけ声で知らせる（同じ定時は1日1回、損切りの声が優先）」: only jobs with a problem
      // that were not spoken yet today are spoken, once, in one line. The day's spoken names are kept in this browser and in the page
@@ -334,7 +336,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  setTimeout(renderTypes,2500);
  setInterval(renderTypes,60000);
  // the list under the 定時 lamp (opened by a press)
- {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
+ {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative;min-width:0;max-width:100%}#trade-sched-lamp .brain-lamp small{white-space:normal!important;overflow-wrap:anywhere}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
  // the lamp row is built by a later script: the first look waits for it
  setTimeout(renderSched,2500);
  setInterval(renderSched,60000);
@@ -955,9 +957,17 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  window.cockpitLiveSpeechEnabled=true;
+ // OWNER 2026-11-14 「全てのタブ、機能が正常なのか…直ってなければ修正しろ」: live_focus.json is the cloud job's file, kept out of the
+ // public feed sync (test_v10_public_feed_sync), so this PC still serves the copy of 10/20 20:18 with speech_enabled false. That
+ // turned off every page voice that does not force itself (holds IN/OUT, 定時, 今日の型, order cards). Only a file written today
+ // within 15 minutes may turn the page voices off; each voice keeps its own time window. Display and voice only, no order.
+ const liveFresh=d=>{const m=String(d&&d.updated_at||"").match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);if(!m)return false;
+   const j=new Date(Date.now()+9*3600000).toISOString();if(m[1]!==j.slice(0,10))return false;
+   const late=(Number(j.slice(11,13))*60+Number(j.slice(14,16)))-(Number(m[2])*60+Number(m[3]));return late>=0&&late<=15;};
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
-   window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
-   window.cockpitVoiceSetLiveEnabled?.(d.speech_enabled===true);
+   const speak=liveFresh(d)?d.speech_enabled===true:true;
+   window.cockpitLiveSpeechEnabled=speak;
+   window.cockpitVoiceSetLiveEnabled?.(speak);
    // OWNER 2026-11-09: the 完全照合 line is written from this PC's MS2 (the ms2RssUpdate handler), not from the cloud's
    // market_summary.live_check, whose cloud job stopped on 11/07 and kept the line red.
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
