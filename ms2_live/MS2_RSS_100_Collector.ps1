@@ -2430,6 +2430,8 @@ $realPosLatched = $false
 $realPosEvery = 5            # loops between reads (about 6 to 10 s)
 $stopLossVoiceAt = [datetime]::MinValue
 $script:lastSpeakOk = $null
+$script:guardErrorSince = $null
+$script:guardErrorVoiceAt = [datetime]::MinValue
 $realPosRows = 300           # rows kept for each list
 $realPosMarginTop = 1        # formula cell; header on the next row, positions after it
 $realPosCashTop = 310
@@ -3493,8 +3495,20 @@ try {
                 } else {
                     $cashUnreadSince = $null
                 }
+                $script:guardErrorSince = $null
                 } catch {
-                    Write-GuardVoiceLog $dayDir "見張りの計算エラー" (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) 0
+                    # audit e7abbe9: the type only (a conversion message can carry a value)
+                    Write-GuardVoiceLog $dayDir "見張りの計算エラー" ([string]$_.Exception.GetType().Name) 0
+                    # audit e7abbe9 「見張りの計算エラーで声を出す」: a guard that keeps failing must not be silent again (11/13). In session,
+                    # after 60 s of failing guards, once a minute. Speaks only.
+                    if ($null -eq $script:guardErrorSince) { $script:guardErrorSince = Get-Date }
+                    $geClock = (Get-Date).TimeOfDay
+                    $geInSession = ($geClock -ge [TimeSpan]"09:00:00" -and $geClock -lt [TimeSpan]"11:30:00") -or ($geClock -ge [TimeSpan]"12:30:00" -and $geClock -lt [TimeSpan]"15:30:00")
+                    if ($geInSession -and ((Get-Date) - $script:guardErrorSince).TotalSeconds -ge 60 -and ((Get-Date) - $script:guardErrorVoiceAt).TotalSeconds -ge 60) {
+                        $script:guardErrorVoiceAt = Get-Date
+                        Invoke-SerializedSpeak $speaker "損切りの見張りが動いていません"
+                        Write-GuardVoiceLog $dayDir "損切りの見張りが動いていません" ("続いて " + [string][int]((Get-Date) - $script:guardErrorSince).TotalSeconds + "秒") 0
+                    }
                 }
                 }
             } catch {

@@ -33,6 +33,16 @@ class StopLossGuard(unittest.TestCase):
         self.assertIn('Write-GuardVoiceLog $dayDir "見張りの計算エラー"', block)
         self.assertLess(block.index('Write-GuardVoiceLog $dayDir "見張りの計算エラー"'), block.index("            } catch {\n                $realPosSheet = $null"))
 
+    def test_a_guard_that_keeps_failing_is_heard(self):
+        # audit e7abbe9: a guard error is logged by its type only, and 60 s of failing guards are spoken in session
+        i = COL.index('Write-GuardVoiceLog $dayDir "見張りの計算エラー"')
+        block = COL[i:i + 1500]
+        self.assertIn('([string]$_.Exception.GetType().Name) 0', block)
+        self.assertNotIn("Exception.Message", block[:200])
+        self.assertIn('Invoke-SerializedSpeak $speaker "損切りの見張りが動いていません"', block)
+        self.assertIn("((Get-Date) - $script:guardErrorSince).TotalSeconds -ge 60", block)
+        self.assertIn("$script:guardErrorSince = $null\n                } catch {", COL)
+
     def test_each_guard_voice_is_logged_with_time(self):
         for kind in ("損切り", "現物が読めていません", "口座が読めていません"):
             i = COL.index('Invoke-SerializedSpeak $speaker "%s"' % kind)
