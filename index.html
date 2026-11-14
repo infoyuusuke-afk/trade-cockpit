@@ -3385,7 +3385,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!pane)return;
     const box=pane.querySelector("#an-cards");
     get("/analyst_weekly.json").then(renderWeekly);   // OWNER 2026-11-08 「週間成績の読み込みを待たずに銘柄カードを先に出す」
-    const [cal,bp,gb,tw,ins]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json"),get("/analyst_instructions.json")]);
+    const [cal,bp,gb,tw,ins,ca]=await Promise.all([get("earnings_calendar.json"),get("/brain_pick.json"),get("grok_bots.json"),get("/theme_watch.json"),get("/analyst_instructions.json"),get("/claude_analysts.json")]);
     // OWNER 2026-11-03 「GPTのPRE-NEXT v3.0・需給 v2.2の指示：A（アナリストタブに入れる）」: the standing instruction of each GPT
     // analyst, kept on this PC (never in the repo), folded under its card with a copy button.
     const insOk=!!(ins&&ins.schema_version==="100b-v10-analyst-instructions-v1"&&ins.real_submit_allowed===false&&Array.isArray(ins.items));
@@ -3417,6 +3417,24 @@ document.addEventListener("DOMContentLoaded",()=>{
       {id:"g3",cal:calToday,name:"Grok3号 決算前監視（Grok）",role:"決算の前に、Xの空気・期待の高さ・需給を見て、決算をまたぐ時の向きを見る。",when:"朝と夜",
        status:st(botAt("Grok3号"),!!gb),last:lastAt(botAt("Grok3号"),!!gb),paste:"朝と夜の答えが出たら",text:calOk?(a.length||b.length?grokText("Grok3号 決算前監視",today,"今日（"+md(today)+"）："+(a.join("、")||"なし")+"\n明日（"+md(tomorrow)+"）："+(b.join("、")||"なし"),"決算前","決算の前のXの空気・期待の高さから、全部の銘柄について見立てを出してください。"):""):null}
     ];
+    // OWNER 2026-11-14 「アナリストの欄に、Claudeのアナリスト（テクニカル・ファンダ・決算・FOCUS）のカードも足して、役目・動く時刻・
+    // 最後の答えの時刻・今日の答え 届いた／まだ を出す版にして。答えの中身は変えない」: times only, from /claude_analysts.json
+    // (the PC writes the answer files' names and times every 5 minutes). Nothing to paste; display only.
+    const caOk=!!(ca&&ca.schema_version==="100b-v10-claude-analysts-v1"&&ca.real_submit_allowed===false&&ca.trade_instruction===false&&Array.isArray(ca.items)&&String(ca.day||"")===today);
+    const caAge=caOk?Date.now()-Date.parse(String(ca.generated_at||"")):NaN;
+    const caOld=caOk&&!(caAge<20*60000)?'<br><span class="an-none">PCの確認は '+esc(String(ca.generated_at||"").slice(11,16))+' の時点です（定時の確認が止まっている時間帯です）</span>':"";
+    const C_CARDS=[
+      {id:"c_tech",name:"Claude テクニカル（地合い）",role:"今日の地合いの危なさ・向き・自信・向いている手法・外れる合図を出す。引けの回で学習ノートに書き足す。",when:"平日 朝8:30ごろ・昼11:35・引け15:35"},
+      {id:"c_fund",name:"Claude ファンダメンタルズ",role:"決算の記録から銘柄ごとの見立てを固めて残す。見立ては次の営業日の寄りから自動で採点する。",when:"平日 17:45（金曜は週の見立ても）"},
+      {id:"c_earn",name:"Claude 決算",role:"TDnetの決算短信・業績予想の修正を読み、決算後の値動きを記録してレポートにする。",when:"平日 17:00（記録）・17:45（レポート）"},
+      {id:"c_focus",name:"Claude FOCUS",role:"アナリストの銘柄から、FOCUSの空いた枠に入れる銘柄を選ぶ。16:00に結果を記録する。",when:"平日 8:50・12:20"}
+    ];
+    const caHtml=C_CARDS.map(c=>{const x=caOk?ca.items.find(v=>v&&v.id===c.id):null,known=!!(x&&x.readable===true);
+      const at=known&&x.last_at?String(x.last_at):"";
+      const rs=known&&Array.isArray(x.rounds)&&x.rounds.length?'<br><b>今日の回</b>：'+x.rounds.map(r=>esc(r&&r.label)+' '+(r&&r.at?esc(r.at):'まだ')).join('　'):'';
+      const status=!known?'<span class="an-st unk">確認できません</span>':x.today===true?'<span class="an-st ok">今日の答え 届いた</span>':'<span class="an-st wait">今日の答え まだ</span>';
+      return '<div class="an-card"><h3>'+esc(c.name)+status+'</h3><p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+
+        '<br><b>答えの受け渡し</b>：PCのClaudeの定時で自動（貼るものはありません）<br><b>最後の答え</b>：'+(known?(at?esc(at.slice(5,16).replace("-","/")):"まだ一度もありません"):"読めません")+rs+caOld+'</p></div>';}).join("");
     box.innerHTML=cards.map(c=>'<div class="an-card"><h3>'+esc(c.name)+c.status+'</h3>'+
       '<p class="an-role"><b>役目</b>：'+esc(c.role)+'<br><b>動く時刻</b>：'+esc(c.when)+'<br>'+(c.id==="g1"||c.id==="g2"||c.id==="g3"?'<b>答えの受け渡し</b>：PCが5分おきに自動で受け取る（届かない時だけ、プロジェクトのチャットのPCのClaudeへ貼る）':'<b>答えを貼る時刻</b>：'+esc(c.paste)+'（プロジェクトのチャットのPCのClaudeへ）')+'<br><b>最後の答え</b>：'+esc(c.last)+'</p>'+baseFold(c)+
       // OWNER 2026-10-28 「決算の追加指示は②1回だけ入れる方式で…追加指示の箱は『定時タスクに組み込み済み』とたたむ」:
@@ -3427,7 +3445,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         '<p class="an-none">コクピットの決算日程（AIの答えと照らす用）：'+(c.text===null?'決算日程を読めません':esc(c.cal||"対象の決算なし"))+'</p></details>':
        c.text===null?'<p class="an-none">決算日程を読めないので、今日の追加の指示を作れません。</p>':
        c.text?'<ol><li>'+(c.g1?'下のファイルの全文を、Grok1号のタスク（毎日8:00）に入れておく':'下の今日の指示をコピーして、このアナリストのチャットに貼る')+'</li><li>'+(c.g1?'答えはPCが5分おきに受け取る。届かない時だけ、プロジェクトのチャット（PCのClaude）に貼る':'返ってきた答えを、プロジェクトのチャット（PCのClaude）に貼る')+'</li></ol>'+(c.g1?'<p class="an-none" style="white-space:pre-line">'+esc(c.text)+'</p>':'<textarea id="an-t-'+c.id+'" readonly>'+esc(c.text)+'</textarea><button type="button" data-an-copy="an-t-'+c.id+'">この指示をコピー</button>'):
-       '<p class="an-none">'+esc(c.fixed||"今日は追加の指示はありません（対象の決算がない日）。いつもの答えだけ貼ってください。")+'</p>')+'</div>').join("");
+       '<p class="an-none">'+esc(c.fixed||"今日は追加の指示はありません（対象の決算がない日）。いつもの答えだけ貼ってください。")+'</p>')+'</div>').join("")+caHtml;
   }
   document.addEventListener("DOMContentLoaded",()=>{mount();render();setInterval(render,300000);});
 })();

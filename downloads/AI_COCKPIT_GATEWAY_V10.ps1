@@ -947,6 +947,30 @@ function Get-AnalystWeeklyView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-14 「アナリストの欄に、Claudeのアナリスト（テクニカル・ファンダ・決算・FOCUS）のカードも足して…答えの中身は変えない」:
+# RuntimeDir\claude_analysts_v1.json (written every 5 minutes on this PC; only the answer files' names and times) is served as-is when its flags are safe.
+function Get-ClaudeAnalystsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'claude_analysts_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'CLAUDE_ANALYSTS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'CLAUDE_ANALYSTS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-claude-analysts-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'CLAUDE_ANALYSTS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'CLAUDE_ANALYSTS_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-08 「AIコクピットで必ず毎朝予測チャートで知りたい。今のキオクシア専用タブからこっちに変更して」: RuntimeDir\sox_scenario_v1.json
 # (written on this PC every morning by the research script, never in the repo) is served as-is when its flags are safe.
 function Get-SoxScenarioView([string]$RuntimeDir) {
@@ -3270,6 +3294,11 @@ try {
             if ($path -eq '/analyst_instructions.json') {
                 $instrView = Get-AnalystInstructionsView $RuntimeDir
                 Send-Response $stream $instrView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$instrView.body))
+                continue
+            }
+            if ($path -eq '/claude_analysts.json') {
+                $claudeView = Get-ClaudeAnalystsView $RuntimeDir
+                Send-Response $stream $claudeView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$claudeView.body))
                 continue
             }
             if ($path -eq '/analyst_weekly.json') {
