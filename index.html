@@ -272,12 +272,16 @@ document.addEventListener("DOMContentLoaded",()=>{
      const t=Date.parse(j.checked_at),h=Number.isFinite(t)?(Date.now()-t)/3600000:null,at=String(j.checked_at).slice(11,16);
      // OWNER 2026-11-14 「文字がはみだしている」: the line names the first 3 problems and the count; all of them are in the list (press) and the tooltip
      const probs=Array.isArray(j.problems)?j.problems:[],allNames=probs.map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／"),
-       names=probs.length+"件："+probs.slice(0,3).map(p=>String(p.name||"")+"（"+String(p.kind||"")+"）").join("／")+(probs.length>3?"／ほか"+(probs.length-3)+"件（押すと一覧）":"");
+       pd=p=>(String(p.name||"").match(/^前の営業日(\d{2}\/\d{2}) /)||[])[1]||"",
+       pday=probs.length&&probs.every(p=>pd(p)&&pd(p)===pd(probs[0]))?pd(probs[0]):"",
+       // OWNER 2026-11-14 「改行位置がよみにくい」: one problem on each line; a shared 「前の営業日MM/DD」 is said once in the head
+       head=probs.length+"件"+(pday?"（前の営業日"+pday+"の分）":""),
+       rows=probs.slice(0,3).map(p=>"・"+(pday?String(p.name||"").replace(/^前の営業日\d{2}\/\d{2} /,""):String(p.name||""))+"　"+String(p.kind||"")).join("\n")+(probs.length>3?"\n・ほか"+(probs.length-3)+"件は、押すと一覧":"");
      // the check runs on weekdays only: from Friday 18:30 to Monday 9:30 an older check is still the latest
      const np=typeof window.jstParts==="function"?window.jstParts(Date.now()):null,offDay=np&&(np.wd===0||np.wd===6||(np.wd===1&&np.min<600)),limit=offDay?66:26;
      const [cls,label,line]=h==null||h>limit?["gray","定時：点検が古い","最後の点検 "+String(j.checked_at).slice(5,16).replace("T"," ")]:
-       j.state==="STOPPED"?["red","定時：止まりあり",names+"　点検 "+at]:
-       j.state==="LATE"?["yellow","定時：遅れあり",names+"　点検 "+at]:
+       j.state==="STOPPED"?["red","定時：止まりあり",head+"　点検 "+at+"\n"+rows]:
+       j.state==="LATE"?["yellow","定時：遅れあり",head+"　点検 "+at+"\n"+rows]:
        j.state==="OK"&&j.checked>0?["green","定時：正常","全"+j.checked+"本 時刻どおり　点検 "+at]:
        ["gray","定時：点検が読めない","点検の結果の形が違います　点検 "+at];
      const items=Array.isArray(j.items)?j.items:[];
@@ -336,7 +340,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  setTimeout(renderTypes,2500);
  setInterval(renderTypes,60000);
  // the list under the 定時 lamp (opened by a press)
- {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative;min-width:0;max-width:100%}#trade-sched-lamp .brain-lamp small{white-space:normal!important;overflow-wrap:anywhere}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
+ {const st=document.createElement("style");st.textContent="#trade-sched-lamp{position:relative;min-width:0;max-width:100%}#trade-sched-lamp .brain-lamp small{white-space:pre-line!important;overflow-wrap:break-word;line-height:1.6}.sched-list{position:absolute;right:0;top:100%;z-index:60;box-shadow:0 8px 24px #000a;margin-top:6px;padding:8px 10px;border:1px solid #303033;border-radius:10px;background:#111113;font-size:12px;max-height:320px;overflow:auto;min-width:300px}.sched-list>div{padding:2px 0;color:#c9cdd2}.sched-list>div.ng{color:#ff8a8a;font-weight:700}.sched-list small{display:inline!important;margin-left:8px;color:#8b9299;font-weight:400}";document.head.appendChild(st);}
+ // OWNER 2026-11-14 「改行位置がよみにくい、全タブの文字を全部確認しておかしな箇所は全て修正」: Japanese lines break between
+ // phrases (not inside a word like 一|覧 or 出|来高); a phrase longer than its box still breaks so nothing runs out of the box.
+ // The SOX tab's narrow boxes take the longer phrases: the 5 numbers wrap to the next row and the watcher's long state wraps.
+ {const st=document.createElement("style");st.textContent="body{word-break:auto-phrase;overflow-wrap:break-word}body .cc-data-metric b{word-break:auto-phrase}#kioxia-5m-calendar .kio-summary{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}#kioxia-5m-calendar .kio-ms2-title{flex-wrap:wrap}#kioxia-5m-calendar .kio-ms2-title strong{white-space:normal!important;max-width:100%}";document.head.appendChild(st);}
  // the lamp row is built by a later script: the first look waits for it
  setTimeout(renderSched,2500);
  setInterval(renderSched,60000);

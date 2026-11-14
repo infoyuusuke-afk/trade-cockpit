@@ -11,9 +11,21 @@ class ScheduleLampFits(unittest.TestCase):
         i = HTML.index("const renderSched=()=>{")
         block = HTML[i:HTML.index("if((cls===\"red\"||cls===\"yellow\")", i)]
         self.assertIn('probs.slice(0,3)', block)
-        self.assertIn('"／ほか"+(probs.length-3)+"件（押すと一覧）"', block)
+        # OWNER 2026-11-14 「改行位置がよみにくい」: one problem on each line, the shared day said once
+        self.assertIn(r'.join("\n")+(probs.length>3?"\n・ほか"+(probs.length-3)+"件は、押すと一覧":"")', block)
+        self.assertIn('head=probs.length+"件"+(pday?"（前の営業日"+pday+"の分）":"")', block)
+        self.assertIn(r'["red","定時：止まりあり",head+"　点検 "+at+"\n"+rows]', block)
         self.assertIn("el.title=(probs.length?allNames:line)", block)   # every name stays in the tooltip and the list
-        self.assertIn("#trade-sched-lamp{position:relative;min-width:0;max-width:100%}#trade-sched-lamp .brain-lamp small{white-space:normal!important;overflow-wrap:anywhere}", HTML)
+        self.assertIn("#trade-sched-lamp{position:relative;min-width:0;max-width:100%}#trade-sched-lamp .brain-lamp small{white-space:pre-line!important;overflow-wrap:break-word;line-height:1.6}", HTML)
+
+
+class LinesBreakBetweenPhrases(unittest.TestCase):
+    def test_japanese_breaks_between_phrases_and_nothing_runs_out(self):
+        # OWNER 2026-11-14 「全タブの文字を全部確認しておかしな箇所は全て修正」: 一|覧, 出|来高 and the like no longer split
+        self.assertIn('<html lang="ja">', HTML)
+        self.assertIn("body{word-break:auto-phrase;overflow-wrap:break-word}body .cc-data-metric b{word-break:auto-phrase}", HTML)
+        self.assertIn("#kioxia-5m-calendar .kio-summary{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}", HTML)
+        self.assertIn("#kioxia-5m-calendar .kio-ms2-title strong{white-space:normal!important;max-width:100%}", HTML)
 
 
 class StaleLiveFocusDoesNotMuteThePage(unittest.TestCase):
