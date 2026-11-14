@@ -30,6 +30,8 @@ SOURCES = {
     "topix": ("JPX・TOPIX見直し", "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html"),
     "msci": ("MSCI・Index Review", "https://www.msci.com/indexes/index-resources/index-review"),
     "nyse": ("NYSE・Holidays & Trading Hours", "https://www.nyse.com/markets/hours-calendars"),
+    "fec": ("U.S. FEC・Federal Election Commission", "https://www.fec.gov/"),
+    "nvidia": ("NVIDIA・Sets Conference Call for Third-Quarter Financial Results", "https://nvidianews.nvidia.com/news/nvidia-sets-conference-call-for-third-quarter-financial-results-6928873"),
     "cao": ("内閣府・景気統計公表予定", "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html"),
 }
 
@@ -117,6 +119,18 @@ def build() -> dict:
     today = now.date()
     e: list[dict] = []
 
+    # OWNER 2026-11-04 「中間選挙がない」「価格が大きく変動しそうな日をしっかりピックアップして表示」:
+    # the market-wide one-offs a data calendar misses (an election, the earnings the whole AI trade follows).
+    e.append(event("us-midterm-2026", "米中間選挙（投票・日本時間4日朝から開票）", "2026-11-03",
+        "政治", "fec", time_jst="終日", impact="高",
+        flow="開票の間、米先物・金利・ドルと半導体・AI関連が大きく動きやすい。方向は事前断定不可",
+        action="寄り成行を避け、OR15・VWAPと米先物を確認。確定まで数日かかる州がある",
+        note="日本時間11/4の朝から開票。翌営業日の東京市場が最初の反応になる。"))
+    e.append(event("nvidia-earnings-2026-11", "NVIDIA決算（8-10月期）", "2026-11-18",
+        "米決算", "nvidia", time_jst="06:20", impact="高",
+        flow="半導体・AI関連全体の材料。東京は寄りから半導体の値がさ株に波及しやすい",
+        action="半導体の持ち越しを確認。寄り成行を避け、OR15・VWAPを再確認",
+        note="米国11/17 13:20 PT発表。説明会は11/18 07:00（日本時間）。"))
     # One-off confirmed events that directly affect the current Tokyo session.
     e.append(event("us-holiday-2026-09-07", "米国市場休場（Labor Day）", "2026-09-07",
         "米国休場", "nyse", impact="高",
