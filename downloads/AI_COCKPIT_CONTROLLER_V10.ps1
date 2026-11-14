@@ -240,6 +240,18 @@ function Read-State {
 # being read by the Gateway); with ErrorActionPreference Stop that went to the final catch, which waits at Read-Host in a hidden
 # window, so the Controller stood still and the screen went fail-closed. A busy file is now retried for about 2 seconds, then
 # written in place; if even that fails, this one write is skipped (the next loop writes again in 2 seconds). Never throws.
+# OWNER 2026-11-14 Cursor audit (7): never stand still at "Press Enter" - in a hidden window nobody can press it.
+# The message stays readable for a while in a visible window (Enter closes it sooner); without a console it returns at once.
+function Wait-CloseOrTimeout([int]$Seconds = 120) {
+    Write-Host ("This window closes by itself in " + $Seconds + " s (Enter closes it now).") -ForegroundColor Cyan
+    $end = (Get-Date).AddSeconds($Seconds)
+    try {
+        while ((Get-Date) -lt $end) {
+            if ([Console]::KeyAvailable) { $k = [Console]::ReadKey($true); if ($k.Key -eq [ConsoleKey]::Enter) { break } }
+            Start-Sleep -Milliseconds 200
+        }
+    } catch { }
+}
 function Save-State($state) {
     $tmp = $StateFile + "." + $PID + ".tmp"
     $json = ($state | ConvertTo-Json -Depth 6)
@@ -1908,7 +1920,8 @@ try {
     Write-Host ("Logs: " + $LogDir) -ForegroundColor Cyan
     Write-Host ("State file: " + $StateFile) -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "This window is intentionally left open so you can read the cause above." -ForegroundColor Cyan
-    Read-Host "Press Enter to close"
+    try { Add-Content -LiteralPath (Join-Path $LogDir "controller_stopped_on_error.log") -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss") + " " + [string]$_.Exception.Message) -Encoding UTF8 } catch { }
+    Write-Host "The cause above is also kept in controller_stopped_on_error.log in the log folder." -ForegroundColor Cyan
+    Wait-CloseOrTimeout 120
     [Environment]::Exit(1)
 }

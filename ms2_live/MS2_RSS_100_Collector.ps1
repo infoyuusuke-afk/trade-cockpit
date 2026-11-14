@@ -2429,6 +2429,7 @@ $realPosFile = Join-Path $PSScriptRoot "real_positions_v1.json"
 $realPosLatched = $false
 $realPosEvery = 5            # loops between reads (about 6 to 10 s)
 $stopLossVoiceAt = [datetime]::MinValue
+$script:lastSpeakOk = $null
 $realPosRows = 300           # rows kept for each list
 $realPosMarginTop = 1        # formula cell; header on the next row, positions after it
 $realPosCashTop = 310
@@ -2486,6 +2487,30 @@ function Test-AccountListsReady($Margin, $Executions) {
     # OWNER 2026-11-07 「口座の一覧が空（NOT_READY）のときは成功にせず」: no header means the list was not read.
     # A list with its header and no rows is a real empty list (@()), which is ready.
     return ($null -ne $Margin -and $null -ne $Executions)
+}
+# OWNER 2026-11-14 Cursor audit ①: the stop-loss total without Measure-Object -Property, which throws PSArgumentException
+# on [ordered] rows in Windows PowerShell 5.1. A row without a number is skipped (the same rows the old filter kept).
+function Get-GuardPnlSum($Rows) {
+    $sum = 0.0
+    foreach ($x in @($Rows)) {
+        if ($null -eq $x) { continue }
+        $v = $x["pnl"]
+        if ($v -is [double] -or $v -is [int] -or $v -is [long] -or $v -is [decimal]) { $sum += [double]$v }
+    }
+    return $sum
+}
+# OWNER 2026-11-14 「損切り・『現物が読めていません』の声に時刻つきの記録を残す」: records\<day>\voice_guard.csv, one line per
+# guard voice (or guard error), with whether the voice part answered. No amounts are written. Never throws.
+function Write-GuardVoiceLog([string]$DayDir, [string]$Kind, [string]$Detail, [int]$Rows) {
+    try {
+        if ([string]::IsNullOrWhiteSpace($DayDir)) { return }
+        $csv = Join-Path $DayDir "voice_guard.csv"
+        Ensure-Csv $csv "captured_at,kind,detail,rows,voice_ok,price_source_mismatch"
+        $d = ([string]$Detail) -replace '[\r\n,"]', ' '
+        if ($d.Length -gt 160) { $d = $d.Substring(0, 160) }
+        $ok = $(if ($null -eq $script:lastSpeakOk) { "" } else { [string]$script:lastSpeakOk })
+        Add-RecordLines $csv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + $Kind + "," + $d + "," + [string]$Rows + "," + $ok + "," + [string][bool]$script:priceSourceMismatch))
+    } catch { }
 }
 function Get-RealPosNumber($Value) {
     if ($Value -is [double]) { return $Value }
@@ -2713,11 +2738,13 @@ function Add-LoopMark([string]$Name) {
 }
 
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
+    $script:lastSpeakOk = $null   # OWNER 2026-11-14: voice_guard.csv says whether the voice part answered (empty = not tried)
     if ($script:priceSourceMismatch) { return }
     if ([string]::IsNullOrWhiteSpace($text)) { return }
     # V9 VoiceBridge owns Global\KioxiaVoiceMutex. Do not acquire that
     # mutex here before making the HTTP call or caller/bridge would deadlock.
     $ok = Invoke-SbV2Speak $text
+    $script:lastSpeakOk = [bool]$ok
     if (-not $ok) {
         Write-Host "[VOICE] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
@@ -3400,19 +3427,21 @@ try {
                     $rpFail = "LIST_NOT_READY margin=" + [string]($null -ne $rpMargin) + " executions=" + [string]($null -ne $rpExec)
                 } else {
                 $rpToday = (Get-Date).ToString("yyyy/MM/dd")
-                $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
+                # OWNER 2026-11-14 「1行が壊れても全体が読めなくならないよう直す」: a row that cannot be turned into a record is skipped and counted (bad_rows), the rest of the list is kept.
+                $rpBadRows = 0
+                $rpExecRows = @(foreach ($p in @($rpExec)) { try { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
                     [ordered]@{ at = Get-RealPosDate $p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."市場名称"; trade = [string]$p."取引"; side = [string]$p."売買"
-                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } })
-                $rpMarginRows = @(foreach ($p in @($rpMargin)) { if ($null -ne $p) {
+                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } } catch { $rpBadRows++ } })
+                $rpMarginRows = @(foreach ($p in @($rpMargin)) { try { if ($null -ne $p) {
                     [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."建市場"; kind = [string]$p."信用区分"; term = [string]$p."弁済期限"; side = [string]$p."売買"
                                 qty = Get-RealPosNumber $p."建玉数量"; price = Get-RealPosNumber $p."建値"; open_date = [string]$p."建日"
-                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
-                $rpCashRows = @(foreach ($p in @($rpCash)) { if ($null -ne $p) {
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } } catch { $rpBadRows++ } })
+                $rpCashRows = @(foreach ($p in @($rpCash)) { try { if ($null -ne $p) {
                     [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 qty = Get-RealPosNumber $p."保有数量"; price = Get-RealPosNumber $p."平均取得価額"
-                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } } catch { $rpBadRows++ } })
                 $rpView = [ordered]@{
                     schema_version = "100b-v10-real-positions-v1"
                     updated_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
@@ -3423,6 +3452,7 @@ try {
                     margin = $rpMarginRows
                     cash = $rpCashRows
                     executions_today = $rpExecRows
+                    bad_rows = $rpBadRows
                     read_only = $true
                     real_submit_allowed = $false
                     trade_instruction = $false
@@ -3431,7 +3461,12 @@ try {
                 $realPosLastOkAt = Get-Date
                 $realPosFailCount = 0
                 $realPosRetryAt = [datetime]::MinValue
-                # OWNER 2026-11-05 「実口座の建玉の含み損が1回−1万円に届いたら、赤い帯と声で『損切り』と言い続ける見張り」: speaks only; it cannot close anything. In session, at most every 12 s.
+                # OWNER 2026-11-14 Cursor audit ①: on 11/13 every read wrote the file and then threw PSArgumentException in the
+                # stop-loss sum (Measure-Object -Property on [ordered] rows, Windows PowerShell 5.1), so the read was counted as
+                # failed (503 times), the fail count went back to 1 each time (the 15 s retry, never 60 s without a read) and
+                # neither the 損切り voice nor the 口座が読めていません voice was reached. The guard now has its own try:
+                # a guard error is written to voice_guard.csv and never turns a read into a failure.
+                try {
                 $slClock = (Get-Date).TimeOfDay
                 $slInSession = ($slClock -ge [TimeSpan]"09:00:00" -and $slClock -lt [TimeSpan]"11:30:00") -or ($slClock -ge [TimeSpan]"12:30:00" -and $slClock -lt [TimeSpan]"15:30:00")
                 # OWNER 2026-11-05 「両建て中の銘柄の建玉は声を止めて赤い帯だけにして。両建てでない建玉は今のまま声も出す」: hedged = the same rule as the screen (short and long or cash in one code).
@@ -3440,11 +3475,12 @@ try {
                 # OWNER 2026-11-07 「現物の一覧が読めないときは、両建てを『現物が読めていない』と表示し、損切りの声も止める」
                 # OWNER 2026-11-11 「合計で−1万円でなる」「両方：どちらかで鳴る」: one position at −1万 or the total of the margin positions that are not hedged at −1万
                 $slPlain = @($rpMarginRows | Where-Object { $null -ne $_.pnl -and -not ($slShort -contains [string]$_.code -and $slLong -contains [string]$_.code) })
-                $slTotal = [double](($slPlain | Measure-Object -Property pnl -Sum).Sum)
+                $slTotal = Get-GuardPnlSum $slPlain
                 $slOne = @($slPlain | Where-Object { [double]$_.pnl -le -10000 }).Count -gt 0
                 if ($slInSession -and $null -ne $rpCash -and ((Get-Date) - $stopLossVoiceAt).TotalSeconds -ge 12 -and $slPlain.Count -gt 0 -and ($slOne -or $slTotal -le -10000)) {
                     $stopLossVoiceAt = Get-Date
                     Invoke-SerializedSpeak $speaker "損切り"
+                    Write-GuardVoiceLog $dayDir "損切り" $(if ($slOne -and $slTotal -le -10000) { "1銘柄と合計" } elseif ($slOne) { "1銘柄" } else { "合計" }) $slPlain.Count
                 }
                 # OWNER 2026-11-08 「直せるものは全てなおす」: the stop-loss voice is silent while the cash list is unread, so a long gap must be heard. Speaks only.
                 if ($null -eq $rpCash) {
@@ -3452,9 +3488,13 @@ try {
                     if ($slInSession -and ((Get-Date) - $cashUnreadSince).TotalSeconds -ge 60 -and ((Get-Date) - $accountReadVoiceAt).TotalSeconds -ge 60) {
                         $accountReadVoiceAt = Get-Date
                         Invoke-SerializedSpeak $speaker "現物が読めていません"
+                        Write-GuardVoiceLog $dayDir "現物が読めていません" ("読めない " + [string][int]((Get-Date) - $cashUnreadSince).TotalSeconds + "秒") 0
                     }
                 } else {
                     $cashUnreadSince = $null
+                }
+                } catch {
+                    Write-GuardVoiceLog $dayDir "見張りの計算エラー" (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) 0
                 }
                 }
             } catch {
@@ -3482,6 +3522,7 @@ try {
             if (($arClock -ge [TimeSpan]"09:00:00" -and $arClock -lt [TimeSpan]"11:30:00") -or ($arClock -ge [TimeSpan]"12:30:00" -and $arClock -lt [TimeSpan]"15:30:00")) {
                 $accountReadVoiceAt = Get-Date
                 Invoke-SerializedSpeak $speaker "口座が読めていません"
+                Write-GuardVoiceLog $dayDir "口座が読めていません" ("読めない " + [string]$accountReadFailSeconds + "秒") 0
             }
         }
         $script:preopenIdentitySpare = $null
