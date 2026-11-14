@@ -33,25 +33,27 @@ class LocalOnlyMs2GateTests(unittest.TestCase):
             self.assertIn('staleFromAge=d.stale||age>60||age< -5', self.page)
             # The dashboard must not render any stale top/held/PTS/IR
             # prices, and transport errors must erase prior cards.
-            for field, alias in (
-                ("top5", "xs"), ("hold_top5", "holds"),
-                ("pts_top5", "pts"), ("ir_pts_top5", "ir")
-            ):
+            self.assertIn(
+                'const xs=!stale&&Array.isArray(d.top5)?d.top5.filter(x=>rowReady(x)):[];',
+                self.page,
+            )
+            for field, alias in (("hold_top5", "holds"), ("pts_top5", "pts"),
+                                 ("ir_pts_top5", "ir")):
                 self.assertIn(
                     f'const {alias}=!stale&&Array.isArray(d.{field})?d.{field}:[];',
-                    self.page
+                    self.page,
                 )
             self.assertIn('if(cards)cards.innerHTML=""', self.page)
             self.assertIn('if(holdCards)holdCards.innerHTML=""', self.page)
             self.assertIn('if(ptsCards)ptsCards.innerHTML=""', self.page)
             self.assertIn('if(irCards)irCards.innerHTML=""', self.page)
-            self.assertEqual(
-                self.page.count(
-                    "const all=d.stale===false&&"
-                    "Array.isArray(d.all_targets)?d.all_targets:[]"
-                ),
-                2
-            )
+            # V10 requires the common strict source+clock admission even
+            # if a stale=false event arrives or the HTTP endpoint returns 200.
+            self.assertIn('window.cockpitMs2ScreenReady=screenReady', self.page)
+            self.assertIn('const live=window.cockpitMs2ScreenReady?.(d)===true,all=live&&Array.isArray(d.all_targets)', self.page)
+            self.assertIn('window.cockpitMs2RowReady?.(x)===true', self.page)
+            self.assertIn('invalidate("MS2_EVENT_SILENCE_12S")', self.page)
+            self.assertNotIn('live=d.stale===false,bar=', self.page)
         else:
             self.assertIn(self.script, self.page)
 
