@@ -2358,12 +2358,30 @@ $scalp8RetryAt = [datetime]::MinValue
 # a run, so it never holds up the 100-stock collection for long.
 $scalp8SetupError = $null
 $scalp8SetupTries = 0
+# OWNER 2026-11-17 「SCALP8の起動時の準備が失敗する原因を調べて…失敗した時に、止まった行番号も残るようにする」: every SCALP8
+# failure (setup and read) carries the step it was in, the script line number and that line's text, so the next failure
+# shows where it stopped. The first setup failure at start is also written to records/<day>/scalp8_errors.csv.
+$script:scalp8Step = ""
+function Get-Scalp8FailWhere($ErrorRecord) {
+    try {
+        $inv = $ErrorRecord.InvocationInfo
+        $lineText = if ($null -ne $inv) { ([string]$inv.Line).Trim() } else { "" }
+        if ($lineText.Length -gt 90) { $lineText = $lineText.Substring(0, 90) }
+        $where = " @step=" + [string]$script:scalp8Step + " line=" + $(if ($null -ne $inv) { [string]$inv.ScriptLineNumber } else { "?" }) + " code=" + $lineText
+        return ($where -replace '[\r\n,"]', ' ')
+    } catch {
+        return " @where=unknown"
+    }
+}
 $scalp8SetupRetryAt = [datetime]::MinValue
 function Initialize-Scalp8([int]$Retries = 240) {
     $script:scalp8SetupTries++
     try {
+        $script:scalp8Step = "config"
         $codes = @($script:scalp8StartConfig.Codes)
         $sheet = $null
+        $script:scalp8Step = "find-sheet"
+        if ($null -eq $book) { throw "SCALP8_BOOK_NULL" }
         try {
             $sheet = Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート確認" -Action { $book.Worksheets.Item("SCALP8") }
         } catch {
@@ -2371,10 +2389,14 @@ function Initialize-Scalp8([int]$Retries = 240) {
         }
         if ($null -eq $sheet) {
             # Added for this session only (Safe Stop closes the workbook without saving).
+            $script:scalp8Step = "add-sheet"
             $sheet = Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート作成" -Action { $book.Worksheets.Add() }
+            if ($null -eq $sheet) { throw "SCALP8_ADD_RETURNED_NULL" }
+            $script:scalp8Step = "name-sheet"
             Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート命名" -Action { $sheet.Name = "SCALP8" } | Out-Null
         }
         for ($i = 0; $i -lt $codes.Count; $i++) {
+            $script:scalp8Step = "formulas-" + [string]$codes[$i]
             $s8Col = 1 + $scalp8BlockWidth * $i
             $s8Sym = [string]$codes[$i] + ".T"
             Invoke-ExcelCom -Retries $Retries -Label "SCALP8コード設定" -Action { $sheet.Cells.Item(1, $s8Col).Value2 = $s8Sym } | Out-Null
@@ -2390,6 +2412,7 @@ function Initialize-Scalp8([int]$Retries = 240) {
             $s8TickFormula = '=RssTickList(,"' + $s8Sym + '",' + [string]$scalp8TickRows + ')'
             Invoke-ExcelCom -Retries $Retries -Label "SCALP8歩み値式設定" -Action { $sheet.Cells.Item(20, $s8Col).FormulaLocal = [string]$s8TickFormula } | Out-Null
         }
+        $script:scalp8Step = "hide-sheet"
         Invoke-ExcelCom -Retries $Retries -Label "SCALP8シート非表示" -Action { $sheet.Visible = 0 } | Out-Null
         $script:scalp8Codes = $codes
         $script:scalp8Sheet = $sheet
@@ -2401,7 +2424,18 @@ function Initialize-Scalp8([int]$Retries = 240) {
         $script:scalp8Ready = $false
         $reason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
         if ($reason.Length -gt 200) { $reason = $reason.Substring(0, 200) }
+        $reason = $reason + (Get-Scalp8FailWhere $_)
         $script:scalp8SetupError = $reason
+        if ($script:scalp8SetupTries -eq 1) {   # the start's own failure: written too (the retries already write theirs)
+            try {
+                $s8StartDir = Join-Path (Join-Path $PSScriptRoot "records") (Get-Date).ToString("yyyy-MM-dd")
+                if (Test-Path -LiteralPath $s8StartDir -PathType Container) {
+                    $s8StartCsv = Join-Path $s8StartDir "scalp8_errors.csv"
+                    Ensure-Csv $s8StartCsv "captured_at,fail_count,retry_after_s,reason"
+                    Add-RecordLines $s8StartCsv @(((Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff") + ",setup0-start,30," + $reason))
+                }
+            } catch { }
+        }
         $script:scalp8SetupRetryAt = (Get-Date).AddSeconds(30)
         Write-Host "[SCALP8] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
         Write-Host ("[SCALP8] setup retry in 30s from 08:50 (" + [string]$script:scalp8SetupTries + "/10): " + $reason) -ForegroundColor DarkYellow
@@ -3366,6 +3400,8 @@ try {
                 $scalp8RetryAt = (Get-Date).AddSeconds($s8Wait)
                 $s8Reason = (([string]$_.Exception.GetType().Name) + ": " + ([string]$_.Exception.Message)) -replace '[\r\n,"]', ' '
                 if ($s8Reason.Length -gt 200) { $s8Reason = $s8Reason.Substring(0, 200) }
+                $script:scalp8Step = "read"
+                $s8Reason = $s8Reason + (Get-Scalp8FailWhere $_)
                 try {
                     $s8ErrCsv = Join-Path $dayDir "scalp8_errors.csv"
                     Ensure-Csv $s8ErrCsv "captured_at,fail_count,retry_after_s,reason"
