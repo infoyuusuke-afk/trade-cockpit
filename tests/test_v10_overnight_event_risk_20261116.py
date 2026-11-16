@@ -70,6 +70,22 @@ class OvernightEventMarks(unittest.TestCase):
         self.assertIn('h = size(trades, capital, now_hm, ev, half_on_risk=True)', src)
         self.assertIn('keep["sizes"][label]["half_done"] = s["risk_half"]["done"]', src)
 
+    def test_ai_size_follows_the_measured_width(self):
+        # OWNER 2026-11-16 「このリスクを踏まえてAIが判断してトレードして、おれはAIが判断した結果がみたい」
+        self.assertEqual(pos.ai_ratio([{"what": "NVIDIAの決算（米11/17引け後）"}], "8035.T"), 1.2)
+        self.assertEqual(pos.ai_ratio([{"what": "NVIDIAの決算（米11/17引け後）"}], "7203.T"), 1.0)
+        self.assertEqual(pos.ai_ratio([{"what": "FOMC・SEP"}], "6857.T"), 2.2)
+        self.assertEqual(pos.ai_ratio([{"what": "日本株・先物とも休場"}, {"what": "メジャーSQ"}], "9984.T"), 1.4)
+        self.assertEqual(pos.ai_ratio([{"what": "米CPI（11月）"}], "8035.T"), 1.0)          # not measured: unchanged
+        nv = dict(HOLD, ticker="8035.T", risk=[{"what": "NVIDIAの決算"}])
+        self.assertEqual(pos.size([dict(nv)], 3_000_000, "10:00", ai_size=True)["_taken"][0]["shares"], 2500)
+        self.assertEqual(pos.size([dict(nv)], 3_000_000, "10:00")["_taken"][0]["shares"], 3000)   # normal unchanged
+        src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
+        self.assertIn("a = size(trades, capital, now_hm, ev, ai_size=True)", src)
+        self.assertIn('keep["sizes"][label]["ai_done"] = s["risk_ai"]["done"]', src)
+        self.assertIn('row("　AIの判断（予定の夜の値動きの幅に合わせて減らす）",', HTML)
+        self.assertIn('row("　半分（予定のある夜は半分）",', HTML)
+
     def test_screen_marks(self):
         self.assertIn("⚠ 持ち越しの間（次の営業日14:00まで）の注意予定：", HTML)
         self.assertIn("🔶 半導体・NVIDIA決算の夜：", HTML)

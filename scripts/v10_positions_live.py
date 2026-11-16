@@ -643,6 +643,34 @@ def hold_events(runtime: Path, decided: str, exit_day: str) -> list[dict]:
     return sorted({(x["date"], x["time"], x["what"]): x for x in found}.values(), key=lambda x: (x["date"], x["time"]))
 
 
+# OWNER 2026-11-16 「このリスクを踏まえてAIが判断してトレードして、おれはAIが判断した結果がみたい」: the AI's size for a marked night.
+# The night's expected width over an ordinary weeknight (the overnight gap, 2016-11 to 2026-11 daily bars, research file
+# 研究結果\持ち越しの夜\予定のある夜_20261116.txt) scales the shares down so one night carries about the risk of an ordinary night:
+# shares = the normal shares / the largest width ratio of the night's events (100-share units, at least one unit).
+# Semiconductors use the mean of the five measured ones (8035 6857 6920 6146 7735), the others the Nikkei average's ratio.
+# Events without a measured ratio (US CPI, GDP, Broadcom ...) count as 1.0 (not measured, not guessed). Virtual only.
+WIDTH_RATIO = (   # (words in the event name, the ratio for a semiconductor, the ratio for the others)
+    ("休場", 1.4, 1.4),
+    ("NVIDIA", 1.2, 1.0),
+    ("FOMC", 1.1, 1.2),
+    ("雇用統計", 1.25, 1.3),
+    ("SQ", 1.1, 1.3),
+)
+WIDTH_RATIO_CODE = {("FOMC", "6857"): 2.2}
+
+
+def ai_ratio(events: list, ticker: str) -> float:
+    code = str(ticker or "").replace(".T", "")
+    semi = code in SEMI_CODES
+    best = 1.0
+    for e in events or []:
+        what = str(e.get("what") or "")
+        for word, r_semi, r_other in WIDTH_RATIO:
+            if word in what:
+                best = max(best, WIDTH_RATIO_CODE.get((word, code), r_semi if semi else r_other))
+    return best
+
+
 def risk_view(runtime: Path, decided: str, exit_day: str) -> dict:
     ev = hold_events(runtime, decided, exit_day)
     return {"decided": decided, "exit_day": exit_day, "events": ev,
@@ -659,7 +687,7 @@ def _closed_yen(t, shares):
     return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
 
 
-def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False) -> dict:
+def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False, ai_size: bool = False) -> dict:
     """Shares for each trade at one size (overnight holds first: they were opened yesterday).
     ev=None: first come, first served (the reference figures).
     ev={rule: mean % after cost of the days before today}: OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先する形にして。
@@ -677,6 +705,10 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_ris
         cut = False
         if half_on_risk and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 半分
             sh, cut = int(sh * RISK_CUT // 100) * 100, True
+        elif ai_size and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 AIの判断
+            r = ai_ratio(t.get("risk"), t.get("ticker"))
+            if r > 1.0:
+                sh, cut = max(100, int(sh / r // 100) * 100), True
         if sh <= 0:
             skipped_price += 1
             skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
@@ -1306,6 +1338,11 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             s["risk_half"] = {"done": h["rows"]["day"]["done"] + h["rows"]["overnight"]["done"],
                               "open": h["rows"]["day"]["open"] + h["rows"]["overnight"]["open"],
                               "overnight_done": h["rows"]["overnight"]["done"], "overnight_open": h["rows"]["overnight"]["open"]}
+            a = size(trades, capital, now_hm, ev, ai_size=True)
+            a.pop("_taken")
+            s["risk_ai"] = {"done": a["rows"]["day"]["done"] + a["rows"]["overnight"]["done"],
+                            "open": a["rows"]["day"]["open"] + a["rows"]["overnight"]["open"],
+                            "overnight_done": a["rows"]["overnight"]["done"], "overnight_open": a["rows"]["overnight"]["open"]}
         # OWNER 2026-11-09 「先着順の数字も参考に残す」
         if capital is not None:
             f = size(trades, capital, now_hm)
@@ -1329,6 +1366,13 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             s["risk_half"]["since"] = next((p.get("date") for p in past if "half_done" in ((p.get("sizes") or {}).get(label) or {})), today)
             s["risk_half"]["total_done"] = sum(int(x.get("half_done") or 0) for x in kept) + s["risk_half"]["done"]
             s["risk_half"]["total_done_normal"] = sum(int(x.get("done") or 0) for x in kept) + day_done
+        if "risk_ai" in s:   # OWNER 2026-11-16 AIの判断: summed from the first day it was kept
+            keep["sizes"][label]["ai_done"] = s["risk_ai"]["done"]
+            kept_ai = [x for x in prev if "ai_done" in x]
+            s["risk_ai"]["since"] = next((p.get("date") for p in past if "ai_done" in ((p.get("sizes") or {}).get(label) or {})), today)
+            s["risk_ai"]["total_done"] = sum(int(x.get("ai_done") or 0) for x in kept_ai) + s["risk_ai"]["done"]
+            s["risk_ai"]["total_done_normal"] = sum(int(x.get("done") or 0) for x in kept_ai) + day_done
+            s["risk_ai"]["total_done_half"] = sum(int(x.get("half_done") or 0) for x in kept_ai) + s.get("risk_half", {}).get("done", 0)
         sizes.append(dict(s, label=label, capital=capital, done=day_done, open=day_open, closed=closed, wins=wins,
                           open_missing=s["rows"]["day"]["open_missing"] + s["rows"]["overnight"]["open_missing"],
                           total_done=total_done, total_closed=total_closed, total_wins=total_wins,

@@ -4397,6 +4397,11 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       row("今日いちばん多く持った建て金額",s=>'<td>'+man(s.peak_amount)+'</td>')+
       row("今の建玉／枠",s=>'<td>'+man(s.using_amount)+'／'+(s.limit_amount?man(s.limit_amount):"枠なし")+'</td>')+
       row("入れなかった回数",s=>'<td>'+(s.capital?s.skipped_room+'回'+(s.skipped_price?'<span class="g">（1単元が資金より高い '+s.skipped_price+'回）</span>':''):'<span class="g">—</span>')+'</td>')+
+      // OWNER 2026-11-16 「このリスクを踏まえてAIが判断してトレードして、おれはAIが判断した結果がみたい」: 通常・半分・AIの判断 (virtual)
+      row("持ち越しの株数：通常（今日）",s=>s.risk_ai?td(s.done+s.open,yen):'<td class="g">—</td>')+
+      row("　半分（予定のある夜は半分）",s=>s.risk_half?td(s.risk_half.done+s.risk_half.open,yen):'<td class="g">—</td>')+
+      row("　AIの判断（予定の夜の値動きの幅に合わせて減らす）",s=>s.risk_ai?td(s.risk_ai.done+s.risk_ai.open,yen):'<td class="g">—</td>')+
+      row("　通算（確定・比べ始めから）",s=>s.risk_ai&&s.risk_ai.total_done!=null?'<td>通常 <b class="'+cls(s.risk_ai.total_done_normal)+'">'+yen(s.risk_ai.total_done_normal)+'</b><br>半分 <b class="'+cls(s.risk_ai.total_done_half)+'">'+yen(s.risk_ai.total_done_half)+'</b><br>AI <b class="'+cls(s.risk_ai.total_done)+'">'+yen(s.risk_ai.total_done)+'</b><br><small class="g">'+esc(String(s.risk_ai.since||"").slice(5).replace("-","/"))+'から</small></td>':'<td class="g">—</td>')+
       row("先着順なら（参考）",s=>s.fifo?td(s.fifo.done+s.fifo.open,v=>yen(v)+'<span class="g">（入れず '+s.fifo.skipped+'回）</span>'):'<td class="g">—</td>')+
       row("−3万で止めていたら（デイ）",s=>s.limit_hit_at?'<td class="dn">'+esc(s.limit_hit_at)+'で止め '+yen(s.limit_stop_yen)+'</td>':'<td class="g">届かず</td>')+
       '</table>'+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+evLine(cap.rule_ev)+'</div>';
