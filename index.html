@@ -4970,4 +4970,82 @@ main .card hr{display:none}
   if(document.readyState!=="loading")setTimeout(mount,0);
 })();
 </script>
+<style>#earnings-calendar-panel .ec-plan{margin:14px 0 6px;padding:12px 14px;border:1px solid #303033;border-radius:10px}#earnings-calendar-panel .ec-plan h3{margin:0 0 4px}#earnings-calendar-panel .ec-plan .ec-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid #6b5a1e;border-radius:9px;color:#f5c542;font-size:12px}#earnings-calendar-panel .ec-scroll{overflow-x:auto}#earnings-calendar-panel .ec-plan table{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:13px}#earnings-calendar-panel .ec-plan th,#earnings-calendar-panel .ec-plan td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#earnings-calendar-panel .ec-plan th:first-child,#earnings-calendar-panel .ec-plan td:first-child,#earnings-calendar-panel .ec-plan td.ec-name{text-align:left}#earnings-calendar-panel .ec-plan th{color:#b5b5ba;font-weight:400}</style>
+<script>
+// OWNER 2026-11-16 「決算日程タブをA＋B＋C＋Dで1つの版にして。表示と仮想の記録だけで、売買の合図・声・注文カードは付けない」.
+// earnings-calendar.js stays the pinned source: this script decorates its panel from the PC's 16:00 record (/earnings_gap.json).
+// A the coming earnings of the 監視100＋日経225 with the last 2 weeks and the 検証中 mark of the pre-earnings shape, and its virtual record;
+// B a past date says 発表済み with the reaction-day gap and the move from that open; C the momentum lane (34.8% over 3 outcomes, no better
+// than chance) is taken off the screen; D 監視銘柄のみ and today onward by default (過ぎた日も出す shows the rest). Text only, no voice, no order.
+(()=>{
+  const pct=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%";
+  const today=()=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const txt=(parent,tag,value,cls)=>{const el=document.createElement(tag);el.textContent=value;if(cls)el.className=cls;parent.append(el);return el;};
+  let gap=null,loaded=false,panelSeen=null;
+  async function load(){
+    let j=null;try{const r=await fetch("/earnings_gap.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
+    gap=j&&j.real_submit_allowed===false&&j.trade_instruction===false?j:null;loaded=true;paint();
+  }
+  function renderPlan(panel){
+    let box=panel.querySelector("#ec-plan");
+    if(!box){box=document.createElement("div");box.id="ec-plan";box.className="ec-plan";const st=panel.querySelector("#ec-status");if(st)st.after(box);else panel.prepend(box);}
+    box.replaceChildren();
+    const plan=gap&&gap.plan,s=plan&&plan.stats||{};
+    const h=txt(box,"h3","決算前2週間の候補");txt(h,"span",plan&&plan.status==="合格"?"合格":"検証中","ec-badge");
+    if(!gap){txt(box,"div",loaded?"16:00の記録を読めません（0件とは扱いません）。":"16:00の記録を読込中…","ec-note");return;}
+    txt(box,"div","形："+(plan&&plan.rule||"—")+"。2017〜2026年の日足で合格ラインの4条件を通った形を、今の決算で仮想に記録して確かめています。売買の合図ではありません。声と注文カードはありません。","ec-note");
+    txt(box,"div",s.n?("仮想の記録（5日目まで終わった分）："+s.n+"件・平均 "+pct(s.mean_net_pct)+"・勝率 "+(s.win_pct??"—")+"%・PF "+(s.pf??"—")+"・前半 "+pct(s.first&&s.first.mean_net_pct)+"・後半 "+pct(s.second&&s.second.mean_net_pct)+"・でたらめに選んだ場合 "+pct(s.random_mean_net_pct)+"（勝った割合 "+(s.random_beat_pct??"—")+"%）"):"仮想の記録：5日目まで終わった銘柄はまだありません。","ec-note");
+    const up=Array.isArray(gap.upcoming)?gap.upcoming:null;
+    if(!up)txt(box,"div","これからの決算を読めません。","ec-note");
+    else if(!up.length)txt(box,"div","今日から14日の間に、監視100＋日経225の決算はありません。","ec-note");
+    else{const t=txt(txt(box,"div","","ec-scroll"),"table",""),hr=txt(txt(t,"thead",""),"tr","");
+      ["決算日","銘柄","2週間の値動き","出来高の倍率","印"].forEach(x=>txt(hr,"th",x));const tb=txt(t,"tbody","");
+      up.slice(0,60).forEach(r=>{const tr=txt(tb,"tr","");txt(tr,"td",String(r.date||"").slice(5).replace("-","/"));txt(tr,"td",(r.name||"")+"("+(r.code||"")+")","ec-name");
+        txt(tr,"td",pct(r.r10_pct));txt(tr,"td",r.v_ratio==null?"—":Number(r.v_ratio).toFixed(2)+"倍");txt(tr,"td",r.candidate===true?"検証中の候補":"");});
+      txt(box,"div","2週間の値動きと出来高の倍率は、"+String(up[0]&&up[0].as_of||"").slice(5).replace("-","/")+"の引けの時点です（決算の前日の引けで決まります）。","ec-note");}
+    const live=Array.isArray(plan&&plan.rows)?plan.rows:[];
+    if(live.length)txt(box,"div","記録中の候補（寄りから・費用0.1%引き）："+live.map(r=>(r.name||"")+"("+(r.code||"")+") "+(r.day_n??"—")+"日目 "+pct(r.net_pct)).join("　"),"ec-note");
+  }
+  function controls(panel){
+    const w=panel.querySelector("#ec-watched");
+    if(w&&!w.dataset.d16){w.dataset.d16="1";if(!w.checked){w.checked=true;w.dispatchEvent(new Event("change"));}}
+    if(w&&!panel.querySelector("#ec-past")){const lab=document.createElement("label");const box=document.createElement("input");box.type="checkbox";box.id="ec-past";
+      lab.append(box," 過ぎた日も出す");(w.closest("label")||w).after(lab);box.addEventListener("change",()=>items(panel));}
+  }
+  function items(panel){
+    const list=panel.querySelector("#ec-events");if(!list)return;
+    [...(panel.querySelector("#ec-status")?.children||[])].forEach(c=>{if(/^モメンタムレーン/.test(c.textContent||""))c.remove();});
+    const showPast=!!panel.querySelector("#ec-past")?.checked,day=/^\d{4}-\d{2}-\d{2} の決算予定$/.test(panel.querySelector("#ec-date-title")?.textContent||""),d0=today();
+    let shown=0;
+    list.querySelectorAll(":scope > .ec-item").forEach(it=>{
+      const s=it.querySelector(":scope > strong"),m=/^(\d{4}-\d{2}-\d{2})　.*（([0-9][0-9A-Z]{3})）/.exec(s&&s.textContent||"");
+      if(!m)return;
+      const d=m[1],code=m[2];
+      it.hidden=!day&&!showPast&&d<d0;if(!it.hidden)shown++;
+      [...it.children].forEach(c=>{if(c.tagName==="DIV"&&/^モメンタムレーン/.test(c.textContent||""))c.remove();});
+      const key=(gap?"1":"0")+d0;if(it.dataset.d16===key)return;it.dataset.d16=key;
+      it.querySelectorAll(":scope > .ec-d16").forEach(x=>x.remove());
+      const lab=s.nextElementSibling,note=lab&&lab.nextElementSibling;
+      if(d<d0){const p=gap&&gap.past?gap.past[code+"|"+d]:null;
+        if(lab&&lab.tagName==="DIV")lab.textContent=p?"発表済み・翌日の寄り "+pct(p.gap_pct)+"・寄りから "+pct(p.move_pct)+"（"+p.day_n+"日目まで）":"発表日を過ぎています（寄りと5日の記録は監視100＋日経225だけ）";
+        if(note&&note.tagName==="DIV"&&/予測ではありません/.test(note.textContent||""))note.hidden=true;}
+      else{if(lab&&lab.tagName==="DIV"&&lab.textContent==="未発表・期待判断の根拠不足")lab.textContent="未発表";
+        const u=gap&&Array.isArray(gap.upcoming)?gap.upcoming.find(r=>r.code===code&&r.date===d):null;
+        if(u&&lab){const x=document.createElement("div");x.className="ec-note ec-d16";x.textContent="決算前2週間：値動き "+pct(u.r10_pct)+"・出来高 "+(u.v_ratio==null?"—":Number(u.v_ratio).toFixed(2)+"倍")+(u.candidate===true?"・検証中の候補":"");lab.after(x);}}
+    });
+    let empty=list.querySelector(":scope > .ec-d16-empty");
+    if(!shown&&list.querySelector(":scope > .ec-item")){if(!empty){empty=document.createElement("p");empty.className="ec-note ec-d16-empty";empty.textContent="今日から先の決算はありません（「過ぎた日も出す」で前の日を見られます）。";list.append(empty);}}
+    else if(empty)empty.remove();
+  }
+  function paint(){const panel=document.getElementById("earnings-calendar-panel");if(!panel)return;controls(panel);renderPlan(panel);items(panel);}
+  function watch(){
+    const panel=document.getElementById("earnings-calendar-panel");
+    if(!panel||panelSeen===panel)return;panelSeen=panel;
+    const list=panel.querySelector("#ec-events");
+    if(list)new MutationObserver(()=>items(panel)).observe(list,{childList:true});
+    paint();
+  }
+  document.addEventListener("DOMContentLoaded",()=>{watch();load();setInterval(watch,1000);setInterval(load,300000);});
+})();
+</script>
 </body></html>
