@@ -634,7 +634,7 @@ function Get-SignalEvView([string]$RuntimeDir) {
 }
 
 # Brain core picks (top live signals by expected value), rewritten by the Brain
-# observer every pass into RuntimeDirrain_pick_v1.json. Read-only; no order path.
+# observer every pass into RuntimeDir\brain_pick_v1.json. Read-only; no order path.
 function Get-BrainPickView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
     try {
@@ -757,7 +757,7 @@ function Get-ThemeWatchView([string]$RuntimeDir) {
 }
 
 # OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して…『試験中』として成績だけ出して、合図にはしない」:
-# RuntimeDir	rial_methods_v1.json is written by the Brain observer (scripts10_trial_methods.py) and served as-is
+# RuntimeDir\trial_methods_v1.json is written by the Brain observer (scripts\v10_trial_methods.py) and served as-is
 # when its flags are safe.
 function Get-TrialMethodsView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
@@ -1043,7 +1043,7 @@ function Get-MarketTypesView([string]$RuntimeDir) {
     }
 }
 
-# OWNER 2026-11-16 (AI focus picks of the day, locked before 9:00 on this PC): RuntimeDiri_focus_v1.json, written by the research
+# OWNER 2026-11-16 (AI focus picks of the day, locked before 9:00 on this PC): RuntimeDir\ai_focus_v1.json, written by the research
 # script (never in the repo), is served as-is when its flags are safe. Display only: no signal, no voice, no order.
 function Get-AiFocusView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
@@ -1200,7 +1200,7 @@ function Get-RealizedCsvView([string]$RuntimeDir) {
 }
 
 # OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
-# RuntimeDir\scalp8_board_live_v1.json is written by the Brain observer (scripts10_board_live.py) from the Collector's
+# RuntimeDir\scalp8_board_live_v1.json is written by the Brain observer (scripts\v10_board_live.py) from the Collector's
 # board / print records and served as-is when its flags are safe. The board data stays on this PC.
 function Get-Scalp8BoardView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }

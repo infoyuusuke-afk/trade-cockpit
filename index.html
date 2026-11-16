@@ -5106,10 +5106,12 @@ document.addEventListener("DOMContentLoaded",()=>{
     const sec=document.getElementById("ai-top5");if(!sec)return;
     let box=document.getElementById("ai-focus-picks");
     if(!box){box=document.createElement("div");box.id="ai-focus-picks";const h=sec.querySelector("h2");if(h)h.after(box);else sec.prepend(box);}
-    let v=null;try{const r=await fetch("/ai_focus.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){v=null;}
+    let v=null,missing=false;try{const r=await fetch("/ai_focus.json?t="+Date.now(),{cache:"no-store"});const j=await r.json().catch(()=>null);v=r.ok?j:null;missing=!r.ok&&!!j&&j.reason==="AI_FOCUS_MISSING";}catch(_){v=null;}
     box.replaceChildren();
     const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
     txt(box,"div","今日のAI注目（検証中・注文はしません）","af-head");
+    // a day with no lock yet (the file is made at the first 8:50 lock) is not a read error
+    if(missing){txt(box,"div","まだ1回も固めていません（平日8:50ごろに固まります）。","af-note");return;}
     if(!v||v.real_submit_allowed!==false||v.trade_instruction!==false){txt(box,"div","AI注目の記録を読めません（0件とは扱いません）。","af-note");return;}
     const picks=v.day===today&&Array.isArray(v.picks)?v.picks:[];
     txt(box,"div",picks.length?String(v.locked_at||"").slice(11,16)+"に固定（後から変えません）・"+String(v.technical||""):"今日の分はまだ固まっていません（平日8:50ごろに固まります）。","af-note");

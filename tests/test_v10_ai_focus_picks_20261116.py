@@ -40,5 +40,19 @@ class AiFocusPicks(unittest.TestCase):
         self.assertIn("v.real_submit_allowed!==false||v.trade_instruction!==false", code)
 
 
+class AiFocusNightAndClean(unittest.TestCase):
+    def test_no_lock_yet_is_not_a_read_error(self):
+        b = _block()
+        self.assertIn('missing=!r.ok&&!!j&&j.reason==="AI_FOCUS_MISSING";', b)
+        self.assertIn("まだ1回も固めていません（平日8:50ごろに固まります）。", b)
+
+    def test_gateway_has_no_control_characters(self):
+        raw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_bytes()
+        self.assertFalse(any(c < 32 and c not in (9, 10, 13) for c in raw))   # audit 3a77cc6: a BEL in a comment
+        self.assertIn(r"RuntimeDir\ai_focus_v1.json, written", GW)
+        self.assertIn(r"RuntimeDir\brain_pick_v1.json", GW)
+        self.assertIn(r"RuntimeDir\trial_methods_v1.json is written", GW)
+
+
 if __name__ == "__main__":
     unittest.main()
