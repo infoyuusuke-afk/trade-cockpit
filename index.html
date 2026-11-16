@@ -5092,4 +5092,36 @@ main .card hr{display:none}
   document.addEventListener("DOMContentLoaded",()=>{load();setInterval(load,60000);});
 })();
 </script>
+<style>#ai-focus-picks{margin:0 0 10px;padding:10px 12px;border:1px solid #303033;border-radius:10px;background:#0E1013;color:#E8EAED;font-size:13px}#ai-focus-picks .af-head{font-weight:700;margin:0 0 4px}#ai-focus-picks .af-note{color:#b5b5ba;font-size:12px;margin:2px 0 6px;line-height:1.6}#ai-focus-picks .af-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}#ai-focus-picks .af-label{min-width:64px;font-weight:700}#ai-focus-picks .af-chip{padding:2px 9px;border-radius:999px;border:1px solid #303033;font-size:12px;cursor:help}#ai-focus-picks .af-long .af-label{color:#35e2ae}#ai-focus-picks .af-long .af-chip{border-color:#164536;color:#35e2ae;background:#0d2b23}#ai-focus-picks .af-short .af-label{color:#ff6b6b}#ai-focus-picks .af-short .af-chip{border-color:#4a1f24;color:#ff8a8f;background:#2a1215}#ai-focus-picks .af-wait .af-label{color:#b5b5ba}#ai-focus-picks .af-wait .af-chip{color:#c9ccd1}</style>
+<script>
+// OWNER 2026-11-16 「毎朝8:35に、コクピットの全部のアナリスト・テクニカル・板の記録・PTS・決算・Grokを使って、その日の注目銘柄を10前後選んで、理由を
+// 付けて9:00前に固めて。ロング・ショート・様子見に分けて…コクピットのAI注目にも、ロングは緑・ショートは赤で分けて出す。引け後に当たり外れを記録する。
+// 注文はしない」: at the top of the AI注目 panel, the picks the PC locked before 9:00 (/ai_focus.json), ロング green, ショート red, 様子見 grey,
+// each with its score and reasons (hover), and the last scored day and the totals. Text only; no voice, no order.
+document.addEventListener("DOMContentLoaded",()=>{
+  const txt=(parent,tag,value,cls)=>{const el=document.createElement(tag);el.textContent=value;if(cls)el.className=cls;parent.append(el);return el;};
+  const pct=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"%";
+  const tally=(lab,s)=>lab+" "+(s&&s.n?s.n+"件・当たり"+s.hit_pct+"%・平均"+pct(s.mean_pct):"0件");
+  async function paint(){
+    const sec=document.getElementById("ai-top5");if(!sec)return;
+    let box=document.getElementById("ai-focus-picks");
+    if(!box){box=document.createElement("div");box.id="ai-focus-picks";const h=sec.querySelector("h2");if(h)h.after(box);else sec.prepend(box);}
+    let v=null;try{const r=await fetch("/ai_focus.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){v=null;}
+    box.replaceChildren();
+    const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+    txt(box,"div","今日のAI注目（検証中・注文はしません）","af-head");
+    if(!v||v.real_submit_allowed!==false||v.trade_instruction!==false){txt(box,"div","AI注目の記録を読めません（0件とは扱いません）。","af-note");return;}
+    const picks=v.day===today&&Array.isArray(v.picks)?v.picks:[];
+    txt(box,"div",picks.length?String(v.locked_at||"").slice(11,16)+"に固定（後から変えません）・"+String(v.technical||""):"今日の分はまだ固まっていません（平日8:50ごろに固まります）。","af-note");
+    [["買い","ロング","af-long"],["売り","ショート","af-short"],["様子見","様子見","af-wait"]].forEach(([side,label,cls])=>{
+      const xs=picks.filter(p=>p.side===side);if(!xs.length)return;
+      const row=txt(box,"div","","af-row "+cls);txt(row,"span",label,"af-label");
+      xs.forEach(p=>{const c=txt(row,"span",String(p.name||"").replace(/（[0-9A-Z]{4}）$/,"")+"("+p.code+") "+p.score+"点","af-chip");c.title=(Array.isArray(p.reasons)?p.reasons:[]).join("\n");});});
+    const lr=v.last_result,tot=v.totals;
+    if(lr)txt(box,"div",String(lr.day||"").slice(5).replace("-","/")+"の結果（寄り→引け・費用0.1%引き）："+tally("ロング",lr.long)+"／"+tally("ショート",lr.short),"af-note");
+    if(tot)txt(box,"div","通算（"+String(tot.since||"").slice(5).replace("-","/")+"から）："+tally("ロング",tot.long)+"／"+tally("ショート",tot.short),"af-note");
+  }
+  paint();setInterval(paint,60000);
+});
+</script>
 </body></html>

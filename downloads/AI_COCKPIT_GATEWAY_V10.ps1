@@ -1043,6 +1043,30 @@ function Get-MarketTypesView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-16 (AI focus picks of the day, locked before 9:00 on this PC): RuntimeDiri_focus_v1.json, written by the research
+# script (never in the repo), is served as-is when its flags are safe. Display only: no signal, no voice, no order.
+function Get-AiFocusView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'ai_focus_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'AI_FOCUS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return (& $fail 'AI_FOCUS_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-ai-focus-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'AI_FOCUS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'AI_FOCUS_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-16 (new tab "kessan gap"): RuntimeDir\earnings_gap_v1.json, written on this PC at 16:00 on weekdays by the research
 # script (never in the repo), is served as-is when its flags are safe. Research and display only: no signal, no voice, no order card.
 function Get-EarningsGapView([string]$RuntimeDir) {
@@ -3343,6 +3367,11 @@ try {
             if ($path -eq '/market_types.json') {
                 $typesView = Get-MarketTypesView $RuntimeDir
                 Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
+                continue
+            }
+            if ($path -eq '/ai_focus.json') {
+                $focusView = Get-AiFocusView $RuntimeDir
+                Send-Response $stream $focusView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$focusView.body))
                 continue
             }
             if ($path -eq '/earnings_gap.json') {
