@@ -839,7 +839,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!items.length){box.innerHTML=head+'<div class="fa-meta">入れる銘柄がありません</div>';return;}
     box.innerHTML=head+'<div class="cc-grid">'+items.map(x=>{
       const row=rows.get(x.ticker),foot="AIアナリスト "+x.who+"・自信 "+x.conf+"・"+x.side+"・"+x.entry;
-      const card=lastLive&&row&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,foot},{label:x.side==="買い"?"BUY":"SHORT",cls:x.side==="買い"?"long":"short"},"1m")
+      const card=lastLive&&row&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,_allMetrics:true,foot},{label:x.side==="買い"?"BUY":"SHORT",cls:x.side==="買い"?"long":"short"},"1m")
         :(typeof window.renderCockpitCard==="function"?window.renderCockpitCard({symbol:x.code,company:x.name,direction:"block",failClosed:"MS2入力未認証・鮮度切れ・値段なし",freshness:"stale",price:null,foot}):"");
       // OWNER 2026-11-11 「アナリスト銘柄はLONG方向か、一目でわかるように」: the side as a coloured chip above the card (also while the card is closed), and the card edge in the side's colour
       const buy=x.side==="買い",sell=/売/.test(String(x.side||""))&&!buy,dir=buy?"long":sell?"short":"";
@@ -1003,7 +1003,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 #focus-owner-panel .focus-owner-action:hover{border-color:#4a4d55}
 #focus-owner-panel #focus-owner-status{margin:0 0 10px;padding:10px 14px;border-radius:10px}
 #focus-owner-panel #focus-owner-cards .focus-empty{padding:16px;align-items:flex-start}
-#focus-owner-panel .focus-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}#focus-owner-panel .focus-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}#focus-owner-panel .focus-unpin{align-self:stretch;padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}#focus-owner-panel .focus-unpin:hover{background:#341418}
+#focus-owner-panel .focus-pin{display:flex;flex-direction:column;gap:6px;cursor:pointer;border-radius:10px}#focus-owner-panel .cc-grid{grid-auto-rows:1fr;align-items:stretch}#focus-owner-panel .focus-pin>.cc-card{flex:1 1 auto}#focus-owner-panel .cc-card>.cc-foot{margin-top:auto}#focus-owner-panel .focus-pin.selected>.cc-card{outline:2px solid #5aa9ff;outline-offset:1px}#focus-owner-panel .focus-unpin{align-self:stretch;padding:6px 10px;border-radius:8px;border:1px solid #4a1f24;background:#1a1012;color:#ff8a8f;font-size:12px;font-weight:700;cursor:pointer}#focus-owner-panel .focus-unpin:hover{background:#341418}
 </style>
 <section id="focus-owner-panel" class="card wide focus-dashboard" aria-label="OWNER選択・MS2監視">
   <h2>FOCUS｜OWNER指定・最大5銘柄</h2>
@@ -1062,7 +1062,8 @@ document.addEventListener("DOMContentLoaded",()=>{
  let selectedCard=null;
  const cardOf=(t,row)=>{
      if(lastVerified&&eventRecent()&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
-       return window.renderScalpCard({...row,_stale:false,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
+       // OWNER 2026-11-16 「FOCUSのカードの高さをそろえて」: every metric is shown ("—" when missing) and the cards of a grid share one height
+       return window.renderScalpCard({...row,_stale:false,_allMetrics:true,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
      return window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:row?.name||t,direction:"block",
        failClosed:"MS2入力未認証・鮮度切れ・指定銘柄未取得",freshness:"stale",price:null,
        foot:"監視銘柄の固定は維持。実注文禁止。"});
