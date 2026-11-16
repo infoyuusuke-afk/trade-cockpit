@@ -341,6 +341,12 @@ if ($otherExcelAtStop.Count -gt 0) {
     Write-Host ("SAFE_STOP_PREFLIGHT=BLOCKED_OTHER_EXCEL (PID " + (($otherExcelAtStop | ForEach-Object { $_.Id }) -join ",") + "); no processes stopped.") -ForegroundColor Red
     # Japanese text kept as escapes: this file has no BOM (PowerShell 5.1 would misread UTF-8).
     Write-Host ([regex]::Unescape("V10\u4ee5\u5916\u306eExcel\u304c\u958b\u3044\u3066\u3044\u307e\u3059\u3002\u305d\u306eExcel\u3092\u9589\u3058\u3066\u304b\u3089\u3001\u3082\u3046\u4e00\u5ea6\u5b89\u5168\u505c\u6b62\u3057\u3066\u304f\u3060\u3055\u3044\u3002")) -ForegroundColor Red
+    # OWNER 2026-11-17: also said by the V10 voice bridge (nothing is stopped yet, so it is still running). Best effort:
+    # a missing or muted bridge only skips the voice; the refusal and exit code stay the same.
+    try {
+        $stopSay = [regex]::Unescape("AI\u30b3\u30af\u30d4\u30c3\u30c8\u4ee5\u5916\u306eExcel\u304c\u958b\u3044\u3066\u3044\u308b\u306e\u3067\u3001\u6b62\u3081\u3089\u308c\u307e\u305b\u3093\u3002\u305d\u306eExcel\u3092\u9589\u3058\u3066\u304b\u3089\u3001\u3082\u3046\u4e00\u5ea6\u6b62\u3081\u3066\u304f\u3060\u3055\u3044\u3002")
+        [void](Invoke-WebRequest -UseBasicParsing -TimeoutSec 25 -Uri ("http://127.0.0.1:28583/announce?level=CALM&text=" + [Uri]::EscapeDataString($stopSay)))
+    } catch { }
     exit 2
 }
 

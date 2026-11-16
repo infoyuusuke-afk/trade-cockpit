@@ -6,7 +6,8 @@ OWNER 2026-10-28 「コクピットの仮想売買は、今の①〜⑤も残し
 Inputs (both written on the PC, never part of the repo):
   RuntimeDir/trial_inputs_v1.json  for_date, per ticker prev_close / ma25 / dev_pct, and the AI's adopted methods
   RuntimeDir/records/<day>/ticks.csv  the Collector's prints of the watched issues (exchange_time, price)
-Methods (100 shares, cost as the research: buy 0.10 %, interest 2.8 %/year per night):
+Methods (100 shares, strict cost since OWNER 2026-11-17: 0.10 % round trip + one tick in + one tick out (TSE standard
+tick table) + interest 2.8 %/year for each night and the day of the trade):
   DT1  デイトレ① 10:00  prev close <= 25-day line -20 % and the open is -0.5..-2 % under the prev close -> buy the 10:00
        price, stop -2 %, sell the last print
   DT2  デイトレ② 11:30  at 11:30 down 3 %+ on the day and +0.5..+2 % above the open -> buy, stop -2 %, sell the last print
@@ -145,8 +146,19 @@ def run_day_trade(ticks: list, entry_hms: str, entry: float, stop_pct: float, un
     return (last[0], last[1], "引け") if last else (entry_hms, entry, "引け")
 
 
+def _tick(price):
+    """TSE standard tick (the coarser table)."""
+    for upper, tick in ((3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (3000000, 1000),
+                        (5000000, 5000), (30000000, 10000), (50000000, 50000)):
+        if price <= upper:
+            return tick
+    return 100000
+
+
 def _yen(entry, exit_, nights=0):
-    pct = (exit_ / entry - 1) * 100 - COST_PCT - RATE_DAY_PCT * nights
+    # OWNER 2026-11-17 「画面の期待値をきびしい費用で出す」: 0.10 % + a tick in + a tick out + interest of nights + 1 days
+    pct = ((exit_ / entry - 1) * 100 - COST_PCT - _tick(entry) / entry * 100 - _tick(exit_) / exit_ * 100
+           - RATE_DAY_PCT * (nights + 1))
     return round(pct, 3), round(pct / 100 * entry * SHARES)
 
 

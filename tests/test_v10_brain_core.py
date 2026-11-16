@@ -209,7 +209,7 @@ class LogAndShadow(unittest.TestCase):
         view = ev.build_rule_shadow(self.tmp / "records", now=datetime(2026, 10, 22, 7, 0, tzinfo=timezone.utc))
         b = view["forward"]["BRAIN"]
         self.assertEqual((b["n"], b["recent"][0]["exit"]), (1, "TARGET"))
-        self.assertAlmostEqual(b["recent"][0]["return_pct"], 2.1 - 2.80 / 365, places=6)
+        self.assertAlmostEqual(b["recent"][0]["return_pct"], 2.1 - 2.80 / 365 - (0.10 + 100 / 1000 + 100 / 1021), places=6)  # strict cost
 
 
     def test_attention_list_keeps_the_day_newest_first(self):

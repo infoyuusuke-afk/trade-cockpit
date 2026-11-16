@@ -1061,6 +1061,12 @@ function Get-AiFocusView([string]$RuntimeDir) {
             $view.trade_instruction -ne $false) {
             return (& $fail 'AI_FOCUS_FLAGS_INVALID')
         }
+        # OWNER 2026-11-17: picks locked at 9:00 or later are not shown (the lock must be made before the open).
+        $lockedAt = [string]$view.locked_at
+        if ($lockedAt.Length -lt 19 -or $lockedAt.Substring(0, 10) -cne [string]$view.day -or
+            [string]::CompareOrdinal($lockedAt.Substring(11, 8), '09:00:00') -ge 0) {
+            return (& $fail 'AI_FOCUS_LOCKED_AFTER_0900')
+        }
         return @{ status = '200 OK'; body = $text }
     } catch {
         return (& $fail 'AI_FOCUS_UNREADABLE')
@@ -2834,6 +2840,7 @@ try {
                     voice_bridge_pid           = $null
                     sbv2_pid                   = $null
                     excel_pid                  = $null
+                    other_excel_count          = $null
                     workbook_identity_verified = $null
                     voice_backend              = "Style-Bert-VITS2"
                     fail_closed                = $true
@@ -2883,6 +2890,17 @@ try {
                         $runtime.voice_bridge_pid = $st.voice_bridge_pid
                         $runtime.sbv2_pid = $st.sbv2_pid
                         $runtime.excel_pid = $st.excel_pid
+                        # OWNER 2026-11-17: another Excel in this Windows session makes Safe Stop refuse (S3), so the page
+                        # says it out loud before the stop. Counted only when the V10 Excel's PID is known.
+                        try {
+                            $v10ExcelPid = 0
+                            [void][int]::TryParse([string]$st.excel_pid, [ref]$v10ExcelPid)
+                            if ($v10ExcelPid -gt 0) {
+                                $gwSession = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+                                $runtime.other_excel_count = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object {
+                                    [int]$_.SessionId -eq $gwSession -and [int]$_.Id -ne $v10ExcelPid }).Count
+                            }
+                        } catch { $runtime.other_excel_count = $null }
                         $runtime.workbook_identity_verified = $st.workbook_identity_verified
                         $stateWrittenAt = (Get-Item -LiteralPath $controllerStateFile).LastWriteTime
                         $stateAge = ((Get-Date) - $stateWrittenAt).TotalSeconds

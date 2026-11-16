@@ -53,7 +53,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "b74e4382584c2bf195f5ffb6be478b10e01fc81f")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "9b1824febd15fb021f7eec0f27030a300d121298")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
@@ -63,7 +63,7 @@ PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # OWNER 2026-10-28 「デイトレ①②・EP・AIの採用手法を全部足して、手法ごとに別々に記録…『試験中』として成績だけ」:
 # methods on trial, recorded per method from the Collector's ticks (pinned module, display only).
-TRIAL_MODULE = ("v10_trial_methods", "6a32aa1f6ed3425931e64c038e95327fb3d34671")
+TRIAL_MODULE = ("v10_trial_methods", "eaef8c247d754cc13380ee9ab50399563a6d4711")
 TRIAL_INTERVAL = timedelta(seconds=60)
 # OWNER 2026-11-02 「SCALP8の8銘柄の板パネルを、トレード中タブに作って…未検証の表示で…板タブを別にようい」:
 # every pass, the SCALP8 board view from the Collector's board / print records (pinned module, display only).

@@ -459,7 +459,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!ruleShadow)return "";
    return '<p class="sub">Shadow（'+esc(ruleShadow.forward_from)+'以降・仮想）：'+Object.entries(ruleShadow.rules||{}).map(([k,r])=>{
      const f=ruleShadow.forward?.[k]||{};
-     return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回")+"（検証時 後半"+esc(r.backtest?.test?.n)+"回・"+evPct(r.backtest?.test?.ev_pct)+"）";
+     return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回")+"（検証時は前の費用で 後半"+esc(r.backtest?.test?.n)+"回・"+evPct(r.backtest?.test?.ev_pct)+"）";
    }).join("／")+'</p>'+
    '<p class="sub">記録のみ：'+Object.entries(ruleShadow.gap_rules||{}).map(([k,r])=>{
      const f=ruleShadow.forward?.[k]||{};
@@ -549,7 +549,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const verdict=!ok?"根拠不足":Number(s.ev_pct)>0?"期待値プラス":"期待値マイナス";
    return '<div class="rotation-box"><b>'+(ok?(i+1)+". ":"")+esc(x.name||x.ticker)+'｜'+esc(x.signal)+'・'+esc(x.strategy)+'</b>'+
      '<strong>'+esc(verdict)+'</strong>'+
-     '<small>期待値（費用込） '+(s?evPct(s.ev_pct):"—")+'／費用前 '+(s?evPct(s.gross_ev_pct):"—")+'／損益分岐の約定ずれ 片道'+(s&&s.breakeven_slippage_pct_per_side!=null?esc(s.breakeven_slippage_pct_per_side)+"%":"—")+'</small>'+
+     '<small>期待値（きびしい費用） '+(s?evPct(s.ev_pct):"—")+'／前の費用 '+(s&&s.light_ev_pct!=null?evPct(s.light_ev_pct):"—")+'／費用前 '+(s?evPct(s.gross_ev_pct):"—")+'／損益分岐の約定ずれ 片道'+(s&&s.breakeven_slippage_pct_per_side!=null?esc(s.breakeven_slippage_pct_per_side)+"%":"—")+'</small>'+
      '<small>勝率 '+(s&&s.win_rate_pct!=null?esc(s.win_rate_pct)+"%":"—")+'／PF '+(s&&s.pf!=null?esc(s.pf):"—")+'／'+(s?esc(s.n)+"回（"+esc(s.level)+"）":"記録なし")+'</small>'+
      '<small>発動 '+esc(x.entry_price??"—")+'／損切 '+esc(x.stop_price??"—")+'／目標 '+esc(x.target1??"—")+'</small>'+
      (rule?'<small><b>'+esc(rule.rule.label)+' に該当</b>（Shadow）：目標 '+(Number.isFinite(rule.target)?esc(rule.target.toFixed(1)):"—")+'／損切 '+(Number.isFinite(rule.stop)?esc(rule.stop.toFixed(1)):"—")+'</small>':'')+'</div>';
@@ -5106,14 +5106,18 @@ document.addEventListener("DOMContentLoaded",()=>{
     const sec=document.getElementById("ai-top5");if(!sec)return;
     let box=document.getElementById("ai-focus-picks");
     if(!box){box=document.createElement("div");box.id="ai-focus-picks";const h=sec.querySelector("h2");if(h)h.after(box);else sec.prepend(box);}
-    let v=null,missing=false;try{const r=await fetch("/ai_focus.json?t="+Date.now(),{cache:"no-store"});const j=await r.json().catch(()=>null);v=r.ok?j:null;missing=!r.ok&&!!j&&j.reason==="AI_FOCUS_MISSING";}catch(_){v=null;}
+    let v=null,missing=false,lateLock=false;try{const r=await fetch("/ai_focus.json?t="+Date.now(),{cache:"no-store"});const j=await r.json().catch(()=>null);v=r.ok?j:null;missing=!r.ok&&!!j&&j.reason==="AI_FOCUS_MISSING";lateLock=!r.ok&&!!j&&j.reason==="AI_FOCUS_LOCKED_AFTER_0900";}catch(_){v=null;}
     box.replaceChildren();
     const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
     txt(box,"div","今日のAI注目（検証中・注文はしません）","af-head");
     // a day with no lock yet (the file is made at the first 8:50 lock) is not a read error
     if(missing){txt(box,"div","まだ1回も固めていません（平日8:50ごろに固まります）。","af-note");return;}
+    if(!v&&lateLock){txt(box,"div","AI注目が9:00より後に書かれたので、出しません（9:00前に固めた分だけ出します）。","af-note");return;}
     if(!v||v.real_submit_allowed!==false||v.trade_instruction!==false){txt(box,"div","AI注目の記録を読めません（0件とは扱いません）。","af-note");return;}
-    const picks=v.day===today&&Array.isArray(v.picks)?v.picks:[];
+    // OWNER 2026-11-17 「AI注目のファイルが9:00以降に書かれたら出さない」 (the gateway refuses it too)
+    const at=String(v.locked_at||""),beforeOpen=at.slice(0,10)===String(v.day||"")&&at.slice(11,19)<"09:00:00"&&at.length>=19;
+    if(v.day===today&&!beforeOpen){txt(box,"div","AI注目が9:00より後に書かれたので、出しません（9:00前に固めた分だけ出します）。","af-note");return;}
+    const picks=v.day===today&&beforeOpen&&Array.isArray(v.picks)?v.picks:[];
     txt(box,"div",picks.length?String(v.locked_at||"").slice(11,16)+"に固定（後から変えません）・"+String(v.technical||""):"今日の分はまだ固まっていません（平日8:50ごろに固まります）。","af-note");
     [["買い","ロング","af-long"],["売り","ショート","af-short"],["様子見","様子見","af-wait"]].forEach(([side,label,cls])=>{
       const xs=picks.filter(p=>p.side===side);if(!xs.length)return;
@@ -5124,6 +5128,49 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(tot)txt(box,"div","通算（"+String(tot.since||"").slice(5).replace("-","/")+"から）："+tally("ロング",tot.long)+"／"+tally("ショート",tot.short),"af-note");
   }
   paint();setInterval(paint,60000);
+});
+</script>
+<script>
+// OWNER 2026-11-17 「③8:00にMS2の値が動いていなければ声で知らせる・止める前に他のExcelが開いていたら声で知らせる」: two spoken checks.
+// (1) On a trading day (weekday, not an exchange holiday), the pre-open quotes of the watched issues start moving at 8:00. The
+//     page keeps what the quotes looked like at the first reading from 8:00; if by 8:05 nothing has changed (or the data cannot be
+//     read), it says so once that day. Checked until 8:30 only.
+// (2) The gateway's /health counts Excel windows other than the V10 Excel in this Windows session (Safe Stop refuses to stop while
+//     one is open). When one appears, it is said once; it is said again only after it was closed and another one opened.
+// Voice and console only: nothing is stopped or changed, no order.
+document.addEventListener("DOMContentLoaded",()=>{
+  const HOLIDAYS=["2026-11-23","2026-12-31","2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-22","2027-04-29",
+    "2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11","2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
+    "2027-12-31","2028-01-03"];
+  const say=t=>{try{if(typeof window.cockpitSpeak==="function")window.cockpitSpeak(t,"CALM");}catch(_){}console.warn(t);};
+  const jst=()=>{const d=new Date(Date.now()+9*3600000);return {day:d.toISOString().slice(0,10),wd:d.getUTCDay(),hms:d.toISOString().slice(11,19)};};
+  const sig=d=>(Array.isArray(d&&d.all_targets)?d.all_targets:[]).map(x=>[x.ticker,x.bid,x.ask,x.bid_qty,x.ask_qty,x.over,x.under,x.preopen_quote,x.price].join(",")).join(";");
+  const quotes={day:"",base:null,moved:false,spoken:false};
+  async function quoteCheck(){
+    const n=jst();
+    if(n.wd<1||n.wd>5||HOLIDAYS.includes(n.day)||n.hms<"08:00:00"||n.hms>="08:30:00")return;
+    if(quotes.day!==n.day){quotes.day=n.day;quotes.base=null;quotes.moved=false;quotes.spoken=false;}
+    if(quotes.moved||quotes.spoken)return;
+    let s=null;
+    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),3000);
+      const r=await fetch("http://127.0.0.1:28580/live_ms2.json?t="+Date.now(),{cache:"no-store",signal:ctl.signal}).finally(()=>clearTimeout(tm));
+      const d=r.ok?await r.json():null;
+      const up=new Date(String(d&&d.updated_at||"").replace(" ","T")+"+09:00").getTime();
+      if(d&&Number.isFinite(up)&&Date.now()-up<=120000)s=sig(d);}catch(_){s=null;}
+    if(s&&quotes.base===null){quotes.base=s;return;}
+    if(s&&s!==quotes.base){quotes.moved=true;return;}
+    if(n.hms>="08:05:00"){quotes.spoken=true;
+      say(s?"8時を過ぎても、MS2の値が動いていません。マーケットスピードとRSSを確かめてください。":"8時を過ぎても、MS2の値が読めません。マーケットスピードとRSSを確かめてください。");}
+  }
+  let excelOpen=false;
+  async function excelCheck(){
+    let h=null;try{const r=await fetch("/health?t="+Date.now(),{cache:"no-store"});h=r.ok?await r.json():null;}catch(_){h=null;}
+    const c=h&&h.runtime?h.runtime.other_excel_count:null;
+    if(c===null||c===undefined||!Number.isFinite(Number(c)))return;   // unknown: no voice, the state is kept
+    if(Number(c)>0&&!excelOpen){excelOpen=true;say("AIコクピット以外のExcelが開いています。止める前に、そのExcelを閉じてください。");}
+    else if(Number(c)===0)excelOpen=false;
+  }
+  setInterval(quoteCheck,30000);setInterval(excelCheck,60000);quoteCheck();excelCheck();
 });
 </script>
 </body></html>

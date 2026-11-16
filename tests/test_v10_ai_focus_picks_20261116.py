@@ -27,7 +27,8 @@ class AiFocusPicks(unittest.TestCase):
         self.assertIn('[["買い","ロング","af-long"],["売り","ショート","af-short"],["様子見","様子見","af-wait"]]', b)
         self.assertIn("#ai-focus-picks .af-long .af-chip{border-color:#164536;color:#35e2ae;background:#0d2b23}", HTML)
         self.assertIn("#ai-focus-picks .af-short .af-chip{border-color:#4a1f24;color:#ff8a8f;background:#2a1215}", HTML)
-        self.assertIn("const picks=v.day===today&&Array.isArray(v.picks)?v.picks:[];", b)
+        # OWNER 2026-11-17: today only, and only when locked before 9:00
+        self.assertIn("const picks=v.day===today&&beforeOpen&&Array.isArray(v.picks)?v.picks:[];", b)
         self.assertIn("に固定（後から変えません）・", b)
         self.assertIn("AI注目の記録を読めません（0件とは扱いません）。", b)
         self.assertIn("の結果（寄り→引け・費用0.1%引き）：", b)

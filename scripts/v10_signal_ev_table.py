@@ -48,6 +48,14 @@ LONG_INTEREST_PCT_PER_YEAR = 2.80
 SHORT_LENDING_FEE_PCT_PER_YEAR = 1.10
 FINANCING_DAYS_PER_DAY_TRADE = 1          # UNVERIFIED (one day assumed)
 SLIPPAGE_PCT_PER_SIDE = 0.0               # PROVISIONAL: shown as the break-even value instead
+# OWNER 2026-11-17 「画面の期待値をきびしい費用で出す版」: every expected value the screen shows from this replay (EV表, the
+# rules' forward record, the Brain's picks, order cards, the virtual yen built on them) is after the strict cost: the
+# financing above + 0.10 % round trip (the research's cost) + one tick at the fill and one tick at the exit (TSE
+# standard tick table, which is the coarser one for TOPIX500 issues, so never smaller than the real tick). The
+# former light cost stays beside it as light_ev_pct for comparison only. Nothing is loosened by this.
+STRICT_ROUND_TRIP_PCT = 0.10
+TICK_TABLE = ((3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (3000000, 1000),
+              (5000000, 5000), (30000000, 10000), (50000000, 50000))
 MIN_N = 20
 SIDES = {"買いサイン": 1, "空売りサイン": -1}
 
@@ -143,15 +151,31 @@ def cost_pct(side: int) -> float:
     return 2 * (COMMISSION_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) + rate / 365 * FINANCING_DAYS_PER_DAY_TRADE
 
 
+def tick_size(price: float) -> float:
+    """TSE standard tick for a price (the coarser table; TOPIX500 issues have finer ticks)."""
+    for upper, tick in TICK_TABLE:
+        if price <= upper:
+            return tick
+    return 100000
+
+
+def strict_cost_pct(side: int, fill: float, exit_price: float) -> float:
+    """The strict cost in % of one trade: financing + 0.10 % round trip + one tick in and one tick out."""
+    return (cost_pct(side) + STRICT_ROUND_TRIP_PCT + tick_size(fill) / fill * 100
+            + tick_size(exit_price) / exit_price * 100)
+
+
 def _result(side, fill, exit_price, how, fill_t, exit_t):
     gross = side * (exit_price / fill - 1) * 100
     return {"state": "FILLED", "exit": how, "side": side, "fill_price": fill, "exit_price": exit_price,
-            "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross, "return_pct": gross - cost_pct(side)}
+            "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross,
+            "return_pct": gross - strict_cost_pct(side, fill, exit_price), "light_return_pct": gross - cost_pct(side)}
 
 
 def stats(trades: list[dict]) -> dict:
-    """Net of the provisional cost (ev_pct, win_rate_pct, pf) and gross (before cost)."""
+    """Net of the strict cost (ev_pct, win_rate_pct, pf), the former light cost (light_ev_pct) and gross (before cost)."""
     returns = [t["return_pct"] for t in trades]
+    light = [t.get("light_return_pct", t["return_pct"]) for t in trades]
     n = len(returns)
     if not n:
         return {"n": 0, "status": "INSUFFICIENT"}
@@ -166,6 +190,8 @@ def stats(trades: list[dict]) -> dict:
         "ev_pct": round(sum(returns) / n, 3),
         "pf": round(sum(wins) / loss, 2) if loss > 0 else None,
         "gross_ev_pct": round(sum(gross) / n, 3),
+        "light_ev_pct": round(sum(light) / n, 3),
+        "cost_basis": "STRICT",
         # the slippage per side at which this group's average net return is zero
         "breakeven_slippage_pct_per_side": round((sum(returns) / n) / 2 + SLIPPAGE_PCT_PER_SIDE, 4),
         "gross_win_rate_pct": round(sum(1 for g in gross if g > 0) / n * 100, 1),
@@ -226,8 +252,11 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
                         "short_lending_fee_pct_per_year": SHORT_LENDING_FEE_PCT_PER_YEAR,
                         "financing_days_per_day_trade": FINANCING_DAYS_PER_DAY_TRADE,
                         "slippage_pct_per_side": SLIPPAGE_PCT_PER_SIDE, "min_n": MIN_N,
+                        "strict_round_trip_pct": STRICT_ROUND_TRIP_PCT,
+                        "strict_ticks": "one tick at the fill and one at the exit (TSE standard table)",
                         "status": "楽天証券ゼロコース・制度信用 (OWNER 2026-10-21; rates checked 2026-10-21); "
-                                  "1 financing day per day trade UNVERIFIED; slippage 0 PROVISIONAL (break-even shown); "
+                                  "1 financing day per day trade UNVERIFIED; strict cost = financing + 0.10 % round trip "
+                                  "+ 1 tick in + 1 tick out (OWNER 2026-11-17); break-even = extra slippage beyond it; "
                                   "fill window PROVISIONAL"},
         "counts": counts,
         "by_strategy": {k: stats(v) for k, v in sorted(by_strategy.items())},
@@ -327,7 +356,8 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
         gross = side * (exit_p / open_ - 1) * 100
         out.append({"state": "FILLED", "exit": "TIME_EXIT", "side": side, "fill_price": open_, "exit_price": exit_p,
                     "fill_time": open_t, "exit_time": exit_t, "gap_pct": round(gap, 3), "gross_pct": gross,
-                    "return_pct": gross - cost_pct(side), "ticker": ticker, "name": "", "signal_at": open_t})
+                    "return_pct": gross - strict_cost_pct(side, open_, exit_p), "light_return_pct": gross - cost_pct(side),
+                    "ticker": ticker, "name": "", "signal_at": open_t})
     return out
 
 

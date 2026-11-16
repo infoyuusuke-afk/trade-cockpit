@@ -55,7 +55,8 @@ class TrialMethods(unittest.TestCase):
         m = self.by(v)
         t1 = m["DT1"]["trades"][0]
         self.assertEqual((t1["ticker"], t1["entry"], t1["exit"], t1["how"], t1["status"]), ("1111.T", 995, 1010, "引け", "CLOSED"))
-        self.assertEqual(t1["yen"], round(((1010 / 995 - 1) * 100 - 0.10) / 100 * 995 * 100))
+        # OWNER 2026-11-17 strict cost: 0.10 % + one tick in + one tick out + one day of interest
+        self.assertEqual(t1["yen"], round(((1010 / 995 - 1) * 100 - 0.10 - 100 / 995 - 100 / 1010 - 2.8 / 365) / 100 * 995 * 100))
         t2 = m["DT2"]["trades"][0]
         self.assertEqual((t2["ticker"], t2["entry"], t2["exit"], t2["how"]), ("2222.T", 960, 940, "損切り"))
         ep = m["EP"]["trades"][0]
