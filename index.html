@@ -4827,6 +4827,22 @@ main .card hr{display:none}
 #unified-mode .tl-status-lamps .brain-lamp b{font-size:14px}
 #unified-mode .tl-status-lamps .brain-lamp:not(.red) small{display:none!important}
 #unified-mode .unified-mode-controls{margin-left:auto}
+/* OWNER 2026-11-17 「文字の配置バランスが変だから、もっと丁寧に修正」: the band is two fixed rows instead of one wrapping line.
+   Row 1: the 東証 lamp and title on the left, the switches and 「LIVE売買禁止」 on the right, all on one centre line.
+   Row 2 (under a thin line): ブレイン・Grok・定時 from the left, each label on the same line with its dot beside the label; a red
+   lamp's explanation sits under its own label; 今日の型 takes a line of its own. Only the places change, nothing is calculated. */
+#unified-mode{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"lamp title ctl time" "st st st st";align-items:center!important;column-gap:12px!important;row-gap:0!important}
+#unified-mode>.lamp{grid-area:lamp}
+#unified-mode>div:not(.unified-mode-controls):not(.tl-status-lamps){grid-area:title;min-width:0}
+#unified-mode>.unified-mode-controls{grid-area:ctl;margin-left:0!important}
+#unified-mode>#unified-mode-time{grid-area:time;white-space:nowrap}
+#unified-mode>.tl-status-lamps{grid-area:st;flex-wrap:wrap!important;align-items:flex-start!important;gap:8px 32px!important;margin:12px 0 0!important;padding:12px 0 0!important;border-top:1px solid #26282d!important}
+#unified-mode .tl-status-lamps .brain-lamp{align-items:flex-start!important}
+#unified-mode .tl-status-lamps .brain-lamp-dot{margin-top:3px}
+#unified-mode .tl-status-lamps .brain-lamp b{line-height:20px}
+#unified-mode .tl-status-lamps .brain-lamp.red small{margin-top:4px}
+#unified-mode #trade-type-line{flex:1 1 100%!important}
+#unified-mode #trade-type-line:empty{display:none}
 /* an empty サインの履歴 is one line */
 #tl-history.tl-empty #attention-box,#tl-history.tl-empty .tl-more{display:none!important}
 #tl-history .tl-none{display:none;color:#9AA0AA;font-size:13px}#tl-history.tl-empty .tl-none{display:block}
