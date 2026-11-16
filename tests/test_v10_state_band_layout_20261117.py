@@ -22,6 +22,15 @@ class StateBandLayout(unittest.TestCase):
         self.assertIn("#unified-mode #trade-type-line{flex:1 1 100%!important}", self.css)
         self.assertIn("#unified-mode #trade-type-line:empty{display:none}", self.css)
 
+    def test_owner_points_1_to_4(self):
+        # ① the 「LIVE売買禁止」 label has the switches' height (30px) on the same centre line
+        self.assertIn("#unified-mode>#unified-mode-time{grid-area:time;white-space:nowrap;display:inline-flex;align-items:center;box-sizing:border-box;height:30px;", self.css)
+        # ③ the red lamp's list starts at the left edge of its label (no indent of its own)
+        self.assertIn("#unified-mode .tl-status-lamps .brain-lamp.red small{margin:4px 0 0!important;display:block!important}", self.css)
+        # ④ two sizes only: 15px for the state and the three lamp names, 12px for everything else
+        self.assertIn("#unified-mode #unified-mode-title,#unified-mode .tl-status-lamps .brain-lamp b{font-size:15px!important}", self.css)
+        self.assertIn("#unified-mode small,#unified-mode #unified-mode-note,#unified-mode .type-line{font-size:12px!important}", self.css)
+
     def test_layout_only(self):
         for word in ("<script", "fetch(", "renderCockpitCard", "cockpitSpeak", "/control"):
             self.assertNotIn(word, self.css)
