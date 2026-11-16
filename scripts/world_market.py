@@ -35,6 +35,25 @@ INSTRUMENTS = {
     "811": ("米国10年金利", "realtime"),
 }
 
+# OWNER 2026-11-16 「world_market.pyの日本指数の鮮度を1営業日以内に変える…本当に古い値は止めたまま」: a Japanese index close
+# dated "MM/DD" is fresh when it is today's or the previous Tokyo trading day's (weekends and these exchange holidays skipped),
+# so Friday's close counts on Monday morning and the last close counts the morning after a holiday. Anything older is not fresh.
+JP_EXCHANGE_HOLIDAYS = frozenset({
+    "2026-01-01", "2026-01-02", "2026-01-12", "2026-02-11", "2026-02-23", "2026-03-20", "2026-04-29", "2026-05-04",
+    "2026-05-05", "2026-05-06", "2026-07-20", "2026-08-11", "2026-09-21", "2026-09-22", "2026-09-23", "2026-10-12",
+    "2026-11-03", "2026-11-23", "2026-12-31",
+    "2027-01-01", "2027-01-11", "2027-02-11", "2027-02-23", "2027-03-22", "2027-04-29", "2027-05-03", "2027-05-04",
+    "2027-05-05", "2027-07-19", "2027-08-11", "2027-09-20", "2027-09-23", "2027-10-11", "2027-11-03", "2027-11-23",
+    "2027-12-31", "2028-01-03",
+})
+
+
+def previous_trading_day(day):
+    d = day - timedelta(days=1)
+    while d.weekday() >= 5 or d.isoformat() in JP_EXCHANGE_HOLIDAYS:
+        d -= timedelta(days=1)
+    return d
+
 
 class IdTextParser(HTMLParser):
     """Collect rendered text held by the small quote nodes (N/V/T/Z/P)."""
@@ -100,6 +119,8 @@ def freshness(stamp: str, kind: str, now: datetime) -> tuple[bool, str]:
         observed = datetime(now.year, month, day, tzinfo=JST)
         if observed > now + timedelta(days=2):
             observed = observed.replace(year=now.year - 1)
+        if kind == "japan":   # today's close or the previous Tokyo trading day's (1営業日以内)
+            return observed.date() in (now.date(), previous_trading_day(now.date())), observed.date().isoformat()
         # US closes can legitimately be one calendar day behind in Japan.
         limit = 4 if kind == "us_close" else 1
         return 0 <= (now.date() - observed.date()).days <= limit, observed.date().isoformat()
