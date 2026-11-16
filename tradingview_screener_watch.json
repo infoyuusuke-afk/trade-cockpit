@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-16 23:02:11 JST",
+  "updated_at": "2026-11-17 01:21:16 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -6096,22 +6096,6 @@
       "already_watched": false
     },
     {
-      "code": "4307",
-      "name": "Nomura Research Institute,Ltd.",
-      "exchange": "TSE",
-      "price": 6126,
-      "change_pct": 1.8962075848303395,
-      "volume": 1906400,
-      "relative_volume": 0.6462657676439979,
-      "atr_pct": 3.8,
-      "vwap": 6107.333333333333,
-      "high": 6178,
-      "low": 6018,
-      "market_cap": 3294193278076,
-      "sector": "Technology Services",
-      "already_watched": false
-    },
-    {
       "code": "2871",
       "name": "Nichirei Corporation",
       "exchange": "TSE",
@@ -6125,6 +6109,22 @@
       "low": 2374.5,
       "market_cap": 598110670929,
       "sector": "Process Industries",
+      "already_watched": false
+    },
+    {
+      "code": "4307",
+      "name": "Nomura Research Institute,Ltd.",
+      "exchange": "TSE",
+      "price": 6126,
+      "change_pct": 1.8962075848303395,
+      "volume": 1906400,
+      "relative_volume": 0.6462657676439979,
+      "atr_pct": 3.8,
+      "vwap": 6107.333333333333,
+      "high": 6178,
+      "low": 6018,
+      "market_cap": 3294193278076,
+      "sector": "Technology Services",
       "already_watched": false
     },
     {
