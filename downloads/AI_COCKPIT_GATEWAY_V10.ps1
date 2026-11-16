@@ -1043,6 +1043,30 @@ function Get-MarketTypesView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-16 (new tab "kessan gap"): RuntimeDir\earnings_gap_v1.json, written on this PC at 16:00 on weekdays by the research
+# script (never in the repo), is served as-is when its flags are safe. Research and display only: no signal, no voice, no order card.
+function Get-EarningsGapView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'earnings_gap_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'EARNINGS_GAP_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return (& $fail 'EARNINGS_GAP_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-earnings-gap-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'EARNINGS_GAP_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'EARNINGS_GAP_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-12 "hikego mo gateway ga kyou no saigo no nedan (MS2 no kiroku) wo watasu": after the close the live port carries no
 # rows (fail-closed, unchanged), so a restart after the close lost the day's last prices. This route hands out today's last MS2
 # price of each row from live_ms2.json, only after 15:30 JST, only when the file is from today and the Collector closed today's
@@ -3319,6 +3343,11 @@ try {
             if ($path -eq '/market_types.json') {
                 $typesView = Get-MarketTypesView $RuntimeDir
                 Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
+                continue
+            }
+            if ($path -eq '/earnings_gap.json') {
+                $gapView = Get-EarningsGapView $RuntimeDir
+                Send-Response $stream $gapView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$gapView.body))
                 continue
             }
             if ($path -eq '/last_prices.json') {

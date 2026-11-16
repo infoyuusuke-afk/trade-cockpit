@@ -4892,4 +4892,52 @@ main .card hr{display:none}
   document.addEventListener("DOMContentLoaded",()=>{arrange();setInterval(arrange,1000);});
 })();
 </script>
+<style>#earnings-gap-pane .eg-wrap{padding:14px 18px;border:1px solid #2a2e39;border-radius:12px;background:#131722;color:#d1d4dc}#earnings-gap-pane h2{margin:0 0 4px;font-size:18px}#earnings-gap-pane .eg-sub{margin:0 0 12px;color:#9aa0aa;font-size:12px;line-height:1.6}#earnings-gap-pane .eg-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid #6b5a1e;border-radius:9px;color:#f5c542;font-size:12px;font-weight:700}#earnings-gap-pane table{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:13px}#earnings-gap-pane th,#earnings-gap-pane td{padding:6px 8px;border-bottom:1px solid #2a2e39;text-align:right;white-space:nowrap}#earnings-gap-pane th:first-child,#earnings-gap-pane td:first-child,#earnings-gap-pane td.eg-name{text-align:left}#earnings-gap-pane th{color:#9aa0aa;font-weight:400}#earnings-gap-pane .eg-scroll{overflow-x:auto}#earnings-gap-pane h3{margin:12px 0 2px;font-size:14px}#earnings-gap-pane .eg-none{color:#9aa0aa;font-size:13px;margin:6px 0 12px}</style>
+<script>
+// OWNER 2026-11-16 「新しいタブ『決算ギャップ』を作って。決算発表の翌日の寄りで±3%以上飛んだ銘柄（監視100銘柄＋日経225）を、発表から5営業日まで並べる。
+// 銘柄ごとに、発表日・寄りの飛び幅・寄りからの今の値動き（費用0.1%を引いた数字）・TOPIXとの差・何日目かを出す。毎日16:00に記録して、上と下で分けた成績
+// （件数・平均・勝率・PF・前半と後半・でたらめに選んだ場合との比べ）を同じタブに出す。合格するまでは『検証中』と書いて、売買の合図・声・注文カードは付けない」:
+// /earnings_gap.json = the PC's 16:00 record (research script earnings_gap_daily.py). Display only: no colour for up/down, no voice, no order card.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pct=(v,d=2)=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(d)+"%";
+  let pane=null;
+  function mount(){
+    const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
+    if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="earnings-gap"]'))return;
+    pane=document.createElement("div");pane.className="tab-pane";pane.id="earnings-gap-pane";pane.dataset.pane="earnings-gap";pane.style.gridColumn="1/-1";
+    pane.innerHTML='<div class="eg-wrap"><div class="eg-body">読込中...</div></div>';
+    main.append(pane);
+    const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="earnings-gap";b.type="button";b.textContent="決算ギャップ";
+    const after=nav.querySelector('.cockpit-tab[data-tab="earnings"]');
+    if(after)nav.insertBefore(b,after.nextSibling);else nav.insertBefore(b,nav.querySelector(".secondary-tabs"));
+    b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","earnings-gap");}catch(_){}};
+    try{if(localStorage.getItem("cockpitTabV5")==="earnings-gap")b.click();}catch(_){}
+    load();setInterval(load,300000);
+  }
+  function statRow(label,s){
+    if(!s||!s.n)return '<tr><td>'+label+'</td><td colspan="8">5日たった銘柄はまだありません</td></tr>';
+    const half=h=>h&&h.n?pct(h.mean_net_pct)+"（"+esc(h.n)+"件）":"—";
+    return '<tr><td>'+label+'</td><td>'+esc(s.n)+'件</td><td>'+pct(s.mean_net_pct)+'</td><td>'+(s.win_pct==null?"—":esc(s.win_pct)+"%")+'</td><td>'+(s.pf==null?"—":esc(s.pf))+'</td><td>'+half(s.first)+'</td><td>'+half(s.second)+'</td><td>'+pct(s.random_mean_net_pct)+'・勝った割合 '+(s.random_beat_pct==null?"—":esc(s.random_beat_pct)+"%")+'</td><td>'+(s.passed===true?"合格":"検証中")+'</td></tr>';
+  }
+  async function load(){
+    if(!pane)return;
+    const body=pane.querySelector(".eg-body");
+    let j=null;try{const r=await fetch("/earnings_gap.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
+    if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false){body.innerHTML='<h2>決算ギャップ<span class="eg-badge">検証中</span></h2><p class="eg-none">16:00の記録をまだ読めません（0件とは扱いません）。</p>';return;}
+    const st=j.stats||{},rows=Array.isArray(j.rows)?j.rows:[],status=st.up&&st.up.passed===true&&st.down&&st.down.passed===true?"合格":"検証中";
+    body.innerHTML='<h2>決算ギャップ<span class="eg-badge">'+status+'</span></h2>'+
+      '<p class="eg-sub">決算発表の翌日の寄りで±3%以上飛んだ銘柄（監視100銘柄＋日経225）を、5営業日目まで並べます。値動きは寄りから、飛んだ向きに乗った場合（上＝買い・下＝空売り）で、費用0.1%を引いた数字です。'+
+      esc(String(j.recorded_at||"").slice(5,16).replace("-","/"))+'の記録（毎日16:00）。売買の合図ではありません。声と注文カードはありません。</p>'+
+      '<h3>上と下の成績（5日目まで終わった銘柄）</h3><div class="eg-scroll"><table><thead><tr><th></th><th>件数</th><th>平均</th><th>勝率</th><th>PF</th><th>前半</th><th>後半</th><th>でたらめに選んだ場合</th><th>判定</th></tr></thead><tbody>'+
+      statRow("上（寄りで買い）",st.up)+statRow("下（寄りで空売り）",st.down)+'</tbody></table></div>'+
+      '<h3>今並んでいる銘柄（'+rows.length+'件）</h3>'+(rows.length?'<div class="eg-scroll"><table><thead><tr><th>上下</th><th>銘柄</th><th>発表</th><th>寄りの飛び幅</th><th>何日目</th><th>寄りから（費用0.1%引き）</th><th>TOPIXとの差</th></tr></thead><tbody>'+
+        rows.map(r=>'<tr><td>'+esc(r.side)+'</td><td class="eg-name">'+esc(r.name)+'('+esc(r.code)+')</td><td>'+esc(String(r.announced||"").slice(5).replace("-","/"))+'</td><td>'+pct(r.gap_pct)+'</td><td>'+esc(r.day_n)+'日目</td><td>'+pct(r.net_pct)+'</td><td>'+pct(r.topix_diff_pct)+'</td></tr>').join("")+
+        '</tbody></table></div>':'<p class="eg-none">今日の記録で並ぶ銘柄はありません。</p>')+
+      '<p class="eg-sub">でたらめに選んだ場合＝同じ日の寄りから同じ5日間、同じ向きで、ほかの銘柄を選んだ時の平均（2000回）と、この成績がそれより良かった割合。合格は、30件以上・費用込みの平均がプラス・でたらめに95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(mount,0));
+  if(document.readyState!=="loading")setTimeout(mount,0);
+})();
+</script>
 </body></html>
