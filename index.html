@@ -4400,7 +4400,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       // OWNER 2026-11-16 「このリスクを踏まえてAIが判断してトレードして、おれはAIが判断した結果がみたい」: 通常・半分・AIの判断 (virtual)
       row("持ち越しの株数：通常（今日）",s=>s.risk_ai?td(s.done+s.open,yen):'<td class="g">—</td>')+
       row("　半分（予定のある夜は半分）",s=>s.risk_half?td(s.risk_half.done+s.risk_half.open,yen):'<td class="g">—</td>')+
-      row("　AIの判断（予定の夜の値動きの幅に合わせて減らす）",s=>s.risk_ai?td(s.risk_ai.done+s.risk_ai.open,yen):'<td class="g">—</td>')+
+      row("　AIの判断（メルが15:20に0・半分・通常を決める）",s=>s.risk_ai?td(s.risk_ai.done+s.risk_ai.open,yen):'<td class="g">—</td>')+
       row("　通算（確定・比べ始めから）",s=>s.risk_ai&&s.risk_ai.total_done!=null?'<td>通常 <b class="'+cls(s.risk_ai.total_done_normal)+'">'+yen(s.risk_ai.total_done_normal)+'</b><br>半分 <b class="'+cls(s.risk_ai.total_done_half)+'">'+yen(s.risk_ai.total_done_half)+'</b><br>AI <b class="'+cls(s.risk_ai.total_done)+'">'+yen(s.risk_ai.total_done)+'</b><br><small class="g">'+esc(String(s.risk_ai.since||"").slice(5).replace("-","/"))+'から</small></td>':'<td class="g">—</td>')+
       row("先着順なら（参考）",s=>s.fifo?td(s.fifo.done+s.fifo.open,v=>yen(v)+'<span class="g">（入れず '+s.fifo.skipped+'回）</span>'):'<td class="g">—</td>')+
       row("−3万で止めていたら（デイ）",s=>s.limit_hit_at?'<td class="dn">'+esc(s.limit_hit_at)+'で止め '+yen(s.limit_stop_yen)+'</td>':'<td class="g">届かず</td>')+
@@ -5051,6 +5051,45 @@ main .card hr{display:none}
     paint();
   }
   document.addEventListener("DOMContentLoaded",()=>{watch();load();setInterval(watch,1000);setInterval(load,300000);});
+})();
+</script>
+<style>#on-compare{grid-column:1/-1;margin:14px 0 4px;padding:12px 14px;border:1px solid #303033;border-radius:10px;background:#111113;color:#f5f5f7}#on-compare h3{margin:0 0 4px;font-size:15px}#on-compare .oc-note{color:#b5b5ba;font-size:12px;line-height:1.6;margin:2px 0 8px}#on-compare .oc-scroll{overflow-x:auto}#on-compare table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}#on-compare th,#on-compare td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#on-compare th:first-child,#on-compare td:first-child,#on-compare td.oc-l{text-align:left;white-space:normal}#on-compare th{color:#b5b5ba;font-weight:400}#on-compare .up{color:#35e2ae}#on-compare .dn{color:#ff6b6b}</style>
+<script>
+// OWNER 2026-11-16 「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て、銘柄ごとに0・半分・通常から決めて理由を一言書く。
+// 15:25より前に固めて後から変えない。翌日14:00の結果を通常・半分・AIの判断の3つ並べてオーバーナイトのタブに出す。仮想だけで注文はしない」:
+// in OVERNIGHT 5, under the hold cards: tonight's locked decisions of Mel, and the holds out today at 14:00 with the three ways side by side
+// (資金300万の仮想) and the running totals. Text only; the result colours are the same as the capital table. No voice, no order.
+(()=>{
+  const txt=(parent,tag,value,cls)=>{const el=document.createElement(tag);el.textContent=value;if(cls)el.className=cls;parent.append(el);return el;};
+  const yen=v=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Math.round(Number(v)).toLocaleString("ja-JP")+"円";
+  const cl=v=>!Number.isFinite(Number(v))||Number(v)===0?"":Number(v)>0?"up":"dn";
+  const nm=x=>String(x.name||"").replace(/（[0-9A-Z]{4}）$/,"")+"("+String(x.ticker||x.code||"").replace(/\.T$/,"")+")";
+  async function load(){
+    const host=document.getElementById("overnight-top5");if(!host)return;
+    let box=document.getElementById("on-compare");
+    if(!box){box=document.createElement("div");box.id="on-compare";const cards=document.getElementById("ms2-hold-cards");if(cards)cards.after(box);else host.append(box);}
+    let bp=null;try{const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});bp=r.ok?await r.json():null;}catch(_){bp=null;}
+    box.replaceChildren();
+    txt(box,"h3","持ち越しの株数：通常・半分・AIの判断（メル）");
+    txt(box,"div","資金300万の仮想。メルが毎日15:20ごろに、翌朝の注意予定と過去の値動きの幅を見て、銘柄ごとに0・半分・通常を決めて固めます（15:25より後は変えません）。翌日14:00の結果で比べます。売買の合図ではありません。注文はしません。","oc-note");
+    const p=bp&&bp.real_submit_allowed===false&&bp.positions?bp.positions:null;
+    if(!p){txt(box,"div","ブレインの記録を読めません（0件とは扱いません）。","oc-note");return;}
+    const er=p.event_risk||{},mt=er.mel_tonight||{};
+    const codes=Object.keys(mt);
+    txt(box,"div",codes.length?"今夜のメルの判断："+codes.map(c=>c+" "+mt[c].size+"（"+mt[c].reason+"）").join("　"):"今夜のメルの判断：まだありません（15:25までに固まらなければ、その日は通常で数えます）","oc-note");
+    const cap=p.capital&&Array.isArray(p.capital.sizes)?p.capital.sizes.find(s=>s.label==="300万"):null;
+    const rows=cap&&Array.isArray(cap.overnight_compare)?cap.overnight_compare:[];
+    if(!rows.length){txt(box,"div","今日の持ち越し（昨日15:25に決めて今日14:00に手じまう分）はありません。","oc-note");}
+    else{const t=txt(txt(box,"div","","oc-scroll"),"table",""),hr=txt(txt(t,"thead",""),"tr","");
+      ["銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"].forEach(x=>txt(hr,"th",x));const tb=txt(t,"tbody","");
+      rows.forEach(r=>{const tr=txt(tb,"tr","");txt(tr,"td",nm(r),"oc-l");txt(tr,"td",r.side||"");txt(tr,"td",(r.events||[]).join("・")||"なし","oc-l");
+        txt(tr,"td",(r.mel&&r.mel.size||"通常")+"（"+(r.mel&&r.mel.reason||"")+"）","oc-l");
+        ["通常","半分","AI"].forEach(k=>{const v=r[k]||{};txt(tr,"td",(v.shares||0).toLocaleString("ja-JP")+"株 "+yen(v.yen),cl(v.yen));});});
+      txt(box,"div",rows.some(r=>!r.closed)?"14:00より前は含み（費用前）、14:00の後は確定（金利込み）です。":"14:00に手じまった確定の損益（金利込み）です。","oc-note");}
+    const tot=cap&&cap.overnight_total;
+    if(tot)txt(box,"div","通算（"+String(tot.since||"").slice(5).replace("-","/")+"から・確定）：通常 "+yen(tot["通常"])+"・半分 "+yen(tot["半分"])+"・AIの判断 "+yen(tot["AI"]),"oc-note");
+  }
+  document.addEventListener("DOMContentLoaded",()=>{load();setInterval(load,60000);});
 })();
 </script>
 </body></html>

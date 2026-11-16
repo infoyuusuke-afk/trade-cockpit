@@ -599,7 +599,8 @@ def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: 
                     "in": "09:00", "out": EXIT_AT if leave is not None else None, "ret": None, "exit": leave,
                     "last": price_at(tk, min(now_hm, EXIT_AT)) if tk else None, "ticks": tk,
                     "days": _days_between(decided, today), "decided": decided,
-                    "risk": hold_events(runtime, decided, today) if runtime is not None else []})
+                    "risk": hold_events(runtime, decided, today) if runtime is not None else [],
+                    "mel": mel_plan(runtime, decided).get(str(h.get("ticker") or "").replace(".T", ""))})
     return out
 
 
@@ -643,7 +644,34 @@ def hold_events(runtime: Path, decided: str, exit_day: str) -> list[dict]:
     return sorted({(x["date"], x["time"], x["what"]): x for x in found}.values(), key=lambda x: (x["date"], x["time"]))
 
 
-# OWNER 2026-11-16 「このリスクを踏まえてAIが判断してトレードして、おれはAIが判断した結果がみたい」: the AI's size for a marked night.
+# OWNER 2026-11-16 「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て、銘柄ごとに0・半分・通常から決めて
+# 理由を一言書く。15:25より前に固めて後から変えない。翌日14:00の結果を通常・半分・AIの判断の3つ並べてオーバーナイトのタブに出す。仮想だけで
+# 注文はしない」: Mel (the Claude of the virtual メル account) writes mel300\overnight_size_<day>.json once, through the fixed script
+# mel_overnight_size.py (it refuses a second write and any write at or after 15:25). Only a file decided before 15:25 of its day
+# is used; a stock with no decision counts as 通常 and says so. The width table below is what Mel reads (as 過去の値動きの幅).
+MEL_DIR = "mel300"
+MEL_SIZES = ("0", "半分", "通常")
+
+
+def mel_plan(runtime: Path | None, day: str) -> dict:
+    """{code: {"size", "reason"}} of Mel's overnight sizes for the holds decided on day, or {} (missing, late, broken)."""
+    if runtime is None:
+        return {}
+    try:
+        doc = json.loads((Path(runtime) / MEL_DIR / ("overnight_size_%s.json" % day)).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {}
+    at = str(doc.get("decided_at") or "")
+    if doc.get("schema_version") != "100b-v10-mel-overnight-size-v1" or doc.get("day") != day or not (day + " 00:00" <= at < day + " 15:25"):
+        return {}
+    out = {}
+    for x in doc.get("decisions") or []:
+        code = str((x or {}).get("code") or "").replace(".T", "")
+        if code and x.get("size") in MEL_SIZES:
+            out[code] = {"size": x["size"], "reason": str(x.get("reason") or "")[:60]}
+    return out
+
+
 # The night's expected width over an ordinary weeknight (the overnight gap, 2016-11 to 2026-11 daily bars, research file
 # 研究結果\持ち越しの夜\予定のある夜_20261116.txt) scales the shares down so one night carries about the risk of an ordinary night:
 # shares = the normal shares / the largest width ratio of the night's events (100-share units, at least one unit).
@@ -675,7 +703,8 @@ def risk_view(runtime: Path, decided: str, exit_day: str) -> dict:
     ev = hold_events(runtime, decided, exit_day)
     return {"decided": decided, "exit_day": exit_day, "events": ev,
             "level": "高" if any(e["impact"] == "高" for e in ev) else "中" if ev else "",
-            "nvidia_night": any(e["nvidia"] for e in ev), "semi_codes": list(SEMI_CODES)}
+            "nvidia_night": any(e["nvidia"] for e in ev), "semi_codes": list(SEMI_CODES),
+            "width_table": [list(x) for x in WIDTH_RATIO], "width_code": {k[0] + "|" + k[1]: v for k, v in WIDTH_RATIO_CODE.items()}}
 
 
 def _closed_yen(t, shares):
@@ -687,7 +716,7 @@ def _closed_yen(t, shares):
     return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
 
 
-def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False, ai_size: bool = False) -> dict:
+def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False, mel: bool = False) -> dict:
     """Shares for each trade at one size (overnight holds first: they were opened yesterday).
     ev=None: first come, first served (the reference figures).
     ev={rule: mean % after cost of the days before today}: OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先する形にして。
@@ -705,10 +734,14 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_ris
         cut = False
         if half_on_risk and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 半分
             sh, cut = int(sh * RISK_CUT // 100) * 100, True
-        elif ai_size and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 AIの判断
-            r = ai_ratio(t.get("risk"), t.get("ticker"))
-            if r > 1.0:
-                sh, cut = max(100, int(sh / r // 100) * 100), True
+        elif mel and capital is not None and t["kind"] == "overnight":   # OWNER 2026-11-16 AIの判断 = Mel's locked 0・半分・通常
+            d = (t.get("mel") or {}).get("size")
+            if d == "0":
+                skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
+                                "kind": t["kind"], "rule": t.get("rule"), "reason": "メルの判断で0（入らない）", "need": None, "room": None})
+                continue
+            if d == "半分" and sh >= 200:
+                sh, cut = int(sh * RISK_CUT // 100) * 100, True
         if sh <= 0:
             skipped_price += 1
             skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
@@ -1323,6 +1356,33 @@ def _air300_safe(records: Path, runtime: Path, day_dir: Path, today: str) -> dic
         return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "days": [], "real_submit_allowed": False}
 
 
+def overnight_compare(trades: list, normal: list, half: list, ai: list, now_hm: str) -> list:
+    """The overnight holds of the day: the marks, Mel's decision and, for each way, the shares and the yen (closed at 14:00, else open)."""
+    def by(ts):
+        return {t["ticker"]: t for t in ts if t["kind"] == "overnight"}
+    n, h, a = by(normal), by(half), by(ai)
+
+    def yen(t):
+        if t is None:
+            return 0, 0
+        y = _closed_yen(t, t["shares"]) if t["out"] is not None and t["out"] <= now_hm else None
+        if y is None and t["last"] is not None:
+            y = t["side"] * (t["last"] - t["fill"]) * t["shares"]
+        return t["shares"], None if y is None else round(y)
+    rows = []
+    for t in trades:
+        if t["kind"] != "overnight":
+            continue
+        row = {"ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り", "decided": t.get("decided"),
+               "events": [e.get("what") for e in (t.get("risk") or [])][:3], "mel": t.get("mel") or {"size": "通常", "reason": "メルの判断なし（通常で数える）"},
+               "closed": t["out"] is not None and t["out"] <= now_hm}
+        for k, src in (("通常", n), ("半分", h), ("AI", a)):
+            sh, y = yen(src.get(t["ticker"]))
+            row[k] = {"shares": sh, "yen": y}
+        rows.append(row)
+    return rows
+
+
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
     points = marks()
     past = _past(records, today)
@@ -1338,11 +1398,12 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             s["risk_half"] = {"done": h["rows"]["day"]["done"] + h["rows"]["overnight"]["done"],
                               "open": h["rows"]["day"]["open"] + h["rows"]["overnight"]["open"],
                               "overnight_done": h["rows"]["overnight"]["done"], "overnight_open": h["rows"]["overnight"]["open"]}
-            a = size(trades, capital, now_hm, ev, ai_size=True)
-            a.pop("_taken")
+            a = size(trades, capital, now_hm, ev, mel=True)
+            a_taken = a.pop("_taken")
             s["risk_ai"] = {"done": a["rows"]["day"]["done"] + a["rows"]["overnight"]["done"],
                             "open": a["rows"]["day"]["open"] + a["rows"]["overnight"]["open"],
                             "overnight_done": a["rows"]["overnight"]["done"], "overnight_open": a["rows"]["overnight"]["open"]}
+            h_taken = size(trades, capital, now_hm, ev, half_on_risk=True)["_taken"]
         # OWNER 2026-11-09 「先着順の数字も参考に残す」
         if capital is not None:
             f = size(trades, capital, now_hm)
@@ -1351,6 +1412,8 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
                          "open": f["rows"]["day"]["open"] + f["rows"]["overnight"]["open"],
                          "skipped": f["skipped_room"] + f["skipped_price"]}
         taken = s.pop("_taken")
+        if capital is not None:   # OWNER 2026-11-16: the holds out today, 通常・半分・AIの判断 side by side (shares and yen at 14:00)
+            s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm)
         day_done = s["rows"]["day"]["done"] + s["rows"]["overnight"]["done"]
         day_open = s["rows"]["day"]["open"] + s["rows"]["overnight"]["open"]
         closed = s["rows"]["day"]["closed"] + s["rows"]["overnight"]["closed"]
@@ -1366,8 +1429,15 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             s["risk_half"]["since"] = next((p.get("date") for p in past if "half_done" in ((p.get("sizes") or {}).get(label) or {})), today)
             s["risk_half"]["total_done"] = sum(int(x.get("half_done") or 0) for x in kept) + s["risk_half"]["done"]
             s["risk_half"]["total_done_normal"] = sum(int(x.get("done") or 0) for x in kept) + day_done
-        if "risk_ai" in s:   # OWNER 2026-11-16 AIの判断: summed from the first day it was kept
+        if "risk_ai" in s:   # OWNER 2026-11-16 AIの判断 (Mel): summed from the first day it was kept; the overnight part apart too
             keep["sizes"][label]["ai_done"] = s["risk_ai"]["done"]
+            keep["sizes"][label]["on_done"] = {"通常": s["rows"]["overnight"]["done"], "半分": s["risk_half"]["overnight_done"],
+                                              "AI": s["risk_ai"]["overnight_done"]}
+            kept_on = [x for x in prev if isinstance(x.get("on_done"), dict)]
+            s["overnight_total"] = {k: round(sum(float((x["on_done"] or {}).get(k) or 0) for x in kept_on) + keep["sizes"][label]["on_done"][k])
+                                    for k in ("通常", "半分", "AI")}
+            s["overnight_total"]["since"] = next((p.get("date") for p in past
+                                                  if isinstance(((p.get("sizes") or {}).get(label) or {}).get("on_done"), dict)), today)
             kept_ai = [x for x in prev if "ai_done" in x]
             s["risk_ai"]["since"] = next((p.get("date") for p in past if "ai_done" in ((p.get("sizes") or {}).get(label) or {})), today)
             s["risk_ai"]["total_done"] = sum(int(x.get("ai_done") or 0) for x in kept_ai) + s["risk_ai"]["done"]
@@ -1614,7 +1684,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     # OWNER 2026-11-16: the marks of today's 15:25 picks (until the next trading day's 14:00) and of the holds out today at 14:00
     try:
         prev_day = _previous_day_dir(records, today)
-        event_risk = {"tonight": risk_view(runtime, today, _next_weekday(local.date()).isoformat()),
+        event_risk = {"tonight": risk_view(runtime, today, _next_weekday(local.date()).isoformat()), "mel_tonight": mel_plan(runtime, today),
                       "held": risk_view(runtime, prev_day.name, today) if prev_day is not None else None,
                       "rule": "資金別（300万・500万）の仮想は、印のある夜の持ち越しを「通常」と「半分」の両方で数えて比べる（100株は1単元のまま）"}
     except Exception as exc:

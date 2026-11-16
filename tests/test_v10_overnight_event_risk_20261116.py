@@ -77,14 +77,49 @@ class OvernightEventMarks(unittest.TestCase):
         self.assertEqual(pos.ai_ratio([{"what": "FOMC・SEP"}], "6857.T"), 2.2)
         self.assertEqual(pos.ai_ratio([{"what": "日本株・先物とも休場"}, {"what": "メジャーSQ"}], "9984.T"), 1.4)
         self.assertEqual(pos.ai_ratio([{"what": "米CPI（11月）"}], "8035.T"), 1.0)          # not measured: unchanged
-        nv = dict(HOLD, ticker="8035.T", risk=[{"what": "NVIDIAの決算"}])
-        self.assertEqual(pos.size([dict(nv)], 3_000_000, "10:00", ai_size=True)["_taken"][0]["shares"], 2500)
-        self.assertEqual(pos.size([dict(nv)], 3_000_000, "10:00")["_taken"][0]["shares"], 3000)   # normal unchanged
+        v = pos.risk_view(_runtime([]), "2026-11-17", "2026-11-18")
+        self.assertIn(["NVIDIA", 1.2, 1.0], v["width_table"])      # what Mel reads as 過去の値動きの幅
+        self.assertEqual(v["width_code"], {"FOMC|6857": 2.2})
+
+    def test_mel_decision_locked_before_1525(self):
+        # OWNER 2026-11-16 「毎日15:20にメルが…0・半分・通常から決めて理由を一言書く。15:25より前に固めて後から変えない」
+        rt = _runtime([])
+        (rt / "mel300").mkdir()
+        f = rt / "mel300" / "overnight_size_2026-11-17.json"
+        doc = {"schema_version": "100b-v10-mel-overnight-size-v1", "day": "2026-11-17", "decided_at": "2026-11-17 15:18:02",
+               "decisions": [{"code": "8035", "size": "0", "reason": "NVIDIA決算の夜"}, {"code": "7203", "size": "半分", "reason": "幅"},
+                             {"code": "6857", "size": "大きく", "reason": "形が違う"}]}
+        f.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        got = pos.mel_plan(rt, "2026-11-17")
+        self.assertEqual(got["8035"]["size"], "0")
+        self.assertEqual(got["7203"]["size"], "半分")
+        self.assertNotIn("6857", got)                                # only 0・半分・通常
+        f.write_text(json.dumps(dict(doc, decided_at="2026-11-17 15:25:00"), ensure_ascii=False), encoding="utf-8")
+        self.assertEqual(pos.mel_plan(rt, "2026-11-17"), {})         # at or after 15:25: not used
+        a = dict(HOLD, ticker="8035.T", risk=[{"what": "NVIDIAの決算"}], mel={"size": "0", "reason": "x"})
+        b = dict(HOLD, ticker="7203.T", mel={"size": "半分", "reason": "y"})
+        c = dict(HOLD, ticker="9984.T", mel=None)
+        taken = {t["ticker"]: t["shares"] for t in pos.size([dict(a), dict(b), dict(c)], 3_000_000, "10:00", mel=True)["_taken"]}
+        self.assertEqual(taken, {"7203.T": 1500, "9984.T": 3000})     # 0 = not entered, 半分 = half, none = 通常
+        normal = {t["ticker"]: t["shares"] for t in pos.size([dict(a), dict(b), dict(c)], 3_000_000, "10:00")["_taken"]}
+        self.assertEqual(normal, {"8035.T": 3000, "7203.T": 3000, "9984.T": 3000})   # the normal sizing is unchanged
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
-        self.assertIn("a = size(trades, capital, now_hm, ev, ai_size=True)", src)
-        self.assertIn('keep["sizes"][label]["ai_done"] = s["risk_ai"]["done"]', src)
-        self.assertIn('row("　AIの判断（予定の夜の値動きの幅に合わせて減らす）",', HTML)
+        self.assertIn("a = size(trades, capital, now_hm, ev, mel=True)", src)
+        self.assertIn('s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm)', src)
+        self.assertIn('"mel_tonight": mel_plan(runtime, today)', src)
+        self.assertIn('row("　AIの判断（メルが15:20に0・半分・通常を決める）",', HTML)
         self.assertIn('row("　半分（予定のある夜は半分）",', HTML)
+
+    def test_overnight_tab_shows_the_three_ways(self):
+        i = HTML.index("「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て")
+        b = HTML[i:HTML.index("</script>", i)]
+        self.assertIn('["銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"]', b)
+        self.assertIn('p.capital.sizes.find(s=>s.label==="300万")', b)
+        self.assertIn("bp.real_submit_allowed===false", b)
+        code = "\n".join(line for line in b.splitlines() if not line.lstrip().startswith("//"))
+        self.assertNotIn("innerHTML", code)
+        for banned in ("cockpitSpeak", "order", "RssOrder"):
+            self.assertNotIn(banned, code)
 
     def test_screen_marks(self):
         self.assertIn("⚠ 持ち越しの間（次の営業日14:00まで）の注意予定：", HTML)
