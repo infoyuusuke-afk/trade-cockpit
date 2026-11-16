@@ -1,7 +1,9 @@
 """OWNER 2026-11-16 「オーバーナイト銘柄に、翌朝の注意予定（海外大型決算・米指標・休場前）の印と予定名を出して、半導体銘柄はエヌビディア決算の夜に
 特に印を付けて。株数は通常と半分の両方を仮想で記録して比べる…表示と仮想の記録だけで、注文はしない」."""
 import json
+import os
 import sys
+from datetime import datetime, timedelta, timezone
 import tempfile
 import unittest
 from pathlib import Path
@@ -90,11 +92,17 @@ class OvernightEventMarks(unittest.TestCase):
                "decisions": [{"code": "8035", "size": "0", "reason": "NVIDIA決算の夜"}, {"code": "7203", "size": "半分", "reason": "幅"},
                              {"code": "6857", "size": "大きく", "reason": "形が違う"}]}
         f.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        jst = timezone(timedelta(hours=9))
+        at = lambda hm: datetime(2026, 11, 17, int(hm[:2]), int(hm[3:]), tzinfo=jst).timestamp()
+        os.utime(f, (at("15:18"), at("15:18")))
         got = pos.mel_plan(rt, "2026-11-17")
         self.assertEqual(got["8035"]["size"], "0")
         self.assertEqual(got["7203"]["size"], "半分")
         self.assertNotIn("6857", got)                                # only 0・半分・通常
+        os.utime(f, (at("15:30"), at("15:30")))
+        self.assertEqual(pos.mel_plan(rt, "2026-11-17"), {})         # audit a8c6473: the file changed after 15:25: not used
         f.write_text(json.dumps(dict(doc, decided_at="2026-11-17 15:25:00"), ensure_ascii=False), encoding="utf-8")
+        os.utime(f, (at("15:18"), at("15:18")))
         self.assertEqual(pos.mel_plan(rt, "2026-11-17"), {})         # at or after 15:25: not used
         a = dict(HOLD, ticker="8035.T", risk=[{"what": "NVIDIAの決算"}], mel={"size": "0", "reason": "x"})
         b = dict(HOLD, ticker="7203.T", mel={"size": "半分", "reason": "y"})

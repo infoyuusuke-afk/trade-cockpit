@@ -657,9 +657,14 @@ def mel_plan(runtime: Path | None, day: str) -> dict:
     """{code: {"size", "reason"}} of Mel's overnight sizes for the holds decided on day, or {} (missing, late, broken)."""
     if runtime is None:
         return {}
+    f = Path(runtime) / MEL_DIR / ("overnight_size_%s.json" % day)
     try:
-        doc = json.loads((Path(runtime) / MEL_DIR / ("overnight_size_%s.json" % day)).read_text(encoding="utf-8-sig"))
+        # audit a8c6473: the file itself must also be last written before 15:25 of its day (a later change is not used)
+        written = datetime.fromtimestamp(f.stat().st_mtime, JST).strftime("%Y-%m-%d %H:%M:%S")
+        doc = json.loads(f.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
+        return {}
+    if not (day + " 00:00" <= written < day + " 15:25"):
         return {}
     at = str(doc.get("decided_at") or "")
     if doc.get("schema_version") != "100b-v10-mel-overnight-size-v1" or doc.get("day") != day or not (day + " 00:00" <= at < day + " 15:25"):
