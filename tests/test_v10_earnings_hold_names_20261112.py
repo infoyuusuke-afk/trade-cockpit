@@ -51,7 +51,8 @@ class EarningsHoldNames(unittest.TestCase):
             out = m.earnings_soon(rt, "2026-11-12", "17:00")
         self.assertEqual(out["items"]["4493"]["label"], "明日決算")
         self.assertEqual(out["no_date"], ["9983"])
-        for where in ('const tag=em?\'<div class="earn-tag">', "const tag=em?\"<div class='earn-tag'>"):
+        # OWNER 2026-11-16: the tag is now (earnings tag)+(event tag), so it opens with a bracket
+        for where in ('const tag=(em?\'<div class="earn-tag">', "const tag=(em?\"<div class='earn-tag'>"):
             i = HTML.index(where)
             block = HTML[i - 400:i]
             self.assertIn('const unk=!em&&(!es||!(es.state==="OK"||es.state==="OLD")||(Array.isArray(es.no_date)&&es.no_date.includes(', block)

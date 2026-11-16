@@ -58,7 +58,8 @@ class OwnerRules(unittest.TestCase):
         src = (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8")
         # OWNER 2026-11-09: capital and earnings_soon follow (資金別・決算またぎの印); owner_rules is still passed through
         self.assertIn('"owner_rules", "short_rebound", "overnight_closed",', src)
-        self.assertIn('"capital", "earnings_soon", "focus_analyst")}', src)
+        # OWNER 2026-11-16: event_risk (the impact-高 events of the overnight holds) follows too
+        self.assertIn('"capital", "earnings_soon", "focus_analyst", "event_risk")}', src)
 
 
 class OwnerRulesScreen(unittest.TestCase):

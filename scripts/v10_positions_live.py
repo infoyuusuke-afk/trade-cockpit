@@ -567,7 +567,8 @@ def _days_between(a: str, b: str) -> int:
         return 1
 
 
-def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: str, ticks: dict, now_hm: str) -> list:
+def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: str, ticks: dict, now_hm: str,
+              runtime: Path | None = None) -> list:
     """One list of virtual trades for the sizing: day trades filled today and the overnight holds that end today at 14:00.
     The 14:00 price is the Collector's (overnight_hold_1400.json) or, when that file is missing, the last recorded tick at 14:00."""
     out = []
@@ -597,8 +598,56 @@ def trades_of(rule_positions: list, carry: list, closed_overnight: list, today: 
         out.append({"kind": "overnight", "rule": "ON_LONG" if side > 0 else "ON_SHORT", "ticker": h.get("ticker"), "name": h.get("name"), "side": side, "fill": fill,
                     "in": "09:00", "out": EXIT_AT if leave is not None else None, "ret": None, "exit": leave,
                     "last": price_at(tk, min(now_hm, EXIT_AT)) if tk else None, "ticks": tk,
-                    "days": _days_between(decided, today), "decided": decided})
+                    "days": _days_between(decided, today), "decided": decided,
+                    "risk": hold_events(runtime, decided, today) if runtime is not None else []})
     return out
+
+
+# OWNER 2026-11-16 「オーバーナイト銘柄に、翌朝の注意予定（海外大型決算・米指標・休場前）の印と予定名を出して、半導体銘柄はエヌビディア決算の
+# 夜に特に印を付けて。株数は通常と半分の両方を仮想で記録して比べる…表示と仮想の記録だけで、注文はしない」: an overnight hold is held from the
+# 15:25 decision to 14:00 of the next trading day. The events of impact 「高」 and 「中」 inside that window (the event calendar the screen
+# shows, public_feed\event_calendar.json: US figures, FOMC, SQ, the exchange holidays; and the US results that move the Tokyo
+# semiconductors, with the date the company itself announced) are the hold's marks. A semiconductor stock on an NVIDIA results night
+# gets its own mark. The virtual 300万 / 500万 sizes are kept as before (通常) and are also counted with half the shares on a marked
+# night (半分, 100-share units; one unit stays one unit), side by side. The 100-share line is unchanged. Virtual only: no order.
+OVERSEAS_EVENTS = (("2026-11-18", "06:20", "NVIDIAの決算（米11/17引け後）"), ("2026-12-10", "06:00", "Broadcomの決算（米12/9引け後）"))
+EVENT_FEED = Path("public_feed") / "event_calendar.json"
+RISK_CUT = 0.5
+SEMI_CODES = ("285A", "6857", "8035", "6920", "6146", "6525", "7735", "3436", "6526", "4062", "6963", "6723", "4063", "6254",
+              "7729", "6323", "6315", "6266", "3132", "5803")
+
+
+def _event_hm(t) -> str | None:
+    t = str(t or "").strip()
+    if len(t) == 5 and t[2] == ":" and t.replace(":", "").isdigit():
+        return t
+    return {"寄り付き": "09:00", "前場": "09:00", "大引け": "15:30", "引け": "15:30"}.get(t)
+
+
+def hold_events(runtime: Path, decided: str, exit_day: str) -> list[dict]:
+    """Impact 高・中 events from the decision (decided, 15:25) to the exit (exit_day, 14:00). An event without a clock time on a day
+    between them is inside (a holiday); on the exit day it counts unless its time is 14:00 or later."""
+    found = []
+    try:
+        doc = json.loads((Path(runtime) / EVENT_FEED).read_text(encoding="utf-8-sig"))
+        events = [(str(e.get("date") or ""), e.get("time_jst"), str(e.get("title") or ""), e.get("impact"))
+                  for e in (doc.get("events") or []) if isinstance(e, dict) and e.get("impact") in ("高", "中")]
+    except (OSError, ValueError, AttributeError):
+        events = []
+    for d, t, what, imp in events + [(d, t, w, "高") for d, t, w in OVERSEAS_EVENTS]:
+        hm = _event_hm(t)
+        inside = ((d == decided and hm is not None and hm >= "15:30") or decided < d < exit_day
+                  or (d == exit_day and (hm is None or hm < EXIT_AT)))
+        if inside and what:
+            found.append({"date": d, "time": str(t or ""), "what": what[:80], "impact": imp, "nvidia": what.startswith("NVIDIA")})
+    return sorted({(x["date"], x["time"], x["what"]): x for x in found}.values(), key=lambda x: (x["date"], x["time"]))
+
+
+def risk_view(runtime: Path, decided: str, exit_day: str) -> dict:
+    ev = hold_events(runtime, decided, exit_day)
+    return {"decided": decided, "exit_day": exit_day, "events": ev,
+            "level": "高" if any(e["impact"] == "高" for e in ev) else "中" if ev else "",
+            "nvidia_night": any(e["nvidia"] for e in ev), "semi_codes": list(SEMI_CODES)}
 
 
 def _closed_yen(t, shares):
@@ -610,7 +659,7 @@ def _closed_yen(t, shares):
     return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
 
 
-def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
+def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False) -> dict:
     """Shares for each trade at one size (overnight holds first: they were opened yesterday).
     ev=None: first come, first served (the reference figures).
     ev={rule: mean % after cost of the days before today}: OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先する形にして。
@@ -625,6 +674,9 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
     skipped = []
     for t in order:
         sh = _shares(t["fill"], capital)
+        cut = False
+        if half_on_risk and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 半分
+            sh, cut = int(sh * RISK_CUT // 100) * 100, True
         if sh <= 0:
             skipped_price += 1
             skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
@@ -640,7 +692,7 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
             skipped.append({"at": t["in"], "ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り",
                             "kind": t["kind"], "rule": t.get("rule"), "reason": why, "need": round(t["fill"] * sh), "room": round(max(0.0, limit - using))})
             continue
-        taken.append(dict(t, shares=sh))
+        taken.append(dict(t, shares=sh, risk_cut=cut))
         peak = max(peak, using + t["fill"] * sh)
     rows = {"day": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0, "open_missing": 0},
             "overnight": {"done": 0.0, "open": 0.0, "n": 0, "closed": 0, "wins": 0, "open_missing": 0}}
@@ -659,7 +711,7 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None) -> dict:
             # OWNER 2026-11-09 「フルレバで３００万　５００万も表示…その場合のポジションはわかりやすく表示して」: name, side and entry for the screen
             held.append({"ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り", "fill": t["fill"], "last": t["last"],
                          "kind": t["kind"], "shares": t["shares"], "amount": round(t["fill"] * t["shares"]),
-                         "open_yen": round(u)})
+                         "open_yen": round(u), "risk": [e["what"] for e in (t.get("risk") or [])][:3], "risk_cut": bool(t.get("risk_cut"))})
         elif t["out"] is None or t["out"] > now_hm:
             # OWNER 2026-11-12 「値段がない時は合計に『含み一部なし』と書く」: a hold without a price counts 0, and is counted here
             r["open_missing"] += 1
@@ -1247,6 +1299,13 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
     ev = (ev_doc or {}).get("ev") or {}
     for label, capital in SIZES:
         s = size(trades, capital, now_hm, ev if capital is not None else None)
+        # OWNER 2026-11-16 「株数は通常と半分の両方を仮想で記録して比べる」: the same trades with half the shares on a marked night
+        if capital is not None:
+            h = size(trades, capital, now_hm, ev, half_on_risk=True)
+            h.pop("_taken")
+            s["risk_half"] = {"done": h["rows"]["day"]["done"] + h["rows"]["overnight"]["done"],
+                              "open": h["rows"]["day"]["open"] + h["rows"]["overnight"]["open"],
+                              "overnight_done": h["rows"]["overnight"]["done"], "overnight_open": h["rows"]["overnight"]["open"]}
         # OWNER 2026-11-09 「先着順の数字も参考に残す」
         if capital is not None:
             f = size(trades, capital, now_hm)
@@ -1264,6 +1323,12 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         total_closed = sum(int(x.get("closed") or 0) for x in prev) + closed
         total_wins = sum(int(x.get("wins") or 0) for x in prev) + wins
         keep["sizes"][label] = {"done": day_done, "closed": closed, "wins": wins}
+        if "risk_half" in s:   # OWNER 2026-11-16: 通常 and 半分 summed from the first day both were kept
+            keep["sizes"][label]["half_done"] = s["risk_half"]["done"]
+            kept = [x for x in prev if "half_done" in x]
+            s["risk_half"]["since"] = next((p.get("date") for p in past if "half_done" in ((p.get("sizes") or {}).get(label) or {})), today)
+            s["risk_half"]["total_done"] = sum(int(x.get("half_done") or 0) for x in kept) + s["risk_half"]["done"]
+            s["risk_half"]["total_done_normal"] = sum(int(x.get("done") or 0) for x in kept) + day_done
         sizes.append(dict(s, label=label, capital=capital, done=day_done, open=day_open, closed=closed, wins=wins,
                           open_missing=s["rows"]["day"]["open_missing"] + s["rows"]["overnight"]["open_missing"],
                           total_done=total_done, total_closed=total_closed, total_wins=total_wins,
@@ -1491,7 +1556,8 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     # OWNER 2026-11-09 資金別（100株・300万・500万）と1日の損益の線グラフ、決算またぎの印. A failure here never stops the holdings view.
     try:
         capital = capital_view(records, day_dir, today, hm,
-                               trades_of(rule_positions, carry if not weekend else [], overnight_closed, today, ticks, hm), rule_ev(runtime, day_dir, today))
+                               trades_of(rule_positions, carry if not weekend else [], overnight_closed, today, ticks, hm, runtime),
+                               rule_ev(runtime, day_dir, today))
     except Exception as exc:
         capital = {"status": "UNAVAILABLE", "reason": type(exc).__name__}
     try:
@@ -1501,6 +1567,14 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         soon = dict(soon, split=earnings_split(runtime))
     except Exception as exc:
         soon = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "items": {}}
+    # OWNER 2026-11-16: the marks of today's 15:25 picks (until the next trading day's 14:00) and of the holds out today at 14:00
+    try:
+        prev_day = _previous_day_dir(records, today)
+        event_risk = {"tonight": risk_view(runtime, today, _next_weekday(local.date()).isoformat()),
+                      "held": risk_view(runtime, prev_day.name, today) if prev_day is not None else None,
+                      "rule": "資金別（300万・500万）の仮想は、印のある夜の持ち越しを「通常」と「半分」の両方で数えて比べる（100株は1単元のまま）"}
+    except Exception as exc:
+        event_risk = {"state": "UNAVAILABLE", "reason": type(exc).__name__}
     try:
         focus = focus_analyst(runtime, today, hm)
     except Exception as exc:
@@ -1508,7 +1582,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,
             "rule_positions": rule_positions, "overnight": overnight, "swing": None, "value": None,
             "owner_rules": owner, "short_rebound": rebound, "overnight_closed": overnight_closed,
-            "capital": capital, "earnings_soon": soon, "focus_analyst": focus,
+            "capital": capital, "earnings_soon": soon, "focus_analyst": focus, "event_risk": event_risk,
             "counts": {"rule_open": sum(1 for p in rule_positions if p["status"] == "OPEN"),
                        "overnight": len(overnight)},
             "status": "VIRTUAL_DISPLAY_ONLY", "real_submit_allowed": False, "trade_instruction": False}
