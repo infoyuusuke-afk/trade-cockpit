@@ -35,6 +35,13 @@ class EarningsGapTab(unittest.TestCase):
             self.assertIn(head, b)
         self.assertIn('statRow("上（寄りで買い）",st.up)+statRow("下（寄りで空売り）",st.down)', b)
 
+    def test_same_colours_as_the_other_tabs_across_the_width(self):
+        # OWNER 2026-11-16 「色がちがうんじゃないか」
+        self.assertIn("#earnings-gap-pane .eg-wrap{grid-column:1/-1;padding:16px 18px;border:1px solid #303033;"
+                      "border-radius:14px;background:#111113;color:#f5f5f7}", HTML)
+        self.assertIn('pane.innerHTML=\'<div class="eg-wrap"><div class="eg-body">読込中...</div></div>\';', _block())
+        self.assertNotIn("#131722", HTML[HTML.index("#earnings-gap-pane .eg-wrap"):HTML.index("#earnings-gap-pane .eg-wrap") + 2000])
+
     def test_it_says_kenshochu_until_passed_and_is_not_a_signal(self):
         b = _block()
         self.assertIn('(s.passed===true?"合格":"検証中")', b)
