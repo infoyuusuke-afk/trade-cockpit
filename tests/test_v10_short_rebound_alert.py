@@ -128,7 +128,9 @@ class Screen(unittest.TestCase):
     def test_box_shows_both_stages_and_speaks_each_new_one_at_most_8_a_day(self):
         b = _block()
         assert 'bp.positions&&bp.positions.short_rebound' in b
-        assert 'if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだ売らない。")' in b
+        # OWNER 2026-11-16 「『まだ売らない』を『まだショートしない』に」: wording only
+        assert 'if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだショートしない。")' in b
+        assert "<b>初動＝まだショートしない</b>" in b and "まだ売らない" not in b
         assert 'if(st.top.length<=8)say("ショートリバ上がり切り。"+short(t.name)+"。ショート候補。損切りの目安、"+t.stop+"円。")' in b
         assert "sr.tops_today" in b and "売買の合図ではありません" in b
         assert "0件とは扱いません" in b and "order" not in b.lower().replace("no order", "")

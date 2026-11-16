@@ -3200,8 +3200,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 // OWNER 2026-10-27 「14時以降のショートリバは狙いたい」「ショートリバの初動を検知してほしい」「あがりきったところで、ショートINする」
 // 「ショートリバの2段の合図（初動＝まだ売るな、上がり切り＝ショート候補と損切りの目安）を記録と表示と声だけで作って、その後の動きを
 // 毎日集計して」: the brain detects and records both stages (brain_pick positions.short_rebound, see
-// scripts/v10_positions_live.py). This box lists today's 初動 (まだ売らない) and 上がり切り (ショート候補・損切りの目安＝戻りの高値)
+// scripts/v10_positions_live.py). This box lists today's 初動 (まだショートしない) and 上がり切り (ショート候補・損切りの目安＝戻りの高値)
 // with what happened next, says each new one once (at most 8 a day each), and shows the past days' summary.
+// OWNER 2026-11-16 「『まだ売らない』を『まだショートしない』に」: wording only; the conditions, the counts and the 上がり切り voice stay.
 // Display and voice only, no order.
 (()=>{
   const box=document.getElementById("short-rebound-alert");
@@ -3224,14 +3225,14 @@ document.addEventListener("DOMContentLoaded",()=>{
     box.innerHTML="ショートリバの合図（記録・検証中）：初動 "+(sr.today_count||0)+"回・上がり切り "+tops.length+"回"+
       tops.slice(0,4).map(t=>'<span class="sr-row sr-top">'+hm(t.top_at)+'　'+esc(nm(t))+'　<em>上がり切り＝ショート候補</em> '+esc(t.price)+'円・損切りの目安 '+esc(t.stop)+'円（戻りの高値）'+
         (t.stopped_at?'・損切りの目安を超えた（'+esc(String(t.stopped_at).slice(0,5))+'）':'・ここまで '+pct(t.short_pct)+'（売りから見て）')+'</span>').join("")+
-      firsts.slice(0,4).map(r=>'<span class="sr-row">'+hm(r.detected_at)+'　'+esc(nm(r))+'　<b>初動＝まだ売らない</b> '+esc(r.price)+'円 → 戻りの最高 '+pct(r.rebound_pct)+'（'+esc(String(r.peak_at||"").slice(0,5))+'）'+(r.low_broken?'・安値割れ':'')+'</span>').join("")+
+      firsts.slice(0,4).map(r=>'<span class="sr-row">'+hm(r.detected_at)+'　'+esc(nm(r))+'　<b>初動＝まだショートしない</b> '+esc(r.price)+'円 → 戻りの最高 '+pct(r.rebound_pct)+'（'+esc(String(r.peak_at||"").slice(0,5))+'）'+(r.low_broken?'・安値割れ':'')+'</span>').join("")+
       "<small>初動：高値から4%以上下げてVWAPの下・大きい買いの約定・売り板が薄くなる・安値を3分以上割らない。上がり切り：初動から0.8%以上戻り、3分高値を更新せず、高値から0.3%下げた時（15:00まで）。"+
       (pt.n?"これまで"+esc(sr.past_days)+"日の上がり切り "+pt.n+"回：売りから見て平均 "+pct(pt.avg_short_pct)+"・勝ち "+pt.win_pct+"%・PF"+esc(pt.pf??"—")+"・損切りの目安に届いた "+pt.stopped_pct+"%（15:20まで・費用なし）。":"")+
       "売買の合図ではありません。</small>";
     let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
     if(st.day!==day)st={day,first:[],top:[]};
     const say=msg=>{if(typeof window.cockpitSpeak==="function"&&min<=900){try{window.cockpitSpeak(msg,"CALM");}catch(_){}}};
-    for(const r of firsts.slice().reverse()){const k=r.ticker+"|"+r.detected_at;if(st.first.includes(k))continue;st.first.push(k);if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだ売らない。");}
+    for(const r of firsts.slice().reverse()){const k=r.ticker+"|"+r.detected_at;if(st.first.includes(k))continue;st.first.push(k);if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだショートしない。");}
     for(const t of tops.slice().reverse()){const k=t.ticker+"|"+t.top_at;if(st.top.includes(k))continue;st.top.push(k);if(st.top.length<=8)say("ショートリバ上がり切り。"+short(t.name)+"。ショート候補。損切りの目安、"+t.stop+"円。");}
     try{localStorage.setItem(KEY,JSON.stringify(st))}catch(_){}
   }
