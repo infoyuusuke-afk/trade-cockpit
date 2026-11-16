@@ -1043,6 +1043,36 @@ function Get-MarketTypesView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-17 (8:00 check): whether the Collector's own pre-open quotes moved. The 28580 bridge withholds rows that are
+# not fresh, so the page cannot tell "not moving" from "withheld" there. This reads RuntimeDir\live_ms2.json as written and
+# returns only its time, its age and a hash of each row's bid / ask / quantities / over / under / pre-open quote. No prices out.
+function Get-QuoteMotionView([string]$File) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($File) -or -not (Test-Path -LiteralPath $File -PathType Leaf)) { return (& $fail 'LIVE_FILE_MISSING') }
+        $item = Get-Item -LiteralPath $File -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 33554432) {
+            return (& $fail 'LIVE_FILE_UNTRUSTED')
+        }
+        $view = [IO.File]::ReadAllText($File, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        $parts = New-Object System.Collections.Generic.List[string]
+        foreach ($x in @($view.all_targets)) {
+            if ($null -eq $x) { continue }
+            $parts.Add(([string]$x.ticker + ',' + [string]$x.bid + ',' + [string]$x.ask + ',' + [string]$x.bid_qty + ',' + [string]$x.ask_qty +
+                ',' + [string]$x.over + ',' + [string]$x.under + ',' + [string]$x.preopen_quote))
+        }
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $hash = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes(($parts -join ';')))).Replace('-', '') }
+        finally { $sha.Dispose() }
+        $age = [int][Math]::Round(((Get-Date) - $item.LastWriteTime).TotalSeconds)
+        $out = [ordered]@{ schema_version = '100b-v10-quote-motion-v1'; updated_at = [string]$view.updated_at; file_age_sec = $age
+            rows = $parts.Count; quote_hash = $hash; real_submit_allowed = $false; trade_instruction = $false }
+        return @{ status = '200 OK'; body = ($out | ConvertTo-Json -Compress) }
+    } catch {
+        return (& $fail 'LIVE_FILE_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-16 (AI focus picks of the day, locked before 9:00 on this PC): RuntimeDir\ai_focus_v1.json, written by the research
 # script (never in the repo), is served as-is when its flags are safe. Display only: no signal, no voice, no order.
 function Get-AiFocusView([string]$RuntimeDir) {
@@ -3385,6 +3415,11 @@ try {
             if ($path -eq '/market_types.json') {
                 $typesView = Get-MarketTypesView $RuntimeDir
                 Send-Response $stream $typesView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$typesView.body))
+                continue
+            }
+            if ($path -eq '/quote_motion.json') {
+                $motionView = Get-QuoteMotionView $liveJson
+                Send-Response $stream $motionView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$motionView.body))
                 continue
             }
             if ($path -eq '/ai_focus.json') {

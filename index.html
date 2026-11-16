@@ -5133,8 +5133,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script>
 // OWNER 2026-11-17 「③8:00にMS2の値が動いていなければ声で知らせる・止める前に他のExcelが開いていたら声で知らせる」: two spoken checks.
 // (1) On a trading day (weekday, not an exchange holiday), the pre-open quotes of the watched issues start moving at 8:00. The
-//     page keeps what the quotes looked like at the first reading from 8:00; if by 8:05 nothing has changed (or the data cannot be
-//     read), it says so once that day. Checked until 8:30 only.
+//     page keeps the gateway's hash of the quotes (/quote_motion.json) at the first reading from 8:00; if by 8:05 nothing has
+//     changed (or the Collector's file is missing or older than 2 minutes), it says so once that day. Checked until 8:30 only.
 // (2) The gateway's /health counts Excel windows other than the V10 Excel in this Windows session (Safe Stop refuses to stop while
 //     one is open). When one appears, it is said once; it is said again only after it was closed and another one opened.
 // Voice and console only: nothing is stopped or changed, no order.
@@ -5144,31 +5144,33 @@ document.addEventListener("DOMContentLoaded",()=>{
     "2027-12-31","2028-01-03"];
   const say=t=>{try{if(typeof window.cockpitSpeak==="function")window.cockpitSpeak(t,"CALM");}catch(_){}console.warn(t);};
   const jst=()=>{const d=new Date(Date.now()+9*3600000);return {day:d.toISOString().slice(0,10),wd:d.getUTCDay(),hms:d.toISOString().slice(11,19)};};
-  const sig=d=>(Array.isArray(d&&d.all_targets)?d.all_targets:[]).map(x=>[x.ticker,x.bid,x.ask,x.bid_qty,x.ask_qty,x.over,x.under,x.preopen_quote,x.price].join(",")).join(";");
-  const quotes={day:"",base:null,moved:false,spoken:false};
+  // audit 9e81f6f: the page reloads itself every 15 minutes, so "already said" is kept in this browser (localStorage, same day only)
+  const load=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch(_){return null;}};
+  const keep=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}};
+  const quotes=Object.assign({day:"",base:null,moved:false,spoken:false},load("cockpitQuoteCheckV1")||{});
   async function quoteCheck(){
     const n=jst();
     if(n.wd<1||n.wd>5||HOLIDAYS.includes(n.day)||n.hms<"08:00:00"||n.hms>="08:30:00")return;
     if(quotes.day!==n.day){quotes.day=n.day;quotes.base=null;quotes.moved=false;quotes.spoken=false;}
     if(quotes.moved||quotes.spoken)return;
     let s=null;
-    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),3000);
-      const r=await fetch("http://127.0.0.1:28580/live_ms2.json?t="+Date.now(),{cache:"no-store",signal:ctl.signal}).finally(()=>clearTimeout(tm));
+    // the gateway hashes the Collector's own file (the 28580 bridge withholds rows that are not fresh yet)
+    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),5000);
+      const r=await fetch("/quote_motion.json?t="+Date.now(),{cache:"no-store",signal:ctl.signal}).finally(()=>clearTimeout(tm));
       const d=r.ok?await r.json():null;
-      const up=new Date(String(d&&d.updated_at||"").replace(" ","T")+"+09:00").getTime();
-      if(d&&Number.isFinite(up)&&Date.now()-up<=120000)s=sig(d);}catch(_){s=null;}
-    if(s&&quotes.base===null){quotes.base=s;return;}
-    if(s&&s!==quotes.base){quotes.moved=true;return;}
-    if(n.hms>="08:05:00"){quotes.spoken=true;
+      if(d&&d.schema_version==="100b-v10-quote-motion-v1"&&d.real_submit_allowed===false&&Number(d.rows)>0&&Number(d.file_age_sec)<=120)s=String(d.quote_hash);}catch(_){s=null;}
+    if(s&&quotes.base===null){quotes.base=s;keep("cockpitQuoteCheckV1",quotes);return;}
+    if(s&&s!==quotes.base){quotes.moved=true;keep("cockpitQuoteCheckV1",quotes);return;}
+    if(n.hms>="08:05:00"){quotes.spoken=true;keep("cockpitQuoteCheckV1",quotes);
       say(s?"8時を過ぎても、MS2の値が動いていません。マーケットスピードとRSSを確かめてください。":"8時を過ぎても、MS2の値が読めません。マーケットスピードとRSSを確かめてください。");}
   }
-  let excelOpen=false;
+  let excelOpen=(load("cockpitOtherExcelV1")||{}).open===true;
   async function excelCheck(){
     let h=null;try{const r=await fetch("/health?t="+Date.now(),{cache:"no-store"});h=r.ok?await r.json():null;}catch(_){h=null;}
     const c=h&&h.runtime?h.runtime.other_excel_count:null;
     if(c===null||c===undefined||!Number.isFinite(Number(c)))return;   // unknown: no voice, the state is kept
-    if(Number(c)>0&&!excelOpen){excelOpen=true;say("AIコクピット以外のExcelが開いています。止める前に、そのExcelを閉じてください。");}
-    else if(Number(c)===0)excelOpen=false;
+    if(Number(c)>0&&!excelOpen){excelOpen=true;keep("cockpitOtherExcelV1",{open:true});say("AIコクピット以外のExcelが開いています。止める前に、そのExcelを閉じてください。");}
+    else if(Number(c)===0&&excelOpen){excelOpen=false;keep("cockpitOtherExcelV1",{open:false});}
   }
   setInterval(quoteCheck,30000);setInterval(excelCheck,60000);quoteCheck();excelCheck();
 });

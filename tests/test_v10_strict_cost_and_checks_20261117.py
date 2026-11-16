@@ -57,14 +57,31 @@ class QuietQuotesAndOtherExcel(unittest.TestCase):
         b = _block("「③8:00にMS2の値が動いていなければ声で知らせる")
         self.assertIn('"2026-11-23"', b)
         self.assertIn('n.wd<1||n.wd>5||HOLIDAYS.includes(n.day)||n.hms<"08:00:00"||n.hms>="08:30:00"', b)
-        self.assertIn('if(n.hms>="08:05:00"){quotes.spoken=true;', b)
         self.assertIn("8時を過ぎても、MS2の値が動いていません。", b)
-        self.assertIn("x.bid,x.ask,x.bid_qty,x.ask_qty,x.over,x.under,x.preopen_quote", b)
+        # audit 9e81f6f: the 28580 bridge withholds rows that are not fresh, so the gateway hashes the Collector's own file
+        self.assertIn('fetch("/quote_motion.json?t="+Date.now()', b)
+        self.assertIn('Number(d.rows)>0&&Number(d.file_age_sec)<=120)s=String(d.quote_hash);', b)
+        self.assertNotIn("127.0.0.1:28580", b)
+
+    def test_gateway_quote_motion_returns_only_a_hash(self):
+        i = GW.index("function Get-QuoteMotionView")
+        fn = GW[i:GW.index("\n}", i)]
+        self.assertTrue(all(ord(ch) < 128 for ch in fn))
+        self.assertIn("'100b-v10-quote-motion-v1'", fn)
+        self.assertIn("[string]$x.bid + ',' + [string]$x.ask", fn)
+        self.assertNotIn("$x.price", fn)
+        self.assertIn("real_submit_allowed = $false; trade_instruction = $false", fn)
+        self.assertIn("if ($path -eq '/quote_motion.json') {", GW)
 
     def test_other_excel_is_said_once_per_appearance(self):
         b = _block("「③8:00にMS2の値が動いていなければ声で知らせる")
         self.assertIn("h.runtime.other_excel_count", b)
-        self.assertIn("if(Number(c)>0&&!excelOpen){excelOpen=true;say(", b)
+        self.assertIn('if(Number(c)>0&&!excelOpen){excelOpen=true;keep("cockpitOtherExcelV1",{open:true});say(', b)
+        # audit 9e81f6f: the page reloads every 15 minutes, so what was said survives a reload
+        self.assertIn('let excelOpen=(load("cockpitOtherExcelV1")||{}).open===true;', b)
+        self.assertIn('load("cockpitQuoteCheckV1")', b)
+        self.assertIn('if(n.hms>="08:05:00"){quotes.spoken=true;keep("cockpitQuoteCheckV1",quotes);', b)
+        self.assertIn("try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}", b)
         self.assertIn("AIコクピット以外のExcelが開いています。止める前に、そのExcelを閉じてください。", b)
         code = "\n".join(line for line in b.splitlines() if not line.lstrip().startswith("//"))
         for word in ("order", "renderCockpitCard", "innerHTML", "/control"):
