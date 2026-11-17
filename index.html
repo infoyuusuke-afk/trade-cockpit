@@ -4038,7 +4038,13 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,5000);});
 })();
 </script>
-<style>.ht8-live{font-size:13px;margin:4px 0 8px;padding:6px 10px;border:1px solid #f7a600;border-radius:8px;color:#E8EAED}.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}</style>
+<style>.ht8-live{font-size:13px;margin:4px 0 8px;padding:6px 10px;border:1px solid #f7a600;border-radius:8px;color:#E8EAED}.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}
+.ht8 .ht8-tbl{margin:4px 0 8px;font-variant-numeric:tabular-nums}.ht8 .ht8-tbl th{color:#9AA0AA;font-weight:600;font-size:12px}.ht8 .ht8-tbl .r{text-align:right}
+.ht8 .ht8-tbl td{padding:6px 8px}.ht8-tag{display:block;color:#9AA0AA;font-size:11px}
+.ht8-bar{position:relative;display:inline-block;width:110px;height:8px;border-radius:4px;background:#2A2D33;vertical-align:middle}
+.ht8-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}.ht8-bar i.up{background:#4CC38A}.ht8-bar i.dn{background:#E0566B}
+.ht8-bar b{position:absolute;top:-3px;width:2px;height:14px;background:#E6E8EB;margin-left:-1px}
+.ht8-cards{margin:4px 0 8px}.ht8-cards>summary{cursor:pointer;color:#9AA0AA;font-size:12px}</style>
 <script>
 // OWNER 2026-11-05 「スイング保有と長期保有も出して」: at the top of the SWING 5 and VALUE 5 tabs, the virtual holds of hold_track.py (/hold_track.json): open holds as cards, waiting candidates and the last closed holds as lines.
 // Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no order.
@@ -4073,6 +4079,26 @@ document.addEventListener("DOMContentLoaded",()=>{
     return window.renderCockpitCard({symbol:String(o.code),company:o.name,direction:v.pct===null||v.pct>=0?"long":"short",directionLabel:label,freshness:v.live?"fresh":v.price===null?"stale":"unknown",freshnessLabel:v.tag,price:v.price,entry:o.entry,stop:o.stop,target:o.target,
       metrics:[{label:"含み損益",value:v.pct===null?"—":sgn(v.pct)},{label:"100株",value:v.yen===null?"—":yen(v.yen)},{label:"日数",value:o.days+"日目"},{label:"入った日時",value:tm(o.entry_day,o.entry_time,o.entry_time_src)}],
       foot:"入り "+tm(o.entry_day,o.entry_time,o.entry_time_src)+"・"+num(o.entry)+"円。仮想の保有。実口座とは関係ありません（費用なし）"});
+  }
+  // OWNER 2026-11-17 「保有中が一目でわかる形」: one line per open hold, best first: the stock, the price now, 含み損益 (% and 100株),
+  // how far the stop and the target are from the price now, where the price sits between STOP and TARGET (a bar; the line is the
+  // entry), the day count and the entry time. The same numbers as the cards (valued()); the cards stay below, folded. Display only.
+  const cardsOpen={};
+  document.addEventListener("toggle",ev=>{const d=ev.target;if(d&&d.classList&&d.classList.contains("ht8-cards"))cardsOpen[d.dataset.k]=d.open;},true);
+  function holdTable(open){
+    const rows=open.map(o=>({o,v:valued(o)})).sort((a,b)=>(b.v.pct??-1e9)-(a.v.pct??-1e9));
+    const dist=(lv,p)=>{const x=Number(lv);return Number.isFinite(x)&&x>0&&p?((x/p-1)*100):null;};
+    const pos=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
+    return '<table class="ht8-tbl" data-keep-table><tr><th>銘柄</th><th>今の値</th><th>含み損益</th><th>100株</th><th>損切りまで</th><th>利確まで</th><th>損切り〜利確の位置</th><th>日数</th><th>入った日時</th></tr>'+
+      rows.map(({o,v})=>{
+        const p=v.price,s=Number(o.stop),g=Number(o.target),e=Number(o.entry),ds=dist(s,p),dg=dist(g,p);
+        const bar=p&&s>0&&g>s?'<span class="ht8-bar"><i class="'+(v.pct>=0?'up':'dn')+'" style="width:'+pos(p,s,g).toFixed(0)+'%"></i><b style="left:'+pos(e,s,g).toFixed(0)+'%"></b></span>':'—';
+        const cls=v.pct===null?'':v.pct>=0?'ht8-up':'ht8-dn';
+        return '<tr><td><b>'+esc(String(o.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'</b>（'+esc(o.code)+'）'+(v.live?'':'<small class="ht8-tag">'+esc(v.tag)+'</small>')+'</td>'+
+          '<td class="r">'+num(p)+'</td><td class="r '+cls+'"><b>'+(v.pct===null?'—':sgn(v.pct))+'</b></td><td class="r '+cls+'">'+(v.yen===null?'—':yen(v.yen))+'</td>'+
+          '<td class="r ht8-dn">'+(ds===null?'—':sgn(ds))+'</td><td class="r ht8-up">'+(dg===null?'—':sgn(dg))+'</td><td>'+bar+'</td>'+
+          '<td class="r">'+esc(o.days)+'日目</td><td>'+esc(tm(o.entry_day,o.entry_time,o.entry_time_src))+'</td></tr>';
+      }).join("")+'</table>';
   }
   // what was seen during the session today (kept in this browser for the day), spoken once each
   const LKEY="cockpitHoldLiveV1";
@@ -4135,7 +4161,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       (known.length<open.length?'<span class="ht8-note">（値のない'+(open.length-known.length)+'銘柄は入っていません）</span>':'')+
       (closeOnly?'<span class="ht8-note">（'+closeOnly+'銘柄は場中の値ではなく最後の値・終値）</span>':'')+'</p>':'';
     return liveLine(k)+plSum+'<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
-      (open.length?'<div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
+      (open.length?holdTable(open)+'<details class="ht8-cards" data-k="'+k+'"'+(cardsOpen[k]?' open':'')+'><summary>カードで見る（前の形）</summary><div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div></details>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
       (pend.length?'<p class="ht8-sum">IN待ち：'+pend.map(x=>esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(x.code)+") "+num(x.trigger)+"円").join("／")+'</p>':'')+
       (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り（日時・値段）</th><th>出（日時・値段）</th><th>理由</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(tm(x.entry_day,x.entry_time,x.entry_time_src))+' '+num(x.entry)+'</td><td>'+esc(tm(x.exit_day,x.exit_time,x.exit_time_src))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
   }
