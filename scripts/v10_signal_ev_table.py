@@ -138,11 +138,11 @@ def replay(signal: dict, ticks: list, *, target_mult: float = 1.0, stop_mult: fl
         stops = [p for p in prices if (side > 0 and p <= stop) or (side < 0 and p >= stop)]
         targets = [p for p in prices if (side > 0 and p >= target) or (side < 0 and p <= target)]
         if stops:  # a second touching both is resolved to the stop
-            return _result(side, fill, stops[0], "STOP", fill_t, t)
+            return _result(side, fill, stops[0], "STOP", fill_t, t, signal.get("ticker"))
         if targets:
-            return _result(side, fill, targets[0], "TARGET", fill_t, t)
+            return _result(side, fill, targets[0], "TARGET", fill_t, t, signal.get("ticker"))
     last_t, last = (rest[-1][0], rest[-1][2]) if rest else (fill_t, fill)
-    return _result(side, fill, last, "TIME_EXIT", fill_t, last_t)
+    return _result(side, fill, last, "TIME_EXIT", fill_t, last_t, signal.get("ticker"))
 
 
 def cost_pct(side: int) -> float:
@@ -151,25 +151,47 @@ def cost_pct(side: int) -> float:
     return 2 * (COMMISSION_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) + rate / 365 * FINANCING_DAYS_PER_DAY_TRADE
 
 
-def tick_size(price: float) -> float:
-    """TSE standard tick for a price (the coarser table; TOPIX500 issues have finer ticks)."""
-    for upper, tick in TICK_TABLE:
+# OWNER 2026-11-17 「費用の刻みを直す版を作って：TOPIX500の銘柄はJPX公式の一覧で確かめて細かい刻み、それ以外は粗い刻み。一覧の日付も記録する」:
+# the JPX tick table for TOPIX500 issues (TOPIX100 + Mid400), and config/topix500_ticks_v1.json (the JPX list with its date). Without the
+# file, or for a code not in it, the coarse table stays (never lighter than before).
+FINE_TICK_TABLE = ((1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10), (300000, 50), (1000000, 100), (3000000, 500),
+                   (10000000, 1000), (30000000, 5000), (50000000, 10000))
+TOPIX500_FILE = Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json"
+
+
+def _topix500():
+    try:
+        doc = json.loads(TOPIX500_FILE.read_text(encoding="utf-8"))
+        if doc.get("schema_version") != "100b-v10-topix500-ticks-v1":
+            return frozenset()
+        return frozenset(str(c) for c in doc.get("codes") or [])
+    except (OSError, ValueError, AttributeError):
+        return frozenset()
+
+
+TOPIX500 = _topix500()
+
+
+def tick_size(price: float, code: str | None = None) -> float:
+    """The TSE tick for a price: the TOPIX500 table for a code in config/topix500_ticks_v1.json, else the other (coarser) table."""
+    fine = code is not None and str(code).replace(".T", "") in TOPIX500
+    for upper, tick in (FINE_TICK_TABLE if fine else TICK_TABLE):
         if price <= upper:
             return tick
-    return 100000
+    return 10000 if fine else 100000
 
 
-def strict_cost_pct(side: int, fill: float, exit_price: float) -> float:
-    """The strict cost in % of one trade: financing + 0.10 % round trip + one tick in and one tick out."""
-    return (cost_pct(side) + STRICT_ROUND_TRIP_PCT + tick_size(fill) / fill * 100
-            + tick_size(exit_price) / exit_price * 100)
+def strict_cost_pct(side: int, fill: float, exit_price: float, code: str | None = None) -> float:
+    """The strict cost in % of one trade: financing + 0.10 % round trip + one tick in and one tick out (the code's own tick table)."""
+    return (cost_pct(side) + STRICT_ROUND_TRIP_PCT + tick_size(fill, code) / fill * 100
+            + tick_size(exit_price, code) / exit_price * 100)
 
 
-def _result(side, fill, exit_price, how, fill_t, exit_t):
+def _result(side, fill, exit_price, how, fill_t, exit_t, code=None):
     gross = side * (exit_price / fill - 1) * 100
     return {"state": "FILLED", "exit": how, "side": side, "fill_price": fill, "exit_price": exit_price,
             "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross,
-            "return_pct": gross - strict_cost_pct(side, fill, exit_price), "light_return_pct": gross - cost_pct(side)}
+            "return_pct": gross - strict_cost_pct(side, fill, exit_price, code), "light_return_pct": gross - cost_pct(side)}
 
 
 def stats(trades: list[dict]) -> dict:
@@ -356,7 +378,7 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
         gross = side * (exit_p / open_ - 1) * 100
         out.append({"state": "FILLED", "exit": "TIME_EXIT", "side": side, "fill_price": open_, "exit_price": exit_p,
                     "fill_time": open_t, "exit_time": exit_t, "gap_pct": round(gap, 3), "gross_pct": gross,
-                    "return_pct": gross - strict_cost_pct(side, open_, exit_p), "light_return_pct": gross - cost_pct(side),
+                    "return_pct": gross - strict_cost_pct(side, open_, exit_p, ticker), "light_return_pct": gross - cost_pct(side),
                     "ticker": ticker, "name": "", "signal_at": open_t})
     return out
 

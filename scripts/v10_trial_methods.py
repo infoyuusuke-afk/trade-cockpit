@@ -146,18 +146,36 @@ def run_day_trade(ticks: list, entry_hms: str, entry: float, stop_pct: float, un
     return (last[0], last[1], "引け") if last else (entry_hms, entry, "引け")
 
 
-def _tick(price):
-    """TSE standard tick (the coarser table)."""
-    for upper, tick in ((3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (3000000, 1000),
-                        (5000000, 5000), (30000000, 10000), (50000000, 50000)):
+_COARSE = ((3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (3000000, 1000),
+           (5000000, 5000), (30000000, 10000), (50000000, 50000))
+_FINE = ((1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10), (300000, 50), (1000000, 100), (3000000, 500),
+         (10000000, 1000), (30000000, 5000), (50000000, 10000))
+
+
+def _topix500():
+    try:
+        doc = json.loads((Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json").read_text(encoding="utf-8"))
+        return frozenset(str(c) for c in doc.get("codes") or []) if doc.get("schema_version") == "100b-v10-topix500-ticks-v1" else frozenset()
+    except (OSError, ValueError, AttributeError):
+        return frozenset()
+
+
+_TOPIX500 = _topix500()
+
+
+def _tick(price, code=None):
+    """TSE tick: the TOPIX500 table for a code in config/topix500_ticks_v1.json (OWNER 2026-11-17), else the coarser table
+    (the same list and tables as v10_signal_ev_table.tick_size)."""
+    fine = code is not None and str(code).replace(".T", "") in _TOPIX500
+    for upper, tick in (_FINE if fine else _COARSE):
         if price <= upper:
             return tick
-    return 100000
+    return 10000 if fine else 100000
 
 
-def _yen(entry, exit_, nights=0):
+def _yen(entry, exit_, nights=0, code=None):
     # OWNER 2026-11-17 「画面の期待値をきびしい費用で出す」: 0.10 % + a tick in + a tick out + interest of nights + 1 days
-    pct = ((exit_ / entry - 1) * 100 - COST_PCT - _tick(entry) / entry * 100 - _tick(exit_) / exit_ * 100
+    pct = ((exit_ / entry - 1) * 100 - COST_PCT - _tick(entry, code) / entry * 100 - _tick(exit_, code) / exit_ * 100
            - RATE_DAY_PCT * (nights + 1))
     return round(pct, 3), round(pct / 100 * entry * SHARES)
 
@@ -203,7 +221,7 @@ def settle_day(method: str, cands: list, ticks: dict, now_hms: str) -> dict:
             continue
         t, p, how = run_day_trade(tk, c["entry_time"], c["entry"], c["stop_pct"], min(now_hms, "15:30:00"))
         closed = how == "損切り" or now_hms >= "15:30:00"
-        pct, yen = _yen(c["entry"], p)
+        pct, yen = _yen(c["entry"], p, code=c["ticker"])
         row = dict(c, exit_time=t, exit=p, how=how if closed else "持ち中", pct=pct, yen=yen,
                    status="CLOSED" if closed else "OPEN")
         trades.append(row)
@@ -220,7 +238,7 @@ def settle_day(method: str, cands: list, ticks: dict, now_hms: str) -> dict:
             if still_open:
                 p = price_at(sorted(ticks.get(r["ticker"], [])), limit_at) or r["entry"]
                 r.update(exit_time=limit_at, exit=p, how="止め（−3万円）", status="CLOSED")
-                r["pct"], r["yen"] = _yen(r["entry"], p)
+                r["pct"], r["yen"] = _yen(r["entry"], p, code=r["ticker"])
             elif r.get("status") == "CLOSED" and r["entry_time"] > limit_at:
                 r.update(status="止め（−3万円）", pct=None, yen=None)
     return {"method": method, "label": LABELS.get(method, method), "trades": trades, "limit_hit_at": limit_at}
@@ -249,7 +267,7 @@ def multi_day(positions: list, ticks: dict, inputs: dict, preopen_ref: dict, tod
         last = tk[-1][1] if tk else pos.get("mark")
         pos["mark"] = last
         nights = max(0, pos["sessions"] - 1)
-        pos["pct"], pos["yen"] = _yen(pos["entry"], pos.get("exit") or last or pos["entry"], nights)
+        pos["pct"], pos["yen"] = _yen(pos["entry"], pos.get("exit") or last or pos["entry"], nights, code=pos["ticker"])
         out.append(pos)
     # today's entries: open 10 %+ above the prev close (under 20 %)
     have = {(p["method"], p["ticker"], p["entry_day"]) for p in positions}
@@ -280,7 +298,7 @@ def multi_day(positions: list, ticks: dict, inputs: dict, preopen_ref: dict, tod
                 break
         pos["mark"] = tk[-1][1] if tk else pos["entry"]
         pos["marked_day"] = today
-        pos["pct"], pos["yen"] = _yen(pos["entry"], pos.get("exit") or pos["mark"])
+        pos["pct"], pos["yen"] = _yen(pos["entry"], pos.get("exit") or pos["mark"], code=pos["ticker"])
     return positions
 
 
