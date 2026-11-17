@@ -5051,6 +5051,71 @@ main .card hr{display:none}
   document.addEventListener("DOMContentLoaded",()=>{arrange();setInterval(arrange,1000);});
 })();
 </script>
+<style>/* OWNER 2026-11-17 引けの板寄せ: the same card look as 決算ギャップ */
+#closing-auction-pane .ca-wrap{grid-column:1/-1;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113;color:#f5f5f7}
+#closing-auction-pane h2{margin:0 0 4px;font-size:16px}#closing-auction-pane h3{margin:14px 0 4px;font-size:14px}
+#closing-auction-pane .ca-sub{margin:0 0 8px;color:#b5b5ba;font-size:12px;line-height:1.6}
+#closing-auction-pane .ca-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid #6b5a1e;border-radius:9px;color:#f5c542;font-size:12px;font-weight:700}
+#closing-auction-pane .ca-mark{display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;background:#2a2410;border:1px solid #6b5a1e;color:#f5c542;font-size:12px;font-weight:700}
+#closing-auction-pane .ca-none{color:#8b9299;font-size:12px}
+#closing-auction-pane table{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 0 10px;font-size:12.5px;font-variant-numeric:tabular-nums}
+#closing-auction-pane th,#closing-auction-pane td{padding:5px 6px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
+#closing-auction-pane .up{color:#4CC38A}#closing-auction-pane .dn{color:#E0566B}</style>
+<script>
+// OWNER 2026-11-17 「１５時２４分にIN１５時３０大引けに売買するクロージング（名称まかせる）タブ作って」「引けの板寄せタブに『やる日』の印を足して。
+// やる日の候補（指数の入れ替え日、月末・四半期末、ETF分配金の売りの日、日経が大きく動いた日、大きく動いている銘柄）を前もって決め、15:24より前に分かる
+// 情報だけで毎日印を付け、やる日とやらない日の成績を並べて記録する。日付は推測しないで、公式の発表で確かめたものだけ使う。研究のみ、声なし、注文しない」:
+// /closing_auction.json = the PC's after-close record (research script closing_auction_ledger.py). Display only: no voice, no order card.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fin=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));
+  const pct=(v,d=2)=>!fin(v)?"—":(Number(v)>0?"+":"")+Number(v).toFixed(d)+"%";
+  const cls=v=>!fin(v)||Number(v)===0?"":Number(v)>0?"up":"dn";
+  const md=d=>String(d||"").slice(5).replace("-","/");
+  let pane=null;
+  function mount(){
+    const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
+    if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="closing-auction"]'))return;
+    pane=document.createElement("div");pane.className="tab-pane";pane.id="closing-auction-pane";pane.dataset.pane="closing-auction";pane.style.gridColumn="1/-1";
+    pane.innerHTML='<div class="ca-wrap"><div class="ca-body">読込中...</div></div>';
+    main.append(pane);
+    const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="closing-auction";b.type="button";b.textContent="引けの板寄せ";
+    const after=nav.querySelector('.cockpit-tab[data-tab="earnings-gap"]')||nav.querySelector('.cockpit-tab[data-tab="earnings"]');
+    if(after)nav.insertBefore(b,after.nextSibling);else nav.insertBefore(b,nav.querySelector(".secondary-tabs"));
+    b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","closing-auction");}catch(_){}};
+    try{if(localStorage.getItem("cockpitTabV5")==="closing-auction")b.click();}catch(_){}
+    load();setInterval(load,300000);
+  }
+  const st=s=>!s||!s.n?'<td>—</td>':'<td class="'+cls(s.mean_net)+'">'+pct(s.mean_net,3)+'<br><small>'+esc(s.n)+'回・'+esc(s.days)+'日・勝率'+(s.win==null?"—":esc(s.win)+"%")+'</small></td>';
+  const side=(s,net)=>!s?'<td class="ca-none">—</td>':'<td>'+(s>0?"買い":"空売り")+' <b class="'+cls(net)+'">'+(fin(net)?(Number(net)>0?"勝ち ":"負け ")+pct(net):"—")+'</b></td>';
+  async function load(){
+    if(!pane)return;
+    const body=pane.querySelector(".ca-body");
+    let j=null;try{const r=await fetch("/closing_auction.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
+    if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false){body.innerHTML='<h2>引けの板寄せ<span class="ca-badge">研究・記録中</span></h2><p class="ca-none">引けの後の記録をまだ読めません（0件とは扱いません）。</p>';return;}
+    const ru=j.rules||{},td=j.today||{},rows=Array.isArray(td.rows)?td.rows:[],up=Array.isArray(j.upcoming)?j.upcoming:[],cmp=Array.isArray(j.compare)?j.compare:[],days=Array.isArray(j.days)?j.days:[],tot=j.total||{};
+    const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10),now=up.find(u=>u.day===today);
+    body.innerHTML='<h2>引けの板寄せ（15:24に入って大引けで出る）<span class="ca-badge">研究・記録中（前の検証は不合格）</span></h2>'+
+      '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（'+esc(md(j.generated_at))+' '+esc(String(j.generated_at||"").slice(11,16))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+
+      '<h3>やる日の印</h3><p class="ca-sub">印は15:24より前に分かることだけで付けます：指数の入れ替え（公式の発表で確かめた日だけ）・月末・四半期末・日経が大きく動いた日（'+esc(ru.big_day)+'）。銘柄の印：大きく動いている銘柄（'+esc(ru.big_stock)+'）。</p>'+
+      '<div>'+(now?'今日（'+esc(md(today))+'）：'+now.marks.map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):'今日（'+esc(md(today))+'）：予定の印なし（日経の大きな動きは15:24の値で付きます）')+'</div>'+
+      '<div class="ca-sub">これからの予定：'+(up.filter(u=>u.day>today).slice(0,6).map(u=>esc(md(u.day))+' '+u.marks.map(esc).join("・")).join("／")||"なし")+'</div>'+
+      ((j.not_confirmed||[]).length?'<div class="ca-sub">印にしていないもの：'+(j.not_confirmed||[]).map(x=>esc(x.kind)+'（'+esc(x.why)+'）').join("／")+'</div>':'')+
+      '<h3>やる日とやらない日の成績（'+esc(md(tot.from))+'から '+esc(tot.days)+'日・費用込み・1回の平均）</h3>'+
+      '<table data-keep-table><thead><tr><th>印</th><th>やる日 順張り</th><th>やる日 逆張り</th><th>やらない日 順張り</th><th>やらない日 逆張り</th></tr></thead><tbody>'+
+      cmp.map(c=>'<tr><td>'+esc(c.mark)+'</td>'+st(c.on&&c.on.w1)+st(c.on&&c.on.w2)+st(c.off&&c.off.w1)+st(c.off&&c.off.w2)+'</tr>').join("")+
+      '<tr><td>全部</td>'+st(tot.w1)+st(tot.w2)+'<td></td><td></td></tr></tbody></table>'+
+      '<h3>'+esc(md(td.day))+'の銘柄（'+rows.length+'件・印 '+((td.marks||[]).map(esc).join("・")||"なし")+'）</h3>'+
+      (rows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから（15:24）</th><th>前日比（15:24）</th><th>15:24</th><th>引け</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
+        rows.map(r=>'<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td class="'+cls(r.r_prev)+'">'+pct(r.r_prev)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+'</tr>').join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
+      '<h3>日ごと（新しい順）</h3><table data-keep-table><thead><tr><th>日</th><th>印</th><th>日経（15:24）</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
+      days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
+      '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(mount,0));
+})();
+</script>
 <style>/* OWNER 2026-11-16 「色がちがうんじゃないか」: the colours of the other tabs' cards (#111113, #303033, 14px), across the whole width.
    Not the class "card": other scripts turn every section.card into their own cards. */
 #earnings-gap-pane .eg-wrap{grid-column:1/-1;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113;color:#f5f5f7}#earnings-gap-pane h2{margin:0 0 4px;font-size:16px;color:#f5f5f7}#earnings-gap-pane .eg-sub{margin:0 0 12px;color:#b5b5ba;font-size:12px;line-height:1.6}#earnings-gap-pane .eg-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid #6b5a1e;border-radius:9px;color:#f5c542;font-size:12px;font-weight:700}#earnings-gap-pane table{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:13px}#earnings-gap-pane th,#earnings-gap-pane td{padding:6px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#earnings-gap-pane th:first-child,#earnings-gap-pane td:first-child,#earnings-gap-pane td.eg-name{text-align:left}#earnings-gap-pane th{color:#b5b5ba;font-weight:400}#earnings-gap-pane .eg-scroll{overflow-x:auto}#earnings-gap-pane h3{margin:12px 0 2px;font-size:14px}#earnings-gap-pane .eg-none{color:#b5b5ba;font-size:13px;margin:6px 0 12px}</style>
