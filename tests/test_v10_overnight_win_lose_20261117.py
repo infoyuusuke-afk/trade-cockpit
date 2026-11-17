@@ -18,7 +18,7 @@ class OvernightWinLose(unittest.TestCase):
         self.assertIn('txt(head,"b","勝ち "+cnt("win"),"up");txt(head,"b","負け "+cnt("lose"),"dn");', self.b)
 
     def test_colours(self):
-        self.assertIn("#on-compare tr.oc-win td:first-child{border-left-color:#35e2ae}#on-compare tr.oc-lose td:first-child{border-left-color:#ff6b6b}", HTML)
+        self.assertIn("#on-compare tr.oc-win td:first-child{border-left-color:#5cddb0}#on-compare tr.oc-lose td:first-child{border-left-color:#f0616c}", HTML)
 
     def test_display_only(self):
         code = "\n".join(l for l in self.b.splitlines() if not l.lstrip().startswith("//"))

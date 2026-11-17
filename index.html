@@ -4040,7 +4040,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("DOMContentLoaded",()=>{check();setInterval(check,5000);});
 })();
 </script>
-<style>.ht8-live{font-size:13px;margin:4px 0 8px;padding:6px 10px;border:1px solid #f7a600;border-radius:8px;color:#E8EAED}.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#4CC38A}.ht8-dn{color:#E0566B}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}
+<style>.ht8-live{font-size:13px;margin:4px 0 8px;padding:6px 10px;border:1px solid #f7a600;border-radius:8px;color:#E8EAED}.ht8-sum{color:#C4C9D1;font-size:13px;margin:4px 0 8px}.ht8-none{color:#9AA0AA;font-size:13px;padding:8px}.ht8 table{width:100%;border-collapse:collapse;font-size:13px}.ht8 td,.ht8 th{padding:4px 8px;border-bottom:1px solid #22252A;text-align:left;white-space:nowrap}.ht8-up{color:#5cddb0}.ht8-dn{color:#f0616c}.ht8-total{color:#E6E8EB;font-size:15px;margin:4px 0 2px}.ht8-total b{font-size:18px;font-variant-numeric:tabular-nums}.ht8-note{color:#9AA0AA;font-size:12px;margin-left:8px}
 .ht8 .ht8-tbl{margin:4px 0 8px;font-variant-numeric:tabular-nums}.ht8 .ht8-tbl th{color:#9AA0AA;font-weight:600;font-size:12px}.ht8 .ht8-tbl .r{text-align:right}
 .ht8 .ht8-tbl td{padding:6px 8px}.ht8-tag{display:block;color:#9AA0AA;font-size:11px}
 .ht8-bar{position:relative;display:inline-block;width:110px;height:8px;border-radius:4px;background:#2A2D33;vertical-align:middle}
@@ -4049,20 +4049,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 .ht8-cards{margin:4px 0 8px}.ht8-cards>summary{cursor:pointer;color:#9AA0AA;font-size:12px}</style>
 <style>
 /* OWNER 2026-11-17 「保有と持ち越しを一目で見る版」: one table look for SWING 5・長期・OVERNIGHT 5・メル */
+/* OWNER 2026-11-17 「色がちがうからしっかっりと確認して修正」: the cockpit's own colours (measured on the screen): up #5cddb0, down #f0616c
+   (the 仮想 line and the 資金別 table), table heading #1c1c1e / #b5b5ba (every other table); the new tables had a blue heading and other greens and reds. */
 .hl-wrap{margin:4px 0 10px}.hl-cap{font-size:12px;color:#9AA0AA;margin:2px 0 4px}
 .hl-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;font-variant-numeric:tabular-nums}
-.hl-tbl th{color:#9AA0AA;font-weight:600;font-size:12px;text-align:right;padding:4px 6px;border-bottom:1px solid #2A2D33;white-space:nowrap}
+.hl-tbl th{background:#1c1c1e!important;color:#b5b5ba;font-weight:600;font-size:12px;text-align:right;padding:4px 6px;border-bottom:1px solid #2A2D33;white-space:nowrap}
 .hl-tbl td{padding:6px 6px;border-bottom:1px solid #22252A;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 .hl-tbl th:nth-child(-n+3),.hl-tbl td:nth-child(-n+3){text-align:left}
 .hl-tbl col.c-res{width:15%}.hl-tbl col.c-name{width:19%}.hl-tbl col.c-side{width:6%}.hl-tbl col.c-sh{width:9%}.hl-tbl col.c-px{width:8%}
 .hl-tbl col.c-pct{width:8%}.hl-tbl col.c-yen{width:11%}.hl-tbl col.c-st{width:8%}.hl-tbl col.c-tg{width:8%}.hl-tbl col.c-day{width:8%}
 .hl-tbl td.hl-name{white-space:normal;overflow-wrap:anywhere}.hl-tbl td.hl-name small{display:block;color:#9AA0AA;font-size:11px}
 .hl-sh{font-size:18px;font-weight:800;color:#E6E8EB}.hl-sh small{font-size:11px;font-weight:400;color:#9AA0AA;margin-left:2px}
-.hl-up{color:#4CC38A}.hl-dn{color:#E0566B}.hl-g{color:#8b9299}
+.hl-up{color:#5cddb0}.hl-dn{color:#f0616c}.hl-g{color:#8b9299}
 .hl-badge{display:inline-block;min-width:4.5em;padding:3px 8px;border-radius:8px;font-weight:800;font-size:14px;text-align:center;white-space:nowrap}
-.hl-badge.win{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b4a}.hl-badge.lose{background:#341418;color:#ff6b6b;border:1px solid #7a2a30}
+.hl-badge.win{background:#0d2b23;color:#5cddb0;border:1px solid #164536}.hl-badge.lose{background:#341418;color:#f0616c;border:1px solid #4a1f24}
 .hl-badge.wait{background:#24272c;color:#b5b9bf;border:1px solid #3a3d44}.hl-badge.skip{background:transparent;color:#6b7078;border:1px dashed #3a3d44}
-.hl-tbl tr.hl-skip td{opacity:.45}.hl-tbl tr.hl-near td{background:#3a1418}.hl-tbl tr.hl-near td:first-child{box-shadow:inset 4px 0 0 #ff5a5f}
+.hl-tbl tr.hl-skip td{opacity:.45}.hl-tbl tr.hl-near td{background:#3a1418}.hl-tbl tr.hl-near td:first-child{box-shadow:inset 4px 0 0 #f0616c}
 .hl-tbl tr.hl-total td{border-top:2px solid #3a3d44;font-weight:700;color:#E6E8EB}.hl-tbl tr.hl-total td:nth-child(2){white-space:normal}
 .hl-tbl td.hl-sub{white-space:normal;font-size:11px;color:#9AA0AA;text-align:left}
 .hl-fold{margin:6px 0 8px}.hl-fold>summary{cursor:pointer;color:#9AA0AA;font-size:12px}
@@ -5063,7 +5065,7 @@ main .card hr{display:none}
 #closing-auction-pane table{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 0 10px;font-size:12.5px;font-variant-numeric:tabular-nums}
 #closing-auction-pane th,#closing-auction-pane td{padding:5px 6px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
-#closing-auction-pane .up{color:#4CC38A}#closing-auction-pane .dn{color:#E0566B}</style>
+#closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}</style>
 <script>
 // OWNER 2026-11-17 「１５時２４分にIN１５時３０大引けに売買するクロージング（名称まかせる）タブ作って」「引けの板寄せタブに『やる日』の印を足して。
 // やる日の候補（指数の入れ替え日、月末・四半期末、ETF分配金の売りの日、日経が大きく動いた日、大きく動いている銘柄）を前もって決め、15:24より前に分かる
@@ -5275,14 +5277,14 @@ main .card hr{display:none}
   document.addEventListener("DOMContentLoaded",()=>{watch();load();setInterval(watch,1000);setInterval(load,300000);});
 })();
 </script>
-<style>#on-compare{grid-column:1/-1;margin:14px 0 4px;padding:12px 14px;border:1px solid #303033;border-radius:10px;background:#111113;color:#f5f5f7}#on-compare h3{margin:0 0 4px;font-size:15px}#on-compare .oc-note{color:#b5b5ba;font-size:12px;line-height:1.6;margin:2px 0 8px}#on-compare .oc-scroll{overflow-x:auto}#on-compare table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}#on-compare th,#on-compare td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#on-compare th:first-child,#on-compare td:first-child,#on-compare td.oc-l{text-align:left;white-space:normal}#on-compare th{color:#b5b5ba;font-weight:400}#on-compare .up{color:#35e2ae}#on-compare .dn{color:#ff6b6b}
+<style>#on-compare{grid-column:1/-1;margin:14px 0 4px;padding:12px 14px;border:1px solid #303033;border-radius:10px;background:#111113;color:#f5f5f7}#on-compare h3{margin:0 0 4px;font-size:15px}#on-compare .oc-note{color:#b5b5ba;font-size:12px;line-height:1.6;margin:2px 0 8px}#on-compare .oc-scroll{overflow-x:auto}#on-compare table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}#on-compare th,#on-compare td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#on-compare th:first-child,#on-compare td:first-child,#on-compare td.oc-l{text-align:left;white-space:normal}#on-compare th{color:#b5b5ba;font-weight:400}#on-compare .up{color:#5cddb0}#on-compare .dn{color:#f0616c}
 #on-compare .oc-g{color:#8b9299}
 #on-compare th:nth-child(-n+5){text-align:left}
 #on-compare .oc-result{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin:4px 0 6px;font-size:15px}
 #on-compare .oc-result span{font-size:14px;font-weight:700}
 #on-compare tr.oc-row td:first-child{border-left:4px solid #3a3d44}
-#on-compare tr.oc-win td:first-child{border-left-color:#35e2ae}#on-compare tr.oc-lose td:first-child{border-left-color:#ff6b6b}
-#on-compare .oc-mark{font-weight:800}#on-compare tr.oc-win .oc-mark{color:#35e2ae}#on-compare tr.oc-lose .oc-mark{color:#ff6b6b}#on-compare tr.oc-none .oc-mark{color:#8b9299}</style>
+#on-compare tr.oc-win td:first-child{border-left-color:#5cddb0}#on-compare tr.oc-lose td:first-child{border-left-color:#f0616c}
+#on-compare .oc-mark{font-weight:800}#on-compare tr.oc-win .oc-mark{color:#5cddb0}#on-compare tr.oc-lose .oc-mark{color:#f0616c}#on-compare tr.oc-none .oc-mark{color:#8b9299}</style>
 <script>
 // OWNER 2026-11-16 「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て、銘柄ごとに0・半分・通常から決めて理由を一言書く。
 // 15:25より前に固めて後から変えない。翌日14:00の結果を通常・半分・AIの判断の3つ並べてオーバーナイトのタブに出す。仮想だけで注文はしない」:

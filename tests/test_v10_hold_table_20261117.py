@@ -35,6 +35,14 @@ class SharedTable(unittest.TestCase):
         self.assertIn('<tr class="hl-total"><td>合計</td>', self.js)
         self.assertIn("table-layout:fixed", HTML)                                       # 1130 px: the columns share the box
 
+    def test_colours_are_the_cockpits_own(self):
+        # OWNER 2026-11-17 「色がちがうからしっかっりと確認して修正」: up #5cddb0 / down #f0616c (the 仮想 line, 資金別), heading #1c1c1e
+        self.assertIn(".hl-up{color:#5cddb0}.hl-dn{color:#f0616c}", HTML)
+        self.assertIn(".hl-tbl th{background:#1c1c1e!important;color:#b5b5ba;", HTML)
+        self.assertIn(".hl-badge.win{background:#0d2b23;color:#5cddb0;border:1px solid #164536}.hl-badge.lose{background:#341418;color:#f0616c;border:1px solid #4a1f24}", HTML)
+        self.assertIn(".ht8-up{color:#5cddb0}", HTML)
+        self.assertIn("#closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}", HTML)
+
     def test_display_only(self):
         code = code_only(self.js)
         for word in ("fetch(", "cockpitSpeak", "/control", "RssOrder"):
