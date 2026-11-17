@@ -152,10 +152,21 @@ _FINE = ((1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10), (300000
          (10000000, 1000), (30000000, 5000), (50000000, 10000))
 
 
+_TOPIX500_SHA256 = "fee6f383ff69533e6374a106fa390495a9e1f1706d82fafd611ae933bb5d55ae"   # the same pin and the same valid_until rule as v10_signal_ev_table (audit 22a943e)
+
+
 def _topix500():
     try:
-        doc = json.loads((Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json").read_text(encoding="utf-8"))
-        return frozenset(str(c) for c in doc.get("codes") or []) if doc.get("schema_version") == "100b-v10-topix500-ticks-v1" else frozenset()
+        import hashlib
+        raw = (Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json").read_bytes()
+        if hashlib.sha256(raw).hexdigest() != _TOPIX500_SHA256:
+            return frozenset()
+        doc = json.loads(raw.decode("utf-8"))
+        if doc.get("schema_version") != "100b-v10-topix500-ticks-v1":
+            return frozenset()
+        if not (str(doc.get("valid_until") or "") >= datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")):
+            return frozenset()
+        return frozenset(str(c) for c in doc.get("codes") or [])
     except (OSError, ValueError, AttributeError):
         return frozenset()
 

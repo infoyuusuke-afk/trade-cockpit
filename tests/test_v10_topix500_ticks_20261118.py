@@ -40,5 +40,48 @@ class Topix500Ticks(unittest.TestCase):
             self.assertAlmostEqual(r["return_pct"], r["gross_pct"] - ev.strict_cost_pct(1, r["fill_price"], r["exit_price"], "6861.T"), places=9)
 
 
+class Topix500ListGuard(unittest.TestCase):
+    """audit 22a943e: the list is pinned by SHA-256 and is not used after valid_until (both fall back to the coarse table)."""
+
+    def test_pin_matches_the_file_in_both_modules(self):
+        import hashlib
+        h = hashlib.sha256((ROOT / "config" / "topix500_ticks_v1.json").read_bytes()).hexdigest()
+        self.assertEqual(ev.TOPIX500_SHA256, h)
+        self.assertEqual(tm._TOPIX500_SHA256, h)
+        self.assertEqual(DOC["valid_until"], "2027-02-26")
+
+    def test_edited_list_falls_back_to_coarse(self):
+        import tempfile
+        from unittest import mock
+        doc = dict(DOC, codes=list(DOC["codes"]) + ["9999"])
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "topix500_ticks_v1.json"
+            f.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+            with mock.patch.object(ev, "TOPIX500_FILE", f):
+                self.assertEqual(ev._topix500(), frozenset())
+        with mock.patch.object(ev, "TOPIX500_FILE", ROOT / "config" / "no_such_file.json"):
+            self.assertEqual(ev._topix500(), frozenset())
+
+    def test_expired_list_falls_back_to_coarse(self):
+        from datetime import datetime as real
+        from unittest import mock
+
+        class Later(real):
+            @classmethod
+            def now(cls, tz=None):
+                return real(2027, 3, 1, 9, 0, tzinfo=tz)
+
+        class LastDay(real):
+            @classmethod
+            def now(cls, tz=None):
+                return real(2027, 2, 26, 15, 0, tzinfo=tz)
+
+        for mod in (ev, tm):
+            with mock.patch.object(mod, "datetime", Later):
+                self.assertEqual(mod._topix500(), frozenset(), mod.__name__)
+            with mock.patch.object(mod, "datetime", LastDay):
+                self.assertIn("6861", mod._topix500(), mod.__name__)
+
+
 if __name__ == "__main__":
     unittest.main()
