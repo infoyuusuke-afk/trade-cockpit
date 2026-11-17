@@ -56,7 +56,10 @@ class EarningsHoldNames(unittest.TestCase):
             i = HTML.index(where)
             block = HTML[i - 400:i]
             self.assertIn('const unk=!em&&(!es||!(es.state==="OK"||es.state==="OLD")||(Array.isArray(es.no_date)&&es.no_date.includes(', block)
-        self.assertEqual(HTML.count("📅 決算予定 未確認"), 2)
+        # audit c5be6b0: the OVERNIGHT 5 table rows carry the same mark (the cards are folded), by the same rule
+        self.assertEqual(HTML.count("📅 決算予定 未確認"), 3)
+        i = HTML.index("const marks=x=>{")
+        self.assertIn('const unk=!em&&(!es||!(es.state==="OK"||es.state==="OLD")||(Array.isArray(es.no_date)&&es.no_date.includes(c)));', HTML[i:i + 600])
 
 
 if __name__ == "__main__":
