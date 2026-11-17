@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-17T03:55:57.132645+09:00",
+  "updated_at": "2026-11-17T13:46:35.228275+09:00",
   "calendar": [
     {
       "code": "1414",
@@ -40877,10 +40877,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 7290.0,
-        "return_5d_pct": 7.68,
-        "return_20d_pct": 7.94,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 7179.0,
+        "return_5d_pct": 0.21,
+        "return_20d_pct": 3.03,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40907,10 +40907,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5316.0,
-        "return_5d_pct": 7.83,
-        "return_20d_pct": 5.96,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 5207.0,
+        "return_5d_pct": 1.13,
+        "return_20d_pct": 0.91,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40937,10 +40937,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 597.1,
-        "return_5d_pct": 4.79,
-        "return_20d_pct": 10.04,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 583.8,
+        "return_5d_pct": -0.09,
+        "return_20d_pct": 5.21,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -40967,9 +40967,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 80600.0,
-        "return_5d_pct": -0.37,
-        "return_20d_pct": -4.28,
+        "last_close": 80900.0,
+        "return_5d_pct": 1.51,
+        "return_20d_pct": -3.35,
         "momentum_direction": "中立"
       }
     },
@@ -46017,6 +46017,34 @@
   ],
   "catalysts": [
     {
+      "code": "1397",
+      "name": "ＳＭＤＡＭ　２２５",
+      "title": "2026年10月期　決算短信（2026年4月9日～2026年10月8日）",
+      "published_at": "2026-11-17T10:30:00+09:00",
+      "date": "2026-11-17",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261117581824.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2557",
+      "name": "ＳＭＤＡＭトピックス",
+      "title": "2026年10月期　決算短信（2026年4月9日～2026年10月8日）",
+      "published_at": "2026-11-17T10:30:00+09:00",
+      "date": "2026-11-17",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261117581830.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "3905",
       "name": "Ｇ－データセクション",
       "title": "2027年３月期 第２四半期（中間期）決算短信〔日本基準〕（連結）",
@@ -47931,8 +47959,8 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-11-19",
   "momentum_validation": {
-    "resolved_n": 3185,
-    "hit_rate_pct": 34.9,
+    "resolved_n": 3243,
+    "hit_rate_pct": 35.0,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
   },
