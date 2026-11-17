@@ -4045,6 +4045,65 @@ document.addEventListener("DOMContentLoaded",()=>{
 .ht8-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}.ht8-bar i.up{background:#4CC38A}.ht8-bar i.dn{background:#E0566B}
 .ht8-bar b{position:absolute;top:-3px;width:2px;height:14px;background:#E6E8EB;margin-left:-1px}
 .ht8-cards{margin:4px 0 8px}.ht8-cards>summary{cursor:pointer;color:#9AA0AA;font-size:12px}</style>
+<style>
+/* OWNER 2026-11-17 「保有と持ち越しを一目で見る版」: one table look for SWING 5・長期・OVERNIGHT 5・メル */
+.hl-wrap{margin:4px 0 10px}.hl-cap{font-size:12px;color:#9AA0AA;margin:2px 0 4px}
+.hl-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;font-variant-numeric:tabular-nums}
+.hl-tbl th{color:#9AA0AA;font-weight:600;font-size:12px;text-align:right;padding:4px 6px;border-bottom:1px solid #2A2D33;white-space:nowrap}
+.hl-tbl td{padding:6px 6px;border-bottom:1px solid #22252A;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.hl-tbl th:nth-child(-n+3),.hl-tbl td:nth-child(-n+3){text-align:left}
+.hl-tbl col.c-res{width:15%}.hl-tbl col.c-name{width:19%}.hl-tbl col.c-side{width:6%}.hl-tbl col.c-sh{width:9%}.hl-tbl col.c-px{width:8%}
+.hl-tbl col.c-pct{width:8%}.hl-tbl col.c-yen{width:11%}.hl-tbl col.c-st{width:8%}.hl-tbl col.c-tg{width:8%}.hl-tbl col.c-day{width:8%}
+.hl-tbl td.hl-name{white-space:normal;overflow-wrap:anywhere}.hl-tbl td.hl-name small{display:block;color:#9AA0AA;font-size:11px}
+.hl-sh{font-size:18px;font-weight:800;color:#E6E8EB}.hl-sh small{font-size:11px;font-weight:400;color:#9AA0AA;margin-left:2px}
+.hl-up{color:#4CC38A}.hl-dn{color:#E0566B}.hl-g{color:#8b9299}
+.hl-badge{display:inline-block;min-width:4.5em;padding:3px 8px;border-radius:8px;font-weight:800;font-size:14px;text-align:center;white-space:nowrap}
+.hl-badge.win{background:#0d2b23;color:#35e2ae;border:1px solid #1f6b4a}.hl-badge.lose{background:#341418;color:#ff6b6b;border:1px solid #7a2a30}
+.hl-badge.wait{background:#24272c;color:#b5b9bf;border:1px solid #3a3d44}.hl-badge.skip{background:transparent;color:#6b7078;border:1px dashed #3a3d44}
+.hl-tbl tr.hl-skip td{opacity:.45}.hl-tbl tr.hl-near td{background:#3a1418}.hl-tbl tr.hl-near td:first-child{box-shadow:inset 4px 0 0 #ff5a5f}
+.hl-tbl tr.hl-total td{border-top:2px solid #3a3d44;font-weight:700;color:#E6E8EB}.hl-tbl tr.hl-total td:nth-child(2){white-space:normal}
+.hl-tbl td.hl-sub{white-space:normal;font-size:11px;color:#9AA0AA;text-align:left}
+.hl-fold{margin:6px 0 8px}.hl-fold>summary{cursor:pointer;color:#9AA0AA;font-size:12px}
+</style>
+<script>
+// OWNER 2026-11-17 「保有と持ち越しを一目で見る版を作って。SWING 5・長期・OVERNIGHT 5・メルの各タブの上に1銘柄1行の一覧表（銘柄・向き・株数・今値・
+// 含み%・損益円・STOPまで%・TARGETまで%・日数）。株数は大きく、OVERNIGHT 5にも出す。結果が出たら大きな札：勝ち=緑+円、負け=赤−円、待ち=灰、0株=見送りで
+// 薄く。メルの表は通常/半分/AIを1行にまとめる。含み損の大きい順、STOPまで1%以内は赤帯、合計行。今のカードは表の下にたたむ。1130pxではみ出さない。表示だけ、注文しない」.
+// window.cockpitHoldList(rows, caption) -> the table's HTML. A row: {name, code, side (1 buy / -1 short), shares, price, pct, yen,
+// stopPct, targetPct, days, result ("win" | "lose" | "wait" | "skip"), resultYen, note, sub}. Nothing is calculated here except the
+// order (the biggest loss first, 見送り last), the red band (the stop within 1% of the price) and the total line. Text only.
+(()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fin=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));
+  const yen=v=>!fin(v)?"—":(Number(v)>0?"+":Number(v)<0?"−":"")+Math.abs(Math.round(Number(v))).toLocaleString("ja-JP")+"円";
+  const pct=v=>!fin(v)?"—":(Number(v)>0?"+":Number(v)<0?"−":"")+Math.abs(Number(v)).toFixed(2)+"%";
+  const cls=v=>!fin(v)||Number(v)===0?"":Number(v)>0?"hl-up":"hl-dn";
+  const badge=r=>r.result==="win"?'<span class="hl-badge win">勝ち '+yen(r.resultYen)+'</span>':r.result==="lose"?'<span class="hl-badge lose">負け '+yen(r.resultYen)+'</span>':
+    r.result==="skip"?'<span class="hl-badge skip">見送り</span>':'<span class="hl-badge wait">待ち</span>';
+  window.cockpitHoldList=(rows,caption)=>{
+    const list=(rows||[]).slice().sort((a,b)=>(a.result==="skip")-(b.result==="skip")||(fin(a.yen)?Number(a.yen):1e15)-(fin(b.yen)?Number(b.yen):1e15));
+    if(!list.length)return '<div class="hl-wrap"><div class="hl-cap">'+esc(caption||"")+'</div><div class="hl-g">保有・持ち越しはありません</div></div>';
+    const live=list.filter(r=>r.result!=="skip"),tot=live.reduce((a,r)=>a+(fin(r.yen)?Number(r.yen):0),0),sh=live.reduce((a,r)=>a+(Number(r.shares)||0),0);
+    const n=k=>list.filter(r=>r.result===k).length;
+    return '<div class="hl-wrap"><div class="hl-cap">'+esc(caption||"")+'</div><table class="hl-tbl" data-keep-table>'+
+      '<colgroup><col class="c-res"><col class="c-name"><col class="c-side"><col class="c-sh"><col class="c-px"><col class="c-pct"><col class="c-yen"><col class="c-st"><col class="c-tg"><col class="c-day"></colgroup>'+
+      '<tr><th>結果</th><th>銘柄</th><th>向き</th><th>株数</th><th>今値</th><th>含み%</th><th>損益円</th><th>STOPまで</th><th>TARGETまで</th><th>日数</th></tr>'+
+      list.map(r=>{
+        const near=r.result!=="skip"&&fin(r.stopPct)&&Math.abs(Number(r.stopPct))<=1;
+        return '<tr class="'+(r.result==="skip"?"hl-skip":"")+(near?" hl-near":"")+'"><td>'+badge(r)+'</td>'+
+          '<td class="hl-name"><b>'+esc(r.name)+'</b>（'+esc(r.code)+'）'+(r.note?'<small>'+esc(r.note)+'</small>':'')+'</td>'+
+          '<td class="'+(r.side>0?"hl-up":"hl-dn")+'">'+(r.side>0?"買い":"空売り")+'</td>'+
+          '<td><span class="hl-sh">'+(fin(r.shares)?Number(r.shares).toLocaleString("ja-JP"):"—")+'<small>株</small></span></td>'+
+          '<td>'+(fin(r.price)?Number(r.price).toLocaleString("ja-JP",{maximumFractionDigits:1}):"—")+'</td>'+
+          '<td class="'+cls(r.pct)+'">'+pct(r.pct)+'</td><td class="'+cls(r.yen)+'"><b>'+yen(r.yen)+'</b></td>'+
+          '<td class="'+(near?"hl-dn":"")+'">'+pct(r.stopPct)+'</td><td>'+pct(r.targetPct)+'</td><td>'+esc(r.days||"—")+'</td></tr>'+
+          (r.sub?'<tr class="'+(r.result==="skip"?"hl-skip":"")+'"><td></td><td colspan="9" class="hl-sub">'+esc(r.sub)+'</td></tr>':'');
+      }).join("")+
+      '<tr class="hl-total"><td>合計</td><td>勝ち '+n("win")+'・負け '+n("lose")+'・待ち '+n("wait")+(n("skip")?'・見送り '+n("skip"):'')+'</td><td></td>'+
+      '<td><span class="hl-sh">'+sh.toLocaleString("ja-JP")+'<small>株</small></span></td><td></td><td></td><td class="'+cls(tot)+'"><b>'+yen(tot)+'</b></td><td></td><td></td><td></td></tr></table></div>';
+  };
+})();
+</script>
 <script>
 // OWNER 2026-11-05 「スイング保有と長期保有も出して」: at the top of the SWING 5 and VALUE 5 tabs, the virtual holds of hold_track.py (/hold_track.json): open holds as cards, waiting candidates and the last closed holds as lines.
 // Virtual, 100 shares, no cost, nothing to do with the real account. Display only: no order.
@@ -4085,20 +4144,15 @@ document.addEventListener("DOMContentLoaded",()=>{
   // entry), the day count and the entry time. The same numbers as the cards (valued()); the cards stay below, folded. Display only.
   const cardsOpen={};
   document.addEventListener("toggle",ev=>{const d=ev.target;if(d&&d.classList&&d.classList.contains("ht8-cards"))cardsOpen[d.dataset.k]=d.open;},true);
-  function holdTable(open){
-    const rows=open.map(o=>({o,v:valued(o)})).sort((a,b)=>(b.v.pct??-1e9)-(a.v.pct??-1e9));
+  function holdTable(open,closed,label){
+    const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
     const dist=(lv,p)=>{const x=Number(lv);return Number.isFinite(x)&&x>0&&p?((x/p-1)*100):null;};
-    const pos=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
-    return '<table class="ht8-tbl" data-keep-table><tr><th>銘柄</th><th>今の値</th><th>含み損益</th><th>100株</th><th>損切りまで</th><th>利確まで</th><th>損切り〜利確の位置</th><th>日数</th><th>入った日時</th></tr>'+
-      rows.map(({o,v})=>{
-        const p=v.price,s=Number(o.stop),g=Number(o.target),e=Number(o.entry),ds=dist(s,p),dg=dist(g,p);
-        const bar=p&&s>0&&g>s?'<span class="ht8-bar"><i class="'+(v.pct>=0?'up':'dn')+'" style="width:'+pos(p,s,g).toFixed(0)+'%"></i><b style="left:'+pos(e,s,g).toFixed(0)+'%"></b></span>':'—';
-        const cls=v.pct===null?'':v.pct>=0?'ht8-up':'ht8-dn';
-        return '<tr><td><b>'+esc(String(o.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'</b>（'+esc(o.code)+'）'+(v.live?'':'<small class="ht8-tag">'+esc(v.tag)+'</small>')+'</td>'+
-          '<td class="r">'+num(p)+'</td><td class="r '+cls+'"><b>'+(v.pct===null?'—':sgn(v.pct))+'</b></td><td class="r '+cls+'">'+(v.yen===null?'—':yen(v.yen))+'</td>'+
-          '<td class="r ht8-dn">'+(ds===null?'—':sgn(ds))+'</td><td class="r ht8-up">'+(dg===null?'—':sgn(dg))+'</td><td>'+bar+'</td>'+
-          '<td class="r">'+esc(o.days)+'日目</td><td>'+esc(tm(o.entry_day,o.entry_time,o.entry_time_src))+'</td></tr>';
-      }).join("")+'</table>';
+    const rows=open.map(o=>{const v=valued(o);return {name:String(o.name||"").replace(/（[0-9A-Z]{4}）$/,""),code:String(o.code),side:1,shares:100,price:v.price,pct:v.pct,yen:v.yen,
+        stopPct:dist(o.stop,v.price),targetPct:dist(o.target,v.price),days:o.days+"日目",result:"wait",note:v.live?"":v.tag};})
+      .concat(closed.filter(x=>String(x.exit_day||"")===today).map(x=>{const y=Number.isFinite(Number(x.exit))&&Number.isFinite(Number(x.entry))?Math.round((Number(x.exit)-Number(x.entry))*100):null;
+        return {name:String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""),code:String(x.code),side:1,shares:100,price:x.exit,pct:x.pct,yen:y,stopPct:null,targetPct:null,days:"今日出た",
+          result:y===null?"wait":y>0?"win":"lose",resultYen:y,note:String(x.how||"")+"で出た"};}));
+    return window.cockpitHoldList?window.cockpitHoldList(rows,label+"（仮想・100株ずつ・費用なし）　含み損の大きい順"):"";
   }
   // what was seen during the session today (kept in this browser for the day), spoken once each
   const LKEY="cockpitHoldLiveV1";
@@ -4161,7 +4215,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       (known.length<open.length?'<span class="ht8-note">（値のない'+(open.length-known.length)+'銘柄は入っていません）</span>':'')+
       (closeOnly?'<span class="ht8-note">（'+closeOnly+'銘柄は場中の値ではなく最後の値・終値）</span>':'')+'</p>':'';
     return liveLine(k)+plSum+'<p class="ht8-sum">保有 '+open.length+'銘柄・IN待ち '+pend.length+'銘柄・終わった '+all.length+'回'+(all.length?'（勝ち '+win+'回）':'')+'／損切り・利確・'+limit+'営業日で手じまい</p>'+
-      (open.length?holdTable(open)+'<details class="ht8-cards" data-k="'+k+'"'+(cardsOpen[k]?' open':'')+'><summary>カードで見る（前の形）</summary><div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div></details>':'<div class="ht8-none">保有中の銘柄はありません</div>')+
+      holdTable(open,all,label)+(open.length?'<details class="ht8-cards" data-k="'+k+'"'+(cardsOpen[k]?' open':'')+'><summary>カードで見る（前の形）</summary><div class="scalp-strip">'+open.map(x=>card(x,label)).join("")+'</div></details>':'')+
       (pend.length?'<p class="ht8-sum">IN待ち：'+pend.map(x=>esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(x.code)+") "+num(x.trigger)+"円").join("／")+'</p>':'')+
       (closed.length?'<table data-keep-table><tr><th>銘柄</th><th>入り（日時・値段）</th><th>出（日時・値段）</th><th>理由</th><th>損益</th></tr>'+closed.map(x=>'<tr><td>'+esc(String(x.name||"").replace(/（[0-9A-Z]{4}）$/,""))+'('+esc(x.code)+')</td><td>'+esc(tm(x.entry_day,x.entry_time,x.entry_time_src))+' '+num(x.entry)+'</td><td>'+esc(tm(x.exit_day,x.exit_time,x.exit_time_src))+' '+num(x.exit)+'</td><td>'+esc(x.how)+'</td><td class="'+(x.pct>=0?'ht8-up':'ht8-dn')+'">'+sgn(x.pct)+'</td></tr>').join("")+'</table>':'');
   }
@@ -4528,6 +4582,16 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
         const y=r.done_yen!=null?r.done_yen:r.open_yen;
         return '<tr><td>'+(r.kind==="overnight"?"きのう15:25":esc(r.in))+'</td><td>'+(r.out?esc(r.out):'<span class="mel-hold">保有中</span>')+'</td><td>'+esc(r.name||"")+'</td><td>'+(r.side>0?"買い":"空売り")+'</td><td>'+esc(NAMES[r.rule]||r.rule||"")+'</td><td>'+Number(r.shares).toLocaleString("ja-JP")+'</td><td>'+man(r.amount)+'</td><td class="'+cls(y)+'">'+(y==null?"—":yen(y))+(r.done_yen==null&&y!=null?'<small class="g">（含み）</small>':'')+'</td></tr>';}).join("")+'</table>':'<div class="g">今日はまだ入っていません</div>');
   }
+  function melTable(){
+    const m=cap&&cap.mel300,L=m&&m.today_live;
+    if(!window.cockpitHoldList||!L||L.state!=="OK")return "";
+    const rows=(L.rows||[]).map(r=>{const sh=Number(r.shares)||0,amt=Number(r.amount)||0,side=Number(r.side)>0?1:-1,done=r.done_yen!=null,y=done?Number(r.done_yen):r.open_yen==null?null:Number(r.open_yen);
+      const e=sh>0?amt/sh:null,px=!done&&e&&y!==null?e+side*y/sh:null,c=(String(r.name||"").match(/（([0-9A-Z]{4})）/)||[])[1]||String(r.code||"");
+      return {name:String(r.name||"").replace(/（[0-9A-Z]{4}）$/,""),code:c,side,shares:sh,price:px,pct:amt>0&&y!==null?y/amt*100:null,yen:y,stopPct:null,targetPct:null,
+        days:r.kind==="overnight"?"持ち越し":"デイ",result:sh<=0?"skip":done?(y>0?"win":y<0?"lose":"wait"):"wait",resultYen:y,
+        note:(r.kind==="overnight"?"きのう15:25":String(r.in||""))+" → "+(r.out?String(r.out):"保有中")+(done?"（確定・費用込み）":"（含み・費用前）")};});
+    return window.cockpitHoldList(rows,"メル口座 今日のトレード（仮想・"+String(L.at||"")+"時点）　含み損の大きい順");
+  }
   function melHtml(){
     const m=cap&&cap.mel300;if(!m||m.state==="UNAVAILABLE")return '<div class="cap-chart mel300"><h4>メル口座（任せる300万・仮想）</h4><p class="g">まだ読めません</p></div>';
     const NAMES={R1:"手法A",R2:"手法B",R4:"手法C",R5:"手法D",ON_LONG:"持ち越し 買い",ON_SHORT:"持ち越し 空売り"};
@@ -4566,7 +4630,9 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       '<p class="g" style="font-size:11px">夜の間は値段がないので、線は今日9:00から。寄りの段差がそのまま入ります。PTSの値段は使いません。%は1銘柄ずつの値動き（費用前）。資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();
     let ml=document.getElementById("mel-live");
     if(!ml){ml=document.createElement("section");ml.id="mel-live";ml.className="cap-box mel-live-box";(document.querySelector("#tl-watch .tl-slot")||document.body).appendChild(ml);}
-    ml.innerHTML=melLiveHtml();
+    // OWNER 2026-11-17 「保有と持ち越しを一目で見る版」: the shared table first, the former table folded (its open state kept across the redraws)
+    if(!ml.dataset.hlFold){ml.dataset.hlFold="1";ml.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("hl-fold"))window.__hlMelOpen=e.target.open;},true);}
+    ml.innerHTML=melTable()+'<details class="hl-fold"'+(window.__hlMelOpen?' open':'')+'><summary>前の表（たたむ）</summary>'+melLiveHtml()+'</details>';
   }
   // OWNER 2026-11-09 「手法の成績をグラフにして。注文タブの資金別の下に『手法の成績』の欄を作り、手法A〜D・ブレイン・持ち越し買い・持ち越し空売りを並べる。
   // 勝率・1回の平均（費用込み）・PFを横棒で出し、50%・0・1.0に基準の線、プラスは緑・マイナスは赤、回数も出す。その下に手法ごとの通算損益の線グラフ。
@@ -5171,6 +5237,48 @@ main .card hr{display:none}
     if(tot)txt(box,"div","通算（"+String(tot.since||"").slice(5).replace("-","/")+"から・確定）：通常 "+yen(tot["通常"])+"・半分 "+yen(tot["半分"])+"・AIの判断 "+yen(tot["AI"]),"oc-note");
   }
   document.addEventListener("DOMContentLoaded",()=>{load();setInterval(load,60000);});
+})();
+</script>
+<script>
+// OWNER 2026-11-17 「保有と持ち越しを一目で見る版」 (OVERNIGHT 5): at the top of the tab, two tables of the shared look (window.cockpitHoldList):
+// tonight's 15:25 holds (仮想・100株, the price from the screen's MS2 rows when there is one) and the メル 300万 holds of the day before
+// (通常・半分・AI on one line under the row; the big 株数 and 損益 are the AI column, the one メル uses; 0株 = 見送り).
+// The cards and the former table are folded under them (moved, not rebuilt: their own code still fills them by id). Display only.
+(()=>{
+  const fin=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));
+  const yen=v=>!fin(v)?"—":(Number(v)>0?"+":"")+Math.round(Number(v)).toLocaleString("ja-JP")+"円";
+  const code=x=>String(x.ticker||x.code||"").replace(/\.T$/,"");
+  const name=x=>String(x.name||"").replace(/（[0-9A-Z]{4}）$/,"");
+  const priceOf=c=>{const lp=window.cockpitLivePrices,lq=window.cockpitLastPrices,today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+    const f=lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[c]):NaN;if(Number.isFinite(f)&&f>0)return {p:f,tag:""};
+    const l=lq&&lq.day===today?Number(lq.rows&&lq.rows[c]):NaN;if(Number.isFinite(l)&&l>0)return {p:l,tag:"今日の最後の値（MS2・"+(lq.asof||"時刻不明")+"）"};
+    return {p:null,tag:"今の値なし"};};
+  async function load(){
+    const host=document.getElementById("overnight-top5");if(!host||!window.cockpitHoldList)return;
+    let box=document.getElementById("hl-overnight");
+    if(!box){box=document.createElement("div");box.id="hl-overnight";const bar=host.querySelector(".scalp-tv-toolbar");if(bar)bar.after(box);else host.prepend(box);
+      const fold=document.createElement("details");fold.className="hl-fold";fold.id="hl-on-fold";fold.innerHTML="<summary>カードと前の表（たたむ）</summary>";box.after(fold);}
+    const fold=document.getElementById("hl-on-fold");
+    ["ms2-hold-cards","on-compare"].forEach(id=>{const el=document.getElementById(id);if(el&&fold&&el.parentElement!==fold)fold.append(el);});
+    let bp=null;try{const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});bp=r.ok?await r.json():null;}catch(_){bp=null;}
+    const pos=bp&&bp.real_submit_allowed===false&&bp.positions?bp.positions:null;
+    if(!pos){box.textContent="ブレインの記録を読めません（0件とは扱いません）。";return;}
+    const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+    const on=Array.isArray(pos.overnight)?pos.overnight:[];
+    const a=on.map(x=>{const c=code(x),side=x.side==="LONG"?1:-1,ref=Number(x.reference_price),q=priceOf(c),ok=q.p&&ref>0;
+      return {name:name(x),code:c,side,shares:100,price:q.p,pct:ok?side*(q.p/ref-1)*100:null,yen:ok?Math.round(side*(q.p-ref)*100):null,stopPct:null,targetPct:null,
+        days:String(x.decided_at||"").slice(0,10)===today?"今夜":"2日目",result:"wait",note:"基準（15:25）"+(ref>0?ref.toLocaleString("ja-JP")+"円":"—")+(q.tag?"・"+q.tag:"")};});
+    const cap=pos.capital&&Array.isArray(pos.capital.sizes)?pos.capital.sizes.find(s=>s.label==="300万"):null;
+    const cmp=cap&&Array.isArray(cap.overnight_compare)?cap.overnight_compare:[];
+    const b=cmp.map(r=>{const ai=r.AI||{},sh=Number(ai.shares)||0,y=fin(ai.yen)?Number(ai.yen):null,side=String(r.side||"").indexOf("空売り")>=0?-1:1;
+      const one=k=>{const v=r[k]||{};return (k==="AI"?"AI":k)+" "+(Number(v.shares)||0).toLocaleString("ja-JP")+"株 "+yen(v.yen);};
+      return {name:name(r),code:code(r),side,shares:sh,price:null,pct:null,yen:sh>0?y:null,stopPct:null,targetPct:null,days:r.closed?"終了":"14:00まで",
+        result:sh<=0?"skip":r.closed?(y>0?"win":y<0?"lose":"wait"):"wait",resultYen:y,
+        sub:[one("通常"),one("半分"),one("AI")].join("　")+"　メル："+String(r.mel&&r.mel.size||"通常")+"（"+String(r.mel&&r.mel.reason||"")+"）"+((r.events||[]).length?"　翌朝の注意："+r.events.join("・"):"")};});
+    box.innerHTML=window.cockpitHoldList(a,"今夜の持ち越し（仮想・100株ずつ・15:25確定・次の営業日14:00で手じまい）　含み損の大きい順")+
+      (b.length?window.cockpitHoldList(b,"メル 300万の持ち越し（きのう15:25→今日14:00・株数と損益はAIの判断・通常/半分/AIは下の行）"):"");
+  }
+  document.addEventListener("DOMContentLoaded",()=>{setTimeout(load,1500);setInterval(load,60000);});
 })();
 </script>
 <style>#ai-focus-picks{margin:0 0 10px;padding:10px 12px;border:1px solid #303033;border-radius:10px;background:#0E1013;color:#E8EAED;font-size:13px}#ai-focus-picks .af-head{font-weight:700;margin:0 0 4px}#ai-focus-picks .af-note{color:#b5b5ba;font-size:12px;margin:2px 0 6px;line-height:1.6}#ai-focus-picks .af-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0}#ai-focus-picks .af-label{min-width:64px;font-weight:700}#ai-focus-picks .af-chip{padding:2px 9px;border-radius:999px;border:1px solid #303033;font-size:12px;cursor:help}#ai-focus-picks .af-long .af-label{color:#35e2ae}#ai-focus-picks .af-long .af-chip{border-color:#164536;color:#35e2ae;background:#0d2b23}#ai-focus-picks .af-short .af-label{color:#ff6b6b}#ai-focus-picks .af-short .af-chip{border-color:#4a1f24;color:#ff8a8f;background:#2a1215}#ai-focus-picks .af-wait .af-label{color:#b5b5ba}#ai-focus-picks .af-wait .af-chip{color:#c9ccd1}</style>
