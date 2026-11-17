@@ -45,7 +45,7 @@ class Topix500ListGuard(unittest.TestCase):
 
     def test_pin_matches_the_file_in_both_modules(self):
         import hashlib
-        h = hashlib.sha256((ROOT / "config" / "topix500_ticks_v1.json").read_bytes()).hexdigest()
+        h = hashlib.sha256((ROOT / "config" / "topix500_ticks_v1.json").read_bytes().replace(b"\r\n", b"\n")).hexdigest()   # the same on LF and CRLF checkouts
         self.assertEqual(ev.TOPIX500_SHA256, h)
         self.assertEqual(tm._TOPIX500_SHA256, h)
         self.assertEqual(DOC["valid_until"], "2027-02-26")
@@ -61,6 +61,18 @@ class Topix500ListGuard(unittest.TestCase):
                 self.assertEqual(ev._topix500(), frozenset())
         with mock.patch.object(ev, "TOPIX500_FILE", ROOT / "config" / "no_such_file.json"):
             self.assertEqual(ev._topix500(), frozenset())
+
+    def test_lf_and_crlf_copies_both_load(self):
+        # audit 7533443: the pin is on the LF content, so an LF checkout (Linux CI) and a CRLF checkout (this PC) both pass
+        import tempfile
+        from unittest import mock
+        raw = (ROOT / "config" / "topix500_ticks_v1.json").read_bytes().replace(b"\r\n", b"\n")
+        with tempfile.TemporaryDirectory() as d:
+            for body in (raw, raw.replace(b"\n", b"\r\n")):
+                f = Path(d) / "topix500_ticks_v1.json"
+                f.write_bytes(body)
+                with mock.patch.object(ev, "TOPIX500_FILE", f):
+                    self.assertIn("6861", ev._topix500())
 
     def test_expired_list_falls_back_to_coarse(self):
         from datetime import datetime as real

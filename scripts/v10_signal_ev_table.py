@@ -159,14 +159,14 @@ FINE_TICK_TABLE = ((1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10
 TOPIX500_FILE = Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json"
 # audit 22a943e: the list is pinned by its SHA-256 (an edited list cannot make the cost lighter) and is used only up to its
 # valid_until (from 2027-03-01 JPX sets ticks by each issue's STR); otherwise every code gets the coarse table
-TOPIX500_SHA256 = "fee6f383ff69533e6374a106fa390495a9e1f1706d82fafd611ae933bb5d55ae"
+TOPIX500_SHA256 = "74964fed6d0d71bc2adf65134e4fb0b82baf41cef8b697099fdb4306fe0161f8"
 
 
 def _topix500():
     try:
         import hashlib
         raw = TOPIX500_FILE.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != TOPIX500_SHA256:
+        if hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest() != TOPIX500_SHA256:
             return frozenset()
         doc = json.loads(raw.decode("utf-8"))
         if doc.get("schema_version") != "100b-v10-topix500-ticks-v1":
