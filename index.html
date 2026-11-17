@@ -5253,6 +5253,17 @@ main .card hr{display:none}
     const f=lp&&Date.now()-lp.at<=30000?Number(lp.rows&&lp.rows[c]):NaN;if(Number.isFinite(f)&&f>0)return {p:f,tag:""};
     const l=lq&&lq.day===today?Number(lq.rows&&lq.rows[c]):NaN;if(Number.isFinite(l)&&l>0)return {p:l,tag:"今日の最後の値（MS2・"+(lq.asof||"時刻不明")+"）"};
     return {p:null,tag:"今の値なし"};};
+  // audit c5be6b0: the cards (now folded) carry the marks of 11/12 and 11/16; the same marks, as words, go on the row's own line
+  // (the same rules as the card: window.cockpitEarningsSoon and window.cockpitEventRisk). Text only.
+  const marks=x=>{const c=code(x),out=[],es=window.cockpitEarningsSoon,em=es&&es.items?es.items[c]:null;
+    const unk=!em&&(!es||!(es.state==="OK"||es.state==="OLD")||(Array.isArray(es.no_date)&&es.no_date.includes(c)));
+    if(em)out.push("📅 決算またぎ（"+String(em.label||"")+"・"+String(em.time||"時刻未確認")+"）");else if(unk)out.push("📅 決算予定 未確認");
+    const er=window.cockpitEventRisk;
+    if(er&&er.tonight){const day=String(x&&x.decided_at||"").slice(0,10),rv=day&&er.held&&day===er.held.decided?er.held:er.tonight;
+      const evs=Array.isArray(rv&&rv.events)?rv.events:[];
+      if(evs.length)out.push("⚠ 翌朝の注意："+evs.slice(0,3).map(z=>z.what).join("・")+(evs.length>3?" ほか"+(evs.length-3)+"件":""));
+      if(rv&&rv.nvidia_night&&Array.isArray(rv.semi_codes)&&rv.semi_codes.includes(c))out.push("🔶 半導体・NVIDIA決算の夜");}
+    return out;};
   async function load(){
     const host=document.getElementById("overnight-top5");if(!host||!window.cockpitHoldList)return;
     let box=document.getElementById("hl-overnight");
@@ -5267,7 +5278,7 @@ main .card hr{display:none}
     const on=Array.isArray(pos.overnight)?pos.overnight:[];
     const a=on.map(x=>{const c=code(x),side=x.side==="LONG"?1:-1,ref=Number(x.reference_price),q=priceOf(c),ok=q.p&&ref>0;
       return {name:name(x),code:c,side,shares:100,price:q.p,pct:ok?side*(q.p/ref-1)*100:null,yen:ok?Math.round(side*(q.p-ref)*100):null,stopPct:null,targetPct:null,
-        days:String(x.decided_at||"").slice(0,10)===today?"今夜":"2日目",result:"wait",note:"基準（15:25）"+(ref>0?ref.toLocaleString("ja-JP")+"円":"—")+(q.tag?"・"+q.tag:"")};});
+        days:String(x.decided_at||"").slice(0,10)===today?"今夜":"2日目",result:"wait",note:"基準（15:25）"+(ref>0?ref.toLocaleString("ja-JP")+"円":"—")+(q.tag?"・"+q.tag:""),sub:marks(x).join("　")};});
     const cap=pos.capital&&Array.isArray(pos.capital.sizes)?pos.capital.sizes.find(s=>s.label==="300万"):null;
     const cmp=cap&&Array.isArray(cap.overnight_compare)?cap.overnight_compare:[];
     const b=cmp.map(r=>{const ai=r.AI||{},sh=Number(ai.shares)||0,y=fin(ai.yen)?Number(ai.yen):null,side=String(r.side||"").indexOf("空売り")>=0?-1:1;

@@ -52,7 +52,12 @@ class EachTab(unittest.TestCase):
         b = HTML[i:HTML.index("</script>", i)]
         self.assertIn('["ms2-hold-cards","on-compare"].forEach(id=>{const el=document.getElementById(id);if(el&&fold&&el.parentElement!==fold)fold.append(el);});', b)
         self.assertIn("shares:100", b)
-        self.assertIn('[one("通常"),one("半分"),one("AI")].join("　")', b)            # 通常/半分/AI on one line
+        self.assertIn('sub:[one("通常"),one("半分"),one("AI")].join("　")', b)   # 通常/半分/AI on one line (the night's own events follow)
+        self.assertIn('((r.events||[]).length?"　翌朝の注意："+r.events.join("・"):"")', b)
+        # audit c5be6b0: the card marks (決算またぎ・決算予定 未確認・翌朝の注意・NVIDIA決算の夜) stay visible on the rows
+        for mark in ("📅 決算またぎ（", "📅 決算予定 未確認", "⚠ 翌朝の注意：", "🔶 半導体・NVIDIA決算の夜"):
+            self.assertIn(mark, b)
+        self.assertIn("sub:marks(x).join(\"　\")", b)
         self.assertIn('result:sh<=0?"skip":r.closed?(y>0?"win":y<0?"lose":"wait"):"wait"', b)
         self.assertIn("bp.real_submit_allowed===false", b)
         code = code_only(b)
