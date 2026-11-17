@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-17 17:59:22 JST",
+  "updated_at": "2026-11-17 20:11:39 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -13,14 +13,14 @@
       "setup": "安定押し目",
       "score": 85,
       "close": 1122.0,
-      "trigger": 1155,
+      "trigger": 1154,
       "stop": 1062,
-      "target1": 1294,
-      "target2": 1388,
+      "target1": 1292,
+      "target2": 1384,
       "ma5": 1086.4,
       "rvol": 1.24,
       "ret20": 6.96,
-      "atr_pct": 4.55,
+      "atr_pct": 4.54,
       "signal_date": "2026-11-17",
       "reason": "安定押し目／終値が主要移動平均線上／出来高比1.24倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -382,7 +382,7 @@
         },
         {
           "o": 1085.0,
-          "h": 1154.0,
+          "h": 1153.0,
           "l": 1068.0,
           "c": 1122.0
         }
@@ -1210,14 +1210,14 @@
       "setup": "安定押し目",
       "score": 85,
       "close": 1122.0,
-      "trigger": 1155,
+      "trigger": 1154,
       "stop": 1062,
-      "target1": 1294,
-      "target2": 1388,
+      "target1": 1292,
+      "target2": 1384,
       "ma5": 1086.4,
       "rvol": 1.24,
       "ret20": 6.96,
-      "atr_pct": 4.55,
+      "atr_pct": 4.54,
       "signal_date": "2026-11-17",
       "reason": "安定押し目／終値が主要移動平均線上／出来高比1.24倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -1579,7 +1579,7 @@
         },
         {
           "o": 1085.0,
-          "h": 1154.0,
+          "h": 1153.0,
           "l": 1068.0,
           "c": 1122.0
         }
@@ -3994,8 +3994,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-11-17T17:59:17+09:00",
-    "decision_at": "2026-11-17T17:59:17+09:00",
+    "generated_at": "2026-11-17T20:11:32+09:00",
+    "decision_at": "2026-11-17T20:11:32+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",

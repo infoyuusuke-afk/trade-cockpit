@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-11-17 17:59:46 JST",
-  "phase": "大引け後版（17:59作成）",
+  "updated_at": "2026-11-17 20:12:05 JST",
+  "phase": "大引け後版（20:12作成）",
   "session": "close",
   "active_buybacks": [],
   "buybacks_updated_at": "未取得",
@@ -392,8 +392,8 @@
         "high": 2527.0,
         "low": 2491.0,
         "close": 2496.0,
-        "vwap": 2509.07,
-        "volume": 124600,
+        "vwap": 2504.39,
+        "volume": 87200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -786,8 +786,8 @@
         "high": 1298.0,
         "low": 1276.0,
         "close": 1280.5,
-        "vwap": 1288.25,
-        "volume": 3173000,
+        "vwap": 1286.93,
+        "volume": 2098200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -1180,8 +1180,8 @@
         "high": 2672.0,
         "low": 2555.5,
         "close": 2612.0,
-        "vwap": 2619.49,
-        "volume": 79392000,
+        "vwap": 2616.57,
+        "volume": 49825500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -1574,8 +1574,8 @@
         "high": 4187.0,
         "low": 4045.0,
         "close": 4071.0,
-        "vwap": 4095.29,
-        "volume": 1081100,
+        "vwap": 4093.79,
+        "volume": 696000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -1968,8 +1968,8 @@
         "high": 4492.0,
         "low": 4329.0,
         "close": 4341.0,
-        "vwap": 4391.4,
-        "volume": 993400,
+        "vwap": 4386.74,
+        "volume": 708600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -2364,8 +2364,8 @@
         "high": 2736.0,
         "low": 2608.0,
         "close": 2635.0,
-        "vwap": 2640.74,
-        "volume": 483400,
+        "vwap": 2637.22,
+        "volume": 311000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -2758,8 +2758,8 @@
         "high": 6760.0,
         "low": 6633.0,
         "close": 6672.0,
-        "vwap": 6684.56,
-        "volume": 4304500,
+        "vwap": 6680.06,
+        "volume": 2633800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -3152,8 +3152,8 @@
         "high": 5610.0,
         "low": 5480.0,
         "close": 5562.0,
-        "vwap": 5559.36,
-        "volume": 5229100,
+        "vwap": 5544.24,
+        "volume": 3328600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -3546,8 +3546,8 @@
         "high": 5125.0,
         "low": 5033.0,
         "close": 5074.0,
-        "vwap": 5086.35,
-        "volume": 1272800,
+        "vwap": 5076.07,
+        "volume": 836000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -3563,7 +3563,7 @@
       "ok": true,
       "price": 7949.0,
       "open": 8000.0,
-      "high": 8018.0,
+      "high": 8020.0,
       "low": 7872.0,
       "prev_close": 8052.0,
       "change_pct": -1.28,
@@ -3909,7 +3909,7 @@
         {
           "t": "2026-11-17",
           "o": 8000.0,
-          "h": 8018.0,
+          "h": 8020.0,
           "l": 7872.0,
           "c": 7949.0,
           "v": 580900
@@ -3918,12 +3918,12 @@
       "data_date": "2026-11-17",
       "data_age_days": 0,
       "chart_last_close": 7949.0,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 7949.0,
       "secondary_date": "2026-11-17",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-17終値 7,949.00円",
       "market_supply_score": 59,
       "market_supply_improved": false,
       "market_supply_status": "市場需給59点／上昇日出来高÷下落日0.83倍／安値切上げ○",
@@ -3940,8 +3940,8 @@
         "high": 8020.0,
         "low": 7872.0,
         "close": 7958.0,
-        "vwap": 7953.84,
-        "volume": 760300,
+        "vwap": 7940.62,
+        "volume": 472200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -5811,37 +5811,37 @@
     },
     "VIX": {
       "ok": true,
-      "price": 23.28,
+      "price": 23.54,
       "open": 23.11,
-      "high": 23.29,
+      "high": 24.19,
       "low": 23.0,
       "prev_close": 22.91,
-      "change_pct": 1.62,
-      "ret5": 19.63,
+      "change_pct": 2.75,
+      "ret5": 20.97,
       "ret5_prev": -6.58,
-      "ret20": 34.49,
+      "ret20": 35.99,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 3.95,
-      "atr_pct": 16.95,
-      "ma5": 20.34,
-      "ma20": 19.9,
+      "atr14": 4.01,
+      "atr_pct": 17.04,
+      "ma5": 20.39,
+      "ma20": 19.92,
       "ma60": 17.19,
-      "from_ma5": 14.48,
-      "from_ma20": 16.96,
+      "from_ma5": 15.46,
+      "from_ma20": 18.19,
       "touch_ma5": false,
-      "to_high20": -17.91,
-      "to_high52": -34.05,
-      "bb_upper": 25.88,
-      "bb_lower": 13.92,
-      "bb_width": 60.09,
-      "bb_width_change": 0.36,
+      "to_high20": -17.0,
+      "to_high52": -33.31,
+      "bb_upper": 25.93,
+      "bb_lower": 13.91,
+      "bb_width": 60.35,
+      "bb_width_change": 0.62,
       "bb_percentile": 95.8,
       "bb_expansion_score": 23.5,
-      "day_score": 5.09,
+      "day_score": 6.0,
       "swing_score": 9.55,
       "stable_score": 7.7,
-      "momentum_score": 6.42,
+      "momentum_score": 6.91,
       "high_score": -1.0,
       "chart": [
         {
@@ -6159,61 +6159,61 @@
         {
           "t": "2026-11-17",
           "o": 23.11,
-          "h": 23.29,
+          "h": 24.19,
           "l": 23.0,
-          "c": 23.28,
+          "c": 23.54,
           "v": 0
         }
       ],
       "data_date": "2026-11-17",
       "data_age_days": 0,
-      "chart_last_close": 23.28,
+      "chart_last_close": 23.54,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
-      "market_supply_score": 73,
+      "market_supply_score": 69,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給73点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給69点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "ドル円": {
       "ok": true,
-      "price": 159.1,
+      "price": 159.13,
       "open": 159.41,
       "high": 159.61,
-      "low": 159.04,
+      "low": 158.86,
       "prev_close": 159.78,
-      "change_pct": -0.43,
-      "ret5": 0.71,
+      "change_pct": -0.4,
+      "ret5": 0.73,
       "ret5_prev": 0.04,
-      "ret20": 0.36,
+      "ret20": 0.39,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 0.9,
+      "atr14": 0.91,
       "atr_pct": 0.57,
-      "ma5": 159.44,
-      "ma20": 158.21,
+      "ma5": 159.45,
+      "ma20": 158.22,
       "ma60": 157.63,
-      "from_ma5": -0.21,
-      "from_ma20": 0.56,
+      "from_ma5": -0.19,
+      "from_ma20": 0.58,
       "touch_ma5": false,
-      "to_high20": -0.67,
-      "to_high52": -2.98,
-      "bb_upper": 159.96,
+      "to_high20": -0.65,
+      "to_high52": -2.95,
+      "bb_upper": 159.97,
       "bb_lower": 156.46,
-      "bb_width": 2.21,
+      "bb_width": 2.22,
       "bb_width_change": 0.54,
       "bb_percentile": 60.8,
       "bb_expansion_score": 50.7,
-      "day_score": -1.1,
-      "swing_score": 3.34,
+      "day_score": -1.07,
+      "swing_score": 3.35,
       "stable_score": 7.07,
-      "momentum_score": 3.27,
+      "momentum_score": 3.28,
       "high_score": 5.0,
       "chart": [
         {
@@ -6532,23 +6532,23 @@
           "t": "2026-11-17",
           "o": 159.41,
           "h": 159.61,
-          "l": 159.04,
-          "c": 159.1,
+          "l": 158.86,
+          "c": 159.13,
           "v": 0
         }
       ],
       "data_date": "2026-11-17",
       "data_age_days": 0,
-      "chart_last_close": 159.1,
+      "chart_last_close": 159.13,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
-      "market_supply_score": 78,
+      "market_supply_score": 80,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給78点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給80点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -7308,8 +7308,8 @@
         "high": 8936.0,
         "low": 8582.0,
         "close": 8685.0,
-        "vwap": 8762.59,
-        "volume": 37974500,
+        "vwap": 8758.82,
+        "volume": 22604600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -7700,8 +7700,8 @@
         "high": 26760.0,
         "low": 25480.0,
         "close": 26010.0,
-        "vwap": 26018.37,
-        "volume": 43557700,
+        "vwap": 25996.25,
+        "volume": 26810600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -8089,8 +8089,8 @@
         "high": 2882.0,
         "low": 2793.5,
         "close": 2834.5,
-        "vwap": 2842.47,
-        "volume": 1920200,
+        "vwap": 2839.97,
+        "volume": 1232900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -8478,8 +8478,8 @@
         "high": 3599.0,
         "low": 3528.0,
         "close": 3560.0,
-        "vwap": 3575.83,
-        "volume": 3068000,
+        "vwap": 3570.04,
+        "volume": 2081400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -8494,7 +8494,7 @@
       "price": 43390.0,
       "open": 43300.0,
       "high": 44280.0,
-      "low": 42670.0,
+      "low": 42660.0,
       "prev_close": 44000.0,
       "change_pct": -1.39,
       "ret5": -4.26,
@@ -8502,7 +8502,7 @@
       "ret20": -18.68,
       "rvol": 0.91,
       "turnover": 94880913000,
-      "atr14": 3462.86,
+      "atr14": 3463.57,
       "atr_pct": 7.98,
       "ma5": 45962.0,
       "ma20": 47831.5,
@@ -8840,7 +8840,7 @@
           "t": "2026-11-17",
           "o": 43300.0,
           "h": 44280.0,
-          "l": 42670.0,
+          "l": 42660.0,
           "c": 43390.0,
           "v": 2186700
         }
@@ -8848,12 +8848,12 @@
       "data_date": "2026-11-17",
       "data_age_days": 0,
       "chart_last_close": 43390.0,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 43390.0,
       "secondary_date": "2026-11-17",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-17終値 43,390.00円",
       "market_supply_score": 43,
       "market_supply_improved": false,
       "market_supply_status": "市場需給43点／上昇日出来高÷下落日0.54倍／安値切上げ○",
@@ -8870,12 +8870,13 @@
         "high": 44280.0,
         "low": 42660.0,
         "close": 43590.0,
-        "vwap": 43601.56,
-        "volume": 3078600,
+        "vwap": 43563.52,
+        "volume": 2041800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
-      "identity_verified": true
+      "identity_verified": true,
+      "rotation_group": "AI・テクノロジー"
     },
     "レーザーテック（6920）": {
       "ok": true,
@@ -9258,8 +9259,8 @@
         "high": 32180.0,
         "low": 30480.0,
         "close": 31070.0,
-        "vwap": 31264.2,
-        "volume": 7480800,
+        "vwap": 31191.6,
+        "volume": 4620000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -9647,8 +9648,8 @@
         "high": 8362.0,
         "low": 7753.0,
         "close": 8001.0,
-        "vwap": 7963.49,
-        "volume": 394121600,
+        "vwap": 8003.01,
+        "volume": 172150700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:25 JST"
       },
@@ -10036,8 +10037,8 @@
         "high": 1763.5,
         "low": 1716.0,
         "close": 1735.0,
-        "vwap": 1740.88,
-        "volume": 6672800,
+        "vwap": 1736.72,
+        "volume": 4417700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -10425,8 +10426,8 @@
         "high": 2433.0,
         "low": 2430.0,
         "close": 2431.0,
-        "vwap": 2431.06,
-        "volume": 125900,
+        "vwap": 2431.0,
+        "volume": 140500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -10814,8 +10815,8 @@
         "high": 2803.0,
         "low": 2661.0,
         "close": 2772.0,
-        "vwap": 2763.43,
-        "volume": 1611900,
+        "vwap": 2754.13,
+        "volume": 1074300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -11203,8 +11204,8 @@
         "high": 1820.0,
         "low": 1772.0,
         "close": 1789.0,
-        "vwap": 1800.16,
-        "volume": 133600,
+        "vwap": 1800.9,
+        "volume": 153200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -11592,8 +11593,8 @@
         "high": 5271.0,
         "low": 5171.0,
         "close": 5213.0,
-        "vwap": 5233.4,
-        "volume": 2689400,
+        "vwap": 5220.25,
+        "volume": 1647300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -11981,8 +11982,8 @@
         "high": 3140.0,
         "low": 2972.5,
         "close": 3051.0,
-        "vwap": 3052.72,
-        "volume": 4417800,
+        "vwap": 3053.87,
+        "volume": 2772800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -12366,12 +12367,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 1929.0,
+        "open": 1928.5,
         "high": 2023.5,
         "low": 1919.5,
         "close": 1962.5,
-        "vwap": 1966.25,
-        "volume": 28663300,
+        "vwap": 1974.81,
+        "volume": 17665000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:25 JST"
       },
@@ -12759,8 +12760,8 @@
         "high": 2672.0,
         "low": 2555.5,
         "close": 2612.0,
-        "vwap": 2619.49,
-        "volume": 79392000,
+        "vwap": 2616.57,
+        "volume": 49825500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -13144,12 +13145,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 1906.0,
+        "open": 1904.5,
         "high": 1940.0,
         "low": 1826.0,
         "close": 1870.5,
-        "vwap": 1884.6,
-        "volume": 48385300,
+        "vwap": 1883.99,
+        "volume": 30960200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -13537,8 +13538,8 @@
         "high": 1396.0,
         "low": 1343.0,
         "close": 1355.5,
-        "vwap": 1364.86,
-        "volume": 41219600,
+        "vwap": 1363.72,
+        "volume": 24711600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -13926,8 +13927,8 @@
         "high": 4910.0,
         "low": 4812.0,
         "close": 4831.0,
-        "vwap": 4853.32,
-        "volume": 9633100,
+        "vwap": 4848.67,
+        "volume": 6642800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -14315,8 +14316,8 @@
         "high": 10850.0,
         "low": 10510.0,
         "close": 10645.0,
-        "vwap": 10693.2,
-        "volume": 769900,
+        "vwap": 10684.14,
+        "volume": 511400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -14700,12 +14701,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 2830.0,
+        "open": 2825.5,
         "high": 2893.5,
         "low": 2811.0,
         "close": 2861.5,
-        "vwap": 2864.97,
-        "volume": 27128600,
+        "vwap": 2852.07,
+        "volume": 16734100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -15093,8 +15094,8 @@
         "high": 2308.0,
         "low": 2252.0,
         "close": 2300.5,
-        "vwap": 2285.72,
-        "volume": 9736900,
+        "vwap": 2279.23,
+        "volume": 6231100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -15485,8 +15486,8 @@
         "high": 1724.5,
         "low": 1686.0,
         "close": 1714.0,
-        "vwap": 1707.84,
-        "volume": 18133500,
+        "vwap": 1703.53,
+        "volume": 11140000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -15874,8 +15875,8 @@
         "high": 4638.0,
         "low": 4541.0,
         "close": 4587.0,
-        "vwap": 4591.34,
-        "volume": 6218300,
+        "vwap": 4591.23,
+        "volume": 3989800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -16263,8 +16264,8 @@
         "high": 3360.0,
         "low": 3191.0,
         "close": 3309.0,
-        "vwap": 3274.06,
-        "volume": 92437500,
+        "vwap": 3276.37,
+        "volume": 57029700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:25 JST"
       },
@@ -16652,8 +16653,8 @@
         "high": 9019.0,
         "low": 8782.0,
         "close": 8946.0,
-        "vwap": 8926.08,
-        "volume": 13683200,
+        "vwap": 8923.45,
+        "volume": 8141000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -17044,8 +17045,8 @@
         "high": 18305.0,
         "low": 17750.0,
         "close": 18130.0,
-        "vwap": 18002.43,
-        "volume": 5364300,
+        "vwap": 17995.52,
+        "volume": 3407600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -17436,8 +17437,8 @@
         "high": 656.4,
         "low": 637.5,
         "close": 651.4,
-        "vwap": 650.56,
-        "volume": 20594100,
+        "vwap": 649.01,
+        "volume": 13142700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -17821,12 +17822,12 @@
       "day_bucket": null,
       "intraday": {
         "ok": true,
-        "open": 1403.5,
+        "open": 1403.0,
         "high": 1440.0,
         "low": 1389.5,
         "close": 1424.0,
-        "vwap": 1413.78,
-        "volume": 2658100,
+        "vwap": 1411.78,
+        "volume": 2647700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -18214,8 +18215,8 @@
         "high": 3429.0,
         "low": 3383.0,
         "close": 3408.0,
-        "vwap": 3403.85,
-        "volume": 17630800,
+        "vwap": 3405.52,
+        "volume": 11149100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -18603,8 +18604,8 @@
         "high": 3320.0,
         "low": 3259.0,
         "close": 3271.0,
-        "vwap": 3292.68,
-        "volume": 49947900,
+        "vwap": 3290.31,
+        "volume": 31264800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -18992,8 +18993,8 @@
         "high": 3165.0,
         "low": 3107.0,
         "close": 3138.0,
-        "vwap": 3142.62,
-        "volume": 29264800,
+        "vwap": 3134.97,
+        "volume": 17947900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -19381,8 +19382,8 @@
         "high": 6915.0,
         "low": 6776.0,
         "close": 6837.0,
-        "vwap": 6875.15,
-        "volume": 2322100,
+        "vwap": 6855.07,
+        "volume": 1468700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -19770,8 +19771,8 @@
         "high": 3564.0,
         "low": 3435.0,
         "close": 3466.0,
-        "vwap": 3510.18,
-        "volume": 7317400,
+        "vwap": 3506.92,
+        "volume": 4940000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -20159,8 +20160,8 @@
         "high": 5273.0,
         "low": 5161.0,
         "close": 5172.0,
-        "vwap": 5210.22,
-        "volume": 9848900,
+        "vwap": 5212.71,
+        "volume": 6378700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -20548,8 +20549,8 @@
         "high": 1642.0,
         "low": 1511.0,
         "close": 1545.0,
-        "vwap": 1564.75,
-        "volume": 5336800,
+        "vwap": 1570.97,
+        "volume": 3112100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:25 JST"
       },
@@ -20937,8 +20938,8 @@
         "high": 73450.0,
         "low": 72150.0,
         "close": 72760.0,
-        "vwap": 72779.61,
-        "volume": 758000,
+        "vwap": 72820.12,
+        "volume": 457200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -21326,8 +21327,8 @@
         "high": 5610.0,
         "low": 5480.0,
         "close": 5562.0,
-        "vwap": 5559.36,
-        "volume": 5229100,
+        "vwap": 5544.24,
+        "volume": 3328600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -21718,8 +21719,8 @@
         "high": 5276.0,
         "low": 5185.0,
         "close": 5243.0,
-        "vwap": 5234.69,
-        "volume": 6954800,
+        "vwap": 5230.57,
+        "volume": 4272100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -22110,8 +22111,8 @@
         "high": 6000.0,
         "low": 5905.0,
         "close": 5967.0,
-        "vwap": 5968.75,
-        "volume": 2360700,
+        "vwap": 5962.26,
+        "volume": 1501000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -22499,8 +22500,8 @@
         "high": 4899.0,
         "low": 4824.0,
         "close": 4856.0,
-        "vwap": 4873.77,
-        "volume": 3100200,
+        "vwap": 4867.41,
+        "volume": 1934300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -22888,8 +22889,8 @@
         "high": 4327.0,
         "low": 4242.0,
         "close": 4253.0,
-        "vwap": 4271.51,
-        "volume": 8111400,
+        "vwap": 4269.73,
+        "volume": 9661400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -23277,8 +23278,8 @@
         "high": 3530.0,
         "low": 3442.0,
         "close": 3454.0,
-        "vwap": 3475.21,
-        "volume": 7623500,
+        "vwap": 3476.92,
+        "volume": 4808600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -23666,8 +23667,8 @@
         "high": 2992.0,
         "low": 2883.5,
         "close": 2910.0,
-        "vwap": 2919.85,
-        "volume": 15891700,
+        "vwap": 2924.24,
+        "volume": 10732600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -24052,11 +24053,11 @@
       "intraday": {
         "ok": true,
         "open": 4251.0,
-        "high": 4322.0,
+        "high": 4321.0,
         "low": 4241.0,
         "close": 4278.0,
-        "vwap": 4279.08,
-        "volume": 17447700,
+        "vwap": 4276.55,
+        "volume": 10566400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -24444,8 +24445,8 @@
         "high": 3505.0,
         "low": 3402.0,
         "close": 3468.0,
-        "vwap": 3447.22,
-        "volume": 6993700,
+        "vwap": 3456.14,
+        "volume": 3368900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -24833,8 +24834,8 @@
         "high": 1692.0,
         "low": 1655.0,
         "close": 1668.0,
-        "vwap": 1676.95,
-        "volume": 6442500,
+        "vwap": 1674.23,
+        "volume": 3468200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -25225,8 +25226,8 @@
         "high": 2781.5,
         "low": 2655.0,
         "close": 2723.0,
-        "vwap": 2716.37,
-        "volume": 8688400,
+        "vwap": 2718.73,
+        "volume": 4162900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -25614,8 +25615,8 @@
         "high": 2238.5,
         "low": 2182.0,
         "close": 2190.5,
-        "vwap": 2205.58,
-        "volume": 13082200,
+        "vwap": 2202.8,
+        "volume": 8413800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -26003,8 +26004,8 @@
         "high": 2880.0,
         "low": 2833.5,
         "close": 2869.0,
-        "vwap": 2863.78,
-        "volume": 5464100,
+        "vwap": 2860.79,
+        "volume": 3625800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -26392,8 +26393,8 @@
         "high": 7997.0,
         "low": 7680.0,
         "close": 7787.0,
-        "vwap": 7828.05,
-        "volume": 3482600,
+        "vwap": 7809.89,
+        "volume": 2222500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -26781,8 +26782,8 @@
         "high": 4612.0,
         "low": 4495.0,
         "close": 4566.0,
-        "vwap": 4554.77,
-        "volume": 1898600,
+        "vwap": 4558.51,
+        "volume": 1258500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -27170,8 +27171,8 @@
         "high": 1814.0,
         "low": 1791.0,
         "close": 1798.0,
-        "vwap": 1801.77,
-        "volume": 11592200,
+        "vwap": 1801.86,
+        "volume": 7649100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -27559,8 +27560,8 @@
         "high": 1947.0,
         "low": 1928.0,
         "close": 1938.0,
-        "vwap": 1939.02,
-        "volume": 7183900,
+        "vwap": 1938.95,
+        "volume": 4691000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -27948,8 +27949,8 @@
         "high": 4155.0,
         "low": 4091.0,
         "close": 4113.0,
-        "vwap": 4131.94,
-        "volume": 2816100,
+        "vwap": 4128.03,
+        "volume": 1808600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -28337,8 +28338,8 @@
         "high": 170.9,
         "low": 168.5,
         "close": 170.5,
-        "vwap": 169.92,
-        "volume": 213703400,
+        "vwap": 169.85,
+        "volume": 138496700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -28726,8 +28727,8 @@
         "high": 3016.0,
         "low": 2963.0,
         "close": 2964.5,
-        "vwap": 2994.97,
-        "volume": 13284300,
+        "vwap": 2989.71,
+        "volume": 6461300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -29115,8 +29116,8 @@
         "high": 246.7,
         "low": 243.8,
         "close": 245.7,
-        "vwap": 245.86,
-        "volume": 75414300,
+        "vwap": 245.67,
+        "volume": 47769900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -29504,8 +29505,8 @@
         "high": 2527.0,
         "low": 2491.0,
         "close": 2496.0,
-        "vwap": 2509.07,
-        "volume": 124600,
+        "vwap": 2504.39,
+        "volume": 87200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -29893,8 +29894,8 @@
         "high": 1298.0,
         "low": 1276.0,
         "close": 1280.5,
-        "vwap": 1288.25,
-        "volume": 3173000,
+        "vwap": 1286.93,
+        "volume": 2098200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -30282,8 +30283,8 @@
         "high": 4187.0,
         "low": 4045.0,
         "close": 4071.0,
-        "vwap": 4095.29,
-        "volume": 1081100,
+        "vwap": 4093.79,
+        "volume": 696000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -30671,8 +30672,8 @@
         "high": 4492.0,
         "low": 4329.0,
         "close": 4341.0,
-        "vwap": 4391.4,
-        "volume": 993400,
+        "vwap": 4386.74,
+        "volume": 708600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -31060,8 +31061,8 @@
         "high": 2736.0,
         "low": 2608.0,
         "close": 2635.0,
-        "vwap": 2640.74,
-        "volume": 483400,
+        "vwap": 2637.22,
+        "volume": 311000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -31449,8 +31450,8 @@
         "high": 6760.0,
         "low": 6633.0,
         "close": 6672.0,
-        "vwap": 6684.56,
-        "volume": 4304500,
+        "vwap": 6680.06,
+        "volume": 2633800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -31838,8 +31839,8 @@
         "high": 5125.0,
         "low": 5033.0,
         "close": 5074.0,
-        "vwap": 5086.35,
-        "volume": 1272800,
+        "vwap": 5076.07,
+        "volume": 836000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -31850,7 +31851,7 @@
       "ok": true,
       "price": 7949.0,
       "open": 8000.0,
-      "high": 8018.0,
+      "high": 8020.0,
       "low": 7872.0,
       "prev_close": 8052.0,
       "change_pct": -1.28,
@@ -32196,7 +32197,7 @@
         {
           "t": "2026-11-17",
           "o": 8000.0,
-          "h": 8018.0,
+          "h": 8020.0,
           "l": 7872.0,
           "c": 7949.0,
           "v": 580900
@@ -32205,12 +32206,12 @@
       "data_date": "2026-11-17",
       "data_age_days": 0,
       "chart_last_close": 7949.0,
-      "quote_verified": false,
+      "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 7949.0,
       "secondary_date": "2026-11-17",
-      "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-17終値 7,949.00円",
       "market_supply_score": 59,
       "market_supply_improved": false,
       "market_supply_status": "市場需給59点／上昇日出来高÷下落日0.83倍／安値切上げ○",
@@ -32227,12 +32228,13 @@
         "high": 8020.0,
         "low": 7872.0,
         "close": 7958.0,
-        "vwap": 7953.84,
-        "volume": 760300,
+        "vwap": 7940.62,
+        "volume": 472200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
-      "identity_verified": true
+      "identity_verified": true,
+      "rotation_group": "資源・素材・商社"
     },
     "FIXER（5129）": {
       "ok": true,
@@ -32615,8 +32617,8 @@
         "high": 235.0,
         "low": 219.0,
         "close": 222.0,
-        "vwap": 227.97,
-        "volume": 722700,
+        "vwap": 228.67,
+        "volume": 419000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -33004,8 +33006,8 @@
         "high": 274.0,
         "low": 266.0,
         "close": 274.0,
-        "vwap": 268.57,
-        "volume": 7400,
+        "vwap": 267.42,
+        "volume": 7900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -33393,8 +33395,8 @@
         "high": 2096.0,
         "low": 1962.0,
         "close": 1971.0,
-        "vwap": 2015.25,
-        "volume": 5406500,
+        "vwap": 2015.87,
+        "volume": 3195400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -34174,8 +34176,8 @@
         "high": 2326.0,
         "low": 2226.0,
         "close": 2232.0,
-        "vwap": 2265.05,
-        "volume": 826300,
+        "vwap": 2268.31,
+        "volume": 524200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -34563,8 +34565,8 @@
         "high": 985.0,
         "low": 946.0,
         "close": 952.0,
-        "vwap": 954.4,
-        "volume": 42900,
+        "vwap": 952.35,
+        "volume": 47200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -34952,8 +34954,8 @@
         "high": 1870.0,
         "low": 1749.0,
         "close": 1764.0,
-        "vwap": 1814.29,
-        "volume": 1664100,
+        "vwap": 1811.36,
+        "volume": 1139100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -35341,8 +35343,8 @@
         "high": 7289.0,
         "low": 7150.0,
         "close": 7257.0,
-        "vwap": 7230.85,
-        "volume": 590700,
+        "vwap": 7228.74,
+        "volume": 381500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -35733,8 +35735,8 @@
         "high": 3590.0,
         "low": 3445.0,
         "close": 3550.0,
-        "vwap": 3537.59,
-        "volume": 567200,
+        "vwap": 3536.92,
+        "volume": 527300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -36122,8 +36124,8 @@
         "high": 2166.0,
         "low": 2123.0,
         "close": 2125.0,
-        "vwap": 2139.53,
-        "volume": 883100,
+        "vwap": 2139.13,
+        "volume": 585800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -36507,11 +36509,11 @@
       "day_bucket": "SaaS・AIソフト",
       "intraday": {
         "ok": true,
-        "open": 599.0,
-        "high": 607.0,
+        "open": 589.0,
+        "high": 592.0,
         "low": 549.0,
         "close": 549.0,
-        "vwap": 569.33,
+        "vwap": 567.78,
         "volume": 650700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 09:30 JST"
@@ -36900,8 +36902,8 @@
         "high": 2530.0,
         "low": 2420.0,
         "close": 2439.0,
-        "vwap": 2453.9,
-        "volume": 343200,
+        "vwap": 2447.81,
+        "volume": 487700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -37289,8 +37291,8 @@
         "high": 5140.0,
         "low": 4875.0,
         "close": 5010.0,
-        "vwap": 5035.72,
-        "volume": 774100,
+        "vwap": 5013.7,
+        "volume": 452800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -37681,8 +37683,8 @@
         "high": 919.0,
         "low": 867.0,
         "close": 883.0,
-        "vwap": 889.81,
-        "volume": 5394500,
+        "vwap": 892.48,
+        "volume": 3373000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -38066,12 +38068,12 @@
       "day_bucket": "SaaS・AIソフト",
       "intraday": {
         "ok": true,
-        "open": 545.0,
+        "open": 544.0,
         "high": 548.0,
         "low": 521.0,
         "close": 529.0,
-        "vwap": 534.58,
-        "volume": 3660000,
+        "vwap": 534.27,
+        "volume": 2474200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -38459,8 +38461,8 @@
         "high": 574.0,
         "low": 533.0,
         "close": 562.0,
-        "vwap": 555.4,
-        "volume": 1090800,
+        "vwap": 555.9,
+        "volume": 643300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -38471,7 +38473,7 @@
       "ok": true,
       "price": 1122.0,
       "open": 1085.0,
-      "high": 1154.0,
+      "high": 1153.0,
       "low": 1068.0,
       "prev_close": 1089.0,
       "change_pct": 3.03,
@@ -38480,8 +38482,8 @@
       "ret20": 6.96,
       "rvol": 1.24,
       "turnover": 1083627600,
-      "atr14": 51.0,
-      "atr_pct": 4.55,
+      "atr14": 50.93,
+      "atr_pct": 4.54,
       "ma5": 1086.4,
       "ma20": 1087.97,
       "ma60": 1079.93,
@@ -38817,7 +38819,7 @@
         {
           "t": "2026-11-17",
           "o": 1085.0,
-          "h": 1154.0,
+          "h": 1153.0,
           "l": 1068.0,
           "c": 1122.0,
           "v": 965800
@@ -38826,12 +38828,12 @@
       "data_date": "2026-11-17",
       "data_age_days": 0,
       "chart_last_close": 1122.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
       "secondary_price": 1122.0,
       "secondary_date": "2026-11-17",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-11-17終値 1,122.00円",
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-11-17）",
       "market_supply_score": 94,
       "market_supply_improved": true,
       "market_supply_status": "市場需給94点／上昇日出来高÷下落日2.33倍／安値切上げ×",
@@ -38848,13 +38850,12 @@
         "high": 1154.0,
         "low": 1080.0,
         "close": 1120.0,
-        "vwap": 1126.94,
-        "volume": 1388400,
+        "vwap": 1125.84,
+        "volume": 844500,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー"
+      "identity_verified": true
     },
     "中外製薬（4519）": {
       "ok": true,
@@ -39237,8 +39238,8 @@
         "high": 7506.0,
         "low": 7333.0,
         "close": 7374.0,
-        "vwap": 7424.34,
-        "volume": 3359800,
+        "vwap": 7413.25,
+        "volume": 1794700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -39626,8 +39627,8 @@
         "high": 4635.0,
         "low": 4442.0,
         "close": 4489.0,
-        "vwap": 4519.58,
-        "volume": 2925200,
+        "vwap": 4511.5,
+        "volume": 1941900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -40015,8 +40016,8 @@
         "high": 4336.0,
         "low": 4160.0,
         "close": 4203.0,
-        "vwap": 4237.75,
-        "volume": 2059300,
+        "vwap": 4237.23,
+        "volume": 1335100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -40404,8 +40405,8 @@
         "high": 3574.0,
         "low": 3362.0,
         "close": 3417.0,
-        "vwap": 3413.61,
-        "volume": 3456600,
+        "vwap": 3415.75,
+        "volume": 2286700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -40793,8 +40794,8 @@
         "high": 679.0,
         "low": 654.0,
         "close": 660.0,
-        "vwap": 664.21,
-        "volume": 291900,
+        "vwap": 665.91,
+        "volume": 133300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -41190,8 +41191,8 @@
         "high": 3693.0,
         "low": 3591.0,
         "close": 3683.0,
-        "vwap": 3664.32,
-        "volume": 3280900,
+        "vwap": 3662.23,
+        "volume": 2071400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -41582,8 +41583,8 @@
         "high": 5099.0,
         "low": 4974.0,
         "close": 4999.0,
-        "vwap": 5044.85,
-        "volume": 4284300,
+        "vwap": 5032.69,
+        "volume": 2581400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -41974,8 +41975,8 @@
         "high": 3246.0,
         "low": 3188.0,
         "close": 3192.0,
-        "vwap": 3211.57,
-        "volume": 1798300,
+        "vwap": 3215.09,
+        "volume": 872100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -42363,8 +42364,8 @@
         "high": 4545.0,
         "low": 4410.0,
         "close": 4450.0,
-        "vwap": 4500.94,
-        "volume": 409100,
+        "vwap": 4489.19,
+        "volume": 268200,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -42752,8 +42753,8 @@
         "high": 3304.0,
         "low": 3260.0,
         "close": 3296.0,
-        "vwap": 3283.9,
-        "volume": 814900,
+        "vwap": 3284.45,
+        "volume": 510400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -43144,8 +43145,8 @@
         "high": 5470.0,
         "low": 5410.0,
         "close": 5470.0,
-        "vwap": 5448.19,
-        "volume": 226000,
+        "vwap": 5451.51,
+        "volume": 217600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -43533,8 +43534,8 @@
         "high": 9080.0,
         "low": 8870.0,
         "close": 9030.0,
-        "vwap": 8998.2,
-        "volume": 577900,
+        "vwap": 8986.99,
+        "volume": 380800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -43925,8 +43926,8 @@
         "high": 2978.0,
         "low": 2871.0,
         "close": 2887.0,
-        "vwap": 2920.7,
-        "volume": 903900,
+        "vwap": 2915.58,
+        "volume": 583900,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -44314,8 +44315,8 @@
         "high": 3425.0,
         "low": 3281.0,
         "close": 3346.0,
-        "vwap": 3370.85,
-        "volume": 3439800,
+        "vwap": 3361.11,
+        "volume": 2235800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -44703,8 +44704,8 @@
         "high": 1090.5,
         "low": 1058.0,
         "close": 1071.5,
-        "vwap": 1070.8,
-        "volume": 3997500,
+        "vwap": 1071.98,
+        "volume": 2649000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -45095,8 +45096,8 @@
         "high": 1861.5,
         "low": 1784.0,
         "close": 1845.0,
-        "vwap": 1830.93,
-        "volume": 2467600,
+        "vwap": 1827.63,
+        "volume": 1603100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -45487,8 +45488,8 @@
         "high": 3385.0,
         "low": 3280.0,
         "close": 3370.0,
-        "vwap": 3341.06,
-        "volume": 1632200,
+        "vwap": 3337.86,
+        "volume": 1042100,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -45500,8 +45501,8 @@
     "status": "合格",
     "market_date": "2026-11-17",
     "universe": 100,
-    "verified": 97,
-    "excluded": 3,
+    "verified": 98,
+    "excluded": 2,
     "requirements": [
       "会社名コード＝ティッカー",
       "一次OHLC＝QUICK",
@@ -45513,8 +45514,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-11-17T17:59:17+09:00",
-    "decision_at": "2026-11-17T17:59:17+09:00",
+    "generated_at": "2026-11-17T20:11:32+09:00",
+    "decision_at": "2026-11-17T20:11:32+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -46546,7 +46547,7 @@
           "h": 8918.0,
           "l": 8885.0,
           "c": 8914.0,
-          "v": 86000
+          "v": 85900
         },
         {
           "t": "2026-11-16 13:50",
@@ -46554,7 +46555,7 @@
           "h": 8915.0,
           "l": 8905.0,
           "c": 8910.0,
-          "v": 58000
+          "v": 58100
         },
         {
           "t": "2026-11-16 13:55",
@@ -46711,7 +46712,7 @@
         {
           "t": "2026-11-17 09:10",
           "o": 8856.0,
-          "h": 8916.0,
+          "h": 8911.0,
           "l": 8846.0,
           "c": 8885.0,
           "v": 347900
@@ -46934,11 +46935,11 @@
         },
         {
           "t": "2026-11-17 11:30",
-          "o": 8997.0,
+          "o": 8993.0,
           "h": 8997.0,
-          "l": 8997.0,
+          "l": 8993.0,
           "c": 8997.0,
-          "v": 0
+          "v": 13300
         },
         {
           "t": "2026-11-17 12:30",
@@ -46946,7 +46947,7 @@
           "h": 8976.0,
           "l": 8902.0,
           "c": 8912.0,
-          "v": 5977600
+          "v": 422100
         },
         {
           "t": "2026-11-17 12:35",
@@ -47074,7 +47075,7 @@
           "h": 8936.0,
           "l": 8917.0,
           "c": 8926.0,
-          "v": 43300
+          "v": 43600
         },
         {
           "t": "2026-11-17 13:55",
@@ -47082,7 +47083,7 @@
           "h": 8928.0,
           "l": 8915.0,
           "c": 8919.0,
-          "v": 23700
+          "v": 23400
         },
         {
           "t": "2026-11-17 14:00",
@@ -47600,7 +47601,7 @@
           "h": 4879.0,
           "l": 4854.0,
           "c": 4860.0,
-          "v": 36100
+          "v": 36000
         },
         {
           "t": "2026-11-16 09:15",
@@ -47608,11 +47609,11 @@
           "h": 4904.0,
           "l": 4861.0,
           "c": 4904.0,
-          "v": 51000
+          "v": 51100
         },
         {
           "t": "2026-11-16 09:20",
-          "o": 4900.0,
+          "o": 4897.0,
           "h": 4908.0,
           "l": 4888.0,
           "c": 4902.0,
@@ -47736,7 +47737,7 @@
           "h": 4929.0,
           "l": 4914.0,
           "c": 4920.0,
-          "v": 18600
+          "v": 18500
         },
         {
           "t": "2026-11-16 10:40",
@@ -47744,7 +47745,7 @@
           "h": 4926.0,
           "l": 4920.0,
           "c": 4920.0,
-          "v": 10700
+          "v": 10800
         },
         {
           "t": "2026-11-16 10:45",
@@ -47808,7 +47809,7 @@
           "h": 4954.0,
           "l": 4946.0,
           "c": 4952.0,
-          "v": 18100
+          "v": 17900
         },
         {
           "t": "2026-11-16 11:25",
@@ -47816,7 +47817,7 @@
           "h": 4958.0,
           "l": 4951.0,
           "c": 4954.0,
-          "v": 21200
+          "v": 21400
         },
         {
           "t": "2026-11-16 11:30",
@@ -47871,8 +47872,8 @@
           "o": 4994.0,
           "h": 5001.0,
           "l": 4989.0,
-          "c": 5001.0,
-          "v": 46400
+          "c": 5000.0,
+          "v": 46100
         },
         {
           "t": "2026-11-16 13:00",
@@ -47880,7 +47881,7 @@
           "h": 5014.0,
           "l": 4996.0,
           "c": 5014.0,
-          "v": 45200
+          "v": 45500
         },
         {
           "t": "2026-11-16 13:05",
@@ -48012,7 +48013,7 @@
         },
         {
           "t": "2026-11-16 14:25",
-          "o": 4986.0,
+          "o": 4985.0,
           "h": 4995.0,
           "l": 4984.0,
           "c": 4994.0,
@@ -48228,7 +48229,7 @@
         },
         {
           "t": "2026-11-17 10:20",
-          "o": 4990.0,
+          "o": 4989.0,
           "h": 5007.0,
           "l": 4974.0,
           "c": 5007.0,
@@ -48340,11 +48341,11 @@
         },
         {
           "t": "2026-11-17 11:30",
-          "o": 5097.0,
+          "o": 5096.0,
           "h": 5097.0,
-          "l": 5097.0,
+          "l": 5096.0,
           "c": 5097.0,
-          "v": 0
+          "v": 3100
         },
         {
           "t": "2026-11-17 12:30",
@@ -48352,7 +48353,7 @@
           "h": 5099.0,
           "l": 5044.0,
           "c": 5047.0,
-          "v": 1849800
+          "v": 143800
         },
         {
           "t": "2026-11-17 12:35",
@@ -48391,8 +48392,8 @@
           "o": 5027.0,
           "h": 5033.0,
           "l": 5020.0,
-          "c": 5029.0,
-          "v": 25100
+          "c": 5030.0,
+          "v": 23700
         },
         {
           "t": "2026-11-17 13:00",
@@ -48400,7 +48401,7 @@
           "h": 5031.0,
           "l": 5015.0,
           "c": 5022.0,
-          "v": 27700
+          "v": 29100
         },
         {
           "t": "2026-11-17 13:05",
@@ -48440,7 +48441,7 @@
           "h": 5027.0,
           "l": 5021.0,
           "c": 5026.0,
-          "v": 14100
+          "v": 14200
         },
         {
           "t": "2026-11-17 13:30",
@@ -48448,7 +48449,7 @@
           "h": 5028.0,
           "l": 5021.0,
           "c": 5027.0,
-          "v": 13300
+          "v": 13200
         },
         {
           "t": "2026-11-17 13:35",
@@ -48652,10 +48653,10 @@
       "material_action": "出来高・需給確認待ち",
       "trigger": 18320,
       "entry_limit": 18340,
-      "stop": 17580.0,
-      "target1": 19480,
-      "target2": 20010,
-      "reason": "事実確認待ち／AI・テクノロジー 低迷 25点／前日比 +5.02%／出来高比 0.94倍／売買代金 883億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "stop": 17570.0,
+      "target1": 19500,
+      "target2": 20030,
+      "reason": "事実確認待ち／AI・テクノロジー 低迷 23点／前日比 +5.02%／出来高比 0.94倍／売買代金 883億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-16",
@@ -49149,8 +49150,8 @@
           "o": 17520.0,
           "h": 17530.0,
           "l": 17510.0,
-          "c": 17520.0,
-          "v": 11300
+          "c": 17525.0,
+          "v": 11500
         },
         {
           "t": "2026-11-16 10:45",
@@ -49158,7 +49159,7 @@
           "h": 17530.0,
           "l": 17490.0,
           "c": 17500.0,
-          "v": 22500
+          "v": 22300
         },
         {
           "t": "2026-11-16 10:50",
@@ -49182,7 +49183,7 @@
           "h": 17570.0,
           "l": 17520.0,
           "c": 17560.0,
-          "v": 25500
+          "v": 25600
         },
         {
           "t": "2026-11-16 11:05",
@@ -49190,7 +49191,7 @@
           "h": 17620.0,
           "l": 17535.0,
           "c": 17600.0,
-          "v": 48900
+          "v": 48800
         },
         {
           "t": "2026-11-16 11:10",
@@ -49438,7 +49439,7 @@
           "h": 17215.0,
           "l": 17190.0,
           "c": 17195.0,
-          "v": 20500
+          "v": 20600
         },
         {
           "t": "2026-11-16 14:40",
@@ -49446,7 +49447,7 @@
           "h": 17200.0,
           "l": 17175.0,
           "c": 17195.0,
-          "v": 29300
+          "v": 29200
         },
         {
           "t": "2026-11-16 14:45",
@@ -49650,7 +49651,7 @@
         },
         {
           "t": "2026-11-17 10:30",
-          "o": 17890.0,
+          "o": 17895.0,
           "h": 17940.0,
           "l": 17875.0,
           "c": 17920.0,
@@ -49714,7 +49715,7 @@
         },
         {
           "t": "2026-11-17 11:10",
-          "o": 18180.0,
+          "o": 18140.0,
           "h": 18300.0,
           "l": 18135.0,
           "c": 18295.0,
@@ -49746,11 +49747,11 @@
         },
         {
           "t": "2026-11-17 11:30",
-          "o": 18180.0,
+          "o": 18155.0,
           "h": 18180.0,
-          "l": 18180.0,
+          "l": 18155.0,
           "c": 18180.0,
-          "v": 0
+          "v": 6600
         },
         {
           "t": "2026-11-17 12:30",
@@ -49758,7 +49759,7 @@
           "h": 18135.0,
           "l": 17950.0,
           "c": 17960.0,
-          "v": 2217200
+          "v": 253900
         },
         {
           "t": "2026-11-17 12:35",
@@ -49998,7 +49999,7 @@
           "h": 18150.0,
           "l": 18110.0,
           "c": 18140.0,
-          "v": 34500
+          "v": 34300
         },
         {
           "t": "2026-11-17 15:05",
@@ -50006,7 +50007,7 @@
           "h": 18145.0,
           "l": 18120.0,
           "c": 18130.0,
-          "v": 30200
+          "v": 30300
         },
         {
           "t": "2026-11-17 15:10",
@@ -50014,7 +50015,7 @@
           "h": 18145.0,
           "l": 18120.0,
           "c": 18125.0,
-          "v": 35100
+          "v": 35200
         },
         {
           "t": "2026-11-17 15:15",
@@ -50061,7 +50062,7 @@
       "stop": 3495.0,
       "target1": 3795,
       "target2": 3880,
-      "reason": "事実確認待ち／AI・テクノロジー 低迷 25点／前日比 -0.70%／出来高比 1.12倍／売買代金 140億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "reason": "事実確認待ち／AI・テクノロジー 低迷 23点／前日比 -0.70%／出来高比 1.12倍／売買代金 140億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-16",
@@ -50420,7 +50421,7 @@
           "h": 3573.0,
           "l": 3560.0,
           "c": 3573.0,
-          "v": 0
+          "v": 16700
         },
         {
           "t": "2026-11-16 09:20",
@@ -50428,11 +50429,11 @@
           "h": 3575.0,
           "l": 3566.0,
           "c": 3574.0,
-          "v": 201200
+          "v": 26600
         },
         {
           "t": "2026-11-16 09:25",
-          "o": 3576.0,
+          "o": 3575.0,
           "h": 3585.0,
           "l": 3575.0,
           "c": 3583.0,
@@ -50592,7 +50593,7 @@
         },
         {
           "t": "2026-11-16 11:05",
-          "o": 3549.0,
+          "o": 3548.0,
           "h": 3557.0,
           "l": 3546.0,
           "c": 3555.0,
@@ -50929,7 +50930,7 @@
         {
           "t": "2026-11-17 09:10",
           "o": 3551.0,
-          "h": 3568.0,
+          "h": 3566.0,
           "l": 3551.0,
           "c": 3560.0,
           "v": 28300
@@ -51092,7 +51093,7 @@
           "h": 3590.0,
           "l": 3575.0,
           "c": 3588.0,
-          "v": 33300
+          "v": 33500
         },
         {
           "t": "2026-11-17 10:55",
@@ -51100,7 +51101,7 @@
           "h": 3591.0,
           "l": 3586.0,
           "c": 3590.0,
-          "v": 20400
+          "v": 20200
         },
         {
           "t": "2026-11-17 11:00",
@@ -51156,7 +51157,7 @@
           "h": 3584.0,
           "l": 3584.0,
           "c": 3584.0,
-          "v": 0
+          "v": 4300
         },
         {
           "t": "2026-11-17 12:30",
@@ -51164,7 +51165,7 @@
           "h": 3592.0,
           "l": 3584.0,
           "c": 3588.0,
-          "v": 1062200
+          "v": 71300
         },
         {
           "t": "2026-11-17 12:35",
@@ -51260,7 +51261,7 @@
           "h": 3580.0,
           "l": 3574.0,
           "c": 3580.0,
-          "v": 41200
+          "v": 40700
         },
         {
           "t": "2026-11-17 13:35",
@@ -51268,7 +51269,7 @@
           "h": 3581.0,
           "l": 3575.0,
           "c": 3576.0,
-          "v": 15200
+          "v": 15700
         },
         {
           "t": "2026-11-17 13:40",
@@ -51467,7 +51468,7 @@
       "stop": 8320.0,
       "target1": 9940,
       "target2": 10400,
-      "reason": "事実確認待ち／AI・テクノロジー 低迷 25点／前日比 -1.56%／出来高比 1.27倍／売買代金 2204億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
+      "reason": "事実確認待ち／AI・テクノロジー 低迷 23点／前日比 -1.56%／出来高比 1.27倍／売買代金 2204億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DOMESTIC SUPPORT：／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-09-16",
@@ -51961,8 +51962,8 @@
           "o": 9015.0,
           "h": 9029.0,
           "l": 8976.0,
-          "c": 9002.0,
-          "v": 230300
+          "c": 9001.0,
+          "v": 231200
         },
         {
           "t": "2026-11-16 10:45",
@@ -51970,7 +51971,7 @@
           "h": 9049.0,
           "l": 8997.0,
           "c": 9011.0,
-          "v": 257800
+          "v": 256900
         },
         {
           "t": "2026-11-16 10:50",
@@ -52558,11 +52559,11 @@
         },
         {
           "t": "2026-11-17 11:30",
-          "o": 8644.0,
+          "o": 8632.0,
           "h": 8644.0,
-          "l": 8644.0,
+          "l": 8632.0,
           "c": 8644.0,
-          "v": 0
+          "v": 15600
         },
         {
           "t": "2026-11-17 12:30",
@@ -52570,7 +52571,7 @@
           "h": 8811.0,
           "l": 8686.0,
           "c": 8807.0,
-          "v": 16110600
+          "v": 725100
         },
         {
           "t": "2026-11-17 12:35",
@@ -52860,13 +52861,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 159.098,
-    "usd_jpy_change_pct": -0.22,
-    "usd_jpy_ret5": 0.71,
+    "usd_jpy": 159.139,
+    "usd_jpy_change_pct": -0.2,
+    "usd_jpy_ret5": 0.73,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-11-17T17:59:00+09:00",
+    "fx_observed_at": "2026-11-17T20:11:00+09:00",
     "statement_study": {
-      "updated_at": "2026-11-17 17:59:41 JST",
+      "updated_at": "2026-11-17 20:11:57 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -53142,8 +53143,8 @@
         "supply_improved": false,
         "supply_status": "信用買残・倍率未照合（監視のみ）",
         "trigger": 3670,
-        "stop": 3595,
-        "target1": 3790,
+        "stop": 3590,
+        "target1": 3785,
         "target2": 3840,
         "chart": [
           {
@@ -53488,7 +53489,7 @@
         "supply_status": "信用買残・倍率未照合（監視のみ）",
         "trigger": 3290,
         "stop": 3240,
-        "target1": 3365,
+        "target1": 3370,
         "target2": 3405,
         "chart": [
           {
@@ -54521,10 +54522,10 @@
         "supply_verified": false,
         "supply_improved": false,
         "supply_status": "信用買残・倍率未照合（監視のみ）",
-        "trigger": 9020,
-        "stop": 8840,
-        "target1": 9290,
-        "target2": 9410,
+        "trigger": 9000,
+        "stop": 8820,
+        "target1": 9280,
+        "target2": 9400,
         "chart": [
           {
             "t": "2026-09-16",
@@ -55236,8 +55237,8 @@
         "high": 3693.0,
         "low": 3591.0,
         "close": 3683.0,
-        "vwap": 3664.32,
-        "volume": 3280900,
+        "vwap": 3662.23,
+        "volume": 2071400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -55248,8 +55249,8 @@
       "actionable_day_score": 5.7,
       "plan": {
         "entry": 3670,
-        "stop": 3595,
-        "target1": 3790,
+        "stop": 3590,
+        "target1": 3785,
         "target2": 3840,
         "risk": 75,
         "tick": 5
@@ -55637,8 +55638,8 @@
         "high": 18305.0,
         "low": 17750.0,
         "close": 18130.0,
-        "vwap": 18002.43,
-        "volume": 5364300,
+        "vwap": 17995.52,
+        "volume": 3407600,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -55648,10 +55649,10 @@
       "material_action": "出来高・需給確認待ち",
       "actionable_day_score": 3.06,
       "plan": {
-        "entry": 18040,
-        "stop": 17580,
-        "target1": 18730,
-        "target2": 19050,
+        "entry": 18030,
+        "stop": 17570,
+        "target1": 18720,
+        "target2": 19040,
         "risk": 460,
         "tick": 10
       }
@@ -56038,8 +56039,8 @@
         "high": 9080.0,
         "low": 8870.0,
         "close": 9030.0,
-        "vwap": 8998.2,
-        "volume": 577900,
+        "vwap": 8986.99,
+        "volume": 380800,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -56049,10 +56050,10 @@
       "material_action": "押し目反転だけ監視",
       "actionable_day_score": 2.22,
       "plan": {
-        "entry": 9020,
-        "stop": 8840,
-        "target1": 9290,
-        "target2": 9410,
+        "entry": 9000,
+        "stop": 8820,
+        "target1": 9280,
+        "target2": 9400,
         "risk": 180,
         "tick": 10
       }
@@ -56439,8 +56440,8 @@
         "high": 9019.0,
         "low": 8782.0,
         "close": 8946.0,
-        "vwap": 8926.08,
-        "volume": 13683200,
+        "vwap": 8923.45,
+        "volume": 8141000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -56840,8 +56841,8 @@
         "high": 3304.0,
         "low": 3260.0,
         "close": 3296.0,
-        "vwap": 3283.9,
-        "volume": 814900,
+        "vwap": 3284.45,
+        "volume": 510400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -56853,7 +56854,7 @@
       "plan": {
         "entry": 3290,
         "stop": 3240,
-        "target1": 3365,
+        "target1": 3370,
         "target2": 3405,
         "risk": 50,
         "tick": 5
@@ -57358,8 +57359,8 @@
           "high": 4155.0,
           "low": 4091.0,
           "close": 4113.0,
-          "vwap": 4131.94,
-          "volume": 2816100,
+          "vwap": 4128.03,
+          "volume": 1808600,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -57756,8 +57757,8 @@
           "high": 7506.0,
           "low": 7333.0,
           "close": 7374.0,
-          "vwap": 7424.34,
-          "volume": 3359800,
+          "vwap": 7413.25,
+          "volume": 1794700,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -58154,8 +58155,8 @@
           "high": 3304.0,
           "low": 3260.0,
           "close": 3296.0,
-          "vwap": 3283.9,
-          "volume": 814900,
+          "vwap": 3284.45,
+          "volume": 510400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -58167,7 +58168,7 @@
         "plan": {
           "entry": 3290,
           "stop": 3240,
-          "target1": 3365,
+          "target1": 3370,
           "target2": 3405,
           "risk": 50,
           "tick": 5
@@ -58555,8 +58556,8 @@
           "high": 3693.0,
           "low": 3591.0,
           "close": 3683.0,
-          "vwap": 3664.32,
-          "volume": 3280900,
+          "vwap": 3662.23,
+          "volume": 2071400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -58567,8 +58568,8 @@
         "actionable_day_score": 5.7,
         "plan": {
           "entry": 3670,
-          "stop": 3595,
-          "target1": 3790,
+          "stop": 3590,
+          "target1": 3785,
           "target2": 3840,
           "risk": 75,
           "tick": 5
@@ -58956,8 +58957,8 @@
           "high": 4899.0,
           "low": 4824.0,
           "close": 4856.0,
-          "vwap": 4873.77,
-          "volume": 3100200,
+          "vwap": 4867.41,
+          "volume": 1934300,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -59356,8 +59357,8 @@
           "high": 9080.0,
           "low": 8870.0,
           "close": 9030.0,
-          "vwap": 8998.2,
-          "volume": 577900,
+          "vwap": 8986.99,
+          "volume": 380800,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -59367,10 +59368,10 @@
         "material_action": "押し目反転だけ監視",
         "actionable_day_score": 2.22,
         "plan": {
-          "entry": 9020,
-          "stop": 8840,
-          "target1": 9290,
-          "target2": 9410,
+          "entry": 9000,
+          "stop": 8820,
+          "target1": 9280,
+          "target2": 9400,
           "risk": 180,
           "tick": 10
         }
@@ -59757,8 +59758,8 @@
           "high": 4155.0,
           "low": 4091.0,
           "close": 4113.0,
-          "vwap": 4131.94,
-          "volume": 2816100,
+          "vwap": 4128.03,
+          "volume": 1808600,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -60155,8 +60156,8 @@
           "high": 3693.0,
           "low": 3591.0,
           "close": 3683.0,
-          "vwap": 3664.32,
-          "volume": 3280900,
+          "vwap": 3662.23,
+          "volume": 2071400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -60167,8 +60168,8 @@
         "actionable_day_score": 5.7,
         "plan": {
           "entry": 3670,
-          "stop": 3595,
-          "target1": 3790,
+          "stop": 3590,
+          "target1": 3785,
           "target2": 3840,
           "risk": 75,
           "tick": 5
@@ -60556,8 +60557,8 @@
           "high": 7506.0,
           "low": 7333.0,
           "close": 7374.0,
-          "vwap": 7424.34,
-          "volume": 3359800,
+          "vwap": 7413.25,
+          "volume": 1794700,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -60954,8 +60955,8 @@
           "high": 3304.0,
           "low": 3260.0,
           "close": 3296.0,
-          "vwap": 3283.9,
-          "volume": 814900,
+          "vwap": 3284.45,
+          "volume": 510400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -60967,7 +60968,7 @@
         "plan": {
           "entry": 3290,
           "stop": 3240,
-          "target1": 3365,
+          "target1": 3370,
           "target2": 3405,
           "risk": 50,
           "tick": 5
@@ -61357,8 +61358,8 @@
           "high": 3693.0,
           "low": 3591.0,
           "close": 3683.0,
-          "vwap": 3664.32,
-          "volume": 3280900,
+          "vwap": 3662.23,
+          "volume": 2071400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -61369,8 +61370,8 @@
         "actionable_day_score": 5.7,
         "plan": {
           "entry": 3670,
-          "stop": 3595,
-          "target1": 3790,
+          "stop": 3590,
+          "target1": 3785,
           "target2": 3840,
           "risk": 75,
           "tick": 5
@@ -61758,8 +61759,8 @@
           "high": 4155.0,
           "low": 4091.0,
           "close": 4113.0,
-          "vwap": 4131.94,
-          "volume": 2816100,
+          "vwap": 4128.03,
+          "volume": 1808600,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -62156,8 +62157,8 @@
           "high": 9080.0,
           "low": 8870.0,
           "close": 9030.0,
-          "vwap": 8998.2,
-          "volume": 577900,
+          "vwap": 8986.99,
+          "volume": 380800,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -62167,10 +62168,10 @@
         "material_action": "押し目反転だけ監視",
         "actionable_day_score": 2.22,
         "plan": {
-          "entry": 9020,
-          "stop": 8840,
-          "target1": 9290,
-          "target2": 9410,
+          "entry": 9000,
+          "stop": 8820,
+          "target1": 9280,
+          "target2": 9400,
           "risk": 180,
           "tick": 10
         }
@@ -62557,8 +62558,8 @@
           "high": 3304.0,
           "low": 3260.0,
           "close": 3296.0,
-          "vwap": 3283.9,
-          "volume": 814900,
+          "vwap": 3284.45,
+          "volume": 510400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -62570,7 +62571,7 @@
         "plan": {
           "entry": 3290,
           "stop": 3240,
-          "target1": 3365,
+          "target1": 3370,
           "target2": 3405,
           "risk": 50,
           "tick": 5
@@ -62958,8 +62959,8 @@
           "high": 5099.0,
           "low": 4974.0,
           "close": 4999.0,
-          "vwap": 5044.85,
-          "volume": 4284300,
+          "vwap": 5032.69,
+          "volume": 2581400,
           "data_date": "2026-11-17",
           "data_time": "2026-11-17 15:20 JST"
         },
@@ -63097,14 +63098,14 @@
       ]
     ],
     [
-      "AI創薬・バイオ",
-      5.75,
+      "内需・鉄道",
+      5.64,
       1,
       [
         [
-          "ペプチドリーム（4587）",
-          5.75,
-          3.03
+          "JR東日本（9020）",
+          5.64,
+          -0.34
         ]
       ]
     ]
@@ -63331,13 +63332,13 @@
       {
         "sector": "資源・素材・商社",
         "phase": "流出",
-        "score": 28.0,
-        "rel5": -2.58,
-        "rel20": 0.21,
-        "acceleration": -4.45,
-        "breadth": 20.0,
-        "rvol": 0.77,
-        "members": 5,
+        "score": 32.4,
+        "rel5": -1.79,
+        "rel20": 0.29,
+        "acceleration": -3.44,
+        "breadth": 16.7,
+        "rvol": 0.8,
+        "members": 6,
         "leaders": [
           {
             "name": "日本郵船（9101）",
@@ -63345,14 +63346,14 @@
             "rvol": 0.7
           },
           {
+            "name": "DOWA HD（5714）",
+            "ret5": 0.7,
+            "rvol": 0.95
+          },
+          {
             "name": "双日（2768）",
             "ret5": -1.42,
             "rvol": 0.66
-          },
-          {
-            "name": "INPEX（1605）",
-            "ret5": -2.62,
-            "rvol": 1.1
           }
         ],
         "action": "新規ロング停止"
@@ -63360,12 +63361,12 @@
       {
         "sector": "AI・テクノロジー",
         "phase": "低迷",
-        "score": 24.9,
-        "rel5": -3.57,
-        "rel20": -10.15,
-        "acceleration": 1.93,
-        "breadth": 21.1,
-        "rvol": 0.88,
+        "score": 23.4,
+        "rel5": -3.72,
+        "rel20": -10.83,
+        "acceleration": 2.02,
+        "breadth": 18.4,
+        "rvol": 0.87,
         "members": 38,
         "leaders": [
           {
@@ -63451,8 +63452,8 @@
       "status": "低迷",
       "action": "追加買い停止",
       "detail": "会社材料よりセクター需給を優先。セクターが流入初期へ戻り、個別が前日高値を上抜くまで新規資金を入れない。",
-      "sector_score": 24.9,
-      "sector_rel5": -3.57
+      "sector_score": 23.4,
+      "sector_rel5": -3.72
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -63864,8 +63865,8 @@
             "high": 5276.0,
             "low": 5185.0,
             "close": 5243.0,
-            "vwap": 5234.69,
-            "volume": 6954800,
+            "vwap": 5230.57,
+            "volume": 4272100,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -63888,10 +63889,10 @@
           "status": "信用需給待ち",
           "score": 51,
           "plan": {
-            "entry": 3455,
-            "stop": 3340,
-            "target1": 3625,
-            "target2": 3705,
+            "entry": 3465,
+            "stop": 3350,
+            "target1": 3635,
+            "target2": 3715,
             "risk": 115,
             "tick": 5
           },
@@ -64275,8 +64276,8 @@
             "high": 3505.0,
             "low": 3402.0,
             "close": 3468.0,
-            "vwap": 3447.22,
-            "volume": 6993700,
+            "vwap": 3456.14,
+            "volume": 3368900,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -64683,8 +64684,8 @@
             "high": 4336.0,
             "low": 4160.0,
             "close": 4203.0,
-            "vwap": 4237.75,
-            "volume": 2059300,
+            "vwap": 4237.23,
+            "volume": 1335100,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -65091,8 +65092,8 @@
             "high": 3574.0,
             "low": 3362.0,
             "close": 3417.0,
-            "vwap": 3413.61,
-            "volume": 3456600,
+            "vwap": 3415.75,
+            "volume": 2286700,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -65509,8 +65510,8 @@
             "high": 2096.0,
             "low": 1962.0,
             "close": 1971.0,
-            "vwap": 2015.25,
-            "volume": 5406500,
+            "vwap": 2015.87,
+            "volume": 3195400,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -65920,8 +65921,8 @@
             "high": 1947.0,
             "low": 1928.0,
             "close": 1938.0,
-            "vwap": 1939.02,
-            "volume": 7183900,
+            "vwap": 1938.95,
+            "volume": 4691000,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -66328,8 +66329,8 @@
             "high": 679.0,
             "low": 654.0,
             "close": 660.0,
-            "vwap": 664.21,
-            "volume": 291900,
+            "vwap": 665.91,
+            "volume": 133300,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -66746,8 +66747,8 @@
             "high": 574.0,
             "low": 533.0,
             "close": 562.0,
-            "vwap": 555.4,
-            "volume": 1090800,
+            "vwap": 555.9,
+            "volume": 643300,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -67154,8 +67155,8 @@
             "high": 4327.0,
             "low": 4242.0,
             "close": 4253.0,
-            "vwap": 4271.51,
-            "volume": 8111400,
+            "vwap": 4269.73,
+            "volume": 9661400,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -67572,8 +67573,8 @@
             "high": 8936.0,
             "low": 8582.0,
             "close": 8685.0,
-            "vwap": 8762.59,
-            "volume": 37974500,
+            "vwap": 8758.82,
+            "volume": 22604600,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -67983,8 +67984,8 @@
             "high": 26760.0,
             "low": 25480.0,
             "close": 26010.0,
-            "vwap": 26018.37,
-            "volume": 43557700,
+            "vwap": 25996.25,
+            "volume": 26810600,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -68004,10 +68005,10 @@
           "status": "監視のみ",
           "score": 52,
           "plan": {
-            "entry": 7980,
-            "stop": 7280,
-            "target1": 9030,
-            "target2": 9530,
+            "entry": 8000,
+            "stop": 7300,
+            "target1": 9060,
+            "target2": 9550,
             "risk": 700,
             "tick": 10
           },
@@ -68391,10 +68392,418 @@
             "high": 8362.0,
             "low": 7753.0,
             "close": 8001.0,
-            "vwap": 7963.49,
-            "volume": 394121600,
+            "vwap": 8003.01,
+            "volume": 172150700,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:25 JST"
+          },
+          "identity_verified": true,
+          "rotation_group": "AI・テクノロジー"
+        },
+        {
+          "name": "ディスコ（6146）",
+          "role": "先端半導体切断・研削",
+          "directness": 88,
+          "business_impact": 90,
+          "evidence": "https://www.disco.co.jp/jp/ir/",
+          "credit70": 0,
+          "supply_known": false,
+          "supply_text": "信用需給未取得（正式候補へ昇格不可）",
+          "formal": false,
+          "status": "信用需給待ち",
+          "score": 52,
+          "plan": {
+            "entry": 43600,
+            "stop": 41700,
+            "target1": 46450,
+            "target2": 47800,
+            "risk": 1900,
+            "tick": 50
+          },
+          "ok": true,
+          "price": 43390.0,
+          "open": 43300.0,
+          "high": 44280.0,
+          "low": 42660.0,
+          "prev_close": 44000.0,
+          "change_pct": -1.39,
+          "ret5": -4.26,
+          "ret5_prev": -9.79,
+          "ret20": -18.68,
+          "rvol": 0.91,
+          "turnover": 94880913000,
+          "atr14": 3463.57,
+          "atr_pct": 7.98,
+          "ma5": 45962.0,
+          "ma20": 47831.5,
+          "ma60": 53873.67,
+          "from_ma5": -5.6,
+          "from_ma20": -9.29,
+          "touch_ma5": false,
+          "to_high20": -20.99,
+          "to_high52": -52.67,
+          "bb_upper": 55355.5,
+          "bb_lower": 40307.5,
+          "bb_width": 31.46,
+          "bb_width_change": -2.2,
+          "bb_percentile": 61.7,
+          "bb_expansion_score": 19.5,
+          "day_score": -0.24,
+          "swing_score": -7.34,
+          "stable_score": 1.01,
+          "momentum_score": 1.25,
+          "high_score": 3.36,
+          "chart": [
+            {
+              "t": "2026-09-16",
+              "o": 50750.0,
+              "h": 51300.0,
+              "l": 49780.0,
+              "c": 51000.0,
+              "v": 1348900
+            },
+            {
+              "t": "2026-09-17",
+              "o": 51760.0,
+              "h": 51800.0,
+              "l": 49800.0,
+              "c": 50590.0,
+              "v": 1400300
+            },
+            {
+              "t": "2026-09-18",
+              "o": 52100.0,
+              "h": 52560.0,
+              "l": 51330.0,
+              "c": 52420.0,
+              "v": 1444700
+            },
+            {
+              "t": "2026-09-24",
+              "o": 54000.0,
+              "h": 54000.0,
+              "l": 52450.0,
+              "c": 53320.0,
+              "v": 1380500
+            },
+            {
+              "t": "2026-09-25",
+              "o": 53430.0,
+              "h": 54860.0,
+              "l": 53430.0,
+              "c": 54220.0,
+              "v": 1120200
+            },
+            {
+              "t": "2026-09-28",
+              "o": 56390.0,
+              "h": 56700.0,
+              "l": 54380.0,
+              "c": 54400.0,
+              "v": 1422500
+            },
+            {
+              "t": "2026-09-29",
+              "o": 56000.0,
+              "h": 56750.0,
+              "l": 55310.0,
+              "c": 56680.0,
+              "v": 2123100
+            },
+            {
+              "t": "2026-09-30",
+              "o": 58340.0,
+              "h": 58630.0,
+              "l": 56780.0,
+              "c": 57450.0,
+              "v": 2047000
+            },
+            {
+              "t": "2026-10-01",
+              "o": 59220.0,
+              "h": 60550.0,
+              "l": 58620.0,
+              "c": 60440.0,
+              "v": 1867100
+            },
+            {
+              "t": "2026-10-02",
+              "o": 60000.0,
+              "h": 61100.0,
+              "l": 59630.0,
+              "c": 60290.0,
+              "v": 1582400
+            },
+            {
+              "t": "2026-10-05",
+              "o": 62290.0,
+              "h": 64080.0,
+              "l": 61840.0,
+              "c": 63730.0,
+              "v": 2180200
+            },
+            {
+              "t": "2026-10-06",
+              "o": 63080.0,
+              "h": 65500.0,
+              "l": 62730.0,
+              "c": 65500.0,
+              "v": 1796000
+            },
+            {
+              "t": "2026-10-07",
+              "o": 64200.0,
+              "h": 64240.0,
+              "l": 60320.0,
+              "c": 61380.0,
+              "v": 3290900
+            },
+            {
+              "t": "2026-10-08",
+              "o": 61000.0,
+              "h": 62480.0,
+              "l": 61000.0,
+              "c": 61140.0,
+              "v": 1871900
+            },
+            {
+              "t": "2026-10-09",
+              "o": 59610.0,
+              "h": 61460.0,
+              "l": 59310.0,
+              "c": 61460.0,
+              "v": 1503400
+            },
+            {
+              "t": "2026-10-13",
+              "o": 58730.0,
+              "h": 59850.0,
+              "l": 57990.0,
+              "c": 58580.0,
+              "v": 1629400
+            },
+            {
+              "t": "2026-10-14",
+              "o": 57580.0,
+              "h": 59810.0,
+              "l": 57570.0,
+              "c": 58100.0,
+              "v": 1850000
+            },
+            {
+              "t": "2026-10-15",
+              "o": 55760.0,
+              "h": 56040.0,
+              "l": 52930.0,
+              "c": 53180.0,
+              "v": 1820500
+            },
+            {
+              "t": "2026-10-16",
+              "o": 53600.0,
+              "h": 54240.0,
+              "l": 52360.0,
+              "c": 53850.0,
+              "v": 2046100
+            },
+            {
+              "t": "2026-10-19",
+              "o": 51560.0,
+              "h": 53920.0,
+              "l": 51500.0,
+              "c": 53360.0,
+              "v": 1531800
+            },
+            {
+              "t": "2026-10-20",
+              "o": 53480.0,
+              "h": 53680.0,
+              "l": 52140.0,
+              "c": 52630.0,
+              "v": 1778300
+            },
+            {
+              "t": "2026-10-21",
+              "o": 54400.0,
+              "h": 54920.0,
+              "l": 53120.0,
+              "c": 53570.0,
+              "v": 1752100
+            },
+            {
+              "t": "2026-10-22",
+              "o": 54000.0,
+              "h": 54080.0,
+              "l": 50850.0,
+              "c": 51230.0,
+              "v": 2075300
+            },
+            {
+              "t": "2026-10-23",
+              "o": 48530.0,
+              "h": 50850.0,
+              "l": 46100.0,
+              "c": 49290.0,
+              "v": 4383200
+            },
+            {
+              "t": "2026-10-26",
+              "o": 49110.0,
+              "h": 49360.0,
+              "l": 47550.0,
+              "c": 48410.0,
+              "v": 2432700
+            },
+            {
+              "t": "2026-10-27",
+              "o": 50510.0,
+              "h": 51490.0,
+              "l": 49470.0,
+              "c": 49800.0,
+              "v": 2026700
+            },
+            {
+              "t": "2026-10-28",
+              "o": 51500.0,
+              "h": 52780.0,
+              "l": 50450.0,
+              "c": 52360.0,
+              "v": 2073200
+            },
+            {
+              "t": "2026-10-29",
+              "o": 52870.0,
+              "h": 52880.0,
+              "l": 50410.0,
+              "c": 52320.0,
+              "v": 2524000
+            },
+            {
+              "t": "2026-10-30",
+              "o": 49540.0,
+              "h": 50420.0,
+              "l": 48430.0,
+              "c": 49540.0,
+              "v": 2338000
+            },
+            {
+              "t": "2026-11-02",
+              "o": 48710.0,
+              "h": 51150.0,
+              "l": 48710.0,
+              "c": 50240.0,
+              "v": 1508700
+            },
+            {
+              "t": "2026-11-04",
+              "o": 49240.0,
+              "h": 49610.0,
+              "l": 44700.0,
+              "c": 47370.0,
+              "v": 2908200
+            },
+            {
+              "t": "2026-11-05",
+              "o": 45980.0,
+              "h": 46050.0,
+              "l": 41070.0,
+              "c": 41450.0,
+              "v": 3093400
+            },
+            {
+              "t": "2026-11-06",
+              "o": 37250.0,
+              "h": 41320.0,
+              "l": 37210.0,
+              "c": 40860.0,
+              "v": 3763000
+            },
+            {
+              "t": "2026-11-09",
+              "o": 42490.0,
+              "h": 44430.0,
+              "l": 42000.0,
+              "c": 42430.0,
+              "v": 2407700
+            },
+            {
+              "t": "2026-11-10",
+              "o": 45400.0,
+              "h": 46090.0,
+              "l": 44480.0,
+              "c": 45320.0,
+              "v": 2060300
+            },
+            {
+              "t": "2026-11-11",
+              "o": 45010.0,
+              "h": 47840.0,
+              "l": 44380.0,
+              "c": 47580.0,
+              "v": 2629500
+            },
+            {
+              "t": "2026-11-12",
+              "o": 48010.0,
+              "h": 49390.0,
+              "l": 46950.0,
+              "c": 47370.0,
+              "v": 2609000
+            },
+            {
+              "t": "2026-11-13",
+              "o": 49100.0,
+              "h": 49240.0,
+              "l": 47200.0,
+              "c": 47470.0,
+              "v": 1792800
+            },
+            {
+              "t": "2026-11-16",
+              "o": 47230.0,
+              "h": 47740.0,
+              "l": 43900.0,
+              "c": 44000.0,
+              "v": 1973400
+            },
+            {
+              "t": "2026-11-17",
+              "o": 43300.0,
+              "h": 44280.0,
+              "l": 42660.0,
+              "c": 43390.0,
+              "v": 2186700
+            }
+          ],
+          "data_date": "2026-11-17",
+          "data_age_days": 0,
+          "chart_last_close": 43390.0,
+          "quote_verified": true,
+          "secondary_source": "Nomura/QUICK",
+          "secondary_price": 43390.0,
+          "secondary_date": "2026-11-17",
+          "secondary_verified": true,
+          "quote_status": "二経路検証済み：2026-11-17終値 43,390.00円",
+          "market_supply_score": 43,
+          "market_supply_improved": false,
+          "market_supply_status": "市場需給43点／上昇日出来高÷下落日0.54倍／安値切上げ○",
+          "last_dividend": 186.0,
+          "estimated_ex_date": "2027-03-31",
+          "dividend_days": 134,
+          "ticker": "6146.T",
+          "sector": "半導体・AI",
+          "style": "day",
+          "day_bucket": null,
+          "intraday": {
+            "ok": true,
+            "open": 43500.0,
+            "high": 44280.0,
+            "low": 42660.0,
+            "close": 43590.0,
+            "vwap": 43563.52,
+            "volume": 2041800,
+            "data_date": "2026-11-17",
+            "data_time": "2026-11-17 15:20 JST"
           },
           "identity_verified": true,
           "rotation_group": "AI・テクノロジー"
@@ -68799,8 +69208,8 @@
             "high": 1763.5,
             "low": 1716.0,
             "close": 1735.0,
-            "vwap": 1740.88,
-            "volume": 6672800,
+            "vwap": 1736.72,
+            "volume": 4417700,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -68830,10 +69239,10 @@
           "status": "信用需給待ち",
           "score": 53,
           "plan": {
-            "entry": 2862,
-            "stop": 2766,
-            "target1": 3004,
-            "target2": 3071,
+            "entry": 2858,
+            "stop": 2763,
+            "target1": 3001,
+            "target2": 3067,
             "risk": 95,
             "tick": 1
           },
@@ -69213,12 +69622,12 @@
           "day_bucket": null,
           "intraday": {
             "ok": true,
-            "open": 2830.0,
+            "open": 2825.5,
             "high": 2893.5,
             "low": 2811.0,
             "close": 2861.5,
-            "vwap": 2864.97,
-            "volume": 27128600,
+            "vwap": 2852.07,
+            "volume": 16734100,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -69238,10 +69647,10 @@
           "status": "信用需給待ち",
           "score": 49,
           "plan": {
-            "entry": 2290,
-            "stop": 2221,
-            "target1": 2395,
-            "target2": 2443,
+            "entry": 2284,
+            "stop": 2214,
+            "target1": 2388,
+            "target2": 2437,
             "risk": 70,
             "tick": 1
           },
@@ -69625,8 +70034,8 @@
             "high": 2308.0,
             "low": 2252.0,
             "close": 2300.5,
-            "vwap": 2285.72,
-            "volume": 9736900,
+            "vwap": 2279.23,
+            "volume": 6231100,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -70036,8 +70445,8 @@
             "high": 4638.0,
             "low": 4541.0,
             "close": 4587.0,
-            "vwap": 4591.34,
-            "volume": 6218300,
+            "vwap": 4591.23,
+            "volume": 3989800,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -70454,8 +70863,8 @@
             "high": 1642.0,
             "low": 1511.0,
             "close": 1545.0,
-            "vwap": 1564.75,
-            "volume": 5336800,
+            "vwap": 1570.97,
+            "volume": 3112100,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:25 JST"
           },
@@ -70862,8 +71271,8 @@
             "high": 10850.0,
             "low": 10510.0,
             "close": 10645.0,
-            "vwap": 10693.2,
-            "volume": 769900,
+            "vwap": 10684.14,
+            "volume": 511400,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -71270,8 +71679,8 @@
             "high": 4910.0,
             "low": 4812.0,
             "close": 4831.0,
-            "vwap": 4853.32,
-            "volume": 9633100,
+            "vwap": 4848.67,
+            "volume": 6642800,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -71678,8 +72087,8 @@
             "high": 1396.0,
             "low": 1343.0,
             "close": 1355.5,
-            "vwap": 1364.86,
-            "volume": 41219600,
+            "vwap": 1363.72,
+            "volume": 24711600,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -72096,8 +72505,8 @@
             "high": 3530.0,
             "low": 3442.0,
             "close": 3454.0,
-            "vwap": 3475.21,
-            "volume": 7623500,
+            "vwap": 3476.92,
+            "volume": 4808600,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -72117,10 +72526,10 @@
           "status": "信用需給待ち",
           "score": 41,
           "plan": {
-            "entry": 170.3,
+            "entry": 170.2,
             "stop": 167.8,
-            "target1": 173.9,
-            "target2": 175.6,
+            "target1": 173.8,
+            "target2": 175.5,
             "risk": 2.4,
             "tick": 0.1
           },
@@ -72504,8 +72913,8 @@
             "high": 170.9,
             "low": 168.5,
             "close": 170.5,
-            "vwap": 169.92,
-            "volume": 213703400,
+            "vwap": 169.85,
+            "volume": 138496700,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -72912,8 +73321,8 @@
             "high": 4327.0,
             "low": 4242.0,
             "close": 4253.0,
-            "vwap": 4271.51,
-            "volume": 8111400,
+            "vwap": 4269.73,
+            "volume": 9661400,
             "data_date": "2026-11-17",
             "data_time": "2026-11-17 15:20 JST"
           },
@@ -73307,8 +73716,8 @@
         "high": 3693.0,
         "low": 3591.0,
         "close": 3683.0,
-        "vwap": 3664.32,
-        "volume": 3280900,
+        "vwap": 3662.23,
+        "volume": 2071400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -73319,8 +73728,8 @@
       "actionable_day_score": 5.7,
       "plan": {
         "entry": 3670,
-        "stop": 3595,
-        "target1": 3790,
+        "stop": 3590,
+        "target1": 3785,
         "target2": 3840,
         "risk": 75,
         "tick": 5
@@ -73708,8 +74117,8 @@
         "high": 5099.0,
         "low": 4974.0,
         "close": 4999.0,
-        "vwap": 5044.85,
-        "volume": 4284300,
+        "vwap": 5032.69,
+        "volume": 2581400,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -73725,404 +74134,6 @@
         "target2": 5260,
         "risk": 120,
         "tick": 5
-      }
-    },
-    {
-      "name": "ペプチドリーム（4587）",
-      "ok": true,
-      "price": 1122.0,
-      "open": 1085.0,
-      "high": 1154.0,
-      "low": 1068.0,
-      "prev_close": 1089.0,
-      "change_pct": 3.03,
-      "ret5": 1.36,
-      "ret5_prev": -1.07,
-      "ret20": 6.96,
-      "rvol": 1.24,
-      "turnover": 1083627600,
-      "atr14": 51.0,
-      "atr_pct": 4.55,
-      "ma5": 1086.4,
-      "ma20": 1087.97,
-      "ma60": 1079.93,
-      "from_ma5": 3.28,
-      "from_ma20": 3.13,
-      "touch_ma5": true,
-      "to_high20": -3.69,
-      "to_high52": -37.42,
-      "bb_upper": 1142.94,
-      "bb_lower": 1033.01,
-      "bb_width": 10.1,
-      "bb_width_change": -0.76,
-      "bb_percentile": 31.7,
-      "bb_expansion_score": 62.2,
-      "day_score": 5.75,
-      "swing_score": 2.45,
-      "stable_score": 7.49,
-      "momentum_score": 7.74,
-      "high_score": 3.86,
-      "chart": [
-        {
-          "t": "2026-09-16",
-          "o": 1060.0,
-          "h": 1064.0,
-          "l": 1031.0,
-          "c": 1041.5,
-          "v": 589300
-        },
-        {
-          "t": "2026-09-17",
-          "o": 1047.0,
-          "h": 1068.0,
-          "l": 1041.5,
-          "c": 1049.0,
-          "v": 629000
-        },
-        {
-          "t": "2026-09-18",
-          "o": 1044.0,
-          "h": 1082.0,
-          "l": 1038.5,
-          "c": 1070.0,
-          "v": 1049200
-        },
-        {
-          "t": "2026-09-24",
-          "o": 1057.0,
-          "h": 1076.0,
-          "l": 1047.0,
-          "c": 1056.5,
-          "v": 814200
-        },
-        {
-          "t": "2026-09-25",
-          "o": 1056.5,
-          "h": 1072.5,
-          "l": 1055.5,
-          "c": 1069.0,
-          "v": 494300
-        },
-        {
-          "t": "2026-09-28",
-          "o": 1084.0,
-          "h": 1084.5,
-          "l": 1063.0,
-          "c": 1066.0,
-          "v": 694100
-        },
-        {
-          "t": "2026-09-29",
-          "o": 1059.0,
-          "h": 1065.5,
-          "l": 1039.5,
-          "c": 1053.5,
-          "v": 517300
-        },
-        {
-          "t": "2026-09-30",
-          "o": 1051.0,
-          "h": 1121.0,
-          "l": 1045.0,
-          "c": 1113.5,
-          "v": 1396900
-        },
-        {
-          "t": "2026-10-01",
-          "o": 1123.0,
-          "h": 1144.0,
-          "l": 1106.0,
-          "c": 1133.0,
-          "v": 956300
-        },
-        {
-          "t": "2026-10-02",
-          "o": 1108.0,
-          "h": 1122.5,
-          "l": 1076.0,
-          "c": 1076.0,
-          "v": 783100
-        },
-        {
-          "t": "2026-10-05",
-          "o": 1074.0,
-          "h": 1075.5,
-          "l": 1052.5,
-          "c": 1056.5,
-          "v": 555200
-        },
-        {
-          "t": "2026-10-06",
-          "o": 1073.5,
-          "h": 1086.5,
-          "l": 1047.5,
-          "c": 1058.5,
-          "v": 734400
-        },
-        {
-          "t": "2026-10-07",
-          "o": 1060.0,
-          "h": 1075.5,
-          "l": 1052.0,
-          "c": 1060.5,
-          "v": 589500
-        },
-        {
-          "t": "2026-10-08",
-          "o": 1069.5,
-          "h": 1086.0,
-          "l": 1040.0,
-          "c": 1052.5,
-          "v": 616900
-        },
-        {
-          "t": "2026-10-09",
-          "o": 1048.0,
-          "h": 1079.0,
-          "l": 1040.5,
-          "c": 1075.0,
-          "v": 579200
-        },
-        {
-          "t": "2026-10-13",
-          "o": 1085.0,
-          "h": 1092.5,
-          "l": 1067.5,
-          "c": 1081.0,
-          "v": 592800
-        },
-        {
-          "t": "2026-10-14",
-          "o": 1055.0,
-          "h": 1073.5,
-          "l": 1038.0,
-          "c": 1041.5,
-          "v": 1532900
-        },
-        {
-          "t": "2026-10-15",
-          "o": 1044.5,
-          "h": 1053.5,
-          "l": 1022.5,
-          "c": 1031.0,
-          "v": 771000
-        },
-        {
-          "t": "2026-10-16",
-          "o": 1055.5,
-          "h": 1072.5,
-          "l": 1042.5,
-          "c": 1072.5,
-          "v": 555900
-        },
-        {
-          "t": "2026-10-19",
-          "o": 1053.0,
-          "h": 1072.5,
-          "l": 1043.5,
-          "c": 1049.0,
-          "v": 707200
-        },
-        {
-          "t": "2026-10-20",
-          "o": 1054.0,
-          "h": 1057.5,
-          "l": 1031.5,
-          "c": 1043.5,
-          "v": 532000
-        },
-        {
-          "t": "2026-10-21",
-          "o": 1073.5,
-          "h": 1105.0,
-          "l": 1072.5,
-          "c": 1084.5,
-          "v": 1136300
-        },
-        {
-          "t": "2026-10-22",
-          "o": 1085.0,
-          "h": 1111.0,
-          "l": 1072.5,
-          "c": 1072.5,
-          "v": 645900
-        },
-        {
-          "t": "2026-10-23",
-          "o": 1075.0,
-          "h": 1078.0,
-          "l": 1055.0,
-          "c": 1059.5,
-          "v": 513100
-        },
-        {
-          "t": "2026-10-26",
-          "o": 1062.5,
-          "h": 1079.5,
-          "l": 1056.0,
-          "c": 1061.0,
-          "v": 485600
-        },
-        {
-          "t": "2026-10-27",
-          "o": 1065.0,
-          "h": 1076.0,
-          "l": 1057.0,
-          "c": 1069.0,
-          "v": 427600
-        },
-        {
-          "t": "2026-10-28",
-          "o": 1078.0,
-          "h": 1116.0,
-          "l": 1072.5,
-          "c": 1111.5,
-          "v": 967300
-        },
-        {
-          "t": "2026-10-29",
-          "o": 1117.5,
-          "h": 1137.0,
-          "l": 1104.0,
-          "c": 1112.0,
-          "v": 1545200
-        },
-        {
-          "t": "2026-10-30",
-          "o": 1105.0,
-          "h": 1145.0,
-          "l": 1101.0,
-          "c": 1117.0,
-          "v": 627900
-        },
-        {
-          "t": "2026-11-02",
-          "o": 1106.0,
-          "h": 1127.0,
-          "l": 1106.0,
-          "c": 1119.0,
-          "v": 636100
-        },
-        {
-          "t": "2026-11-04",
-          "o": 1114.0,
-          "h": 1124.0,
-          "l": 1088.0,
-          "c": 1106.0,
-          "v": 836500
-        },
-        {
-          "t": "2026-11-05",
-          "o": 1149.0,
-          "h": 1165.0,
-          "l": 1133.0,
-          "c": 1143.0,
-          "v": 780800
-        },
-        {
-          "t": "2026-11-06",
-          "o": 1066.0,
-          "h": 1077.0,
-          "l": 1025.0,
-          "c": 1039.0,
-          "v": 1270600
-        },
-        {
-          "t": "2026-11-09",
-          "o": 1069.0,
-          "h": 1092.0,
-          "l": 1062.0,
-          "c": 1083.0,
-          "v": 558600
-        },
-        {
-          "t": "2026-11-10",
-          "o": 1100.0,
-          "h": 1107.0,
-          "l": 1076.0,
-          "c": 1107.0,
-          "v": 608500
-        },
-        {
-          "t": "2026-11-11",
-          "o": 1077.0,
-          "h": 1090.0,
-          "l": 1071.0,
-          "c": 1075.0,
-          "v": 534400
-        },
-        {
-          "t": "2026-11-12",
-          "o": 1060.0,
-          "h": 1089.0,
-          "l": 1000.0,
-          "c": 1081.0,
-          "v": 1203100
-        },
-        {
-          "t": "2026-11-13",
-          "o": 1060.0,
-          "h": 1086.0,
-          "l": 1057.0,
-          "c": 1065.0,
-          "v": 736300
-        },
-        {
-          "t": "2026-11-16",
-          "o": 1076.0,
-          "h": 1092.0,
-          "l": 1060.0,
-          "c": 1089.0,
-          "v": 607800
-        },
-        {
-          "t": "2026-11-17",
-          "o": 1085.0,
-          "h": 1154.0,
-          "l": 1068.0,
-          "c": 1122.0,
-          "v": 965800
-        }
-      ],
-      "data_date": "2026-11-17",
-      "data_age_days": 0,
-      "chart_last_close": 1122.0,
-      "quote_verified": true,
-      "secondary_source": "Nomura/QUICK",
-      "secondary_price": 1122.0,
-      "secondary_date": "2026-11-17",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-11-17終値 1,122.00円",
-      "market_supply_score": 94,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給94点／上昇日出来高÷下落日2.33倍／安値切上げ×",
-      "last_dividend": 0,
-      "estimated_ex_date": null,
-      "dividend_days": null,
-      "ticker": "4587.T",
-      "sector": "AI創薬・バイオ",
-      "style": "both",
-      "day_bucket": "テーマ・マネーゲーム",
-      "intraday": {
-        "ok": true,
-        "open": 1080.0,
-        "high": 1154.0,
-        "low": 1080.0,
-        "close": 1120.0,
-        "vwap": 1126.94,
-        "volume": 1388400,
-        "data_date": "2026-11-17",
-        "data_time": "2026-11-17 15:20 JST"
-      },
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー",
-      "plan": {
-        "entry": 1120,
-        "stop": 1092,
-        "target1": 1162,
-        "target2": 1182,
-        "risk": 28,
-        "tick": 1
       }
     },
     {
@@ -74507,8 +74518,8 @@
         "high": 4899.0,
         "low": 4824.0,
         "close": 4856.0,
-        "vwap": 4873.77,
-        "volume": 3100200,
+        "vwap": 4867.41,
+        "volume": 1934300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -74905,8 +74916,8 @@
         "high": 5271.0,
         "low": 5171.0,
         "close": 5213.0,
-        "vwap": 5233.4,
-        "volume": 2689400,
+        "vwap": 5220.25,
+        "volume": 1647300,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -75303,18 +75314,18 @@
         "high": 656.4,
         "low": 637.5,
         "close": 651.4,
-        "vwap": 650.56,
-        "volume": 20594100,
+        "vwap": 649.01,
+        "volume": 13142700,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
       "identity_verified": true,
       "rotation_group": "内需・ディフェンシブ",
       "plan": {
-        "entry": 651.4,
-        "stop": 638.7,
-        "target1": 670.4,
-        "target2": 679.3,
+        "entry": 650.3,
+        "stop": 637.6,
+        "target1": 669.3,
+        "target2": 678.2,
         "risk": 12.7,
         "tick": 0.1
       }
@@ -75701,8 +75712,8 @@
         "high": 1947.0,
         "low": 1928.0,
         "close": 1938.0,
-        "vwap": 1939.02,
-        "volume": 7183900,
+        "vwap": 1938.95,
+        "volume": 4691000,
         "data_date": "2026-11-17",
         "data_time": "2026-11-17 15:20 JST"
       },
@@ -75714,6 +75725,404 @@
         "target1": 1979,
         "target2": 1998,
         "risk": 27,
+        "tick": 1
+      }
+    },
+    {
+      "name": "ラウンドワン（4680）",
+      "ok": true,
+      "price": 1426.0,
+      "open": 1419.0,
+      "high": 1440.0,
+      "low": 1387.0,
+      "prev_close": 1419.0,
+      "change_pct": 0.49,
+      "ret5": 7.87,
+      "ret5_prev": 4.22,
+      "ret20": 2.0,
+      "rvol": 1.02,
+      "turnover": 3508387800,
+      "atr14": 71.64,
+      "atr_pct": 5.02,
+      "ma5": 1442.7,
+      "ma20": 1326.97,
+      "ma60": 1291.36,
+      "from_ma5": -1.16,
+      "from_ma20": 7.46,
+      "touch_ma5": false,
+      "to_high20": -7.1,
+      "to_high52": -7.1,
+      "bb_upper": 1487.26,
+      "bb_lower": 1166.69,
+      "bb_width": 24.16,
+      "bb_width_change": 3.44,
+      "bb_percentile": 80.0,
+      "bb_expansion_score": 43.8,
+      "day_score": 3.67,
+      "swing_score": 7.27,
+      "stable_score": 6.38,
+      "momentum_score": 6.79,
+      "high_score": 3.53,
+      "chart": [
+        {
+          "t": "2026-09-16",
+          "o": 1170.0,
+          "h": 1176.5,
+          "l": 1129.0,
+          "c": 1157.5,
+          "v": 2708500
+        },
+        {
+          "t": "2026-09-17",
+          "o": 1150.0,
+          "h": 1185.5,
+          "l": 1147.5,
+          "c": 1182.0,
+          "v": 1998100
+        },
+        {
+          "t": "2026-09-18",
+          "o": 1192.0,
+          "h": 1192.5,
+          "l": 1151.0,
+          "c": 1182.5,
+          "v": 3444400
+        },
+        {
+          "t": "2026-09-24",
+          "o": 1171.5,
+          "h": 1201.0,
+          "l": 1162.0,
+          "c": 1182.5,
+          "v": 1887900
+        },
+        {
+          "t": "2026-09-25",
+          "o": 1173.0,
+          "h": 1204.5,
+          "l": 1167.0,
+          "c": 1187.5,
+          "v": 1632800
+        },
+        {
+          "t": "2026-09-28",
+          "o": 1179.0,
+          "h": 1231.0,
+          "l": 1177.5,
+          "c": 1222.5,
+          "v": 3532400
+        },
+        {
+          "t": "2026-09-29",
+          "o": 1214.0,
+          "h": 1240.5,
+          "l": 1213.0,
+          "c": 1222.5,
+          "v": 2243800
+        },
+        {
+          "t": "2026-09-30",
+          "o": 1229.5,
+          "h": 1241.5,
+          "l": 1212.5,
+          "c": 1236.0,
+          "v": 1860800
+        },
+        {
+          "t": "2026-10-01",
+          "o": 1246.0,
+          "h": 1282.5,
+          "l": 1233.5,
+          "c": 1276.5,
+          "v": 2185600
+        },
+        {
+          "t": "2026-10-02",
+          "o": 1270.0,
+          "h": 1281.0,
+          "l": 1241.0,
+          "c": 1241.0,
+          "v": 1694900
+        },
+        {
+          "t": "2026-10-05",
+          "o": 1259.0,
+          "h": 1276.0,
+          "l": 1232.5,
+          "c": 1247.5,
+          "v": 1853600
+        },
+        {
+          "t": "2026-10-06",
+          "o": 1246.5,
+          "h": 1278.0,
+          "l": 1238.0,
+          "c": 1277.5,
+          "v": 1947800
+        },
+        {
+          "t": "2026-10-07",
+          "o": 1270.0,
+          "h": 1294.0,
+          "l": 1260.0,
+          "c": 1288.0,
+          "v": 1870100
+        },
+        {
+          "t": "2026-10-08",
+          "o": 1299.0,
+          "h": 1324.0,
+          "l": 1256.0,
+          "c": 1293.0,
+          "v": 3559000
+        },
+        {
+          "t": "2026-10-09",
+          "o": 1303.0,
+          "h": 1313.5,
+          "l": 1260.5,
+          "c": 1297.5,
+          "v": 2038900
+        },
+        {
+          "t": "2026-10-13",
+          "o": 1289.0,
+          "h": 1325.0,
+          "l": 1271.0,
+          "c": 1322.0,
+          "v": 2313100
+        },
+        {
+          "t": "2026-10-14",
+          "o": 1318.5,
+          "h": 1319.5,
+          "l": 1282.0,
+          "c": 1318.0,
+          "v": 1269600
+        },
+        {
+          "t": "2026-10-15",
+          "o": 1317.0,
+          "h": 1354.5,
+          "l": 1301.0,
+          "c": 1335.0,
+          "v": 2000500
+        },
+        {
+          "t": "2026-10-16",
+          "o": 1344.5,
+          "h": 1414.0,
+          "l": 1337.0,
+          "c": 1368.5,
+          "v": 2698500
+        },
+        {
+          "t": "2026-10-19",
+          "o": 1370.0,
+          "h": 1398.0,
+          "l": 1355.0,
+          "c": 1398.0,
+          "v": 1695800
+        },
+        {
+          "t": "2026-10-20",
+          "o": 1389.5,
+          "h": 1396.5,
+          "l": 1373.0,
+          "c": 1384.0,
+          "v": 1765000
+        },
+        {
+          "t": "2026-10-21",
+          "o": 1397.0,
+          "h": 1399.5,
+          "l": 1359.5,
+          "c": 1377.5,
+          "v": 1903900
+        },
+        {
+          "t": "2026-10-22",
+          "o": 1383.0,
+          "h": 1387.0,
+          "l": 1327.0,
+          "c": 1333.5,
+          "v": 1786900
+        },
+        {
+          "t": "2026-10-23",
+          "o": 1333.5,
+          "h": 1354.5,
+          "l": 1301.5,
+          "c": 1318.0,
+          "v": 1805600
+        },
+        {
+          "t": "2026-10-26",
+          "o": 1313.0,
+          "h": 1320.5,
+          "l": 1250.5,
+          "c": 1254.0,
+          "v": 2605000
+        },
+        {
+          "t": "2026-10-27",
+          "o": 1250.0,
+          "h": 1275.5,
+          "l": 1238.5,
+          "c": 1266.0,
+          "v": 2280000
+        },
+        {
+          "t": "2026-10-28",
+          "o": 1264.5,
+          "h": 1267.0,
+          "l": 1217.5,
+          "c": 1228.0,
+          "v": 2157000
+        },
+        {
+          "t": "2026-10-29",
+          "o": 1249.0,
+          "h": 1250.0,
+          "l": 1207.5,
+          "c": 1234.0,
+          "v": 2204200
+        },
+        {
+          "t": "2026-10-30",
+          "o": 1250.5,
+          "h": 1303.5,
+          "l": 1250.0,
+          "c": 1280.0,
+          "v": 1909200
+        },
+        {
+          "t": "2026-11-02",
+          "o": 1266.5,
+          "h": 1296.0,
+          "l": 1259.0,
+          "c": 1268.5,
+          "v": 1538300
+        },
+        {
+          "t": "2026-11-04",
+          "o": 1260.0,
+          "h": 1285.0,
+          "l": 1235.0,
+          "c": 1260.0,
+          "v": 1483900
+        },
+        {
+          "t": "2026-11-05",
+          "o": 1290.0,
+          "h": 1329.0,
+          "l": 1286.5,
+          "c": 1312.5,
+          "v": 1475700
+        },
+        {
+          "t": "2026-11-06",
+          "o": 1238.5,
+          "h": 1265.5,
+          "l": 1205.5,
+          "c": 1210.0,
+          "v": 1966800
+        },
+        {
+          "t": "2026-11-09",
+          "o": 1240.0,
+          "h": 1333.5,
+          "l": 1221.0,
+          "c": 1278.0,
+          "v": 2790900
+        },
+        {
+          "t": "2026-11-10",
+          "o": 1308.0,
+          "h": 1322.5,
+          "l": 1284.0,
+          "c": 1322.0,
+          "v": 2149200
+        },
+        {
+          "t": "2026-11-11",
+          "o": 1315.0,
+          "h": 1468.0,
+          "l": 1308.0,
+          "c": 1466.0,
+          "v": 6205800
+        },
+        {
+          "t": "2026-11-12",
+          "o": 1500.0,
+          "h": 1535.0,
+          "l": 1443.5,
+          "c": 1443.5,
+          "v": 4941100
+        },
+        {
+          "t": "2026-11-13",
+          "o": 1443.0,
+          "h": 1475.5,
+          "l": 1431.0,
+          "c": 1459.0,
+          "v": 2971700
+        },
+        {
+          "t": "2026-11-16",
+          "o": 1458.0,
+          "h": 1475.0,
+          "l": 1413.5,
+          "c": 1419.0,
+          "v": 1939600
+        },
+        {
+          "t": "2026-11-17",
+          "o": 1419.0,
+          "h": 1440.0,
+          "l": 1387.0,
+          "c": 1426.0,
+          "v": 2460300
+        }
+      ],
+      "data_date": "2026-11-17",
+      "data_age_days": 0,
+      "chart_last_close": 1426.0,
+      "quote_verified": true,
+      "secondary_source": "Nomura/QUICK",
+      "secondary_price": 1426.0,
+      "secondary_date": "2026-11-17",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-11-17終値 1,426.00円",
+      "market_supply_score": 72,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給72点／上昇日出来高÷下落日1.10倍／安値切上げ○",
+      "last_dividend": 4.5,
+      "estimated_ex_date": "2027-02-26",
+      "dividend_days": 101,
+      "ticker": "4680.T",
+      "sector": "サービス・内需",
+      "style": "swing",
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1403.0,
+        "high": 1440.0,
+        "low": 1389.5,
+        "close": 1424.0,
+        "vwap": 1411.78,
+        "volume": 2647700,
+        "data_date": "2026-11-17",
+        "data_time": "2026-11-17 15:20 JST"
+      },
+      "identity_verified": true,
+      "rotation_group": "内需・ディフェンシブ",
+      "plan": {
+        "entry": 1415,
+        "stop": 1375,
+        "target1": 1474,
+        "target2": 1501,
+        "risk": 39,
         "tick": 1
       }
     }
@@ -75758,7 +76167,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 9030.0,
-      "vwap": 8998.2,
+      "vwap": 8986.99,
       "pnl_yen": -1000,
       "r": -0.05,
       "R": -0.05,
@@ -75802,7 +76211,7 @@
       "result": "時点評価・未決済",
       "exit_reason": "OPEN_MARK",
       "close": 4999.0,
-      "vwap": 5044.85,
+      "vwap": 5032.69,
       "pnl_yen": 900,
       "r": 0.06,
       "R": 0.06,
@@ -75846,7 +76255,7 @@
       "result": "未発動（見送り）",
       "exit_reason": "NOT_TRIGGERED",
       "close": 4489.0,
-      "vwap": 4519.58,
+      "vwap": 4511.5,
       "pnl_yen": null,
       "r": null,
       "R": null,
