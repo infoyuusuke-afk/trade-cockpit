@@ -1103,7 +1103,7 @@ function Get-AiFocusView([string]$RuntimeDir) {
     }
 }
 
-# OWNER 2026-11-17 (air trade review in the AI trade diary tab): RuntimeDir\air_trade_review_v1.json, written on this PC at 16:30 on
+# OWNER 2026-11-17 (air trade review in the AI trade diary tab): RuntimeDir\air_trade_review_v1.json, written on this PC at 16:25 on
 # weekdays by the research script air_trade_review.py (never in the repo), is served as-is when its flags are safe. Display only.
 function Get-AirReviewView([string]$RuntimeDir) {
     $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }

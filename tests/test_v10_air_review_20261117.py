@@ -29,6 +29,7 @@ class AirReview(unittest.TestCase):
         # 「AIトレード日記タブの一番上に『今日の振り返り』として出す」
         self.assertIn("'<h2>'+(cur===days[0]?'今日の振り返り':", self.b)
         self.assertIn('if(intro)intro.after(sec);else pane.prepend(sec);', self.b)
+        self.assertIn('if(intro&&intro.nextElementSibling!==sec)intro.after(sec);', self.b)   # stays first on every paint
         code = "\n".join(l for l in self.b.splitlines() if not l.lstrip().startswith("//"))
         for word in ("cockpitSpeak", "renderCockpitCard", "/control", "RssOrder"):
             self.assertNotIn(word, code)

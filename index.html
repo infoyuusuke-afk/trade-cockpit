@@ -5079,6 +5079,8 @@ main .card hr{display:none}
     let sec=document.getElementById("air-review");
     if(!sec){sec=document.createElement("section");sec.id="air-review";sec.className="card wide";const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);
       sec.addEventListener("click",e=>{const b=e.target.closest("button[data-day]");if(!b)return;pick=b.dataset.day;paint();});}
+    // audit cc2e6ed: always the first box under the tab's intro (the 資金 box is placed there too when it is made)
+    {const intro=pane.querySelector(":scope > .pane-intro");if(intro&&intro.nextElementSibling!==sec)intro.after(sec);else if(!intro&&pane.firstElementChild!==sec)pane.prepend(sec);}
     let j=null;try{const r=await fetch("/air_trade_review.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
     if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false||!Array.isArray(j.days)||!j.days.length){
       sec.innerHTML='<h2>今日の振り返り</h2><p class="ar-sub">平日16:25の振り返りを、まだ読めません（0件とは扱いません）。</p>';return;}
