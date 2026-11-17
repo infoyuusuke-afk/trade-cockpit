@@ -4250,11 +4250,15 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cap-box .cap-note{margin-top:4px;color:var(--cc-text-secondary);font-size:11px;white-space:normal}
 /* OWNER 2026-11-17 「資金別の５００万がこの画面サイズだとみれない」: at 1130 px the table was 66 px wider than its box and the 500万 column
    was cut off. The columns now share the box (the names 28%, the three sizes equal), long notes wrap inside their own cell and the
-   notes in brackets go on a line of their own. Only the places change, nothing is calculated. */
+   notes in brackets go on a line of their own. Only the places change, nothing is calculated.
+   OWNER 2026-11-17 「①100株・300万・500万の3列を同じ幅にする ②100株の上の『必要な資金…』の長い説明は表の下に移す ③左の項目名は2行に
+   折り返してよい、金額は折り返さない」: the names may wrap, the amounts never do; the 必要な資金 note is a line under the table. */
 #cap-compare table{table-layout:fixed}
 #cap-compare th,#cap-compare td{white-space:normal;overflow-wrap:break-word;vertical-align:top}
 #cap-compare th:first-child{width:28%}
 #cap-compare td>span.g{display:block}
+#cap-compare th:not(:first-child),#cap-compare td:not(:first-child){width:24%;white-space:nowrap}
+#cap-compare .cap-need{margin:4px 0 0;font-size:11px;white-space:normal}
 .cap-held{margin-top:6px}.cap-held-title{font-weight:700;margin:2px 0 4px}.cap-held-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .cap-held-col{border:1px solid var(--cc-border);border-radius:6px;padding:4px 6px;font-size:12px;max-height:24em;overflow-y:auto}.cap-held-head{font-weight:700;margin-bottom:2px;white-space:normal}
 .cap-held-row{display:grid;grid-template-columns:minmax(0,1fr) 3.4em 5.2em 5.6em 6.6em 4.2em;gap:6px;align-items:baseline;border-top:1px solid var(--cc-border);padding:2px 0;font-variant-numeric:tabular-nums}
@@ -4392,7 +4396,9 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     if(!cap){el.innerHTML='<span class="g">資金別の仮想：まだ読めません（コクピットの記録から1分ほどで出ます）</span>';return;}
     const S=sizes(),td=(v,f)=>'<td class="'+cls(v)+'">'+f(v)+'</td>';
     const row=(name,f)=>'<tr><td>'+name+'</td>'+S.map(f).join("")+'</tr>';
-    el.innerHTML='<table data-keep-table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'<br><small class="g">必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）<br>今日いちばん多く同時に持った建て金額・持ち越し込み</small>')+'</th>').join("")+'</tr>'+
+    // OWNER 2026-11-17 「②100株の上の『必要な資金…』の長い説明は表の下に移す」: the same words, under the table (capNeed)
+    const capNeed=S.filter(s=>!s.capital).map(s=>'<div class="cap-need g">'+esc(s.label)+'の必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))+'（'+(cap.margin_mult||3.3)+'で割った額）・今日いちばん多く同時に持った建て金額・持ち越し込み</div>').join("");
+    el.innerHTML='<table data-keep-table><tr><th>資金別（仮想・メル）</th>'+S.map(s=>'<th>'+esc(s.label)+(s.capital?'・信用':'')+'</th>').join("")+'</tr>'+
       row("今日の損益（確定＋含み）",s=>'<td class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+(s.open_missing>0?'<br><small class="vd-miss">含み一部なし</small>':'')+'</td>')+
       row("　うちデイ",s=>td(s.rows.day.done+s.rows.day.open,yen))+
       row("　うちオーバーナイト",s=>td(s.rows.overnight.done+s.rows.overnight.open,yen))+
@@ -4411,7 +4417,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       row("　通算（確定・比べ始めから）",s=>s.risk_ai&&s.risk_ai.total_done!=null?'<td>通常 <b class="'+cls(s.risk_ai.total_done_normal)+'">'+yen(s.risk_ai.total_done_normal)+'</b><br>半分 <b class="'+cls(s.risk_ai.total_done_half)+'">'+yen(s.risk_ai.total_done_half)+'</b><br>AI <b class="'+cls(s.risk_ai.total_done)+'">'+yen(s.risk_ai.total_done)+'</b><br><small class="g">'+esc(String(s.risk_ai.since||"").slice(5).replace("-","/"))+'から</small></td>':'<td class="g">—</td>')+
       row("先着順なら（参考）",s=>s.fifo?td(s.fifo.done+s.fifo.open,v=>yen(v)+'<span class="g">（入れず '+s.fifo.skipped+'回）</span>'):'<td class="g">—</td>')+
       row("−3万で止めていたら（デイ）",s=>s.limit_hit_at?'<td class="dn">'+esc(s.limit_hit_at)+'で止め '+yen(s.limit_stop_yen)+'</td>':'<td class="g">届かず</td>')+
-      '</table>'+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+evLine(cap.rule_ev)+'</div>';
+      '</table>'+capNeed+heldBlock(S)+'<div class="cap-note">'+esc(cap.note||"")+evLine(cap.rule_ev)+'</div>';
   }
   // AIトレード日記タブ：資金の条件と線グラフ
   chartSvg.n=0;

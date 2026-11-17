@@ -224,7 +224,8 @@ class Sizing(unittest.TestCase):
         self.assertEqual([x["reason"] for x in sk], ["1単元（100株）が資金より高い", "枠が足りない", "枠が足りない"])
         self.assertEqual(sk[1]["room"], 900_000)
         self.assertEqual(sk[0]["need"], 4_000_000)
-        self.assertIn("'+heldBlock(S)+'", HTML)
+        # OWNER 2026-11-17: the 100株 必要な資金 note sits between the table and the held block
+        self.assertIn("'</table>'+capNeed+heldBlock(S)+'", HTML)
 
     def test_expensive_stock_is_skipped_apart(self):
         tr = pos.trades_of([day_trade("X.T", 40000, "09:30")], [], [], "2026-11-09", {}, "10:00")

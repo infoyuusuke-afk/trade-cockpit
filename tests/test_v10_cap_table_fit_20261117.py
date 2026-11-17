@@ -17,6 +17,14 @@ class CapTableFits(unittest.TestCase):
         self.assertIn("#cap-compare th:first-child{width:28%}", self.css)
         self.assertIn("#cap-compare td>span.g{display:block}", self.css)
 
+    def test_owner_points_1_to_3(self):
+        # ① the three sizes share one width ③ the names may wrap, the amounts never do
+        self.assertIn("#cap-compare th:not(:first-child),#cap-compare td:not(:first-child){width:24%;white-space:nowrap}", self.css)
+        # ② the 必要な資金 note moved from the 100株 heading to a line under the table, same words
+        self.assertIn("'<th>'+esc(s.label)+(s.capital?'・信用':'')+'</th>'", HTML)
+        self.assertIn("'の必要な資金　現物 '+man(s.peak_amount)+'／信用 約'+man(s.peak_amount/(cap.margin_mult||3.3))", HTML)
+        self.assertIn("'</table>'+capNeed+heldBlock(S)+'", HTML)
+
     def test_layout_only(self):
         for word in ("<script", "fetch(", "renderCockpitCard", "cockpitSpeak", "/control"):
             self.assertNotIn(word, self.css)
