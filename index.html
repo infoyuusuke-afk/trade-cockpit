@@ -5067,13 +5067,16 @@ main .card hr{display:none}
 #closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
 #closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}
 /* OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」: one verdict line, then the two ways side by side, the biggest moves first */
-#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:20px;font-weight:800;border:1px solid #3a3d44;background:#16171a;color:#E8EAED}
-#closing-auction-pane .ca-verdict.do{border-color:#6b5a1e;background:#2a2410;color:#f5c542}
+/* OWNER 2026-11-17 「『今日はやる日』を『今日の印：〇〇』にして、色はほかの表と同じ灰色、印名だけ小さな札。印なしは『今日の印：なし』」 */
+#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:18px;font-weight:800;border:1px solid #303033;background:#1c1c1e;color:#E8EAED}
+#closing-auction-pane .ca-verdict .ca-mark{font-size:13px;vertical-align:2px}
 #closing-auction-pane .ca-verdict small{display:block;margin-top:2px;font-size:12px;font-weight:400;color:#b5b5ba}
 #closing-auction-pane .ca-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 10px}
 #closing-auction-pane .ca-col{border:1px solid #303033;border-radius:10px;padding:8px 10px;background:#0E1013}
 #closing-auction-pane .ca-col h4{margin:0 0 2px;font-size:15px}#closing-auction-pane .ca-col .ca-rec{font-size:12px;color:#b5b5ba;margin:0 0 6px}
-#closing-auction-pane .ca-item{display:grid;grid-template-columns:4.6em minmax(0,1fr) 5.2em 5.6em;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #22252a;font-size:14px}
+#closing-auction-pane .ca-item{display:grid;grid-template-columns:4.6em minmax(0,1fr) 5.4em 6.6em;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #22252a;font-size:14px}
+#closing-auction-pane .ca-item small{display:block;font-size:11px;color:#9aa0aa;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#closing-auction-pane .ca-item span{white-space:nowrap}
 #closing-auction-pane .ca-item b.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 #closing-auction-pane .ca-item span{text-align:right;font-variant-numeric:tabular-nums}
 #closing-auction-pane .ca-side{display:inline-block;text-align:center;padding:3px 0;border-radius:7px;font-weight:800;font-size:14px}
@@ -5135,11 +5138,19 @@ main .card hr{display:none}
     // first, 8 each. The same locked numbers as the table below; nothing new is calculated except the order. Display only.
     const dayMarks=lockOk?(lk.marks||[]):(now?now.marks:[]),isDo=dayMarks.length>0,rec=(cmp[0]&&(isDo?cmp[0].on:cmp[0].off))||{};
     const recTxt=s=>s&&s.n?pct(s.mean_net,2)+'（'+esc(s.n)+'回・勝率'+(s.win==null?"—":esc(s.win)+"%")+'）':'まだなし';
-    const col=(key,title,recS)=>{const xs=lrows.filter(r=>r[key]).sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8);
+    // OWNER 2026-11-17 「候補をその形の費用込み期待値の高い順に並べ、各行に期待値。AIアナリストの総合点（15:24より前に出ている評価だけ）を列で出して
+    // 毎日記録するが、並び順には入れない」: ev_w1 / ev_w2 and ai_total come from the PC's 15:24 lock. The order: the past mean (30 trades or
+    // more), highest first; then the size of the move. ai_total is shown only.
+    const evOf=(r,key)=>{const e=r["ev_"+key];return e&&e.n>=30&&fin(e.mean)?Number(e.mean):null;};
+    const col=(key,title,recS)=>{const xs=lrows.filter(r=>r[key]).sort((a,b)=>{const ea=evOf(a,key),eb=evOf(b,key);
+        if(ea!==eb)return eb===null?-1:ea===null?1:eb-ea;return Math.abs(b.r_open)-Math.abs(a.r_open);}).slice(0,8);
       return '<div class="ca-col"><h4>'+title+'</h4><div class="ca-rec">'+(isDo?'やる日':'やらない日')+'の成績（費用込み・1回の平均）：'+recTxt(recS)+'</div>'+
-        (!lockOk?'<div class="ca-none">15:24に固まります</div>':xs.length?xs.map(r=>'<div class="ca-item"><span class="ca-side '+(r[key]>0?'buy':'sell')+'">'+(r[key]>0?'買い':'空売り')+'</span><b class="nm">'+esc(r.name)+'</b><span class="'+cls(r.r_open)+'">'+pct(r.r_open,1)+'</span><span>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'円</span></div>').join(""):'<div class="ca-none">候補なし</div>')+'</div>';};
-    const quickHtml='<div class="ca-verdict'+(isDo?' do':'')+'">'+(isDo?'今日はやる日：'+dayMarks.map(esc).join("・"):'今日はやらない日（印なし）')+
-      '<small>'+(lockOk?esc(when(lk.locked_at))+'に固定・':'15:24にまだ固まっていません・')+'仮想・不合格の手法（売買の合図ではありません）</small></div>'+
+        (!lockOk?'<div class="ca-none">15:24に固まります</div>':xs.length?xs.map(r=>{const e=r["ev_"+key],ok=e&&e.n>=30;
+          return '<div class="ca-item"><span class="ca-side '+(r[key]>0?'buy':'sell')+'">'+(r[key]>0?'買い':'空売り')+'</span><b class="nm">'+esc(r.name)+'<small>寄りから '+pct(r.r_open,1)+(r.ai_detail?'・'+esc(r.ai_detail):'')+'</small></b>'+
+            '<span>AI '+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</span><span class="'+(ok?cls(e.mean):"")+'">'+(ok?pct(e.mean,2):'根拠不足')+'<small>'+(e?'期待値・'+esc(e.n)+'回':'期待値')+'</small></span></div>';}).join(""):'<div class="ca-none">候補なし</div>')+'</div>';};
+    const quickHtml='<div class="ca-verdict">今日の印：'+(isDo?dayMarks.map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):'なし')+
+      '<small>'+(lockOk?esc(when(lk.locked_at))+'に固定・':'15:24にまだ固まっていません・')+'仮想・不合格の手法（売買の合図ではありません）。期待値＝過去の同じ形の平均（費用込み・30回未満は根拠不足）。'+
+      'AI＝15:24より前に出ていたAI注目とアナリストの作戦の総合点（記録するだけで、並び順には使いません）</small></div>'+
       '<div class="ca-quick">'+col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)+'</div>';
     body.innerHTML='<h2>引けの板寄せ（15:24に入って大引けで出る）<span class="ca-badge">研究・記録中（前の検証は不合格）</span></h2>'+
       '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（更新 '+esc(when(j.generated_at))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+
@@ -5151,9 +5162,17 @@ main .card hr{display:none}
       '<table data-keep-table><thead><tr><th>印</th><th>やる日 順張り</th><th>やる日 逆張り</th><th>やらない日 順張り</th><th>やらない日 逆張り</th></tr></thead><tbody>'+
       cmp.map(c=>'<tr><td>'+esc(c.mark)+'</td>'+st(c.on&&c.on.w1)+st(c.on&&c.on.w2)+st(c.off&&c.off.w1)+st(c.off&&c.off.w2)+'</tr>').join("")+
       '<tr><td>全部</td>'+st(tot.w1)+st(tot.w2)+'<td></td><td></td></tr></tbody></table>'+
+      // OWNER 2026-11-17 「仮想の指値を毎日記録：15:24の買い気配・売り気配に置いたら約定したか、約定時の引けまでの損益（費用込み）。指値の値段は
+      // 注文の指示としては出さない」: counts and results only (from the after-close record), no price
+      '<h3>仮想の指値の記録（買いは15:24の買い気配・空売りは売り気配に置いた場合）</h3><table data-keep-table><thead><tr><th>手法</th><th>置いた回数</th><th>場中で約定</th><th>板寄せで約定</th><th>約定せず</th><th>約定した時の平均（費用込み）</th></tr></thead><tbody>'+
+      [["w1","順張り"],["w2","逆張り"]].map(([k,lab])=>{const v=(j.vlimit||{})[k]||{},n=Number(v.placed)||0,r=x=>n?esc(x)+'（'+Math.round(Number(x)/n*100)+'%）':'—';
+        return '<tr><td>'+lab+'</td><td>'+esc(n)+'回</td><td>'+r(v.filled_live||0)+'</td><td>'+r(v.filled_auction||0)+'</td><td>'+r(v.not_filled||0)+'</td><td class="'+cls(v.mean_net_filled)+'">'+pct(v.mean_net_filled,3)+'</td></tr>';}).join("")+
+      '</tbody></table><p class="ca-sub">'+esc(j.vlimit_note||"")+'</p>'+
       '<h3>'+esc(md(td.day))+'の銘柄（'+rows.length+'件・印 '+((td.marks||[]).map(esc).join("・")||"なし")+'）</h3>'+
-      (rows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから（15:24）</th><th>前日比（15:24）</th><th>15:24</th><th>引け</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
-        rows.map(r=>'<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td class="'+cls(r.r_prev)+'">'+pct(r.r_prev)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+'</tr>').join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
+      (rows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから（15:24）</th><th>15:24</th><th>引け</th><th>順張り</th><th>逆張り</th><th>仮想の指値</th><th>AI総合点</th></tr></thead><tbody>'+
+        rows.map(r=>{const vl=(s,res,net)=>!s||!res?'':(s>0?'買い':'空売り')+' '+esc(res)+(fin(net)?' '+pct(net):'');
+          return '<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+
+            '<td>'+([vl(r.w1,r.vl_w1,r.vl_w1_net),vl(r.w2,r.vl_w2,r.vl_w2_net)].filter(Boolean).join("<br>")||"—")+'</td><td>'+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</td></tr>';}).join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
       '<h3>日ごと（新しい順）</h3><table data-keep-table><thead><tr><th>日</th><th>印</th><th>日経（15:24）</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
       days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
       '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p></details>';

@@ -28,7 +28,7 @@ class ClosingAuctionTab(unittest.TestCase):
         self.assertIn("if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false)", self.b)
         self.assertIn('b.textContent="引けの板寄せ";', self.b)
         self.assertIn("研究・記録中（前の検証は不合格）", self.b)
-        self.assertEqual(self.b.count("<table data-keep-table>"), 4)   # compare, the day's stocks, by day, and the 15:24 lock
+        self.assertEqual(self.b.count("<table data-keep-table>"), 5)   # compare, virtual limit, the day's stocks, by day, the 15:24 lock
 
     def test_marks_and_display_only(self):
         self.assertIn("やる日とやらない日の成績", self.b)
@@ -70,10 +70,20 @@ class ClosingAuctionTab(unittest.TestCase):
 
     def test_quick_view_first_details_folded(self):
         # OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」
-        self.assertIn("今日はやる日：", self.b)
-        self.assertIn("今日はやらない日（印なし）", self.b)
+        # OWNER 2026-11-17 「『今日はやる日』を『今日の印：〇〇』にして、色はほかの表と同じ灰色、印名だけ小さな札。印なしは『今日の印：なし』」
+        self.assertIn("'<div class=\"ca-verdict\">今日の印：'+(isDo?dayMarks.map(m=>'<span class=\"ca-mark\">'+esc(m)+'</span>').join(\"\"):'なし')", self.b)
+        self.assertNotIn("今日はやる日", self.b)
+        self.assertIn("border:1px solid #303033;background:#1c1c1e;color:#E8EAED}", HTML)
         self.assertIn('col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)', self.b)
-        self.assertIn(".sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8)", self.b)
+        # 「候補をその形の費用込み期待値の高い順に並べ、各行に期待値。AIアナリストの総合点…を列で出して毎日記録するが、並び順には入れない」
+        self.assertIn("if(ea!==eb)return eb===null?-1:ea===null?1:eb-ea;return Math.abs(b.r_open)-Math.abs(a.r_open);}).slice(0,8);", self.b)
+        i = self.b.index("const col=(key,title,recS)=>")
+        self.assertNotIn("ai_total", self.b[i:self.b.index(".slice(0,8);", i)])          # the AI score is not in the order
+        self.assertIn("'<span>AI '+(fin(r.ai_total)?", self.b)
+        # 「仮想の指値を毎日記録…指値の値段は注文の指示としては出さない」: counts and results only, no price
+        self.assertIn("仮想の指値の記録（買いは15:24の買い気配・空売りは売り気配に置いた場合）", self.b)
+        self.assertNotIn("lim_w", self.b)
+        self.assertNotIn("指値 '", self.b)
         self.assertIn("quickHtml+'<details class=\"ca-more\"'+(caMoreOpen?' open':'')+'><summary>詳しい表", self.b)
         self.assertIn("仮想・不合格の手法（売買の合図ではありません）", self.b)
 
