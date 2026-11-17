@@ -5067,17 +5067,15 @@ main .card hr{display:none}
 #closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
 #closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}
 /* OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」: one verdict line, then the two ways side by side, the biggest moves first */
-/* OWNER 2026-11-17 「今日はやる日って言葉と色がなんか違うね」: a neutral line in the cards' own colours; the mark is the small chip */
-#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:18px;font-weight:800;border:1px solid #303033;background:#0E1013;color:#E8EAED}
-#closing-auction-pane .ca-verdict .ca-mark{font-size:14px;vertical-align:2px}
+#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:20px;font-weight:800;border:1px solid #3a3d44;background:#16171a;color:#E8EAED}
+#closing-auction-pane .ca-verdict.do{border-color:#6b5a1e;background:#2a2410;color:#f5c542}
 #closing-auction-pane .ca-verdict small{display:block;margin-top:2px;font-size:12px;font-weight:400;color:#b5b5ba}
 #closing-auction-pane .ca-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 10px}
 #closing-auction-pane .ca-col{border:1px solid #303033;border-radius:10px;padding:8px 10px;background:#0E1013}
 #closing-auction-pane .ca-col h4{margin:0 0 2px;font-size:15px}#closing-auction-pane .ca-col .ca-rec{font-size:12px;color:#b5b5ba;margin:0 0 6px}
-#closing-auction-pane .ca-item{display:grid;grid-template-columns:4.6em minmax(0,1fr) 7.8em 7.4em;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #22252a;font-size:14px}
-#closing-auction-pane .ca-item small{display:block;font-size:11px;color:#9aa0aa;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#closing-auction-pane .ca-item{display:grid;grid-template-columns:4.6em minmax(0,1fr) 5.2em 5.6em;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #22252a;font-size:14px}
 #closing-auction-pane .ca-item b.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
-#closing-auction-pane .ca-item span{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+#closing-auction-pane .ca-item span{text-align:right;font-variant-numeric:tabular-nums}
 #closing-auction-pane .ca-side{display:inline-block;text-align:center;padding:3px 0;border-radius:7px;font-weight:800;font-size:14px}
 #closing-auction-pane .ca-side.buy{background:#0d2b23;color:#5cddb0;border:1px solid #164536}#closing-auction-pane .ca-side.sell{background:#341418;color:#f0616c;border:1px solid #4a1f24}
 #closing-auction-pane details.ca-more>summary{cursor:pointer;color:#9aa0aa;font-size:12px;margin:6px 0}</style>
@@ -5137,20 +5135,11 @@ main .card hr{display:none}
     // first, 8 each. The same locked numbers as the table below; nothing new is calculated except the order. Display only.
     const dayMarks=lockOk?(lk.marks||[]):(now?now.marks:[]),isDo=dayMarks.length>0,rec=(cmp[0]&&(isDo?cmp[0].on:cmp[0].off))||{};
     const recTxt=s=>s&&s.n?pct(s.mean_net,2)+'（'+esc(s.n)+'回・勝率'+(s.win==null?"—":esc(s.win)+"%")+'）':'まだなし';
-    // OWNER 2026-11-17 「期待値の高い順に表示するのと（AIアナリストの総合的な評価も集計して）いくらの指値で２４分ごろ入るか、決めて引け決済」:
-    // order = the past mean of the same kind (30 trades or more first, highest first), then whether the AI view agrees, then the size of the move
-    const evOf=(r,key)=>{const e=r["ev_"+key];return e&&e.n>=30&&fin(e.mean)?Number(e.mean):null;};
-    const aiAgree=(r,key)=>{const s=r[key]>0?"買い":"売り",a=r.ai,pl=r.plans||{};return (a&&a.side===s?2:a&&a.side&&a.side!=="様子見"?-2:0)+(Number(pl[s])||0)-(Number(pl[s==="買い"?"売り":"買い"])||0);};
-    const aiTxt=(r,key)=>{const a=r.ai,pl=r.plans,s=[];if(a&&a.side)s.push("AI注目 "+a.side+(fin(a.score)?"("+a.score+")":""));if(pl)s.push("作戦 買い"+(pl["買い"]||0)+"・売り"+(pl["売り"]||0));return s.join("・")||"AIの評価なし";};
-    const col=(key,title,recS)=>{const xs=lrows.filter(r=>r[key]).sort((a,b)=>{const ea=evOf(a,key),eb=evOf(b,key);
-        if(ea!==eb)return eb===null?-1:ea===null?1:eb-ea;const aa=aiAgree(a,key),ab=aiAgree(b,key);if(aa!==ab)return ab-aa;return Math.abs(b.r_open)-Math.abs(a.r_open);}).slice(0,8);
+    const col=(key,title,recS)=>{const xs=lrows.filter(r=>r[key]).sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8);
       return '<div class="ca-col"><h4>'+title+'</h4><div class="ca-rec">'+(isDo?'やる日':'やらない日')+'の成績（費用込み・1回の平均）：'+recTxt(recS)+'</div>'+
-        (!lockOk?'<div class="ca-none">15:24に固まります</div>':xs.length?xs.map(r=>{const lim=r["lim_"+key],e=r["ev_"+key];
-          return '<div class="ca-item"><span class="ca-side '+(r[key]>0?'buy':'sell')+'">'+(r[key]>0?'買い':'空売り')+'</span><b class="nm">'+esc(r.name)+'<small>寄りから '+pct(r.r_open,1)+'・'+esc(aiTxt(r,key))+'</small></b>'+
-            '<span>指値 '+(fin(lim)?esc(Number(lim).toLocaleString("ja-JP")):"—")+'円</span><span class="'+(e&&e.n>=30?cls(e.mean):"")+'">'+(e&&e.n>=30?'期待値 '+pct(e.mean,2):'根拠不足')+'<small>'+(e?esc(e.n)+'回の平均':'')+'</small></span></div>';}).join(""):'<div class="ca-none">候補なし</div>')+'</div>';};
-    const quickHtml='<div class="ca-verdict">'+(isDo?'今日の印 '+dayMarks.map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):'今日の印 なし')+
-      '<small>'+(lockOk?esc(when(lk.locked_at))+'に固定・':'15:24にまだ固まっていません・')+'仮想・不合格の手法（売買の合図ではありません）。'+
-      '指値：買いは15:24の売り気配・空売りは15:24の買い気配（15:25より前に約定）、決済は大引けの成行。期待値＝過去の同じ形の平均（費用込み・30回未満は根拠不足）</small></div>'+
+        (!lockOk?'<div class="ca-none">15:24に固まります</div>':xs.length?xs.map(r=>'<div class="ca-item"><span class="ca-side '+(r[key]>0?'buy':'sell')+'">'+(r[key]>0?'買い':'空売り')+'</span><b class="nm">'+esc(r.name)+'</b><span class="'+cls(r.r_open)+'">'+pct(r.r_open,1)+'</span><span>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'円</span></div>').join(""):'<div class="ca-none">候補なし</div>')+'</div>';};
+    const quickHtml='<div class="ca-verdict'+(isDo?' do':'')+'">'+(isDo?'今日はやる日：'+dayMarks.map(esc).join("・"):'今日はやらない日（印なし）')+
+      '<small>'+(lockOk?esc(when(lk.locked_at))+'に固定・':'15:24にまだ固まっていません・')+'仮想・不合格の手法（売買の合図ではありません）</small></div>'+
       '<div class="ca-quick">'+col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)+'</div>';
     body.innerHTML='<h2>引けの板寄せ（15:24に入って大引けで出る）<span class="ca-badge">研究・記録中（前の検証は不合格）</span></h2>'+
       '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（更新 '+esc(when(j.generated_at))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+

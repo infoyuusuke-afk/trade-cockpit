@@ -70,17 +70,10 @@ class ClosingAuctionTab(unittest.TestCase):
 
     def test_quick_view_first_details_folded(self):
         # OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」
-        # OWNER 2026-11-17 「今日はやる日って言葉と色がなんか違うね」: a neutral 今日の印 line in the cards' colours
-        self.assertIn("'今日の印 '+dayMarks.map(m=>'<span class=\"ca-mark\">'+esc(m)+'</span>').join(\"\"):'今日の印 なし'", self.b)
-        self.assertNotIn("今日はやる日", self.b)
-        self.assertIn("#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:18px;font-weight:800;border:1px solid #303033;background:#0E1013;color:#E8EAED}", HTML)
+        self.assertIn("今日はやる日：", self.b)
+        self.assertIn("今日はやらない日（印なし）", self.b)
         self.assertIn('col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)', self.b)
-        # 「期待値の高い順に表示するのと（AIアナリストの総合的な評価も集計して）いくらの指値で２４分ごろ入るか」
-        self.assertIn("const evOf=(r,key)=>{const e=r[\"ev_\"+key];return e&&e.n>=30&&fin(e.mean)?Number(e.mean):null;};", self.b)
-        self.assertIn("if(ea!==eb)return eb===null?-1:ea===null?1:eb-ea;", self.b)
-        self.assertIn("'<span>指値 '+(fin(lim)?", self.b)
-        self.assertIn("'根拠不足'", self.b)
-        self.assertIn("AI注目 ", self.b)
+        self.assertIn(".sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8)", self.b)
         self.assertIn("quickHtml+'<details class=\"ca-more\"'+(caMoreOpen?' open':'')+'><summary>詳しい表", self.b)
         self.assertIn("仮想・不合格の手法（売買の合図ではありません）", self.b)
 
