@@ -81,7 +81,10 @@ class ClosingAuctionTab(unittest.TestCase):
         self.assertNotIn("ai_total", self.b[i:self.b.index(".slice(0,8);", i)])          # the AI score is not in the order
         self.assertIn("'<span>AI '+(fin(r.ai_total)?", self.b)
         # 「仮想の指値を毎日記録…指値の値段は注文の指示としては出さない」: counts and results only, no price
-        self.assertIn("仮想の指値の記録（買いは15:24の買い気配・空売りは売り気配に置いた場合）", self.b)
+        self.assertIn("仮想の指値の記録（記録だけ・注文の指示ではありません）", self.b)
+        # 「仮想の指値は2通り記録：今の形（買いは売り気配）に加えて、待つ形（買いは15:24の買い気配・空売りは売り気配…15:25までに約定したか…）」
+        self.assertIn('[["now","すぐ約定（買いは売り気配・空売りは買い気配）"],["wait","待つ（買いは買い気配・空売りは売り気配）"]]', self.b)
+        self.assertIn("<th>15:25までに約定</th>", self.b)
         self.assertNotIn("lim_w", self.b)
         self.assertNotIn("指値 '", self.b)
         self.assertIn("quickHtml+'<details class=\"ca-more\"'+(caMoreOpen?' open':'')+'><summary>詳しい表", self.b)

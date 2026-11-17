@@ -5162,17 +5162,17 @@ main .card hr{display:none}
       '<table data-keep-table><thead><tr><th>印</th><th>やる日 順張り</th><th>やる日 逆張り</th><th>やらない日 順張り</th><th>やらない日 逆張り</th></tr></thead><tbody>'+
       cmp.map(c=>'<tr><td>'+esc(c.mark)+'</td>'+st(c.on&&c.on.w1)+st(c.on&&c.on.w2)+st(c.off&&c.off.w1)+st(c.off&&c.off.w2)+'</tr>').join("")+
       '<tr><td>全部</td>'+st(tot.w1)+st(tot.w2)+'<td></td><td></td></tr></tbody></table>'+
-      // OWNER 2026-11-17 「仮想の指値を毎日記録：15:24の買い気配・売り気配に置いたら約定したか、約定時の引けまでの損益（費用込み）。指値の値段は
-      // 注文の指示としては出さない」: counts and results only (from the after-close record), no price
-      '<h3>仮想の指値の記録（買いは15:24の買い気配・空売りは売り気配に置いた場合）</h3><table data-keep-table><thead><tr><th>手法</th><th>置いた回数</th><th>場中で約定</th><th>板寄せで約定</th><th>約定せず</th><th>約定した時の平均（費用込み）</th></tr></thead><tbody>'+
-      [["w1","順張り"],["w2","逆張り"]].map(([k,lab])=>{const v=(j.vlimit||{})[k]||{},n=Number(v.placed)||0,r=x=>n?esc(x)+'（'+Math.round(Number(x)/n*100)+'%）':'—';
-        return '<tr><td>'+lab+'</td><td>'+esc(n)+'回</td><td>'+r(v.filled_live||0)+'</td><td>'+r(v.filled_auction||0)+'</td><td>'+r(v.not_filled||0)+'</td><td class="'+cls(v.mean_net_filled)+'">'+pct(v.mean_net_filled,3)+'</td></tr>';}).join("")+
+      // OWNER 2026-11-17 「仮想の指値は2通り記録：今の形（買いは売り気配）に加えて、待つ形（買いは15:24の買い気配・空売りは売り気配に置き、15:25までに
+      // 約定したか、約定時の引けまでの費用込み損益）」: counts and results only (from the after-close record), never a price
+      '<h3>仮想の指値の記録（記録だけ・注文の指示ではありません）</h3><table data-keep-table><thead><tr><th>手法・形</th><th>置いた回数</th><th>15:25までに約定</th><th>約定せず</th><th>約定した時の平均（費用込み）</th><th>勝率</th></tr></thead><tbody>'+
+      [["w1","順張り"],["w2","逆張り"]].flatMap(([k,lab])=>[["now","すぐ約定（買いは売り気配・空売りは買い気配）"],["wait","待つ（買いは買い気配・空売りは売り気配）"]].map(([f,fl])=>{const v=((j.vlimit||{})[k]||{})[f]||{},n=Number(v.placed)||0,r=x=>n?esc(x)+'（'+Math.round(Number(x)/n*100)+'%）':'—';
+        return '<tr><td>'+lab+'・'+fl+'</td><td>'+esc(n)+'回</td><td>'+r(v.filled||0)+'</td><td>'+r(v.not_filled||0)+'</td><td class="'+cls(v.mean_net_filled)+'">'+pct(v.mean_net_filled,3)+'</td><td>'+(v.win==null?"—":esc(v.win)+"%")+'</td></tr>';})).join("")+
       '</tbody></table><p class="ca-sub">'+esc(j.vlimit_note||"")+'</p>'+
       '<h3>'+esc(md(td.day))+'の銘柄（'+rows.length+'件・印 '+((td.marks||[]).map(esc).join("・")||"なし")+'）</h3>'+
       (rows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから（15:24）</th><th>15:24</th><th>引け</th><th>順張り</th><th>逆張り</th><th>仮想の指値</th><th>AI総合点</th></tr></thead><tbody>'+
-        rows.map(r=>{const vl=(s,res,net)=>!s||!res?'':(s>0?'買い':'空売り')+' '+esc(res)+(fin(net)?' '+pct(net):'');
+        rows.map(r=>{const vl=(s,res,net,ag)=>!s?'':(s>0?'買い':'空売り')+' すぐ '+(fin(ag)?pct(ag):'—')+'・待つ '+(res?esc(res)+(fin(net)?' '+pct(net):''):'—');
           return '<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+
-            '<td>'+([vl(r.w1,r.vl_w1,r.vl_w1_net),vl(r.w2,r.vl_w2,r.vl_w2_net)].filter(Boolean).join("<br>")||"—")+'</td><td>'+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</td></tr>';}).join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
+            '<td>'+([vl(r.w1,r.vl_w1,r.vl_w1_net,r.ag_w1_net),vl(r.w2,r.vl_w2,r.vl_w2_net,r.ag_w2_net)].filter(Boolean).join("<br>")||"—")+'</td><td>'+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</td></tr>';}).join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
       '<h3>日ごと（新しい順）</h3><table data-keep-table><thead><tr><th>日</th><th>印</th><th>日経（15:24）</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
       days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
       '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p></details>';
