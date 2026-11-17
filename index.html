@@ -5064,7 +5064,7 @@ main .card hr{display:none}
 #closing-auction-pane .ca-none{color:#8b9299;font-size:12px}
 #closing-auction-pane table{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 0 10px;font-size:12.5px;font-variant-numeric:tabular-nums}
 #closing-auction-pane th,#closing-auction-pane td{padding:5px 6px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
+#closing-auction-pane th{background:#1c1c1e;color:#b5b5ba;font-weight:600}#closing-auction-pane td.ca-vl{white-space:normal;overflow:visible;font-size:11.5px;line-height:1.5}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
 #closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}
 /* OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」: one verdict line, then the two ways side by side, the biggest moves first */
 /* OWNER 2026-11-17 「『今日はやる日』を『今日の印：〇〇』にして、色はほかの表と同じ灰色、印名だけ小さな札。印なしは『今日の印：なし』」 */
@@ -5172,7 +5172,7 @@ main .card hr{display:none}
       (rows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから（15:24）</th><th>15:24</th><th>引け</th><th>順張り</th><th>逆張り</th><th>仮想の指値</th><th>AI総合点</th></tr></thead><tbody>'+
         rows.map(r=>{const vl=(s,res,net,ag)=>!s?'':(s>0?'買い':'空売り')+' すぐ '+(fin(ag)?pct(ag):'—')+'・待つ '+(res?esc(res)+(fin(net)?' '+pct(net):''):'—');
           return '<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+
-            '<td>'+([vl(r.w1,r.vl_w1,r.vl_w1_net,r.ag_w1_net),vl(r.w2,r.vl_w2,r.vl_w2_net,r.ag_w2_net)].filter(Boolean).join("<br>")||"—")+'</td><td>'+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</td></tr>';}).join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
+            '<td class="ca-vl">'+([vl(r.w1,r.vl_w1,r.vl_w1_net,r.ag_w1_net),vl(r.w2,r.vl_w2,r.vl_w2_net,r.ag_w2_net)].filter(Boolean).join("<br>")||"—")+'</td><td>'+(fin(r.ai_total)?(Number(r.ai_total)>0?"+":"")+esc(r.ai_total):"—")+'</td></tr>';}).join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
       '<h3>日ごと（新しい順）</h3><table data-keep-table><thead><tr><th>日</th><th>印</th><th>日経（15:24）</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
       days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
       '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p></details>';

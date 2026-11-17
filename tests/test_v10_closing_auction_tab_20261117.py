@@ -85,6 +85,8 @@ class ClosingAuctionTab(unittest.TestCase):
         # 「仮想の指値は2通り記録：今の形（買いは売り気配）に加えて、待つ形（買いは15:24の買い気配・空売りは売り気配…15:25までに約定したか…）」
         self.assertIn('[["now","すぐ約定（買いは売り気配・空売りは買い気配）"],["wait","待つ（買いは買い気配・空売りは売り気配）"]]', self.b)
         self.assertIn("<th>15:25までに約定</th>", self.b)
+        # audit f3c6923: the tab's table headings in the cockpit's grey, like the other tables
+        self.assertIn("#closing-auction-pane th{background:#1c1c1e;color:#b5b5ba;font-weight:600}", HTML)
         self.assertNotIn("lim_w", self.b)
         self.assertNotIn("指値 '", self.b)
         self.assertIn("quickHtml+'<details class=\"ca-more\"'+(caMoreOpen?' open':'')+'><summary>詳しい表", self.b)
