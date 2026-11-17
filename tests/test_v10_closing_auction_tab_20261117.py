@@ -28,7 +28,7 @@ class ClosingAuctionTab(unittest.TestCase):
         self.assertIn("if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false)", self.b)
         self.assertIn('b.textContent="引けの板寄せ";', self.b)
         self.assertIn("研究・記録中（前の検証は不合格）", self.b)
-        self.assertEqual(self.b.count("<table data-keep-table>"), 3)
+        self.assertEqual(self.b.count("<table data-keep-table>"), 4)   # compare, the day's stocks, by day, and the 15:24 lock
 
     def test_marks_and_display_only(self):
         self.assertIn("やる日とやらない日の成績", self.b)
