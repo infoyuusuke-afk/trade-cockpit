@@ -5113,7 +5113,21 @@ main .card hr{display:none}
       days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
       '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p>';
   }
-  document.addEventListener("DOMContentLoaded",()=>setTimeout(mount,0));
+  // OWNER 2026-11-17 「AIコクピットの表示も、１５時２３分にギャンブルタブに切り替え、２５分すぎたらオーバーナイトに切り替える」: on a trading day
+  // (weekday, not in the exchange-holiday list) the screen opens 引けの板寄せ at 15:23, once per day (kept in this browser, so the 15-minute
+  // reload does not repeat it and a tab the OWNER picks afterwards stays). OVERNIGHT 5 at 15:25 is the switch of 2026-11-05 above
+  // (cockpitOvernightSwitchV1, 15:25:10), left as it is. Only the tab changes: no voice, no order.
+  const SWKEY="cockpitCloseTabSwitchV1";
+  function autoSwitch(){
+    const j=new Date(Date.now()+9*3600e3),day=j.toISOString().slice(0,10),hms=j.toISOString().slice(11,19),wd=j.getUTCDay();
+    const hol=Array.isArray(window.cockpitHolidays)?window.cockpitHolidays:[];
+    if(wd<1||wd>5||hol.includes(day)||hms<"15:23:00"||hms>="15:25:00")return;
+    let m=window.__caSwitch||null;try{const s=JSON.parse(localStorage.getItem(SWKEY)||"null");if(s&&s.day===day)m=s;}catch(_){}
+    if(!m||m.day!==day)m={day,ca:false};
+    const go=(tab,k)=>{const b=document.querySelector('.cockpit-tab[data-tab="'+tab+'"]');if(!b)return;b.click();m[k]=true;window.__caSwitch=m;try{localStorage.setItem(SWKEY,JSON.stringify(m));}catch(_){}};
+    if(!m.ca)go("closing-auction","ca");
+  }
+  document.addEventListener("DOMContentLoaded",()=>{setTimeout(mount,0);setTimeout(autoSwitch,3000);setInterval(autoSwitch,10000);});
 })();
 </script>
 <style>/* OWNER 2026-11-16 「色がちがうんじゃないか」: the colours of the other tabs' cards (#111113, #303033, 14px), across the whole width.
@@ -5407,6 +5421,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const HOLIDAYS=["2026-11-23","2026-12-31","2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-22","2027-04-29",
     "2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11","2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
     "2027-12-31","2028-01-03"];
+  window.cockpitHolidays=HOLIDAYS;   // OWNER 2026-11-17 the 15:23 / 15:25 tab switch uses the same list
   const say=t=>{try{if(typeof window.cockpitSpeak==="function")window.cockpitSpeak(t,"CALM");}catch(_){}console.warn(t);};
   const jst=()=>{const d=new Date(Date.now()+9*3600000);return {day:d.toISOString().slice(0,10),wd:d.getUTCDay(),hms:d.toISOString().slice(11,19)};};
   // audit 9e81f6f: the page reloads itself every 15 minutes, so "already said" is kept in this browser (localStorage, same day only)

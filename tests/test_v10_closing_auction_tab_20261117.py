@@ -37,6 +37,15 @@ class ClosingAuctionTab(unittest.TestCase):
         for word in ("cockpitSpeak", "renderCockpitCard", "/control", "RssOrder"):
             self.assertNotIn(word, code)
 
+    def test_screen_opens_the_tab_at_1523_on_trading_days(self):
+        # OWNER 2026-11-17 「１５時２３分にギャンブルタブに切り替え、２５分すぎたらオーバーナイトに切り替える」
+        self.assertIn('if(wd<1||wd>5||hol.includes(day)||hms<"15:23:00"||hms>="15:25:00")return;', self.b)
+        self.assertIn('if(!m.ca)go("closing-auction","ca");', self.b)
+        self.assertIn("window.cockpitHolidays=HOLIDAYS;", HTML)
+        # 15:25 is the switch of 2026-11-05 (OVERNIGHT 5), unchanged
+        self.assertIn('if(wd===0||wd===6||hm<"15:25:10"||hm>"15:26:30")return;', HTML)
+        self.assertIn('const KEY="cockpitOvernightSwitchV1";', HTML)
+
 
 if __name__ == "__main__":
     unittest.main()
