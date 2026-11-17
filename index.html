@@ -5067,7 +5067,7 @@ main .card hr{display:none}
 #air-review .ar-line .up{color:#5cddb0}#air-review .ar-line .dn{color:#f0616c}</style>
 <script>
 // OWNER 2026-11-17 「トレード結果の振り返りは平日毎日実施して報告するように」「結果はAIトレード日記タブで内容が確認できる形にする」:
-// /air_trade_review.json = the PC's weekday 16:30 review (research script air_trade_review.py; the last 10 days). At the top of the
+// /air_trade_review.json = the PC's weekday 16:25 review (research script air_trade_review.py; the last 10 days). At the top of the
 // AIトレード日記 tab: the day buttons, then the review split at its 「■」 headings into boxes. Text only (escaped), +/- yen coloured
 // with the cockpit's own up / down colours. No voice, no order.
 (()=>{
@@ -5081,12 +5081,13 @@ main .card hr{display:none}
       sec.addEventListener("click",e=>{const b=e.target.closest("button[data-day]");if(!b)return;pick=b.dataset.day;paint();});}
     let j=null;try{const r=await fetch("/air_trade_review.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
     if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false||!Array.isArray(j.days)||!j.days.length){
-      sec.innerHTML='<h2>エアトレの振り返り</h2><p class="ar-sub">平日16:30の振り返りを、まだ読めません（0件とは扱いません）。</p>';return;}
+      sec.innerHTML='<h2>今日の振り返り</h2><p class="ar-sub">平日16:25の振り返りを、まだ読めません（0件とは扱いません）。</p>';return;}
     const days=j.days.slice().sort((a,b)=>String(b.day).localeCompare(String(a.day)));
     const cur=days.find(d=>d.day===pick)||days[0];
     const parts=[];let now=null;
     String(cur.text||"").split(/\r?\n/).forEach((ln,i)=>{if(i===0)return;if(/^■/.test(ln)){now={h:ln.replace(/^■\s*/,""),lines:[]};parts.push(now);}else if(now){if(ln.trim())now.lines.push(ln);}else if(ln.trim()){now={h:"",lines:[ln]};parts.push(now);}});
-    sec.innerHTML='<h2>エアトレの振り返り（仮想・100株）</h2><p class="ar-sub">'+esc(String(cur.text||"").split(/\r?\n/)[0])+'。平日16:30に作ります。手法や決まりは変えません。注文はしません。</p>'+
+    // OWNER 2026-11-17 「16:25の振り返りファイルを、AIトレード日記タブの一番上に『今日の振り返り』として出す版を作って」: the newest day is 今日の振り返り
+    sec.innerHTML='<h2>'+(cur===days[0]?'今日の振り返り':esc(String(cur.day).slice(5).replace("-","/"))+'の振り返り')+'（エアトレ・仮想・100株）</h2><p class="ar-sub">'+esc(String(cur.text||"").split(/\r?\n/)[0])+'。平日16:25に作ります。手法や決まりは変えません。注文はしません。</p>'+
       '<div class="ar-days">'+days.map(d=>'<button type="button" data-day="'+esc(d.day)+'" class="'+(d.day===cur.day?"on":"")+'">'+esc(String(d.day).slice(5).replace("-","/"))+'</button>').join("")+'</div>'+
       parts.map(p=>'<div class="ar-sec">'+(p.h?'<h3>'+esc(p.h)+'</h3>':'')+'<div class="ar-line">'+p.lines.map(tint).join("\n")+'</div></div>').join("");
   }

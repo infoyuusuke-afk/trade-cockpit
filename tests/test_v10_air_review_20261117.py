@@ -26,6 +26,9 @@ class AirReview(unittest.TestCase):
         self.assertIn("if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false", self.b)
         self.assertIn("const pane=document.querySelector('.tab-pane[data-pane=\"ai-journal\"]')", self.b)
         self.assertIn("const tint=s=>esc(s).replace(", self.b)
+        # 「AIトレード日記タブの一番上に『今日の振り返り』として出す」
+        self.assertIn("'<h2>'+(cur===days[0]?'今日の振り返り':", self.b)
+        self.assertIn('if(intro)intro.after(sec);else pane.prepend(sec);', self.b)
         code = "\n".join(l for l in self.b.splitlines() if not l.lstrip().startswith("//"))
         for word in ("cockpitSpeak", "renderCockpitCard", "/control", "RssOrder"):
             self.assertNotIn(word, code)
