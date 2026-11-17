@@ -1103,6 +1103,44 @@ function Get-AiFocusView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-17 (15:24 lock): RuntimeDir\closing_auction_lock_v1.json is written once a day at 15:24 by the research script
+# closing_auction_lock.py. It is served only for today, only when it was locked between 15:24:00 and 15:25:59 and the file was not
+# written after 15:26:00 of that day (so a later rewrite is refused), and only when its flags are safe. Display only.
+function Get-ClosingLockView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'closing_auction_lock_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'CLOSING_LOCK_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 131072) {
+            return (& $fail 'CLOSING_LOCK_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-closing-lock-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'CLOSING_LOCK_FLAGS_INVALID')
+        }
+        $jstNow = [DateTime]::UtcNow.AddHours(9)
+        $today = $jstNow.ToString('yyyy-MM-dd')
+        $day = [string]$view.day
+        $lockedAt = [string]$view.locked_at
+        if ($day -cne $today) { return (& $fail 'CLOSING_LOCK_NOT_TODAY') }
+        if ($lockedAt.Length -ne 19 -or $lockedAt.Substring(0, 10) -cne $day -or
+            [string]::CompareOrdinal($lockedAt.Substring(11, 8), '15:24:00') -lt 0 -or [string]::CompareOrdinal($lockedAt.Substring(11, 8), '15:26:00') -ge 0) {
+            return (& $fail 'CLOSING_LOCK_TIME_INVALID')
+        }
+        $writtenJst = $item.LastWriteTimeUtc.AddHours(9)
+        if ($writtenJst.ToString('yyyy-MM-dd') -cne $day -or [string]::CompareOrdinal($writtenJst.ToString('HH:mm:ss'), '15:26:00') -ge 0) {
+            return (& $fail 'CLOSING_LOCK_CHANGED_AFTER')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'CLOSING_LOCK_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-17 (new tab "hike no itayose"): RuntimeDir\closing_auction_v1.json, written on this PC after the close on weekdays by
 # the research script closing_auction_ledger.py (never in the repo), is served as-is when its flags are safe. Research and display
 # only: no signal, no voice, no order card.
@@ -3450,6 +3488,11 @@ try {
             if ($path -eq '/ai_focus.json') {
                 $focusView = Get-AiFocusView $RuntimeDir
                 Send-Response $stream $focusView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$focusView.body))
+                continue
+            }
+            if ($path -eq '/closing_auction_lock.json') {
+                $lockView = Get-ClosingLockView $RuntimeDir
+                Send-Response $stream $lockView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$lockView.body))
                 continue
             }
             if ($path -eq '/closing_auction.json') {

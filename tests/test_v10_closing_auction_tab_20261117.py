@@ -46,6 +46,28 @@ class ClosingAuctionTab(unittest.TestCase):
         self.assertIn('if(wd===0||wd===6||hm<"15:25:10"||hm>"15:26:30")return;', HTML)
         self.assertIn('const KEY="cockpitOvernightSwitchV1";', HTML)
 
+    def test_1524_lock_is_shown_as_written_and_checked_by_the_gateway(self):
+        # OWNER 2026-11-17 「15:24にその日の候補…『仮想・不合格の手法』の印付きで出し、15:24の値で固めて後から変えない」
+        self.assertIn('fetch("/closing_auction_lock.json?t="+Date.now(),{cache:"no-store"})', self.b)
+        self.assertIn("lk.real_submit_allowed===false&&lk.trade_instruction===false&&lk.day===", self.b)
+        self.assertIn("今日の候補（15:24に固定・後から変えない）", self.b)
+        i = GW.index("function Get-ClosingLockView")
+        fn = GW[i:GW.index("\n}", i)]
+        self.assertTrue(all(ord(c) < 128 for c in fn))
+        self.assertIn("'100b-v10-closing-lock-v1'", fn)
+        self.assertIn("'CLOSING_LOCK_NOT_TODAY'", fn)
+        self.assertIn("[string]::CompareOrdinal($lockedAt.Substring(11, 8), '15:24:00') -lt 0", fn)
+        self.assertIn("'CLOSING_LOCK_CHANGED_AFTER'", fn)
+        self.assertIn("if ($path -eq '/closing_auction_lock.json') {", GW)
+
+    def test_time_shown_without_T(self):
+        # OWNER 2026-11-17 「更新日時の表示『11/17T16:05:12』を直す」
+        self.assertIn(r'const when=s=>{const m=/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(s||""));return m?m[2]+"/"+m[3]+" "+m[4]+":"+m[5]:"—";};', self.b)
+        self.assertIn("毎日、引けの後に記録します（更新 '+esc(when(j.generated_at))+'）。", self.b)
+
+    def test_overnight_switch_skips_holidays(self):
+        self.assertIn("if(Array.isArray(window.cockpitHolidays)&&window.cockpitHolidays.includes(day))return;", HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

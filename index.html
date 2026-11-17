@@ -4029,6 +4029,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   function check(){
     const j=new Date(Date.now()+9*3600000),hm=j.toISOString().slice(11,19),day=j.toISOString().slice(0,10),wd=j.getUTCDay();
     if(wd===0||wd===6||hm<"15:25:10"||hm>"15:26:30")return;
+    // OWNER 2026-11-17 「15:25を過ぎたらOVERNIGHT 5に切り替える（平日の場中だけ、1日1回ずつ）」: not on an exchange holiday either
+    if(Array.isArray(window.cockpitHolidays)&&window.cockpitHolidays.includes(day))return;
     let done=null;try{done=localStorage.getItem(KEY);}catch(_){}
     if(done===day)return;
     const b=document.querySelector('.cockpit-tab[data-tab="overnight"]');if(!b)return;
@@ -5072,7 +5074,9 @@ main .card hr{display:none}
   const fin=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));
   const pct=(v,d=2)=>!fin(v)?"—":(Number(v)>0?"+":"")+Number(v).toFixed(d)+"%";
   const cls=v=>!fin(v)||Number(v)===0?"":Number(v)>0?"up":"dn";
-  const md=d=>String(d||"").slice(5).replace("-","/");
+  const md=d=>String(d||"").slice(5,10).replace("-","/");
+  // OWNER 2026-11-17 「更新日時の表示『11/17T16:05:12』を直す」: any of 2026-11-17 16:05:12 / 2026-11-17T16:05:12+09:00 -> 11/17 16:05
+  const when=s=>{const m=/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(s||""));return m?m[2]+"/"+m[3]+" "+m[4]+":"+m[5]:"—";};
   let pane=null;
   function mount(){
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
@@ -5085,7 +5089,9 @@ main .card hr{display:none}
     if(after)nav.insertBefore(b,after.nextSibling);else nav.insertBefore(b,nav.querySelector(".secondary-tabs"));
     b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","closing-auction");}catch(_){}};
     try{if(localStorage.getItem("cockpitTabV5")==="closing-auction")b.click();}catch(_){}
-    load();setInterval(load,300000);
+    load();let lastLoad=Date.now();
+    setInterval(()=>{const j=new Date(Date.now()+9*3600e3),hms=j.toISOString().slice(11,19),wd=j.getUTCDay(),near=wd>=1&&wd<=5&&hms>="15:23:00"&&hms<"15:31:00";
+      if(near||Date.now()-lastLoad>=300000){lastLoad=Date.now();load();}},20000);
   }
   const st=s=>!s||!s.n?'<td>—</td>':'<td class="'+cls(s.mean_net)+'">'+pct(s.mean_net,3)+'<br><small>'+esc(s.n)+'回・'+esc(s.days)+'日・勝率'+(s.win==null?"—":esc(s.win)+"%")+'</small></td>';
   const side=(s,net)=>!s?'<td class="ca-none">—</td>':'<td>'+(s>0?"買い":"空売り")+' <b class="'+cls(net)+'">'+(fin(net)?(Number(net)>0?"勝ち ":"負け ")+pct(net):"—")+'</b></td>';
@@ -5094,11 +5100,22 @@ main .card hr{display:none}
     const body=pane.querySelector(".ca-body");
     let j=null;try{const r=await fetch("/closing_auction.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
     if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false){body.innerHTML='<h2>引けの板寄せ<span class="ca-badge">研究・記録中</span></h2><p class="ca-none">引けの後の記録をまだ読めません（0件とは扱いません）。</p>';return;}
+    // OWNER 2026-11-17 「15:24にその日の候補（順張り・逆張り、大きく動いている銘柄）を『仮想・不合格の手法』の印付きで出し、15:24の値で固めて
+    // 後から変えない」: /closing_auction_lock.json (the PC's 15:24 lock; the gateway refuses another day, a lock outside 15:24-15:25 and a
+    // file written after 15:26). Shown as written; nothing here changes it.
+    let lk=null;try{const r=await fetch("/closing_auction_lock.json?t="+Date.now(),{cache:"no-store"});lk=r.ok?await r.json():null;}catch(_){lk=null;}
+    const lockOk=!!lk&&lk.real_submit_allowed===false&&lk.trade_instruction===false&&lk.day===new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+    const lrows=lockOk&&Array.isArray(lk.rows)?lk.rows:[];
+    const lockHtml='<h3>今日の候補（15:24に固定・後から変えない）<span class="ca-badge">'+esc(lockOk?lk.label:"仮想・不合格の手法")+'</span></h3>'+
+      (!lockOk?'<p class="ca-none">15:24に固まります（平日だけ）。まだ今日の固めがありません。</p>':
+        '<p class="ca-sub">'+esc(when(lk.locked_at))+'に固定。印：'+((lk.marks||[]).length?(lk.marks||[]).map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):"なし")+'　日経225ミニ（15:24）'+pct(lk.n225_1524)+'。売買の合図ではありません。</p>'+
+        (lrows.length?'<table data-keep-table><thead><tr><th>銘柄</th><th>寄りから</th><th>前日比</th><th>15:24の値</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
+          lrows.map(r=>'<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td class="'+cls(r.r_prev)+'">'+pct(r.r_prev)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+(r.w1?(r.w1>0?"買い":"空売り"):"—")+'</td><td>'+(r.w2?(r.w2>0?"買い":"空売り"):"—")+'</td></tr>').join("")+'</tbody></table>':'<p class="ca-none">今日の候補はありません。</p>'));
     const ru=j.rules||{},td=j.today||{},rows=Array.isArray(td.rows)?td.rows:[],up=Array.isArray(j.upcoming)?j.upcoming:[],cmp=Array.isArray(j.compare)?j.compare:[],days=Array.isArray(j.days)?j.days:[],tot=j.total||{};
     const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10),now=up.find(u=>u.day===today);
     body.innerHTML='<h2>引けの板寄せ（15:24に入って大引けで出る）<span class="ca-badge">研究・記録中（前の検証は不合格）</span></h2>'+
-      '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（'+esc(md(j.generated_at))+' '+esc(String(j.generated_at||"").slice(11,16))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+
-      '<h3>やる日の印</h3><p class="ca-sub">印は15:24より前に分かることだけで付けます：指数の入れ替え（公式の発表で確かめた日だけ）・月末・四半期末・日経が大きく動いた日（'+esc(ru.big_day)+'）。銘柄の印：大きく動いている銘柄（'+esc(ru.big_stock)+'）。</p>'+
+      '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（更新 '+esc(when(j.generated_at))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+
+      lockHtml+'<h3>やる日の印</h3><p class="ca-sub">印は15:24より前に分かることだけで付けます：指数の入れ替え（公式の発表で確かめた日だけ）・月末・四半期末・日経が大きく動いた日（'+esc(ru.big_day)+'）。銘柄の印：大きく動いている銘柄（'+esc(ru.big_stock)+'）。</p>'+
       '<div>'+(now?'今日（'+esc(md(today))+'）：'+now.marks.map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):'今日（'+esc(md(today))+'）：予定の印なし（日経の大きな動きは15:24の値で付きます）')+'</div>'+
       '<div class="ca-sub">これからの予定：'+(up.filter(u=>u.day>today).slice(0,6).map(u=>esc(md(u.day))+' '+u.marks.map(esc).join("・")).join("／")||"なし")+'</div>'+
       ((j.not_confirmed||[]).length?'<div class="ca-sub">印にしていないもの：'+(j.not_confirmed||[]).map(x=>esc(x.kind)+'（'+esc(x.why)+'）').join("／")+'</div>':'')+
