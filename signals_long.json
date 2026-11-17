@@ -1,22 +1,23 @@
 {
-  "updated_at": "2026-11-17 01:25:33 JST",
+  "updated_at": "2026-11-18 01:29:13 JST",
   "horizon": "long",
   "data_quality": {
-    "credit_supply": "ok",
+    "credit_supply": "stale",
     "correlations": "ok",
-    "trade_allowed": true,
-    "block_reasons": []
+    "trade_allowed": false,
+    "block_reasons": [
+      "input_0_stale"
+    ]
   },
   "universe_count": 1,
   "signals": [
     {
       "code": "285A",
       "name": "キオクシアホールディングス",
-      "score": -15,
-      "direction": "WATCH",
-      "margin_buy_change_4w_pct": 11.94,
+      "score": null,
+      "direction": "WAIT",
       "reasons": [
-        "信用買い残が4週で11.9%増加（構造的な需給悪化）"
+        "データ鮮度不足のため判定保留（input_0_stale）"
       ],
       "horizon": "long"
     }
