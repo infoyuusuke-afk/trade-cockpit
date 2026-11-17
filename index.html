@@ -4248,6 +4248,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cap-box th{color:var(--cc-text-secondary);font-weight:700}.cap-box th:first-child,.cap-box td:first-child{text-align:left;color:var(--cc-text-secondary)}
 .cap-box tr:last-child td{border-bottom:0}.cap-box .up{color:var(--cc-long)}.cap-box .dn{color:var(--cc-short)}.cap-box .g{color:var(--cc-text-secondary)}
 .cap-box .cap-note{margin-top:4px;color:var(--cc-text-secondary);font-size:11px;white-space:normal}
+/* OWNER 2026-11-17 「資金別の５００万がこの画面サイズだとみれない」: at 1130 px the table was 66 px wider than its box and the 500万 column
+   was cut off. The columns now share the box (the names 28%, the three sizes equal), long notes wrap inside their own cell and the
+   notes in brackets go on a line of their own. Only the places change, nothing is calculated. */
+#cap-compare table{table-layout:fixed}
+#cap-compare th,#cap-compare td{white-space:normal;overflow-wrap:break-word;vertical-align:top}
+#cap-compare th:first-child{width:28%}
+#cap-compare td>span.g{display:block}
 .cap-held{margin-top:6px}.cap-held-title{font-weight:700;margin:2px 0 4px}.cap-held-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .cap-held-col{border:1px solid var(--cc-border);border-radius:6px;padding:4px 6px;font-size:12px;max-height:24em;overflow-y:auto}.cap-held-head{font-weight:700;margin-bottom:2px;white-space:normal}
 .cap-held-row{display:grid;grid-template-columns:minmax(0,1fr) 3.4em 5.2em 5.6em 6.6em 4.2em;gap:6px;align-items:baseline;border-top:1px solid var(--cc-border);padding:2px 0;font-variant-numeric:tabular-nums}
