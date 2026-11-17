@@ -5065,7 +5065,20 @@ main .card hr{display:none}
 #closing-auction-pane table{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 0 10px;font-size:12.5px;font-variant-numeric:tabular-nums}
 #closing-auction-pane th,#closing-auction-pane td{padding:5px 6px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #closing-auction-pane th{color:#9aa0aa;font-weight:600}#closing-auction-pane th:first-child,#closing-auction-pane td:first-child{text-align:left;white-space:normal}
-#closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}</style>
+#closing-auction-pane .up{color:#5cddb0}#closing-auction-pane .dn{color:#f0616c}
+/* OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」: one verdict line, then the two ways side by side, the biggest moves first */
+#closing-auction-pane .ca-verdict{margin:8px 0 6px;padding:10px 14px;border-radius:10px;font-size:20px;font-weight:800;border:1px solid #3a3d44;background:#16171a;color:#E8EAED}
+#closing-auction-pane .ca-verdict.do{border-color:#6b5a1e;background:#2a2410;color:#f5c542}
+#closing-auction-pane .ca-verdict small{display:block;margin-top:2px;font-size:12px;font-weight:400;color:#b5b5ba}
+#closing-auction-pane .ca-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 10px}
+#closing-auction-pane .ca-col{border:1px solid #303033;border-radius:10px;padding:8px 10px;background:#0E1013}
+#closing-auction-pane .ca-col h4{margin:0 0 2px;font-size:15px}#closing-auction-pane .ca-col .ca-rec{font-size:12px;color:#b5b5ba;margin:0 0 6px}
+#closing-auction-pane .ca-item{display:grid;grid-template-columns:4.6em minmax(0,1fr) 5.2em 5.6em;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #22252a;font-size:14px}
+#closing-auction-pane .ca-item b.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+#closing-auction-pane .ca-item span{text-align:right;font-variant-numeric:tabular-nums}
+#closing-auction-pane .ca-side{display:inline-block;text-align:center;padding:3px 0;border-radius:7px;font-weight:800;font-size:14px}
+#closing-auction-pane .ca-side.buy{background:#0d2b23;color:#5cddb0;border:1px solid #164536}#closing-auction-pane .ca-side.sell{background:#341418;color:#f0616c;border:1px solid #4a1f24}
+#closing-auction-pane details.ca-more>summary{cursor:pointer;color:#9aa0aa;font-size:12px;margin:6px 0}</style>
 <script>
 // OWNER 2026-11-17 「１５時２４分にIN１５時３０大引けに売買するクロージング（名称まかせる）タブ作って」「引けの板寄せタブに『やる日』の印を足して。
 // やる日の候補（指数の入れ替え日、月末・四半期末、ETF分配金の売りの日、日経が大きく動いた日、大きく動いている銘柄）を前もって決め、15:24より前に分かる
@@ -5079,7 +5092,8 @@ main .card hr{display:none}
   const md=d=>String(d||"").slice(5,10).replace("-","/");
   // OWNER 2026-11-17 「更新日時の表示『11/17T16:05:12』を直す」: any of 2026-11-17 16:05:12 / 2026-11-17T16:05:12+09:00 -> 11/17 16:05
   const when=s=>{const m=/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(s||""));return m?m[2]+"/"+m[3]+" "+m[4]+":"+m[5]:"—";};
-  let pane=null;
+  let pane=null,caMoreOpen=false;
+  document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("ca-more"))caMoreOpen=d.open;},true);
   function mount(){
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="closing-auction"]'))return;
@@ -5115,9 +5129,21 @@ main .card hr{display:none}
           lrows.map(r=>'<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td class="'+cls(r.r_prev)+'">'+pct(r.r_prev)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+(r.w1?(r.w1>0?"買い":"空売り"):"—")+'</td><td>'+(r.w2?(r.w2>0?"買い":"空売り"):"—")+'</td></tr>').join("")+'</tbody></table>':'<p class="ca-none">今日の候補はありません。</p>'));
     const ru=j.rules||{},td=j.today||{},rows=Array.isArray(td.rows)?td.rows:[],up=Array.isArray(j.upcoming)?j.upcoming:[],cmp=Array.isArray(j.compare)?j.compare:[],days=Array.isArray(j.days)?j.days:[],tot=j.total||{};
     const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10),now=up.find(u=>u.day===today);
+    // OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」: at the top only (1) today's verdict in one line
+    // (やる日 when the 15:24 lock has a mark, or before the lock when today has a calendar mark), (2) that kind of day's record for each
+    // way, (3) the two ways side by side: 買い / 空売り in large type, the stock, the move from the open, the 15:24 price, biggest moves
+    // first, 8 each. The same locked numbers as the table below; nothing new is calculated except the order. Display only.
+    const dayMarks=lockOk?(lk.marks||[]):(now?now.marks:[]),isDo=dayMarks.length>0,rec=(cmp[0]&&(isDo?cmp[0].on:cmp[0].off))||{};
+    const recTxt=s=>s&&s.n?pct(s.mean_net,2)+'（'+esc(s.n)+'回・勝率'+(s.win==null?"—":esc(s.win)+"%")+'）':'まだなし';
+    const col=(key,title,recS)=>{const xs=lrows.filter(r=>r[key]).sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8);
+      return '<div class="ca-col"><h4>'+title+'</h4><div class="ca-rec">'+(isDo?'やる日':'やらない日')+'の成績（費用込み・1回の平均）：'+recTxt(recS)+'</div>'+
+        (!lockOk?'<div class="ca-none">15:24に固まります</div>':xs.length?xs.map(r=>'<div class="ca-item"><span class="ca-side '+(r[key]>0?'buy':'sell')+'">'+(r[key]>0?'買い':'空売り')+'</span><b class="nm">'+esc(r.name)+'</b><span class="'+cls(r.r_open)+'">'+pct(r.r_open,1)+'</span><span>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'円</span></div>').join(""):'<div class="ca-none">候補なし</div>')+'</div>';};
+    const quickHtml='<div class="ca-verdict'+(isDo?' do':'')+'">'+(isDo?'今日はやる日：'+dayMarks.map(esc).join("・"):'今日はやらない日（印なし）')+
+      '<small>'+(lockOk?esc(when(lk.locked_at))+'に固定・':'15:24にまだ固まっていません・')+'仮想・不合格の手法（売買の合図ではありません）</small></div>'+
+      '<div class="ca-quick">'+col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)+'</div>';
     body.innerHTML='<h2>引けの板寄せ（15:24に入って大引けで出る）<span class="ca-badge">研究・記録中（前の検証は不合格）</span></h2>'+
       '<p class="ca-sub">'+esc(ru.exit)+'。'+esc(ru.w1)+'。'+esc(ru.w2)+'。費用は'+esc(ru.cost)+'。毎日、引けの後に記録します（更新 '+esc(when(j.generated_at))+'）。売買の合図ではありません。声と注文カードはありません。</p>'+
-      lockHtml+'<h3>やる日の印</h3><p class="ca-sub">印は15:24より前に分かることだけで付けます：指数の入れ替え（公式の発表で確かめた日だけ）・月末・四半期末・日経が大きく動いた日（'+esc(ru.big_day)+'）。銘柄の印：大きく動いている銘柄（'+esc(ru.big_stock)+'）。</p>'+
+      quickHtml+'<details class="ca-more"'+(caMoreOpen?' open':'')+'><summary>詳しい表（固めた候補の全部・やる日の印・成績・日ごと）</summary>'+lockHtml+'<h3>やる日の印</h3><p class="ca-sub">印は15:24より前に分かることだけで付けます：指数の入れ替え（公式の発表で確かめた日だけ）・月末・四半期末・日経が大きく動いた日（'+esc(ru.big_day)+'）。銘柄の印：大きく動いている銘柄（'+esc(ru.big_stock)+'）。</p>'+
       '<div>'+(now?'今日（'+esc(md(today))+'）：'+now.marks.map(m=>'<span class="ca-mark">'+esc(m)+'</span>').join(""):'今日（'+esc(md(today))+'）：予定の印なし（日経の大きな動きは15:24の値で付きます）')+'</div>'+
       '<div class="ca-sub">これからの予定：'+(up.filter(u=>u.day>today).slice(0,6).map(u=>esc(md(u.day))+' '+u.marks.map(esc).join("・")).join("／")||"なし")+'</div>'+
       ((j.not_confirmed||[]).length?'<div class="ca-sub">印にしていないもの：'+(j.not_confirmed||[]).map(x=>esc(x.kind)+'（'+esc(x.why)+'）').join("／")+'</div>':'')+
@@ -5130,7 +5156,7 @@ main .card hr{display:none}
         rows.map(r=>'<tr><td>'+esc(r.name)+(r.big?' <span class="ca-mark">大きく動いている</span>':'')+'</td><td class="'+cls(r.r_open)+'">'+pct(r.r_open)+'</td><td class="'+cls(r.r_prev)+'">'+pct(r.r_prev)+'</td><td>'+esc(Number(r.p1524).toLocaleString("ja-JP"))+'</td><td>'+esc(Number(r.close).toLocaleString("ja-JP"))+'</td>'+side(r.w1,r.w1_net)+side(r.w2,r.w2_net)+'</tr>').join("")+'</tbody></table>':'<p class="ca-none">その日の銘柄はありません。</p>')+
       '<h3>日ごと（新しい順）</h3><table data-keep-table><thead><tr><th>日</th><th>印</th><th>日経（15:24）</th><th>順張り</th><th>逆張り</th></tr></thead><tbody>'+
       days.slice().reverse().map(d=>'<tr><td>'+esc(md(d.day))+'</td><td>'+(d.marks.length?d.marks.map(esc).join("・"):'<span class="ca-none">なし</span>')+'</td><td class="'+cls(d.n225_1524)+'">'+pct(d.n225_1524)+'</td>'+st(d.w1)+st(d.w2)+'</tr>').join("")+'</tbody></table>'+
-      '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p>';
+      '<p class="ca-sub">'+esc(ru.verdict)+'。合格は、30回以上・費用込みの平均がプラス・でたらめに選んだ場合に95%以上勝つ・前半と後半ともプラス、の4つ全部の時だけです。</p></details>';
   }
   // OWNER 2026-11-17 「AIコクピットの表示も、１５時２３分にギャンブルタブに切り替え、２５分すぎたらオーバーナイトに切り替える」: on a trading day
   // (weekday, not in the exchange-holiday list) the screen opens 引けの板寄せ at 15:23, once per day (kept in this browser, so the 15-minute

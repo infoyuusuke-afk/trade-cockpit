@@ -68,6 +68,15 @@ class ClosingAuctionTab(unittest.TestCase):
     def test_overnight_switch_skips_holidays(self):
         self.assertIn("if(Array.isArray(window.cockpitHolidays)&&window.cockpitHolidays.includes(day))return;", HTML)
 
+    def test_quick_view_first_details_folded(self):
+        # OWNER 2026-11-17 「短時間で決めなきゃいけないからもっとわかりやすく修正」
+        self.assertIn("今日はやる日：", self.b)
+        self.assertIn("今日はやらない日（印なし）", self.b)
+        self.assertIn('col("w2","逆張り（上げた銘柄を空売り・下げた銘柄を買い）",rec.w2)+col("w1","順張り（高値の近くは買い・安値の近くは空売り）",rec.w1)', self.b)
+        self.assertIn(".sort((a,b)=>Math.abs(b.r_open)-Math.abs(a.r_open)).slice(0,8)", self.b)
+        self.assertIn("quickHtml+'<details class=\"ca-more\"'+(caMoreOpen?' open':'')+'><summary>詳しい表", self.b)
+        self.assertIn("仮想・不合格の手法（売買の合図ではありません）", self.b)
+
 
 if __name__ == "__main__":
     unittest.main()
