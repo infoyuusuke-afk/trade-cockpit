@@ -121,7 +121,8 @@ class OvernightEventMarks(unittest.TestCase):
     def test_overnight_tab_shows_the_three_ways(self):
         i = HTML.index("「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て")
         b = HTML[i:HTML.index("</script>", i)]
-        self.assertIn('["銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"]', b)
+        # OWNER 2026-11-17 「勝ったか、負けたか一目でわかる形」: a 結果 column first, the rest unchanged
+        self.assertIn('["結果","銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"]', b)
         self.assertIn('p.capital.sizes.find(s=>s.label==="300万")', b)
         self.assertIn("bp.real_submit_allowed===false", b)
         code = "\n".join(line for line in b.splitlines() if not line.lstrip().startswith("//"))

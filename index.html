@@ -5113,7 +5113,14 @@ main .card hr{display:none}
   document.addEventListener("DOMContentLoaded",()=>{watch();load();setInterval(watch,1000);setInterval(load,300000);});
 })();
 </script>
-<style>#on-compare{grid-column:1/-1;margin:14px 0 4px;padding:12px 14px;border:1px solid #303033;border-radius:10px;background:#111113;color:#f5f5f7}#on-compare h3{margin:0 0 4px;font-size:15px}#on-compare .oc-note{color:#b5b5ba;font-size:12px;line-height:1.6;margin:2px 0 8px}#on-compare .oc-scroll{overflow-x:auto}#on-compare table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}#on-compare th,#on-compare td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#on-compare th:first-child,#on-compare td:first-child,#on-compare td.oc-l{text-align:left;white-space:normal}#on-compare th{color:#b5b5ba;font-weight:400}#on-compare .up{color:#35e2ae}#on-compare .dn{color:#ff6b6b}</style>
+<style>#on-compare{grid-column:1/-1;margin:14px 0 4px;padding:12px 14px;border:1px solid #303033;border-radius:10px;background:#111113;color:#f5f5f7}#on-compare h3{margin:0 0 4px;font-size:15px}#on-compare .oc-note{color:#b5b5ba;font-size:12px;line-height:1.6;margin:2px 0 8px}#on-compare .oc-scroll{overflow-x:auto}#on-compare table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}#on-compare th,#on-compare td{padding:5px 8px;border-bottom:1px solid #22252a;text-align:right;white-space:nowrap}#on-compare th:first-child,#on-compare td:first-child,#on-compare td.oc-l{text-align:left;white-space:normal}#on-compare th{color:#b5b5ba;font-weight:400}#on-compare .up{color:#35e2ae}#on-compare .dn{color:#ff6b6b}
+#on-compare .oc-g{color:#8b9299}
+#on-compare th:nth-child(-n+5){text-align:left}
+#on-compare .oc-result{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin:4px 0 6px;font-size:15px}
+#on-compare .oc-result span{font-size:14px;font-weight:700}
+#on-compare tr.oc-row td:first-child{border-left:4px solid #3a3d44}
+#on-compare tr.oc-win td:first-child{border-left-color:#35e2ae}#on-compare tr.oc-lose td:first-child{border-left-color:#ff6b6b}
+#on-compare .oc-mark{font-weight:800}#on-compare tr.oc-win .oc-mark{color:#35e2ae}#on-compare tr.oc-lose .oc-mark{color:#ff6b6b}#on-compare tr.oc-none .oc-mark{color:#8b9299}</style>
 <script>
 // OWNER 2026-11-16 「オーバーナイトの株数を、毎日15:20にメルが翌朝の注意予定と過去の値動きの幅を見て、銘柄ごとに0・半分・通常から決めて理由を一言書く。
 // 15:25より前に固めて後から変えない。翌日14:00の結果を通常・半分・AIの判断の3つ並べてオーバーナイトのタブに出す。仮想だけで注文はしない」:
@@ -5140,11 +5147,25 @@ main .card hr{display:none}
     const cap=p.capital&&Array.isArray(p.capital.sizes)?p.capital.sizes.find(s=>s.label==="300万"):null;
     const rows=cap&&Array.isArray(cap.overnight_compare)?cap.overnight_compare:[];
     if(!rows.length){txt(box,"div","今日の持ち越し（昨日15:25に決めて今日14:00に手じまう分）はありません。","oc-note");}
-    else{const t=txt(txt(box,"div","","oc-scroll"),"table",""),hr=txt(txt(t,"thead",""),"tr","");
-      ["銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"].forEach(x=>txt(hr,"th",x));const tb=txt(t,"tbody","");
-      rows.forEach(r=>{const tr=txt(tb,"tr","");txt(tr,"td",nm(r),"oc-l");txt(tr,"td",r.side||"");txt(tr,"td",(r.events||[]).join("・")||"なし","oc-l");
+    else{
+      // OWNER 2026-11-17 「勝ったか、負けたか一目でわかる形」: one line per hold (a kept table, not cards), a 結果 mark first
+      // (勝ち green / 負け red / 入れず grey, by the 通常 column: the three columns move together, only their size differs),
+      // the line's left edge in the same colour, and the day's count and total above. Same numbers as before; display only.
+      const res=r=>{const v=r["通常"]||{};return !(Number(v.shares)>0)?"none":Number(v.yen)>0?"win":Number(v.yen)<0?"lose":"even";};
+      const cnt=k=>rows.filter(r=>res(r)===k).length,sum=k=>rows.reduce((a,r)=>a+(Number((r[k]||{}).yen)||0),0);
+      const head=txt(box,"div","","oc-result");
+      txt(head,"b","勝ち "+cnt("win"),"up");txt(head,"b","負け "+cnt("lose"),"dn");
+      if(cnt("even"))txt(head,"b","引き分け "+cnt("even"),"");
+      if(cnt("none"))txt(head,"b","入れず "+cnt("none"),"oc-g");
+      txt(head,"span","合計　通常 "+yen(sum("通常"))+"・半分 "+yen(sum("半分"))+"・AIの判断 "+yen(sum("AI")),cl(sum("通常")));
+      const t=txt(txt(box,"div","","oc-scroll"),"table",""),hr=txt(txt(t,"thead",""),"tr","");
+      t.setAttribute("data-keep-table","");
+      ["結果","銘柄","向き","翌朝の注意予定","メルの判断","通常","半分","AIの判断"].forEach(x=>txt(hr,"th",x));const tb=txt(t,"tbody","");
+      rows.forEach(r=>{const k=res(r),tr=txt(tb,"tr","","oc-row oc-"+k);
+        txt(tr,"td",{win:"勝ち",lose:"負け",even:"引き分け",none:"入れず"}[k],"oc-mark oc-l");
+        txt(tr,"td",nm(r),"oc-l");txt(tr,"td",r.side||"");txt(tr,"td",(r.events||[]).join("・")||"なし","oc-l");
         txt(tr,"td",(r.mel&&r.mel.size||"通常")+"（"+(r.mel&&r.mel.reason||"")+"）","oc-l");
-        ["通常","半分","AI"].forEach(k=>{const v=r[k]||{};txt(tr,"td",(v.shares||0).toLocaleString("ja-JP")+"株 "+yen(v.yen),cl(v.yen));});});
+        ["通常","半分","AI"].forEach(c=>{const v=r[c]||{};txt(tr,"td",Number(v.shares)>0?(v.shares||0).toLocaleString("ja-JP")+"株 "+yen(v.yen):"入れず",Number(v.shares)>0?cl(v.yen):"oc-g");});});
       txt(box,"div",rows.some(r=>!r.closed)?"14:00より前は含み（費用前）、14:00の後は確定（金利込み）です。":"14:00に手じまった確定の損益（金利込み）です。","oc-note");}
     const tot=cap&&cap.overnight_total;
     if(tot)txt(box,"div","通算（"+String(tot.since||"").slice(5).replace("-","/")+"から・確定）：通常 "+yen(tot["通常"])+"・半分 "+yen(tot["半分"])+"・AIの判断 "+yen(tot["AI"]),"oc-note");
