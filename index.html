@@ -4654,6 +4654,18 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
   let mView="total";try{mView=localStorage.getItem("cockpitMethodViewV1")||"total";}catch(_){}
   const METHODS=[["R1","手法A","朝の買い","#f5c542"],["R2","手法B","弱い日の朝の空売り","#35e2ae"],["R4","手法C","上げている銘柄の押し目買い","#5aa9ff"],["R5","手法D","下に窓の日の戻り売り","#c084fc"],
                  ["BRAIN","ブレイン","ブレインが選んだ銘柄","#ff9f43"],["ON_LONG","持ち越し 買い","オーバーナイト銘柄","#ff6b9a"],["ON_SHORT","持ち越し 空売り","オーバーナイト銘柄","#9ae6b4"]];   // OWNER 2026-11-09 「（オーバーナイト銘柄）っていれて」
+  // OWNER 2026-11-19 「手法の説明文表示（クリックするとでよい）」: the name of a method opens its rule in words (taken from
+  // v10_signal_ev_table.RULES / brain_trades and the overnight scoring in v10_positions_live). Display only: no voice, no order card.
+  const MDESC={
+    R1:"買い。9:15〜10:00に出た買いサインで入る。利確と損切りは、サインの目標までの幅の2倍ずつ。15:20までに手じまい。1銘柄1日1回。10/26から記録だけ（点数・注文カードには使わない）。",
+    R2:"空売り。地合いが「弱い」日だけ、9:15〜10:00に出た売りサインで入る。利確はサインの目標までの幅の3倍、損切りは2倍。最長60分で手じまい。",
+    R4:"買い。寄りから+0.5%以上上げている銘柄が、最初の15分の高値まで押して、その上で引けた時に入る（押し目買い）。利確と損切りは、サインの目標までの幅の2倍ずつ。15:20までに手じまい。",
+    R5:"空売り。窓を1%以上下に開けた日に、最初の15分の安値まで戻して、その下で引けた時に入る（戻り売り）。利確はサインの目標までの幅の3倍、損切りは2倍。最長60分で手じまい。",
+    BRAIN:"ブレインが選んだ銘柄を、選んだ時の手法の利確・損切りでなぞる。同じ銘柄・同じ形をまだ持っている間に出た分は数えない。",
+    ON_LONG:"15:25に決まったオーバーナイト5のうち「ロング」の銘柄を、15:25の値段で買って持ち越し、次の日の14:00で手じまい。",
+    ON_SHORT:"15:25に決まったオーバーナイト5のうち「ショート」の銘柄を、15:25の値段で空売りして持ち越し、次の日の14:00で手じまい。"};
+  const MDESC_COMMON="どれも仮想（注文なし）・100株換算・費用込み。サインで入る手法は、サインから30分のうちに入れなければ数えない。";
+  let mDescOpen={};
   // OWNER 2026-11-09 「このグラフちょっと見にくい」: taller, gridlines with yen at round steps, each line's name and total at its right end,
   // the legend switches a line on and off (the scale follows the lines shown), and a 「10/27から」 button starts every line on the same day.
   let mOff={},mFrom="all";try{mOff=JSON.parse(localStorage.getItem("cockpitMethodOffV1")||"{}")||{};mFrom=localStorage.getItem("cockpitMethodFromV1")||"all";}catch(_){}
@@ -4687,7 +4699,8 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     let sec=document.getElementById("method-compare");
     if(sec&&(sec.parentElement!==body||body.lastElementChild!==sec))body.appendChild(sec);
     if(!sec){sec=document.createElement("div");sec.id="method-compare";sec.className="cap-box";body.appendChild(sec);
-      sec.addEventListener("click",ev=>{const b=ev.target.closest("button[data-mview],button[data-mline],button[data-mfrom]");if(!b)return;
+      sec.addEventListener("click",ev=>{const b=ev.target.closest("button[data-mview],button[data-mline],button[data-mfrom],button[data-mdesc]");if(!b)return;
+        if(b.dataset.mdesc){const k=b.dataset.mdesc;if(mDescOpen[k])delete mDescOpen[k];else mDescOpen[k]=1;}
         if(b.dataset.mview){mView=b.dataset.mview;try{localStorage.setItem("cockpitMethodViewV1",mView);}catch(_){}}
         if(b.dataset.mline){const k=b.dataset.mline;if(mOff[k])delete mOff[k];else mOff[k]=1;try{localStorage.setItem("cockpitMethodOffV1",JSON.stringify(mOff));}catch(_){}}
         if(b.dataset.mfrom){mFrom=b.dataset.mfrom;try{localStorage.setItem("cockpitMethodFromV1",mFrom);}catch(_){}}
@@ -4702,16 +4715,18 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const bar=(pct,c,mark)=>'<div class="mc-bar">'+(mark!=null?'<em style="left:'+mark+'%"></em>':'')+'<i style="width:'+Math.max(0,Math.min(100,pct||0))+'%;background:'+c+'"></i></div>';
     const evBar=v=>{const half=Math.min(50,Math.abs(v)/maxAbs*50);return '<div class="mc-bar"><em style="left:50%"></em><i style="left:'+(v>=0?50:50-half)+'%;width:'+half+'%;background:'+(v>=0?"#35e2ae":"#ff5a5f")+'"></i></div>';};
     const series=METHODS.filter(m=>hist[m[0]]&&hist[m[0]].length).map(m=>{const pts=hist[m[0]].slice();const t=td[m[0]];if(t&&t.closed)pts.push([String(r.date||"今日"),t.yen]);return {name:m[1],col:m[3],pts};});
+    const nameCell=m=>'<span><button type="button" class="mc-name" data-mdesc="'+esc(m[0])+'" title="押すと手法の説明" aria-expanded="'+(mDescOpen[m[0]]?"true":"false")+'" style="background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer"><b style="color:'+m[3]+'">'+esc(m[1])+' '+(mDescOpen[m[0]]?'▾':'▸')+'</b><br><small class="g">'+esc(m[2])+'</small></button></span>';
+    const descRow=m=>mDescOpen[m[0]]&&MDESC[m[0]]?'<div class="mc-desc cap-note" style="margin:0 0 6px 0;padding:6px 10px;border-left:3px solid '+m[3]+'">'+esc(MDESC[m[0]])+'<br><span class="g">'+esc(MDESC_COMMON)+'</span></div>':'';
     sec.innerHTML='<div class="mc-top"><b>手法の成績（メル・仮想）</b><span class="cap-modes"><button type="button" data-mview="today" class="'+(mView==="today"?"on":"")+'">今日</button><button type="button" data-mview="total" class="'+(mView==="total"?"on":"")+'">通算</button></span>'+
       '<span class="g">'+(mView==="today"?"今日決済した分（100株換算・費用込み）":"前の日までの記録（朝に固定・費用込み）")+'</span></div>'+
-      '<div class="mc-grid mc-head"><span>手法</span><span>勝率（線＝50%）</span><span>1回の平均（中央＝0）</span><span>PF（線＝1.0）</span><span>回数</span></div>'+
-      rows.map(([m,f])=>{const [k,name,desc,col]=m;if(!f)return '<div class="mc-grid"><span><b style="color:'+col+'">'+esc(name)+'</b><br><small class="g">'+esc(desc)+'</small></span><span class="g" style="grid-column:2/-1">'+(mView==="today"?"今日の決済なし":"記録なし")+'</span></div>';
+      '<div class="mc-grid mc-head"><span>手法（名前を押すと説明）</span><span>勝率（線＝50%）</span><span>1回の平均（中央＝0）</span><span>PF（線＝1.0）</span><span>回数</span></div>'+
+      rows.map(([m,f])=>{const [k,name,desc,col]=m;if(!f)return '<div class="mc-grid">'+nameCell(m)+'<span class="g" style="grid-column:2/-1">'+(mView==="today"?"今日の決済なし":"記録なし")+'</span></div>'+descRow(m);
         const wr=num(f.win),ev=num(f.ev),p=num(f.pf);
-        return '<div class="mc-grid"><span><b style="color:'+col+'">'+esc(name)+'</b><br><small class="g">'+esc(desc)+'</small></span>'+
+        return '<div class="mc-grid">'+nameCell(m)+''+
           '<span>'+bar(wr,wr!=null&&wr>=50?"#35e2ae":"#ff5a5f",50)+'<small>'+(wr!=null?wr.toFixed(1)+'%':'—')+'</small></span>'+
           '<span>'+(ev!=null?evBar(ev):bar(0,"#2a2e39"))+'<small class="'+(ev>0?"up":"dn")+'">'+(ev!=null?(ev>0?"+":"")+ev.toFixed(3)+'%':'—')+'</small></span>'+
           '<span>'+bar(p!=null?p/maxPf*100:0,p!=null&&p>=1?"#35e2ae":"#ff5a5f",100/maxPf)+'<small>'+(p!=null?p.toFixed(2):'—')+'</small></span>'+
-          '<span>'+bar((f.n||0)/maxN*100,"#5aa9ff")+'<small>'+(f.n||0)+'回</small></span></div>';}).join("")+
+          '<span>'+bar((f.n||0)/maxN*100,"#5aa9ff")+'<small>'+(f.n||0)+'回</small></span></div>'+descRow(m);}).join("")+
       '<div class="mc-sub">手法ごとの通算損益（100株換算・費用込み・日ごと。ブレインは日ごとの記録が無いので線なし）</div>'+lineChart(series)+
       '<div class="cap-note">研究の記録で、売買の勧めではありません。回数が少ない手法は、たまたまの差が大きいです。</div>';
   }
