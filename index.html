@@ -5440,7 +5440,9 @@ main .card hr{display:none}
 #today-scenario .ts-verdict{display:inline-block;padding:2px 10px;border-radius:8px;background:#1c1c1e;border:1px solid #303033;font-size:14px;font-weight:700}
 #today-scenario ol{margin:4px 0 0;padding-left:20px;font-size:13px;line-height:1.6;color:#d6d8dc}
 #today-scenario .ts-other{margin-top:4px;font-size:12px;color:#b5b5ba;line-height:1.6}
-#today-scenario details>summary{cursor:pointer;color:#9aa0a6;font-size:12px}</style>
+#today-scenario details>summary{cursor:pointer;color:#9aa0a6;font-size:12px}
+#today-scenario .ts-scn{margin:4px 0 2px;padding:6px 10px;border-radius:8px;background:#1c1c1e;font-size:13px;line-height:1.6}
+#today-scenario .ts-scn b{color:#E8EAED}#today-scenario .ts-scn ul{margin:2px 0 0;padding-left:18px;color:#d6d8dc}</style>
 <script>
 // OWNER 2026-11-18 「上部に今日の予測シナリオかいて」: /today_scenario.json = the PC's file made from the market-state analysts'
 // answers (Claude 地合い 朝 8:15・昼 11:35・引け 15:35, and the pre-market analyst's 相場の向き). In the 今やること box (トレード中):
@@ -5450,7 +5452,7 @@ main .card hr{display:none}
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function paint(){
     // OWNER 2026-11-18 「今やることに追記」: inside the 今やること box (#tl-now), right under its heading
-    const host=document.getElementById("tl-now");if(!host)return;
+    const host=document.getElementById("tl-now");if(!host){setTimeout(paint,3000);return;}   // audit 5732330: try again soon, not in 2 minutes
     let box=document.getElementById("today-scenario");
     if(!box){box=document.createElement("div");box.id="today-scenario";}
     const h2=host.querySelector(":scope > h2");if(h2){if(h2.nextElementSibling!==box)h2.after(box);}else if(host.firstElementChild!==box)host.prepend(box);
@@ -5466,8 +5468,10 @@ main .card hr{display:none}
     const others=items.filter(x=>x!==main);
     box.innerHTML='<div class="ts-head"><b>'+label+'</b>'+(main.verdict?'<span class="ts-verdict">'+esc(main.verdict)+'</span>':'')+
       '<small>'+esc(main.who||"")+'・'+esc(String(main.made_at||"").slice(11,16))+'作成・研究のみ・売買の合図ではありません</small></div>'+
-      '<ol>'+(main.lines||[]).slice(0,3).map(l=>'<li>'+esc(l)+'</li>').join("")+'</ol>'+
-      (others.length?'<details><summary>ほかの答え（'+others.length+'）</summary>'+others.map(o=>'<div class="ts-other"><b>'+esc(o.who||"")+'・'+esc(String(o.made_at||"").slice(11,16))+'</b>　'+(o.verdict?esc(o.verdict)+'　':'')+(o.lines||[]).slice(0,3).map(esc).join("／")+'</div>').join("")+'</details>':'');
+      '<ol>'+(Array.isArray(main.lines)?main.lines:[]).slice(0,3).map(l=>'<li>'+esc(l)+'</li>').join("")+'</ol>'+
+      // OWNER 2026-11-18 「こういうケースもたまにみられるから、しっかりシナリオ予測して」: the answer's 【シナリオ】 (本線・別線), as written
+      (Array.isArray(main.scenarios)&&main.scenarios.length?'<div class="ts-scn"><b>シナリオ</b><ul>'+main.scenarios.slice(0,3).map(l=>'<li>'+esc(l)+'</li>').join("")+'</ul></div>':'')+
+      (others.length?'<details><summary>ほかの答え（'+others.length+'）</summary>'+others.map(o=>'<div class="ts-other"><b>'+esc(o.who||"")+'・'+esc(String(o.made_at||"").slice(11,16))+'</b>　'+(o.verdict?esc(o.verdict)+'　':'')+(Array.isArray(o.lines)?o.lines:[]).slice(0,3).map(esc).join("／")+'</div>').join("")+'</details>':'');
   }
   document.addEventListener("DOMContentLoaded",()=>{setTimeout(paint,1200);setInterval(paint,120000);});
 })();
