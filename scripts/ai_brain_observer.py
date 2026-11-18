@@ -279,6 +279,27 @@ def read_snapshot(path: Path):
     return content, datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
 
 
+# OWNER 2026-11-18 「ブレインの状態ファイルの書き込み（書けない時は少し待ってもう一度）」: 11/18 12:19 os.replace got
+# WinError 5 while another program held the status file and the observer stopped. Only PermissionError is retried, a few
+# times with a short wait; the same checks run before, and after the last try the error is raised as before.
+STATUS_REPLACE_TRIES = 5
+STATUS_REPLACE_WAIT_SECONDS = 0.2
+
+
+def _replace_with_retry(temp, path, tries=STATUS_REPLACE_TRIES, wait=STATUS_REPLACE_WAIT_SECONDS, sleep=None):
+    import time
+    sleep = sleep or time.sleep
+    for i in range(tries):
+        try:
+            os.replace(temp, path)
+            return i + 1
+        except PermissionError:
+            if i + 1 >= tries:
+                raise
+            sleep(wait * (i + 1))
+    return tries
+
+
 def write_status(path: Path, status: dict):
     # Never touch original market CSV, Excel, or live_ms2.json.
     if not path.parent.is_dir() or path.parent.is_symlink() or path.is_symlink():
@@ -296,7 +317,7 @@ def write_status(path: Path, status: dict):
             output.write(content)
             output.flush()
             os.fsync(output.fileno())
-        os.replace(temp, path)
+        _replace_with_retry(temp, path)
     finally:
         temp.unlink(missing_ok=True)
 
