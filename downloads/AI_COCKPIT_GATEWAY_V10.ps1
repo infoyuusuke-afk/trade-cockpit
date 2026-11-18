@@ -1127,6 +1127,30 @@ function Get-AirReviewView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-18 "write today's forecast scenario at the top": RuntimeDir\today_scenario_v1.json is written by the research script
+# today_scenario.py from the market-state analysts' answers (text, research only). Served as is when its flags are safe. Display only.
+function Get-TodayScenarioView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'today_scenario_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'TODAY_SCENARIO_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'TODAY_SCENARIO_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-today-scenario-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'TODAY_SCENARIO_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'TODAY_SCENARIO_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-17 (15:24 lock): RuntimeDir\closing_auction_lock_v1.json is written once a day at 15:24 by the research script
 # closing_auction_lock.py. It is served only for today, only when it was locked between 15:24:00 and 15:25:59 and the file was not
 # written after 15:26:00 of that day (so a later rewrite is refused), and only when its flags are safe. Display only.
@@ -3517,6 +3541,11 @@ try {
             if ($path -eq '/air_trade_review.json') {
                 $airView = Get-AirReviewView $RuntimeDir
                 Send-Response $stream $airView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$airView.body))
+                continue
+            }
+            if ($path -eq '/today_scenario.json') {
+                $scnView = Get-TodayScenarioView $RuntimeDir
+                Send-Response $stream $scnView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$scnView.body))
                 continue
             }
             if ($path -eq '/closing_auction_lock.json') {

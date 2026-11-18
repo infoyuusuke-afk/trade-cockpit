@@ -653,6 +653,9 @@ MEL_DIR = "mel300"
 MEL_SIZES = ("0", "半分", "通常")
 
 
+MEL_CANDIDATES_FROM = "2026-11-19"
+
+
 def mel_plan(runtime: Path | None, day: str) -> dict:
     """{code: {"size", "reason"}} of Mel's overnight sizes for the holds decided on day, or {} (missing, late, broken)."""
     if runtime is None:
@@ -669,6 +672,14 @@ def mel_plan(runtime: Path | None, day: str) -> dict:
     at = str(doc.get("decided_at") or "")
     if doc.get("schema_version") != "100b-v10-mel-overnight-size-v1" or doc.get("day") != day or not (day + " 00:00" <= at < day + " 15:25"):
         return {}
+    # OWNER 2026-11-18 「メル今日は無効にして、日付の直しを次の版に」: on 11/18 the day's file was locked with the day before's decisions.
+    # From 2026-11-19 the file must carry the day's candidates (written by the lock from the same list Mel read) and every decision
+    # must be one of them; otherwise the whole day is not used (counted as 通常). Days before keep their old rule.
+    if day >= MEL_CANDIDATES_FROM:
+        cands = {str(c).replace(".T", "") for c in (doc.get("candidates") or []) if c}
+        codes = [str((x or {}).get("code") or "").replace(".T", "") for x in doc.get("decisions") or []]
+        if not cands or not codes or any(c not in cands for c in codes):
+            return {}
     out = {}
     for x in doc.get("decisions") or []:
         code = str((x or {}).get("code") or "").replace(".T", "")
