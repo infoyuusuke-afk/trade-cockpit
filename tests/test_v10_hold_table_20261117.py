@@ -24,7 +24,8 @@ class SharedTable(unittest.TestCase):
     def test_badges(self):
         self.assertIn('<span class="hl-badge win">勝ち \'+yen(r.resultYen)+\'</span>', self.js)
         self.assertIn('<span class="hl-badge lose">負け \'+yen(r.resultYen)+\'</span>', self.js)
-        self.assertIn('<span class="hl-badge skip">見送り</span>', self.js)
+        # OWNER 2026-11-18: a 0-share row shows its own words (枠が足りず0株 …); 見送り only when a row has none
+        self.assertIn('<span class="hl-badge skip">\'+esc(r.skipLabel||"見送り")+\'</span>', self.js)
         self.assertIn('<span class="hl-badge wait">待ち</span>', self.js)
         self.assertIn(".hl-tbl tr.hl-skip td{opacity:.45}", HTML)
 

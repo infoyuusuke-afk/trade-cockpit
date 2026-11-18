@@ -802,7 +802,8 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_ris
             "skipped_room": skipped_room, "skipped_price": skipped_price, "peak_amount": round(peak),
             "using_amount": using_now, "limit_amount": None if limit is None else round(limit),
             "limit_hit_at": hit, "limit_stop_yen": round(total) if hit else None, "held": held, "_taken": taken,
-            "skipped_recent": sorted(skipped, key=lambda x: x["at"])[-5:][::-1]}
+            "skipped_recent": sorted(skipped, key=lambda x: x["at"])[-5:][::-1],
+            "_skipped_overnight": [x for x in skipped if x.get("kind") == "overnight"]}
 
 
 def curve(taken: list, kinds: tuple, points: list, now_hm: str) -> list:
@@ -1361,11 +1362,27 @@ def _air300_safe(records: Path, runtime: Path, day_dir: Path, today: str) -> dic
         return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "days": [], "real_submit_allowed": False}
 
 
-def overnight_compare(trades: list, normal: list, half: list, ai: list, now_hm: str) -> list:
-    """The overnight holds of the day: the marks, Mel's decision and, for each way, the shares and the yen (closed at 14:00, else open)."""
+def zero_reason(skip: dict | None) -> dict | None:
+    """OWNER 2026-11-18 「枠が足りない銘柄は『枠が足りず0株（要る金額・残りの枠）』…『見送り』ではなく同じ言葉にする」: why a confirmed
+    hold has 0 shares in one way (通常・半分・AI). The words come from the sizing itself (size()), nothing is guessed."""
+    if not skip:
+        return None
+    why = str(skip.get("reason") or "")
+    if why.startswith("メルの判断"):
+        return {"words": "メルの判断で0株", "need": None, "room": None}
+    if why.startswith("1単元"):
+        return {"words": "1単元が資金より高く0株", "need": skip.get("need"), "room": None}
+    return {"words": "枠が足りず0株", "need": skip.get("need"), "room": skip.get("room"),
+            "reserve": why.startswith("成績がマイナス")}
+
+
+def overnight_compare(trades: list, normal: list, half: list, ai: list, now_hm: str, skips: dict | None = None) -> list:
+    """The overnight holds of the day: the marks, Mel's decision and, for each way, the shares and the yen (closed at 14:00, else open).
+    skips = {"通常" | "半分" | "AI": size()["_skipped_overnight"]}: a 0-share way carries its reason (zero_reason)."""
     def by(ts):
         return {t["ticker"]: t for t in ts if t["kind"] == "overnight"}
     n, h, a = by(normal), by(half), by(ai)
+    sk = {k: {x.get("ticker"): x for x in (v or [])} for k, v in (skips or {}).items()}
 
     def yen(t):
         if t is None:
@@ -1384,8 +1401,43 @@ def overnight_compare(trades: list, normal: list, half: list, ai: list, now_hm: 
         for k, src in (("通常", n), ("半分", h), ("AI", a)):
             sh, y = yen(src.get(t["ticker"]))
             row[k] = {"shares": sh, "yen": y}
+            if not sh:
+                row[k]["zero"] = zero_reason((sk.get(k) or {}).get(t["ticker"]))
         rows.append(row)
     return rows
+
+
+def overnight_tonight(runtime: Path, day_dir: Path, today: str, next_day: str, ev_doc: dict | None) -> dict:
+    """OWNER 2026-11-18 「OVERNIGHT 5で15:25に持ち越しが決まった時に、5銘柄それぞれ通常・半分・AIの株数と、枠が足りない銘柄は
+    『枠が足りず0株（要る金額・残りの枠）』をその場で出す」: the same sizing the next day uses (size(): the holds are taken first, at their
+    15:25 price, in their order; the marks of tonight; Mel's decision of today) for the 300万 virtual account, right after 15:25.
+    Only the holds take part, as they do the next morning at 09:00. The rule figures are today's (the next day's are fixed after
+    midnight), so a rule whose figure is not positive is marked. Virtual and display only: no order."""
+    picks = _overnight(day_dir, valid_until="")
+    if not picks:
+        return {"state": "NONE", "rows": []}
+    trades = trades_of([], picks, [], next_day, {}, "09:00", runtime)
+    ev = (ev_doc or {}).get("ev") or {}
+    capital = dict(SIZES)["300万"]
+    ways = {"通常": size(trades, capital, "09:00", ev), "半分": size(trades, capital, "09:00", ev, half_on_risk=True),
+            "AI": size(trades, capital, "09:00", ev, mel=True)}
+    taken = {k: {t["ticker"]: t for t in v["_taken"]} for k, v in ways.items()}
+    skips = {k: {x.get("ticker"): x for x in v["_skipped_overnight"]} for k, v in ways.items()}
+    rows = []
+    for t in trades:
+        row = {"ticker": t["ticker"], "name": t.get("name"), "side": "買い" if t["side"] > 0 else "空売り", "price": t["fill"],
+               "events": [e.get("what") for e in (t.get("risk") or [])][:3],
+               "mel": t.get("mel") or {"size": "通常", "reason": "メルの判断なし（通常で数える）"},
+               "rule": t.get("rule"), "rule_ev": ev.get(t.get("rule"))}
+        for k in ("通常", "半分", "AI"):
+            got = taken[k].get(t["ticker"])
+            sh = got["shares"] if got else 0
+            row[k] = {"shares": sh, "amount": round(t["fill"] * sh)}
+            if not sh:
+                row[k]["zero"] = zero_reason(skips[k].get(t["ticker"]))
+        rows.append(row)
+    return {"state": "OK", "decided": today, "exit_day": next_day, "label": "300万", "limit": round(capital * MARGIN_MULT),
+            "rows": rows, "real_submit_allowed": False}
 
 
 def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: list, ev_doc: dict | None = None) -> dict:
@@ -1408,7 +1460,9 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             s["risk_ai"] = {"done": a["rows"]["day"]["done"] + a["rows"]["overnight"]["done"],
                             "open": a["rows"]["day"]["open"] + a["rows"]["overnight"]["open"],
                             "overnight_done": a["rows"]["overnight"]["done"], "overnight_open": a["rows"]["overnight"]["open"]}
-            h_taken = size(trades, capital, now_hm, ev, half_on_risk=True)["_taken"]
+            hh = size(trades, capital, now_hm, ev, half_on_risk=True)
+            h_taken, h_skip, a_skip = hh["_taken"], hh["_skipped_overnight"], a.pop("_skipped_overnight")
+            h.pop("_skipped_overnight", None)
         # OWNER 2026-11-09 「先着順の数字も参考に残す」
         if capital is not None:
             f = size(trades, capital, now_hm)
@@ -1417,8 +1471,10 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
                          "open": f["rows"]["day"]["open"] + f["rows"]["overnight"]["open"],
                          "skipped": f["skipped_room"] + f["skipped_price"]}
         taken = s.pop("_taken")
+        n_skip = s.pop("_skipped_overnight", [])
         if capital is not None:   # OWNER 2026-11-16: the holds out today, 通常・半分・AIの判断 side by side (shares and yen at 14:00)
-            s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm)
+            s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm,
+                                                       {"通常": n_skip, "半分": h_skip, "AI": a_skip})
         day_done = s["rows"]["day"]["done"] + s["rows"]["overnight"]["done"]
         day_open = s["rows"]["day"]["open"] + s["rows"]["overnight"]["open"]
         closed = s["rows"]["day"]["closed"] + s["rows"]["overnight"]["closed"]
@@ -1679,6 +1735,12 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                                rule_ev(runtime, day_dir, today))
     except Exception as exc:
         capital = {"status": "UNAVAILABLE", "reason": type(exc).__name__}
+    if isinstance(capital, dict) and capital.get("sizes") is not None and hm >= DECIDE_AT and not weekend and (day_dir / OVERNIGHT_FILE).is_file():
+        try:   # OWNER 2026-11-18: tonight's 通常・半分・AI shares for the 300万 account, right after 15:25
+            capital["overnight_tonight"] = overnight_tonight(runtime, day_dir, today, _next_weekday(local.date()).isoformat(),
+                                                             capital.get("rule_ev"))
+        except Exception as exc:
+            capital["overnight_tonight"] = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "rows": []}
     try:
         soon = earnings_soon(runtime, today, hm)
         if hm >= DECIDE_AT:

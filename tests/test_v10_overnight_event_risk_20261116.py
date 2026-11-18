@@ -113,7 +113,8 @@ class OvernightEventMarks(unittest.TestCase):
         self.assertEqual(normal, {"8035.T": 3000, "7203.T": 3000, "9984.T": 3000})   # the normal sizing is unchanged
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
         self.assertIn("a = size(trades, capital, now_hm, ev, mel=True)", src)
-        self.assertIn('s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm)', src)
+        self.assertIn('s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm,', src)
+        self.assertIn('{"通常": n_skip, "半分": h_skip, "AI": a_skip})', src)   # OWNER 2026-11-18: with the reason of a 0-share way
         self.assertIn('"mel_tonight": mel_plan(runtime, today)', src)
         self.assertIn('row("　AIの判断（メルが15:20に0・半分・通常を決める）",', HTML)
         self.assertIn('row("　半分（予定のある夜は半分）",', HTML)

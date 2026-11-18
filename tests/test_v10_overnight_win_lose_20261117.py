@@ -14,7 +14,8 @@ class OvernightWinLose(unittest.TestCase):
     def test_result_mark_and_kept_table(self):
         self.assertIn('return !(Number(v.shares)>0)?"none":Number(v.yen)>0?"win":Number(v.yen)<0?"lose":"even";', self.b)
         self.assertIn('t.setAttribute("data-keep-table","");', self.b)
-        self.assertIn('{win:"勝ち",lose:"負け",even:"引き分け",none:"入れず"}[k]', self.b)
+        # OWNER 2026-11-18: the 0-share mark is the sizing's own words (枠が足りず0株 …), not 入れず
+        self.assertIn('{win:"勝ち",lose:"負け",even:"引き分け",none:((r["通常"]||{}).zero||{}).words||"0株"}[k]', self.b)
         self.assertIn('txt(head,"b","勝ち "+cnt("win"),"up");txt(head,"b","負け "+cnt("lose"),"dn");', self.b)
 
     def test_colours(self):
