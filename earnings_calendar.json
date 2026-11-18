@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-18T02:53:34.608268+09:00",
+  "updated_at": "2026-11-18T12:51:26.629628+09:00",
   "calendar": [
     {
       "code": "130A",
@@ -26359,9 +26359,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認",
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261118582453.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -31772,9 +31777,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認",
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261117582361.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -35130,10 +35140,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 7320.0,
-        "return_5d_pct": 3.32,
-        "return_20d_pct": 6.15,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 7021.0,
+        "return_5d_pct": -1.94,
+        "return_20d_pct": 3.36,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35160,10 +35170,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5329.0,
-        "return_5d_pct": 4.35,
-        "return_20d_pct": 3.64,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 5124.0,
+        "return_5d_pct": -1.78,
+        "return_20d_pct": 1.79,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -35190,10 +35200,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 597.4,
-        "return_5d_pct": 2.28,
-        "return_20d_pct": 7.0,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 578.0,
+        "return_5d_pct": -2.35,
+        "return_20d_pct": 6.19,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -35220,9 +35230,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 81300.0,
-        "return_5d_pct": 1.25,
-        "return_20d_pct": -3.1,
+        "last_close": 80800.0,
+        "return_5d_pct": 1.76,
+        "return_20d_pct": -2.65,
         "momentum_direction": "中立"
       }
     },
@@ -40273,6 +40283,64 @@
     }
   ],
   "catalysts": [
+    {
+      "code": "3562",
+      "name": "Ｎｏ．１",
+      "title": "（訂正）「子会社の異動を伴う株式の取得に関するお知らせ」の一部訂正について",
+      "published_at": "2026-11-18T11:30:00+09:00",
+      "date": "2026-11-18",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118582574.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "465A",
+      "name": "ＧＸ日経株主還元",
+      "title": "2026年10月期（2026年4月5日～2026年10月4日）決算短信",
+      "published_at": "2026-11-18T11:00:00+09:00",
+      "date": "2026-11-18",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118582495.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6291",
+      "name": "エアーテック",
+      "title": "（訂正）「2026年12月期 第３四半期決算短信〔日本基準〕（非連結）」の一部訂正について",
+      "published_at": "2026-11-18T10:00:00+09:00",
+      "date": "2026-11-18",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118582453.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8522",
+      "name": "名古屋銀",
+      "title": "（訂正）「2027年3月期第2四半期（中間期）決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-11-18T10:00:00+09:00",
+      "date": "2026-11-18",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261117582361.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
     {
       "code": "4436",
       "name": "Ｇ－ミンカブ",
