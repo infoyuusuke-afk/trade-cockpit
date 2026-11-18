@@ -12,38 +12,48 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import ai_brain_observer as obs  # noqa: E402
 
+CTL = (ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="ascii")
 PROBE = (ROOT / "downloads" / "EXCEL_IDENTITY_PROBE_V10.ps1").read_text(encoding="ascii")
 
 
 class ExcelWindowWait(unittest.TestCase):
-    def test_probe_is_ascii(self):
-        (ROOT / "downloads" / "EXCEL_IDENTITY_PROBE_V10.ps1").read_bytes().decode("ascii")
+    """The wait is in the controller: the probe helper is unchanged (its exact blob stays the CI-pinned one)."""
 
-    def test_hwnd_not_ready_waits_a_bounded_time_then_fails_closed(self):
-        self.assertIn("$hwndNotReadyGraceSeconds = 15", PROBE)
-        i = PROBE.index('$last.last_error = "HWND_PROCESS_NOT_READY"')
-        block = PROBE[i:i + 1400]
-        self.assertIn('$disposition = "next"', block)                     # waits and checks again
-        self.assertIn('$disposition = "fail"', block)                     # after the grace: the same stop as before
-        self.assertIn('$last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"', block)
-        self.assertIn("-lt $hwndNotReadyGraceSeconds", block)
-        self.assertIn("Nothing was adopted", block)
-        # the window still has to pass every check: PID, session, command line, parent, same file
-        for check in ('"PID_MISMATCH"', '"SESSION_MISMATCH"', '"COMMAND_LINE_MISMATCH"', '"PARENT_MISMATCH"', '"FULL_NAME_DIFFERENT_FILE"'):
-            self.assertIn(check, PROBE)
-        self.assertIn("$ownerPid -ne $ExpectedExcelPid", PROBE)
+    def _loop(self):
+        i = CTL.index("$windowWaitTries = 0")
+        j = CTL.index("if (-not $probe.ok) {", i)
+        return CTL[i:j]
 
-    def test_budget_end_while_waiting_keeps_the_old_stop_code(self):
-        tail = PROBE[PROBE.index('$last.code = "EXCEL_IDENTITY_PROBE_FAILED"\r\nif'):] if "\r\n" in PROBE else PROBE[PROBE.index('$last.code = "EXCEL_IDENTITY_PROBE_FAILED"\nif'):]
-        self.assertIn('[string]$last.last_error -eq "HWND_PROCESS_NOT_READY"', tail)
-        j = tail.index('"HWND_PROCESS_NOT_READY"')
-        self.assertIn('$last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"', tail[j:j + 300])
+    def test_controller_is_ascii(self):
+        (ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1").read_bytes().decode("ascii")
 
-    def test_other_dialog_and_mismatch_stops_are_unchanged(self):
-        self.assertIn("Excel was busy in a dialog. Identity retries stopped.", PROBE)
+    def test_only_hwnd_not_ready_is_checked_again_a_bounded_number_of_times(self):
+        loop = self._loop()
+        self.assertIn('[string]$probe.last_error -eq "HWND_PROCESS_NOT_READY"', loop)
+        self.assertIn("-not $probe.ok", loop)
+        self.assertIn("-not [bool]$probe.process_exited", loop)
+        self.assertIn("$windowWaitTries -lt 2", loop)
+        self.assertIn("Start-Sleep -Seconds 5", loop)
+        self.assertIn("if ($launchedExcelProc.HasExited) { break }", loop)
+        self.assertIn("Nothing was adopted", loop)
+        # each try is the full probe for the same launched Excel PID
+        self.assertIn("Invoke-ExcelIdentityProbe", loop)
+        self.assertIn("-ExpectedExcelPid ([int]$launchedExcelProc.Id)", loop)
+        self.assertIn("Complete-ExcelProbeResult", loop)
+        for word in ("excel_pid = ", "workbook_identity_verified = $true", "Stop-Process", "Kill("):
+            self.assertNotIn(word, loop)
+
+    def test_the_stop_after_the_wait_is_unchanged(self):
+        i = CTL.index("$windowWaitTries = 0")
+        after = CTL[i:i + 4000]
+        self.assertIn('"HWND_PROCESS_NOT_READY", "EXCEL_BUSY", "PREVIOUS_SERIOUS_ERROR_DIALOG"', after)
+        self.assertIn("AI Cockpit startup failed closed", after)
+        self.assertIn("Excel workbook open failed closed: ", after)
+
+    def test_probe_helper_still_stops_on_each_mismatch(self):
+        self.assertIn("Workbook moniker was found but its HWND was not the launched Excel. Identity retries stopped.", PROBE)
         self.assertIn("Workbook moniker belongs to a different Excel PID. It was not adopted. Identity retries stopped.", PROBE)
-        ctl = (ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
-        self.assertIn('"HWND_PROCESS_NOT_READY"', ctl)                   # the controller still treats it as an open failure
+        self.assertIn("$ownerPid -ne $ExpectedExcelPid", PROBE)
 
 
 class StatusWriteRetry(unittest.TestCase):

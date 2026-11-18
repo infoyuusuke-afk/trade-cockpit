@@ -283,11 +283,6 @@ $started = Get-Date
 $loopSeconds = [Math]::Max(1, $AttemptBudgetSeconds - 2)
 $deadline = $started.AddSeconds($loopSeconds)
 $attempt = 0
-# OWNER 2026-11-18: wait for the Excel window to be ready and check again (11/18 08:43 the first start stopped on
-# HWND_PROCESS_NOT_READY at attempt 1). Only this state waits, at most 15 s, and the window must still pass every
-# check below (launched PID, session, command line, parent, same file). Nothing is adopted while waiting.
-$hwndNotReadyGraceSeconds = 15
-$hwndNotReadySince = $null
 $selfSession = [int](Get-Process -Id $PID).SessionId
 $last = @{
     ok = $false
@@ -370,18 +365,10 @@ while ((Get-Date) -lt $deadline) {
                     $owner = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object { [Int64]$_.MainWindowHandle -eq $hwnd } | Select-Object -First 1)
                     if ($owner.Count -lt 1) {
                         $last.last_error = "HWND_PROCESS_NOT_READY"
+                        $last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"
                         $last.ok = $false
-                        if ($null -eq $hwndNotReadySince) { $hwndNotReadySince = Get-Date }
-                        $waited = ((Get-Date) - $hwndNotReadySince).TotalSeconds
-                        if ($waited -lt $hwndNotReadyGraceSeconds) {
-                            $last.message = "Workbook moniker was found but no Excel window owns its HWND yet. Waiting for the window and checking again (" + [int]$waited + "s of " + $hwndNotReadyGraceSeconds + "s). Nothing was adopted."
-                            Write-ProbeProgress $last.message
-                            $disposition = "next"
-                        } else {
-                            $last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"
-                            $last.message = "Workbook moniker was found but its HWND was not the launched Excel after waiting " + $hwndNotReadyGraceSeconds + "s. Identity retries stopped. No Excel process was stopped."
-                            $disposition = "fail"
-                        }
+                        $last.message = "Workbook moniker was found but its HWND was not the launched Excel. Identity retries stopped. No Excel process was stopped."
+                        $disposition = "fail"
                     } else {
                         $ownerPid = [int]$owner[0].Id
                         $last.excel_pid = $ownerPid
@@ -509,9 +496,6 @@ if ([string]$last.last_error -eq "LAUNCHED_PID_EXITED") {
     $last.code = "EXCEL_PROCESS_EXITED"
 } elseif ([string]$last.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG") {
     $last.code = "EXCEL_SERIOUS_ERROR_PROMPT"
-} elseif ([string]$last.last_error -eq "HWND_PROCESS_NOT_READY") {
-    # the budget ended while waiting for the window: the same stop as before (fail closed)
-    $last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"
 } elseif ([string]$last.last_error -in @("FULL_NAME_DIFFERENT_FILE", "SESSION_MISMATCH", "PID_MISMATCH")) {
     $last.code = "EXCEL_IDENTITY_MISMATCH"
 }

@@ -1401,6 +1401,26 @@ try {
         -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
         -LogDirectory $LogDir) $launchedExcelProc
 
+    # OWNER 2026-11-18: wait for the Excel window to be ready and check again. On 11/18 08:43 the first start stopped
+    # on HWND_PROCESS_NOT_READY (the workbook was registered before the launched Excel owned its window). Only this
+    # one state is checked again, at most 2 more times after a 5 s wait, and only while the launched Excel is still
+    # running. Each try is the full identity probe (PID, HWND, session, command line, parent, same file); nothing is
+    # adopted while waiting, and if it still fails the stop below is the same as before.
+    $windowWaitTries = 0
+    while (-not $probe.ok -and [string]$probe.last_error -eq "HWND_PROCESS_NOT_READY" -and
+           -not [bool]$probe.process_exited -and $windowWaitTries -lt 2) {
+        $windowWaitTries++
+        $launchedExcelProc.Refresh()
+        if ($launchedExcelProc.HasExited) { break }
+        Write-Status ("  Excel window not ready yet (HWND_PROCESS_NOT_READY). Waiting 5s and checking again (" + $windowWaitTries + "/2). Nothing was adopted.") Yellow
+        Start-Sleep -Seconds 5
+        $probe = Complete-ExcelProbeResult (Invoke-ExcelIdentityProbe `
+            -WorkbookPath $WorkbookPath `
+            -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
+            -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
+            -LogDirectory $LogDir) $launchedExcelProc
+    }
+
     if (-not $probe.ok) {
         $state.excel_pid = 0
         $state.workbook_identity_verified = $false
