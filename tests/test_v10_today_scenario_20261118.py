@@ -69,7 +69,7 @@ class Screen(unittest.TestCase):
 
     def test_box_under_the_band(self):
         # OWNER 2026-11-18 「今やることに追記」: inside the 今やること box, under its heading
-        self.assertIn('const host=document.getElementById("tl-now");if(!host){setTimeout(paint,3000);return;}', self.b)
+        self.assertIn('if(!host){if(!retry){retry=true;setTimeout(()=>{retry=false;paint();},3000);}return;}', self.b)   # one retry at a time
         self.assertIn('if(h2.nextElementSibling!==box)h2.after(box);', self.b)
         self.assertIn("j.real_submit_allowed!==false||j.trade_instruction!==false", self.b)
         self.assertIn('String(x.made_day||"")===today', self.b)
@@ -84,7 +84,7 @@ class Screen(unittest.TestCase):
         self.assertIn("Array.isArray(main.scenarios)&&main.scenarios.length", self.b)
         self.assertIn("main.scenarios.slice(0,3).map(l=>'<li>'+esc(l)+'</li>')", self.b)
         self.assertIn("(Array.isArray(main.lines)?main.lines:[])", self.b)        # audit 5732330: a wrong shape does not stop the paint
-        self.assertIn('if(!host){setTimeout(paint,3000);return;}', self.b)
+        self.assertIn('let retry=false;', self.b)
 
     def test_total_words_escaped(self):
         self.assertIn('return Object.keys(m).map(k=>"・"+esc(k)+" "+m[k]).join("");};', HTML)

@@ -5450,9 +5450,10 @@ main .card hr{display:none}
 // answers folded. Text only (escaped), grey, no arrow, no voice, no order: research, not a trade signal.
 (()=>{
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let retry=false;
   async function paint(){
     // OWNER 2026-11-18 「今やることに追記」: inside the 今やること box (#tl-now), right under its heading
-    const host=document.getElementById("tl-now");if(!host){setTimeout(paint,3000);return;}   // audit 5732330: try again soon, not in 2 minutes
+    const host=document.getElementById("tl-now");if(!host){if(!retry){retry=true;setTimeout(()=>{retry=false;paint();},3000);}return;}   // audit 5732330: try again soon (one retry at a time)
     let box=document.getElementById("today-scenario");
     if(!box){box=document.createElement("div");box.id="today-scenario";}
     const h2=host.querySelector(":scope > h2");if(h2){if(h2.nextElementSibling!==box)h2.after(box);}else if(host.firstElementChild!==box)host.prepend(box);
