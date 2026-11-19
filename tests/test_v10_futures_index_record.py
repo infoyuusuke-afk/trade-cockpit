@@ -39,13 +39,17 @@ class SevenSeries(unittest.TestCase):
     def test_exact_series_and_no_floating_month(self):
         text = _text()
         defs = text[text.index("$futIndexDefs = @("):text.index("$futItems = @(")]
-        self.assertEqual(defs.count("Key = "), 8)   # 7 futures/index + USD/JPY (OWNER 2026-10-26)
+        # 7 futures/index + USD/JPY (OWNER 2026-10-26) + 5 US indices (OWNER 2026-11-19 「MS2でとれるから実施して」)
+        self.assertEqual(defs.count("Key = "), 13)
         for key, code, resolve, fn in (("N225MF", "N225MF", "RssFOPCode", "RssFOPMarket"),
                                        ("TOPIX", "05", "JPX9", "RssFOPMarket"),
                                        ("MOTF", "MOTF", "RssFOPCode", "RssFOPMarket"),
                                        ("N225", "N225", "", "RssIndexMarket"), ("TOPX", "TOPX", "", "RssIndexMarket"),
                                        ("MTHR", "MTHR", "", "RssIndexMarket"), ("TSGM", "TSGM", "", "RssIndexMarket"),
-                                       ("USDJPY", "USD/JPY", "", "RssFXMarket")):
+                                       ("USDJPY", "USD/JPY", "", "RssFXMarket"),
+                                       ("SOX", "SOX", "", "RssIndexMarket"), ("NQ100", "NQ100", "", "RssIndexMarket"),
+                                       ("SP500", "SP500", "", "RssIndexMarket"), ("DJIA", "DJIA", "", "RssIndexMarket"),
+                                       ("VIX", "VIX", "", "RssIndexMarket")):
             self.assertRegex(defs, r'Key = "%s";\s+Code = "%s";\s+Resolve = "%s";\s+Name = "[^"]+";\s+Fn = "%s"'
                              % (re.escape(key), re.escape(code), resolve, fn))
         for gone in ("N225.FUT01.OS", "N225.FUT01.C", "N225M.FUT01.OS", "MOT.FUT01.OS", "Get-CentralQuarterMonth"):

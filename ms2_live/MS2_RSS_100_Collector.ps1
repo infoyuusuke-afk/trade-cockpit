@@ -2052,7 +2052,14 @@ $futIndexDefs = @(
     @{ Key = "TSGM";   Code = "TSGM";          Resolve = "";           Name = "東証グロース市場指数";  Fn = "RssIndexMarket" },
     # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」: USD/JPY through RssFXMarket (楽天
     # ms2rss_function.pdf 2026/9/19: 指標コード 186 USD/JPY, 取得項目 現在値(Bid)/(Ask), 現在値更新日時, 前日終値(Bid)).
-    @{ Key = "USDJPY"; Code = "USD/JPY";       Resolve = "";           Name = "ドル円";             Fn = "RssFXMarket" }
+    @{ Key = "USDJPY"; Code = "USD/JPY";       Resolve = "";           Name = "ドル円";             Fn = "RssFXMarket" },
+    # OWNER 2026-11-19 「MS2でとれるから実施して」 (前夜の米国シート, to raise the analysis accuracy): US indices through RssIndexMarket,
+    # codes from 楽天 MS2 RSS online help 取得項目・銘柄コード一覧 (海外株価指数・米国). Record only; MS2 RSS has no US single stocks.
+    @{ Key = "SOX";    Code = "SOX";           Resolve = "";           Name = "SOX指数";            Fn = "RssIndexMarket" },
+    @{ Key = "NQ100";  Code = "NQ100";         Resolve = "";           Name = "NASDAQ100";          Fn = "RssIndexMarket" },
+    @{ Key = "SP500";  Code = "SP500";         Resolve = "";           Name = "S&P500";             Fn = "RssIndexMarket" },
+    @{ Key = "DJIA";   Code = "DJIA";          Resolve = "";           Name = "NYダウ";             Fn = "RssIndexMarket" },
+    @{ Key = "VIX";    Code = "VIX";           Resolve = "";           Name = "VIX指数";            Fn = "RssIndexMarket" }
 )
 # Columns B..J read through the code in column A. Indexes have no 詳細時刻, VWAP, quotes,
 # open interest or 限月 (empty columns); their 更新時刻 is HH:MM only.
