@@ -40,7 +40,8 @@ class SevenSeries(unittest.TestCase):
         text = _text()
         defs = text[text.index("$futIndexDefs = @("):text.index("$futItems = @(")]
         # 7 futures/index + USD/JPY (OWNER 2026-10-26) + 5 US indices (OWNER 2026-11-19 「MS2でとれるから実施して」)
-        self.assertEqual(defs.count("Key = "), 13)
+        # + 3 trial rows for a US stock (OWNER 2026-11-20 「米国株がRSSで取れるか試して」)
+        self.assertEqual(defs.count("Key = "), 16)
         for key, code, resolve, fn in (("N225MF", "N225MF", "RssFOPCode", "RssFOPMarket"),
                                        ("TOPIX", "05", "JPX9", "RssFOPMarket"),
                                        ("MOTF", "MOTF", "RssFOPCode", "RssFOPMarket"),
@@ -49,7 +50,9 @@ class SevenSeries(unittest.TestCase):
                                        ("USDJPY", "USD/JPY", "", "RssFXMarket"),
                                        ("SOX", "SOX", "", "RssIndexMarket"), ("NQ100", "NQ100", "", "RssIndexMarket"),
                                        ("SP500", "SP500", "", "RssIndexMarket"), ("DJIA", "DJIA", "", "RssIndexMarket"),
-                                       ("VIX", "VIX", "", "RssIndexMarket")):
+                                       ("VIX", "VIX", "", "RssIndexMarket"),
+                                       ("USTEST1", "NVDA", "", "RssMarket"), ("USTEST2", "NVDA.US", "", "RssMarket"),
+                                       ("USTEST3", "NVDA.O", "", "RssMarket")):
             self.assertRegex(defs, r'Key = "%s";\s+Code = "%s";\s+Resolve = "%s";\s+Name = "[^"]+";\s+Fn = "%s"'
                              % (re.escape(key), re.escape(code), resolve, fn))
         for gone in ("N225.FUT01.OS", "N225.FUT01.C", "N225M.FUT01.OS", "MOT.FUT01.OS", "Get-CentralQuarterMonth"):

@@ -2059,7 +2059,12 @@ $futIndexDefs = @(
     @{ Key = "NQ100";  Code = "NQ100";         Resolve = "";           Name = "NASDAQ100";          Fn = "RssIndexMarket" },
     @{ Key = "SP500";  Code = "SP500";         Resolve = "";           Name = "S&P500";             Fn = "RssIndexMarket" },
     @{ Key = "DJIA";   Code = "DJIA";          Resolve = "";           Name = "NYダウ";             Fn = "RssIndexMarket" },
-    @{ Key = "VIX";    Code = "VIX";           Resolve = "";           Name = "VIX指数";            Fn = "RssIndexMarket" }
+    @{ Key = "VIX";    Code = "VIX";           Resolve = "";           Name = "VIX指数";            Fn = "RssIndexMarket" },
+    # OWNER 2026-11-20 「米国株がRSSで取れるか試して」: three trial rows for one US stock in three code forms through RssMarket. 楽天's FAQ says RSS
+    # has no US stocks; these rows only record what RSS returns (a value, an error text or nothing) so it can be read once. Record only.
+    @{ Key = "USTEST1"; Code = "NVDA";         Resolve = "";           Name = "米国株の試し NVDA";      Fn = "RssMarket" },
+    @{ Key = "USTEST2"; Code = "NVDA.US";      Resolve = "";           Name = "米国株の試し NVDA.US";   Fn = "RssMarket" },
+    @{ Key = "USTEST3"; Code = "NVDA.O";       Resolve = "";           Name = "米国株の試し NVDA.O";    Fn = "RssMarket" }
 )
 # Columns B..J read through the code in column A. Indexes have no 詳細時刻, VWAP, quotes,
 # open interest or 限月 (empty columns); their 更新時刻 is HH:MM only.
