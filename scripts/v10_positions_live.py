@@ -1176,7 +1176,40 @@ _MEL_MEMO: dict = {}
 # (records/<day>/futures_index.csv, key N225, values up to the entry minute only).
 MEL_NEW_FROM = "2026-11-20"
 # OWNER 2026-11-19 「５００万メルは削除して」: the new 500万 account is taken out
-MEL_NEW_ACCOUNTS = (("300万", 3_000_000, 1.5), ("100株", None, None))
+# OWNER 2026-11-20 「アナリスト入りのメルと入れていないメルの両方の成績を記録」: a third account takes the same trades as the 300万 one
+# only when they also go the way of the analysts' majority of the morning (analyst_direction); the 4th value says so.
+MEL_NEW_ACCOUNTS = (("300万", 3_000_000, 1.5, False), ("100株", None, None, False), ("アナリスト入り300万", 3_000_000, 1.5, True))
+ANALYST_FILE = "analyst_consensus_v1.json"
+ANALYST_LOCK = "analyst_consensus_lock.json"
+
+
+def analyst_direction(records: Path, runtime: Path, day: str, now_hm: str, live: bool):
+    """the analysts' market direction of the day (強気 / 弱気 / 中立, or None). Fixed once: records/<day>/analyst_consensus_lock.json; on
+    the first live pass at 09:00 or later it is made from the PC's analyst_consensus_v1.json, used only when it is today's, was made
+    before 09:00 and has safe flags (otherwise the lock says None). The days before are read from their locks only."""
+    f = Path(records) / day / ANALYST_LOCK
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+        if isinstance(got, dict) and got.get("date") == day:
+            return got.get("direction")
+    except (OSError, ValueError):
+        pass
+    if not live or now_hm < "09:00":
+        return None
+    try:
+        v = json.loads((Path(runtime) / ANALYST_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        v = None
+    ok = (isinstance(v, dict) and v.get("schema_version") == "100b-v10-analyst-consensus-v1" and v.get("date") == day
+          and str(v.get("made_at") or "99:99") < "09:00" and v.get("real_submit_allowed") is False and v.get("trade_instruction") is False
+          and v.get("direction") in ("強気", "弱気", "中立"))
+    lock = {"date": day, "locked_at": now_hm, "direction": v["direction"] if ok else None, "from_file": bool(ok),
+            "bulls": v.get("bulls") if ok else None, "bears": v.get("bears") if ok else None}
+    if f.parent.is_dir():
+        tmp = f.with_name(f.name + ".tmp")
+        tmp.write_text(json.dumps(lock, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, f)
+    return lock["direction"]
 MEL_LONG_RULES, MEL_SHORT_RULES = ("R1", "R4"), ("R2", "R5")
 MEL_UP_FROM_OPEN, MEL_UP_15MIN = 0.3, 0.15
 _NK_MEMO: dict = {}
@@ -1246,7 +1279,7 @@ def _mel_breach(taken: list, limit: float, upto: str):
 
 
 def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool, series: list, now_hm: str, live: bool,
-                stopped_days=frozenset()) -> dict:
+                stopped_days=frozenset(), consensus=None) -> dict:
     """one day of one new メル account. plan = today's fixed plan (size and limit; None = no day trade for the 300万 account);
     plan_of(day) = the fixed plan of the day an overnight hold was decided. The loss line: the closed results in the order of their
     closing times; from the first time the total reaches −stop_pct of the morning balance, no new day trade for the rest of the day (a
@@ -1263,7 +1296,12 @@ def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool
                 continue                                                   # the deciding day had stopped: no 15:25 hold
             size, mult = dp["size_pct"], dp["max_mult"]
         else:
-            if t.get("rule") not in mel_new_methods(series, t["in"]):
+            allowed = mel_new_methods(series, t["in"])
+            if consensus == "強気":       # the analysts' majority: only the trades that go its way
+                allowed = tuple(m for m in allowed if m in MEL_LONG_RULES)
+            elif consensus == "弱気":
+                allowed = tuple(m for m in allowed if m in MEL_SHORT_RULES)
+            if t.get("rule") not in allowed:
                 continue                                                   # 様子見, or a method against the market
             if t.get("rule") == "R5" and (t.get("ticker") or t.get("name")) in d_seen:
                 continue                                                   # 手法D: one per stock per day
@@ -1324,11 +1362,12 @@ def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: 
             names = []
         trades = _air_trades(records, runtime, today)[0] if names else {}
         acc = {}
-        for label, start, stop in MEL_NEW_ACCOUNTS:
+        for label, start, stop, analyst in MEL_NEW_ACCOUNTS:
             bal, rows, stopped = float(start or 0), [], set()
             for d in names:
+                cons = analyst_direction(records, runtime, d, "23:59", False) if analyst else None
                 got = mel_new_day(trades.get(d, []), plan_of(d), plan_of, bal if start else 0.0, stop, start is None,
-                                  _nk_series(records, d), "23:59", False, frozenset(stopped))
+                                  _nk_series(records, d), "23:59", False, frozenset(stopped), cons)
                 bal += got["done"]
                 if got["stopped_at"]:
                     stopped.add(d)
@@ -1340,9 +1379,12 @@ def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: 
     acc = {k: dict(v) for k, v in _MEL_NEW_MEMO["acc"].items()}
     if today >= MEL_NEW_FROM:
         series = _nk_series(records, today)
-        for label, start, stop in MEL_NEW_ACCOUNTS:
+        for label, start, stop, analyst in MEL_NEW_ACCOUNTS:
+            cons = analyst_direction(records, runtime, today, now_hm, True) if analyst else None
             acc[label]["today"] = mel_new_day(live_trades or [], plan_of(today), plan_of, float(acc[label]["balance"] or 0) if start else 0.0,
-                                              stop, start is None, series, now_hm, True, frozenset(acc[label].get("stopped_days") or ()))
+                                              stop, start is None, series, now_hm, True, frozenset(acc[label].get("stopped_days") or ()), cons)
+            if analyst:
+                acc[label]["today"]["analyst_direction"] = cons
     return {"from": MEL_NEW_FROM, "date": today, "accounts": acc, "real_submit_allowed": False}
 
 

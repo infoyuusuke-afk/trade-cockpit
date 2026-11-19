@@ -4614,9 +4614,10 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const sumDays=(days,ix)=>(Array.isArray(days)?days:[]).filter(r=>String(r[0])>=from).reduce((a,r)=>a+(Number(r[ix])||0),0);
     const L=m&&m.today_live,curTodayDone=L&&L.state==="OK"?Number(L.done)||0:0,curTodayOpen=L&&L.state==="OK"?Number(L.open)||0:0;
     const rows=[["今のメル（300万）",m?sumDays(m.days,1)+curTodayDone:null,curTodayDone,curTodayOpen,L&&L.stopped_at,"朝に決めた手法・メルが決めた負けの上限"]];
-    [["300万","新しいメル（300万）","−1.5%で止める"],["100株","研究用メル（100株）","止めない"]].forEach(([k,label,rule])=>{
+    [["300万","新しいメル（300万）","−1.5%で止める"],["アナリスト入り300万","アナリスト入りメル（300万）","−1.5%で止める・アナリストの多数の向きの売買だけ"],["100株","研究用メル（100株）","止めない"]].forEach(([k,label,rule])=>{
       const a=n.accounts[k]||{},t=a.today||{};
-      rows.push([label,sumDays(a.days,1)+(Number(t.done)||0),Number(t.done)||0,Number(t.open)||0,t.stopped_at,"地合いで切り替え・"+rule]);});
+      const dir=k==="アナリスト入り300万"?"（今日のアナリスト："+(t.analyst_direction||"まだ")+"）":"";
+      rows.push([label,sumDays(a.days,1)+(Number(t.done)||0),Number(t.done)||0,Number(t.open)||0,t.stopped_at,"地合いで切り替え・"+rule+dir]);});
     return '<div class="cap-chart mel300"><h4>今のメルと新しいメルの比べ（'+esc(from.slice(5).replace("-","/"))+'から・仮想）</h4>'+
       '<table class="air-tbl" data-keep-table><tr><th>メル</th><th>'+esc(from.slice(5).replace("-","/"))+'からの合計（確定）</th><th>今日 確定</th><th>今日 含み</th><th>今日止まった</th><th>決まり</th></tr>'+
       rows.map(r=>'<tr><td>'+esc(r[0])+'</td><td class="'+cls(r[1])+'">'+(r[1]===null?"—":yen(r[1]))+'</td><td class="'+cls(r[2])+'">'+yen(r[2])+'</td><td class="'+cls(r[3])+'">'+yen(r[3])+'</td><td>'+(r[4]?esc(r[4]):'—')+'</td><td class="g">'+esc(r[5])+'</td></tr>').join("")+
@@ -5715,7 +5716,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       (used.length?'<div class="mt-chips">'+chips+'</div>':'<p class="g">今日の手法はまだ決まっていません（'+esc(tp.state||"")+'）。</p>')+
       (used.length?'<div class="mt-plan">1回 '+esc(tp.size_pct??"—")+'%・同時に持つ上限 '+esc(tp.max_mult??"—")+'倍・1日の負けの上限 '+(tp.daily_stop_pct===null||tp.daily_stop_pct===undefined?'なし':esc(tp.daily_stop_pct)+'%')+'（今のメル）・持ち越し '+(tp.overnight===true?"する":tp.overnight===false?"しない":"—")+'</div>':'')+
       (tp.reason?'<div class="mt-reason">決めた理由：'+esc(tp.reason)+'</div>':'')+
-      '<div class="mt-reason">新しいメル2つ（11/20から・今のメルと並べて記録）：場中は日経の向きで、上げ→手法A・C、下げ→手法B・D、どちらでもない時は様子見。手法Dは1銘柄1日1回。300万は1日−1.5%で新しく入らない（持ち越しの利益が入っても戻さない）。100株の研究用は止めない。</div></section>';
+      '<div class="mt-reason">新しいメル3つ（11/20から・今のメルと並べて記録。アナリスト入り300万は、朝9時前のアナリストの多数の向き（強気なら買いの手法だけ・弱気なら空売りの手法だけ）にそろう売買だけ）：場中は日経の向きで、上げ→手法A・C、下げ→手法B・D、どちらでもない時は様子見。手法Dは1銘柄1日1回。300万は1日−1.5%で新しく入らない（持ち越しの利益が入っても戻さない）。100株の研究用は止めない。</div></section>';
     const cockpit=data.methods.filter(m=>m.kind==="cockpit"),research=data.methods.filter(m=>m.kind==="research");
     box.innerHTML=top+'<h3 class="mt-sec">コクピットの手法（メルが選ぶ元）</h3><div class="mt-grid">'+cockpit.map(card).join("")+'</div>'+
       '<h3 class="mt-sec">研究の前向きの記録（E〜K・画面の売買と注文には使わない）</h3><div class="mt-grid">'+research.map(card).join("")+'</div>'+

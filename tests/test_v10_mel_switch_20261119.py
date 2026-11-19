@@ -94,11 +94,40 @@ class NewMel(unittest.TestCase):
 
     def test_accounts_and_the_current_mel_unchanged(self):
         # OWNER 2026-11-19 「５００万メルは削除して」
-        self.assertEqual([a[0] for a in live.MEL_NEW_ACCOUNTS], ["300万", "100株"])
-        self.assertEqual([a[2] for a in live.MEL_NEW_ACCOUNTS], [1.5, None])
+        # OWNER 2026-11-20 「アナリスト入りのメルと入れていないメルの両方の成績を記録」
+        self.assertEqual([a[0] for a in live.MEL_NEW_ACCOUNTS], ["300万", "100株", "アナリスト入り300万"])
+        self.assertEqual([a[2] for a in live.MEL_NEW_ACCOUNTS], [1.5, None, 1.5])
+        self.assertEqual([a[3] for a in live.MEL_NEW_ACCOUNTS], [False, False, True])
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
         a = src.index("def mel_today(")
         self.assertIn('if not plan or t.get("rule") not in plan["methods"]:', src[a:a + 3000])   # the current メル keeps its rules
+
+
+class AnalystMel(unittest.TestCase):
+    def test_majority_filters_the_regime_methods(self):
+        tr = [day("R4", "B", 1, "09:46", "10:00", 500)]
+        self.assertEqual(live.mel_new_day(tr, PLAN, lambda d: None, 3_000_000, 1.5, False, UP, "23:59", False, frozenset(), "強気")["n"], 1)
+        self.assertEqual(live.mel_new_day(tr, PLAN, lambda d: None, 3_000_000, 1.5, False, UP, "23:59", False, frozenset(), "弱気")["n"], 0)
+        self.assertEqual(live.mel_new_day(tr, PLAN, lambda d: None, 3_000_000, 1.5, False, UP, "23:59", False, frozenset(), "中立")["n"], 1)
+        tr2 = [day("R5", "A", -1, "09:46", "09:50", 100)]
+        self.assertEqual(live.mel_new_day(tr2, PLAN, lambda d: None, 3_000_000, 1.5, False, DOWN, "23:59", False, frozenset(), "強気")["n"], 0)
+
+    def test_lock_once_and_only_a_morning_file(self):
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rec, rt = Path(d) / "records", Path(d)
+            (rec / "2026-11-20").mkdir(parents=True)
+            doc = {"schema_version": "100b-v10-analyst-consensus-v1", "date": "2026-11-20", "made_at": "08:50", "real_submit_allowed": False,
+                   "trade_instruction": False, "direction": "弱気", "bulls": 2, "bears": 4}
+            (rt / live.ANALYST_FILE).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+            self.assertIsNone(live.analyst_direction(rec, rt, "2026-11-20", "08:59", True))       # before 09:00: not yet
+            self.assertEqual(live.analyst_direction(rec, rt, "2026-11-20", "09:01", True), "弱気")
+            (rt / live.ANALYST_FILE).write_text(json.dumps(dict(doc, direction="強気"), ensure_ascii=False), encoding="utf-8")
+            self.assertEqual(live.analyst_direction(rec, rt, "2026-11-20", "10:00", True), "弱気")   # the lock does not change
+            (rec / "2026-11-21").mkdir()
+            (rt / live.ANALYST_FILE).write_text(json.dumps(dict(doc, date="2026-11-21", made_at="09:10"), ensure_ascii=False), encoding="utf-8")
+            self.assertIsNone(live.analyst_direction(rec, rt, "2026-11-21", "09:20", True))       # made after 09:00: not used
+            self.assertIsNone(live.analyst_direction(rec, rt, "2026-11-22", "23:59", False))      # no lock, replay: none
 
 
 if __name__ == "__main__":
