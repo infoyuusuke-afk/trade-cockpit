@@ -3248,6 +3248,16 @@ try {
                         elseif ($fiSeen -ne $fiMonth) { $fiStatus = "MONTH_NOT_CONFIRMED" }
                     }
                     if ($fiStatus -eq "OK" -and ($null -eq $fiVals[0] -or [string]::IsNullOrWhiteSpace([string]$fiVals[0]))) { $fiStatus = "NO_VALUE" }
+                    # audit 1c20526 (3) / OWNER 2026-11-20 "RSS error values are recorded as RSS_ERROR, never as a price": an Excel error
+                    # (COM returns it as an Int32 code such as -2146826246 = #N/A) or a value that is not a number
+                    if ($fiStatus -eq "OK") {
+                        $fiNum = 0.0
+                        $fiV0 = $fiVals[0]
+                        if (($fiV0 -is [int] -and [int]$fiV0 -le -2146826200 -and [int]$fiV0 -ge -2146826300) -or
+                                -not [double]::TryParse([string]$fiV0, [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$fiNum)) {
+                            $fiStatus = "RSS_ERROR"
+                        }
+                    }
                     if ($isFx -and $fiStatus -eq "OK") {
                         # an FX value whose update date is not today is recorded as old (never as today's value)
                         $fxDate = Get-FxQuoteDate $fiVals[1]

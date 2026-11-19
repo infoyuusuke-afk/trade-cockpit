@@ -1234,16 +1234,33 @@ def mel_new_methods(series: list, hm: str) -> tuple:
     return MEL_LONG_RULES if r == "上げ" else MEL_SHORT_RULES if r == "下げ" else ()
 
 
-def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool, series: list, now_hm: str, live: bool) -> dict:
-    """one day of one new メル account. plan = today's fixed plan (size and limit; None = no day trade for the 300万/500万 accounts);
-    plan_of(day) = the fixed plan of the day an overnight hold was decided. The loss line is checked on the trades closed before each
-    entry and, once reached, stays for the rest of the day (an overnight gain coming in later does not lift it)."""
+def _mel_breach(taken: list, limit: float, upto: str):
+    """audit 1c20526 ① (OWNER 「−1.5%は確定した時刻の順に見て、一度届いたらその時刻から入らない」): the closed results are added in the
+    order of their closing times; the first closing time at which the running total is at or under −limit, else None."""
+    run = 0.0
+    for x in sorted((x for x in taken if x["y"] is not None and x["out"] and x["out"] <= upto), key=lambda x: x["out"]):
+        run += x["y"]
+        if run <= -limit:
+            return x["out"]
+    return None
+
+
+def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool, series: list, now_hm: str, live: bool,
+                stopped_days=frozenset()) -> dict:
+    """one day of one new メル account. plan = today's fixed plan (size and limit; None = no day trade for the 300万 account);
+    plan_of(day) = the fixed plan of the day an overnight hold was decided. The loss line: the closed results in the order of their
+    closing times; from the first time the total reaches −stop_pct of the morning balance, no new day trade for the rest of the day (a
+    later gain, an overnight one included, does not lift it). stopped_days = the days this account stopped: an overnight hold decided at
+    15:25 of such a day is not entered (audit 1c20526 ②)."""
     out, taken, stopped_at, d_seen = [], [], None, set()
+    limit = bal * stop_pct / 100 if stop_pct and not hundred else None
     for t in sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"])):
         if t["kind"] == "overnight":
             dp = plan_of(t.get("decided", ""))
             if not dp or not dp.get("overnight") or t.get("rule") not in dp["methods"]:
                 continue
+            if limit is not None and t.get("decided", "") in stopped_days:
+                continue                                                   # the deciding day had stopped: no 15:25 hold
             size, mult = dp["size_pct"], dp["max_mult"]
         else:
             if t.get("rule") not in mel_new_methods(series, t["in"]):
@@ -1253,12 +1270,10 @@ def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool
             if not hundred and not plan:
                 continue
             size, mult = (plan["size_pct"], plan["max_mult"]) if plan else (0, 0)
-            if stop_pct and not hundred:
+            if limit is not None:
                 if stopped_at is None:
-                    done = sum(x["y"] for x in taken if x["y"] is not None and x["out"] and x["out"] <= t["in"])
-                    if done <= -bal * stop_pct / 100:
-                        stopped_at = t["in"]
-                if stopped_at is not None:
+                    stopped_at = _mel_breach(taken, limit, t["in"])
+                if stopped_at is not None and t["in"] >= stopped_at:
                     continue
         if hundred:
             sh = 100
@@ -1279,6 +1294,8 @@ def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool
         out.append({"in": t["in"], "out": t["out"] if closed else None, "name": t.get("name"), "side": t["side"], "rule": t.get("rule"),
                     "kind": t["kind"], "shares": sh, "amount": round(t["fill"] * sh), "done_yen": None if y is None else round(y),
                     "open_yen": None if u is None else round(u)})
+    if limit is not None and stopped_at is None:
+        stopped_at = _mel_breach(taken, limit, now_hm if live else "23:59")   # a line reached after the last entry still counts
     return {"done": round(sum(r["done_yen"] or 0 for r in out)), "open": round(sum(r["open_yen"] or 0 for r in out)),
             "stopped_at": stopped_at, "n": len(out), "rows": out[-60:]}
 
@@ -1308,13 +1325,16 @@ def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: 
         trades = _air_trades(records, runtime, today)[0] if names else {}
         acc = {}
         for label, start, stop in MEL_NEW_ACCOUNTS:
-            bal, rows = float(start or 0), []
+            bal, rows, stopped = float(start or 0), [], set()
             for d in names:
                 got = mel_new_day(trades.get(d, []), plan_of(d), plan_of, bal if start else 0.0, stop, start is None,
-                                  _nk_series(records, d), "23:59", False)
+                                  _nk_series(records, d), "23:59", False, frozenset(stopped))
                 bal += got["done"]
+                if got["stopped_at"]:
+                    stopped.add(d)
                 rows.append([d, got["done"], round(bal) if start else None, got["n"], got["stopped_at"]])
-            acc[label] = {"start": start, "stop_pct": stop, "days": rows, "balance": round(bal) if start else None}
+            acc[label] = {"start": start, "stop_pct": stop, "days": rows, "balance": round(bal) if start else None,
+                          "stopped_days": sorted(stopped)}
         _MEL_NEW_MEMO.clear()
         _MEL_NEW_MEMO.update({"date": today, "acc": acc})
     acc = {k: dict(v) for k, v in _MEL_NEW_MEMO["acc"].items()}
@@ -1322,7 +1342,7 @@ def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: 
         series = _nk_series(records, today)
         for label, start, stop in MEL_NEW_ACCOUNTS:
             acc[label]["today"] = mel_new_day(live_trades or [], plan_of(today), plan_of, float(acc[label]["balance"] or 0) if start else 0.0,
-                                              stop, start is None, series, now_hm, True)
+                                              stop, start is None, series, now_hm, True, frozenset(acc[label].get("stopped_days") or ()))
     return {"from": MEL_NEW_FROM, "date": today, "accounts": acc, "real_submit_allowed": False}
 
 

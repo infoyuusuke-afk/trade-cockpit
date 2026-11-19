@@ -53,7 +53,33 @@ class NewMel(unittest.TestCase):
         got = live.mel_new_day(tr, p, lambda d: dict(PLAN, methods=["ON_SHORT"], size_pct=10), 3_000_000, 1.5, False, DOWN, "23:59", False)
         names = [r["name"] for r in got["rows"]]
         self.assertEqual(names, ["O", "A"])          # A's −6万 (2 %) is past −1.5 %; B (09:55) and C (14:30, after the +3万 at 14:00) not entered
-        self.assertEqual(got["stopped_at"], "09:55")
+        self.assertEqual(got["stopped_at"], "09:50")  # audit 1c20526 ①: the stop time is the closing time that reached the line
+
+    def test_line_by_closing_order_even_if_it_recovers_before_the_next_entry(self):
+        """audit 1c20526 ①: −1.5 % reached at 10:00, a +gain closes at 10:30; an entry at 11:00 is still blocked"""
+        p = dict(PLAN, size_pct=100)
+        tr = [day("R5", "A", -1, "09:46", "10:00", -2000), day("R2", "B", -1, "09:47", "10:30", 1500), day("R5", "C", -1, "11:00", "11:10", 100)]
+        down = DOWN + [("11:00", 49300)]
+        got = live.mel_new_day(tr, p, lambda d: None, 3_000_000, 1.5, False, sorted(down), "23:59", False)
+        self.assertEqual([r["name"] for r in got["rows"]], ["A", "B"])
+        self.assertEqual(got["stopped_at"], "10:00")
+
+    def test_no_overnight_from_a_stopped_day(self):
+        """audit 1c20526 ②: the 15:25 hold decided on a day the account stopped is not entered the next day"""
+        tr = [{"kind": "overnight", "rule": "ON_SHORT", "ticker": "O", "name": "O", "side": -1, "fill": 1000.0, "in": "09:00", "out": "14:00",
+               "y100": 1000, "decided": "2026-11-20"}]
+        dp = lambda d: dict(PLAN, methods=["ON_SHORT"], size_pct=10)
+        self.assertEqual(live.mel_new_day(tr, PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False, frozenset({"2026-11-20"}))["n"], 0)
+        self.assertEqual(live.mel_new_day(tr, PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False, frozenset())["n"], 1)
+        self.assertEqual(live.mel_new_day(tr, None, dp, 0.0, None, True, DOWN, "23:59", False, frozenset({"2026-11-20"}))["n"], 1)  # 100株: no stop
+
+    def test_rss_error_is_not_a_price(self):
+        """audit 1c20526 ③: an Excel error code or a non-number from RSS is recorded as RSS_ERROR with no price"""
+        src = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('$fiStatus = "RSS_ERROR"', src)
+        self.assertIn("-le -2146826200", src)
+        self.assertIn("[double]::TryParse([string]$fiV0", src)
+        self.assertIn('$ok = ($fiStatus -eq "OK" -or ($isFx -and $fiStatus -like "STALE_*"))', src)   # RSS_ERROR rows write no price
 
     def test_hundred_never_stops_and_d_once_per_stock(self):
         tr = [day("R5", "A", -1, "09:46", "09:50", -20000), day("R5", "A", -1, "10:00", "10:05", 100), day("R2", "B", -1, "14:30", "14:40", 100)]
