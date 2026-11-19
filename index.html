@@ -5722,7 +5722,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<p class="cap-note">'+esc(data.note||"")+'（作った時刻 '+esc(data.generated_at||"")+'）</p>';
   }
   const css=document.createElement("style");
-  css.textContent='#mt-body{padding:0 4px 16px}.mt-top{border:1px solid #2a2e39;border-radius:8px;padding:12px 14px;margin:0 0 14px;background:#11151d}'+
+  css.textContent='#mt-body{padding:0 4px 16px;grid-column:1/-1}.mt-top{border:1px solid #2a2e39;border-radius:8px;padding:12px 14px;margin:0 0 14px;background:#11151d}'+
     '.mt-top h3,.mt-sec{font-size:15px;margin:0 0 8px;color:#e6e8eb}.mt-sec{margin:16px 0 8px}.mt-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}'+
     '.mt-chip{border:2px solid #555;border-radius:999px;padding:6px 12px;font-size:15px;color:#fff;background:#0e1013}.mt-chip b{font-size:16px}'+
     '.mt-plan{font-size:13px;color:#c4c9d1;margin:2px 0 6px}.mt-reason{font-size:12.5px;color:#9aa0aa;line-height:1.5}'+

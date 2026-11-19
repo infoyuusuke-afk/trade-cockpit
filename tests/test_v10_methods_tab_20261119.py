@@ -56,6 +56,10 @@ class Tab(unittest.TestCase):
             self.assertRegex(w, r"esc\(%s(\)|\|\|)" % re.escape(field))
         self.assertNotRegex(w, r"'\+m\.(rule|name|where|verdict)\+'")
 
+    def test_full_width(self):
+        """OWNER 2026-11-20 「タブのサイズがなんで画面の半分」: the tab's pane is a two-column grid; the body spans both columns"""
+        self.assertIn("#mt-body{padding:0 4px 16px;grid-column:1/-1}", tab_block())
+
     def test_display_only(self):
         w = tab_block()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "method:\"POST\"", "localStorage.setItem(\"cockpitMethods"):
