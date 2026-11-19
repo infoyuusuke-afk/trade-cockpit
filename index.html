@@ -5673,7 +5673,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const num=v=>{const x=Number(v);return v===null||v===undefined||v===""||!Number.isFinite(x)?null:x;};
   const pct=v=>{const x=num(v);return x===null?"—":(x>0?"+":"")+x.toFixed(3)+"%";};
-  const cls=v=>{const x=num(v);return x===null?"g":x>0?"up":x<0?"dn":"g";};
+  const cls=v=>{const x=num(v);return x===null?"hl-g":x>0?"hl-up":x<0?"hl-dn":"hl-g";};
   // OWNER 2026-11-20 「色、文字サイズが基本と違うから修正、カードデザインなんかも古い」: the colours, sizes and boxes of the other tabs
   // (box #111113 / #303033 / 14px, inner cards var(--cc-bg-panel), 買い・空売り as the small tags of the トレード中 tab)
   const sideTag=s=>'<span class="mt-sd '+(s==="買い"?"mt-L":s==="空売り"?"mt-S":"mt-B")+'">'+esc(s)+'</span>';
@@ -5719,7 +5719,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const chip=c=>{const m=byCode[c]||{letter:c,name:c,side:""};return '<span class="mt-chip"><b>'+esc(m.letter)+'</b>'+esc(m.name)+sideTag(m.side)+'</span>';};
     const chips=used.map(chip).join("");
     // OWNER 2026-11-20 「画面左が今までのメルの手法、画面右がアナリストをいれた手法などでもっとわかりやすく見やすく」: two columns side by side.
-    const an=data.analyst&&typeof data.analyst==="object"?data.analyst:null,dir=an&&["強気","弱気","中立"].includes(an.direction)?an.direction:null;
+    const an=data.analyst&&typeof data.analyst==="object"?data.analyst:null,dir=an&&["強気","弱気","中立"].includes(an.direction)&&(Number(an.bulls)||0)+(Number(an.bears)||0)+(Number(an.neutral)||0)>0?an.direction:null;
     const dirCls=dir==="強気"?"mt-up":dir==="弱気"?"mt-dn":"mt-g";
     const anOk=c=>!dir?null:dir==="強気"?["R1","R4"].includes(c):dir==="弱気"?["R2","R5"].includes(c):["R1","R2","R4","R5"].includes(c);
     const left='<div class="mt-col mt-left"><div class="mt-colhead">今のメル<small>今までの決まり</small></div>'+
@@ -5728,10 +5728,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       (used.length?'<li>1回 '+esc(tp.size_pct??"—")+'%・同時に持つ上限 '+esc(tp.max_mult??"—")+'倍</li><li>1日の負けの上限 '+(tp.daily_stop_pct===null||tp.daily_stop_pct===undefined?'なし':esc(tp.daily_stop_pct)+'%')+'・持ち越し '+(tp.overnight===true?"する":tp.overnight===false?"しない":"—")+'</li>':'')+
       '<li>アナリストの意見は使わない</li></ul>'+(tp.reason?'<div class="mt-reason">決めた理由：'+esc(tp.reason)+'</div>':'')+'</div>';
     const anRows=an&&Array.isArray(an.rows)?an.rows.map(r=>'<span class="mt-an">'+esc(r.name)+'：<b class="'+(r.stance==="強気"?"mt-up":r.stance==="弱気"?"mt-dn":"mt-g")+'">'+esc(r.stance)+'</b></span>').join(""):"";
-    const anUse=!dir?'<p class="g">アナリストの向きはまだありません（朝9時前の答えから、8:50に作ります）。</p>'
+    const anUse=!dir?'<p class="mt-g">アナリストの答えはまだありません（朝9時前の答えから、8:50に作ります）。</p>'
       :'<div class="mt-chips">'+["R1","R4","R2","R5"].filter(c=>anOk(c)).map(chip).join("")+'</div>';
     const right='<div class="mt-col mt-right"><div class="mt-colhead">アナリスト入りメル<small>300万・11/20から</small></div>'+
-      '<div class="mt-dir">今日のアナリストの向き：<b class="'+dirCls+'">'+esc(dir||"まだ")+'</b>'+(an?'<small>（強気 '+esc(an.bulls??0)+'・弱気 '+esc(an.bears??0)+'・中立 '+esc(an.neutral??0)+'）</small>':'')+'</div>'+
+      '<div class="mt-dir">今日のアナリストの向き：<b class="'+dirCls+'">'+esc(dir||"まだ")+'</b>'+(dir?'<small>（強気 '+esc(an.bulls??0)+'・弱気 '+esc(an.bears??0)+'・中立 '+esc(an.neutral??0)+'）</small>':'')+'</div>'+
       (anRows?'<div class="mt-anrow">'+anRows+'</div>':'')+
       '<div class="mt-sub">使える手法（この中から、場中の日経の向きに合うものだけ）</div>'+anUse+
       '<ul class="mt-rules"><li>場中の日経の向きで切り替え：上げ→A・C、下げ→B・D、どちらでもない時は様子見</li>'+
@@ -5747,29 +5747,31 @@ document.addEventListener("DOMContentLoaded",()=>{
       '<p class="mt-note">'+esc(data.note||"")+'（作った時刻 '+esc(data.generated_at||"")+'）</p>';
   }
   const css=document.createElement("style");
-  css.textContent='#mt-body{padding:0 4px 16px;grid-column:1/-1}#mt-body{display:flex;flex-direction:column;gap:12px;color:var(--cc-text-primary);font-size:13px}'+
+  // OWNER 2026-11-20 17:53 「手法タブの見た目をトレード中タブと同じにして…左の色の太線と色の丸枠の札はやめて、トレード中と同じ灰色の丸ボタンの形に。
+  // 買い・空売りは緑・赤の文字だけ。数字はトレード中の表と同じ色の決まり」: boxes = main .card, inner boxes = 今日の予測シナリオ, pills = 見る銘柄 switch,
+  // figures = .hl-up / .hl-dn / .hl-g of the 保有 table.
+  css.textContent='#mt-body{padding:0 4px 16px;grid-column:1/-1}#mt-body{display:flex;flex-direction:column;gap:12px;color:#E8EAED;font-size:13px;line-height:1.6}'+
     '.mt-box{padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}'+
-    '.mt-box>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 12px;font-size:16px;line-height:1.35;color:#f5f5f7}.mt-box>h3 small{font-size:12px;font-weight:400;color:#9AA0AA}'+
+    '.mt-box>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:16px;line-height:1.35;font-weight:700;color:#E8EAED}.mt-box>h3 small{font-size:12px;font-weight:400;color:#9aa0a6}'+
     '.mt-vs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 10px}@media(max-width:760px){.mt-vs{grid-template-columns:1fr}}'+
-    '.mt-col{border:1px solid var(--cc-border);border-radius:10px;padding:12px 14px;background:var(--cc-bg-panel)}'+
-    '.mt-colhead{display:flex;align-items:baseline;gap:8px;font-size:15px;font-weight:700;color:#f5f5f7;margin:0 0 10px}.mt-colhead small{font-size:12px;color:#9AA0AA;font-weight:400}'+
-    '.mt-dir{font-size:13px;color:#C4C9D1;margin:0 0 6px}.mt-dir b{font-size:15px;margin:0 4px}.mt-dir small{font-size:12px;color:#9AA0AA}'+
-    '.mt-anrow{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:#9AA0AA;margin:0 0 10px}.mt-sub{font-size:12px;color:#9AA0AA;margin:8px 0 6px}'+
-    '.mt-up{color:var(--cc-long)}.mt-dn{color:var(--cc-short)}.mt-g{color:#9AA0AA}'+
-    '.mt-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}'+
-    '.mt-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #33373D;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;color:#E6E8EB;background:#141518}.mt-chip b{color:#fff}'+
-    '.mt-sd{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;border:1px solid}.mt-L{color:var(--cc-long);background:var(--cc-long-bg);border-color:var(--cc-long-border)}'+
-    '.mt-S{color:var(--cc-short);background:var(--cc-short-bg);border-color:var(--cc-short-border)}.mt-B{color:#C4C9D1;background:#141518;border-color:#33373D}'+
-    '.mt-rules{margin:4px 0 0 18px;padding:0;font-size:12.5px;color:#C4C9D1;line-height:1.7}.mt-reason{font-size:12px;color:#9AA0AA;line-height:1.6;margin-top:6px}'+
-    '.mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}'+
-    '.mt-card{display:flex;flex-direction:column;border:1px solid var(--cc-border);border-radius:10px;padding:12px 14px;background:var(--cc-bg-panel)}.mt-card.mt-today{border-color:var(--cc-long-border);box-shadow:0 0 0 1px var(--cc-long-border)}'+
-    '.mt-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mt-letter{font-size:14px;color:#fff}.mt-name{font-size:14px;font-weight:700;color:#E6E8EB}.mt-code{font-size:11px;color:#9AA0AA}'+
-    '.mt-badge{margin-left:auto;font-size:11px;font-weight:700;border-radius:4px;padding:1px 7px;color:var(--cc-long);background:var(--cc-long-bg);border:1px solid var(--cc-long-border)}'+
-    '.mt-rule{font-size:13px;color:#C4C9D1;line-height:1.6;margin:8px 0 6px}.mt-where{font-size:12px;color:#9AA0AA}'+
-    '.mt-figs{display:flex;flex-direction:column;gap:2px;font-size:12.5px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cc-border);color:#C4C9D1}.mt-figs b.up{color:var(--cc-long);font-weight:700}.mt-figs b.dn{color:var(--cc-short);font-weight:700}.mt-figs b.g{color:#E6E8EB}'+
-    '.mt-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:10px;font-size:11px;font-weight:700}.mt-tags span{border-radius:4px;padding:2px 7px;border:1px solid}'+
-    '.mt-on{color:var(--cc-long);background:var(--cc-long-bg);border-color:var(--cc-long-border)}.mt-off{color:#9AA0AA;background:#141518;border-color:#33373D}'+
-    '.mt-note{font-size:12px;color:#9AA0AA;margin:0 4px}';
+    '.mt-col{border:1px solid #303033;border-radius:10px;padding:8px 12px;background:#0E1013}'+
+    '.mt-colhead{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;font-size:15px;font-weight:700;color:#E8EAED;margin:0 0 6px}.mt-colhead small{font-size:12px;color:#9aa0a6;font-weight:400}'+
+    '.mt-dir{font-size:13px;color:#d6d8dc;margin:0 0 4px}.mt-dir b{font-size:15px;margin:0 4px}.mt-dir small{font-size:12px;color:#9aa0a6}'+
+    '.mt-anrow{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12px;color:#b5b5ba;margin:0 0 6px}.mt-sub{font-size:12px;color:#9aa0a6;margin:6px 0 4px}'+
+    '.mt-up{color:#5cddb0}.mt-dn{color:#f0616c}.mt-g{color:#9aa0a6}'+
+    '.mt-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}'+
+    '.mt-chip{display:inline-flex;align-items:baseline;gap:6px;padding:6px 16px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-weight:700;font-size:13px;line-height:1.35}.mt-chip b{color:#E8EAED}'+
+    '.mt-sd{font-size:12px;font-weight:700}.mt-L{color:#5cddb0}.mt-S{color:#f0616c}.mt-B{color:#b5b5ba}'+
+    '.mt-rules{margin:4px 0 0;padding-left:20px;font-size:13px;line-height:1.6;color:#d6d8dc}.mt-reason{font-size:12px;color:#b5b5ba;line-height:1.6;margin-top:4px}'+
+    '.mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}'+
+    '.mt-card{display:flex;flex-direction:column;border:1px solid #303033;border-radius:10px;padding:8px 12px;background:#0E1013}'+
+    '.mt-head{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}.mt-letter{font-size:15px;color:#E8EAED}.mt-name{font-size:15px;font-weight:700;color:#E8EAED}.mt-code{font-size:12px;color:#9aa0a6}'+
+    '.mt-badge{margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid #33373D;background:#E6E8EB;color:#111;font-size:12px;font-weight:700}'+
+    '.mt-rule{font-size:13px;color:#d6d8dc;line-height:1.6;margin:4px 0}.mt-where{font-size:12px;color:#9aa0a6}'+
+    '.mt-figs{display:flex;flex-direction:column;gap:0;font-size:13px;line-height:1.6;margin-top:4px;color:#d6d8dc}.mt-figs span{font-size:12px;color:#b5b5ba}.mt-figs b{font-weight:700}'+
+    '.mt-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px}.mt-tags span{padding:3px 12px;border-radius:999px;border:1px solid #33373D;background:#141518;font-size:12px;font-weight:700}'+
+    '.mt-on{color:#E8EAED}.mt-off{color:#6b7078}'+
+    '.mt-note{font-size:12px;color:#9aa0a6;margin:0 4px}';
   document.head.appendChild(css);
   mount();load();
   timer=setInterval(()=>{if(pane&&pane.classList.contains("active"))load();},300000);

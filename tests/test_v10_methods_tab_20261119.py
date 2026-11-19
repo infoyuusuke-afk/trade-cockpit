@@ -77,10 +77,18 @@ class Tab(unittest.TestCase):
         """OWNER 2026-11-20 「色、文字サイズが基本と違うから修正、カードデザインなんかも古い」: the boxes and tags of the other tabs"""
         w = tab_block()
         self.assertIn(".mt-box{padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}", w)
-        self.assertIn(".mt-L{color:var(--cc-long);background:var(--cc-long-bg)", w)
-        self.assertIn(".mt-S{color:var(--cc-short);background:var(--cc-short-bg)", w)
-        for old_colour in ("#35e2ae", "#ff6b81", "border-left-color:"):
+        # OWNER 2026-11-20 17:53: 買い・空売り are green / red letters only; pills are the gray round buttons of the 見る銘柄 switch
+        self.assertIn(".mt-L{color:#5cddb0}.mt-S{color:#f0616c}", w)
+        self.assertIn(".mt-chip{display:inline-flex;align-items:baseline;gap:6px;padding:6px 16px;border-radius:999px;border:1px solid #33373D;background:#141518", w)
+        self.assertIn('return x===null?"hl-g":x>0?"hl-up":x<0?"hl-dn":"hl-g";', w)     # the 保有 table's colour rule
+        for old_colour in ("#35e2ae", "#ff6b81", "border-left-color:", "--cc-long-bg", "--cc-short-bg"):
             self.assertNotIn(old_colour, w)
+
+    def test_no_answers_is_mada(self):
+        """OWNER 2026-11-20 「アナリストの答えが0件の時は『中立』ではなく『まだ』と出して」"""
+        w = tab_block()
+        self.assertIn('(Number(an.bulls)||0)+(Number(an.bears)||0)+(Number(an.neutral)||0)>0?an.direction:null', w)
+        self.assertIn('esc(dir||"まだ")', w)
 
     def test_display_only(self):
         w = tab_block()
