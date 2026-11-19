@@ -125,7 +125,8 @@ class Air300(unittest.TestCase):
         self.assertIn('<table class="air-tbl" data-keep-table>', HTML)   # the card adapter must leave the history as a table
         self.assertIn('sec.addEventListener("toggle",e=>{const d=e.target,o=d.dataset&&d.dataset.airday?airOpen[d.dataset.airtag||"air"]:null;if(!o)return;', HTML)
         self.assertIn("エアトレード（資金300万から・メル・仮想）", HTML)
-        self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melHtml();", HTML)
+        # OWNER 2026-11-19 「今のメルと新しいメルを両方記録して比べて」: the comparison sits between the 300万 replay and メル
+        self.assertIn("資金の大きさで入れた銘柄の数が変わります。</p></div>'+airHtml()+melCompareHtml()+melHtml();", HTML)
 
 
 if __name__ == "__main__":
