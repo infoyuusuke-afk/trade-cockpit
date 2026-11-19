@@ -3187,7 +3187,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       (()=>{const er=bp.positions&&bp.positions.event_risk&&bp.positions.event_risk.tonight,evs=er&&er.decided===now.day&&Array.isArray(er.events)?er.events:[];
         if(!evs.length)return "";const semi=er.nvidia_night?on.filter(p=>(er.semi_codes||[]).includes(String(p.ticker||"").replace(/\.T$/,""))):[];
         return '<div class="ca-risk">⚠ 持ち越しの間（次の営業日14:00まで）の注意予定：'+evs.slice(0,5).map(e=>esc(String(e.date||"").slice(5).replace("-","/"))+" "+esc(e.time)+" "+esc(e.what)).join("・")+
-          (semi.length?'<br>🔶 半導体・NVIDIA決算の夜：'+semi.map(p=>esc(nm(p))).join("・"):"")+'<br>資金別（300万・500万）の仮想は「通常」と「半分」の両方で数えて比べます。</div>';})()+
+          (semi.length?'<br>🔶 半導体・NVIDIA決算の夜：'+semi.map(p=>esc(nm(p))).join("・"):"")+'<br>資金別（300万）の仮想は「通常」と「半分」の両方で数えて比べます。</div>';})()+
       "<small>スイング・バリューは、コクピットにまだ「持ち越す」判断の仕組みがありません（候補の一覧だけ）。仮想の記録で、注文は出しません。</small>";
     let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
     if(st.day!==now.day&&typeof window.cockpitSpeak==="function"){
@@ -4434,7 +4434,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     const head=area.querySelector("#cap-head"),body=area.querySelector("#cap-body");
     body.hidden=!capOpen;
     const S=sizes(),pick=l=>S.find(s=>s.label===l),f=s=>s?'<b class="'+cls(s.done+s.open)+'">'+yen(s.done+s.open)+'</b>'+(s.open_missing>0?' <span class="vd-miss">含み一部なし</span>':''):'<span class="g">—</span>';
-    head.innerHTML='<span class="cap-arrow">'+(capOpen?'▼':'▶')+'</span><b>資金別・保有中・手法の成績</b>　<span class="g">今日</span> 300万 '+f(pick("300万"))+'　500万 '+f(pick("500万"))+
+    head.innerHTML='<span class="cap-arrow">'+(capOpen?'▼':'▶')+'</span><b>資金別・保有中・手法の成績</b>　<span class="g">今日</span> 300万 '+f(pick("300万"))+
       '<span class="g cap-hint">'+(capOpen?'押すとたたむ':'押すと開く')+'</span>';
   }
   // OWNER 2026-11-09 「メルの保有中 5銘柄…」の1行だけは、まだどのタブにも残る作り　OK」: the one-line holdings row stays under the 仮想 line
@@ -4646,7 +4646,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
       sec.addEventListener("toggle",e=>{const d=e.target,o=d.dataset&&d.dataset.airday?airOpen[d.dataset.airtag||"air"]:null;if(!o)return;if(d.open)o.add(d.dataset.airday);else o.delete(d.dataset.airday);},true);
       sec.addEventListener("click",e=>{const b=e.target.closest("button[data-cap]");if(!b)return;mode=b.dataset.cap;try{localStorage.setItem("cockpitCapModeV1",mode);}catch(_){}renderJournal();});}
     const S=sizes(),s=S.find(x=>x.label===mode)||S[0];
-    const cond='<ul class="g-decided"><li>100株：1回100株ずつ（今までと同じ）</li><li>300万・信用：1回は300万円分まで（100株単位）、同時に持つ合計は約990万円まで</li><li>500万・信用：1回は500万円分まで（100株単位）、同時に持つ合計は約1,650万円まで</li><li>入れない時（枠が足りない・1単元が資金より高い）は入らずに数える。デイは費用込み、持ち越しは持った日数分の金利込み、含みは費用前。仮想・注文なし</li></ul>';
+    const cond='<ul class="g-decided"><li>100株：1回100株ずつ（今までと同じ）</li><li>300万・信用：1回は300万円分まで（100株単位）、同時に持つ合計は約990万円まで</li><li>入れない時（枠が足りない・1単元が資金より高い）は入らずに数える。デイは費用込み、持ち越しは持った日数分の金利込み、含みは費用前。仮想・注文なし</li></ul>';
     if(!s){sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>資金の条件と1日の損益</h2></div>'+cond+'<p class="g">まだ読めません（コクピットの記録から1分ほどで出ます）</p>';return;}
     const legend='<div class="cap-legend"><i style="background:repeating-linear-gradient(90deg,#5aa9ff 0 6px,transparent 6px 10px)"></i>確定<i style="background:linear-gradient(90deg,#35e2ae 50%,#ff5a5f 50%)"></i>確定＋含み（プラスは緑・マイナスは赤）</div>';
     sec.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>資金の条件と1日の損益（メル・仮想）</h2><p>'+esc(cap.note||"")+'</p></div>'+cond+

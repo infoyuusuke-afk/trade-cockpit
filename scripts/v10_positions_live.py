@@ -515,7 +515,8 @@ def _owner_history(records: Path, today: str) -> list[dict]:
 # Costs: day trades use the replay's return after cost (it already holds one day of margin interest). Overnight holds pay
 # margin interest (long 2.80 %/year, short lending fee 1.10 %/year) for the calendar days held. Open positions are shown
 # before cost. Virtual only: real_submit_allowed is always false.
-SIZES = (("100株", None), ("300万", 3_000_000), ("500万", 5_000_000))
+# OWNER 2026-11-19 「500万・信用」の列　削除」: the 500万 size is taken out of the 資金別 table
+SIZES = (("100株", None), ("300万", 3_000_000))
 MARGIN_MULT = 3.3
 LONG_RATE, SHORT_RATE = 0.028, 0.011
 DAILY_LIMIT_YEN = -30000
@@ -1927,7 +1928,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
         prev_day = _previous_day_dir(records, today)
         event_risk = {"tonight": risk_view(runtime, today, _next_weekday(local.date()).isoformat()), "mel_tonight": mel_plan(runtime, today),
                       "held": risk_view(runtime, prev_day.name, today) if prev_day is not None else None,
-                      "rule": "資金別（300万・500万）の仮想は、印のある夜の持ち越しを「通常」と「半分」の両方で数えて比べる（100株は1単元のまま）"}
+                      "rule": "資金別（300万）の仮想は、印のある夜の持ち越しを「通常」と「半分」の両方で数えて比べる（100株は1単元のまま）"}
     except Exception as exc:
         event_risk = {"state": "UNAVAILABLE", "reason": type(exc).__name__}
     try:
