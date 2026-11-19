@@ -2526,6 +2526,33 @@ function Get-RealPosDate($Value) {
     if ($m.Success) { return ("{0}/{1:D2}/{2:D2}" -f $m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value) }
     return ""
 }
+# OWNER 2026-11-20 「約定の時刻も毎日残して」: the time of an execution, from a column whose name has 時刻 or 時間, else from the
+# time part of 約定日 (an Excel date number with a time, or text such as 2026/11/20 09:01:05). No time found -> "" (never guessed).
+function Get-RealPosTime($Value) {
+    if ($Value -is [double]) {
+        try {
+            $dt = [DateTime]::FromOADate($Value)
+            if ($Value -ne [Math]::Floor($Value)) { return $dt.ToString("HH:mm:ss") }
+            if ($Value -gt 0 -and $Value -lt 1) { return $dt.ToString("HH:mm:ss") }
+        } catch { }
+        return ""
+    }
+    $m = [regex]::Match(([string]$Value).Trim(), '(?:^|\s|T)(\d{1,2}):(\d{2})(?::(\d{2}))?$')
+    if ($m.Success) {
+        $sec = if ($m.Groups[3].Success) { [int]$m.Groups[3].Value } else { 0 }
+        return ("{0:D2}:{1:D2}:{2:D2}" -f [int]$m.Groups[1].Value, [int]$m.Groups[2].Value, $sec)
+    }
+    return ""
+}
+function Get-RealPosExecTime($Row) {
+    foreach ($pr in @($Row.PSObject.Properties)) {
+        if ($pr.Name -match '時刻|時間') {
+            $v = Get-RealPosTime $pr.Value
+            if ($v) { return $v }
+        }
+    }
+    return (Get-RealPosTime $Row."約定日")
+}
 function Get-AccountRetrySeconds([int]$FailCount) {
     # OWNER 2026-11-06 「失敗が続いたら15秒、30秒、1分と間隔を広げて最長5分にする。読めたら元に戻す」
     if ($FailCount -lt 1) { return 0 }
@@ -3492,7 +3519,9 @@ try {
                 $rpExecRows = @(foreach ($p in @($rpExec)) { try { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
                     [ordered]@{ at = Get-RealPosDate $p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."市場名称"; trade = [string]$p."取引"; side = [string]$p."売買"
-                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } } catch { $rpBadRows++ } })
+                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価"; time = Get-RealPosExecTime $p } } } catch { $rpBadRows++ } })
+                # OWNER 2026-11-20: the names of the execution list's columns (names only), to see where the time comes from
+                $rpExecColumns = @(if (@($rpExec).Count -gt 0 -and $null -ne @($rpExec)[0]) { @(@($rpExec)[0].PSObject.Properties | ForEach-Object { [string]$_.Name }) })
                 $rpMarginRows = @(foreach ($p in @($rpMargin)) { try { if ($null -ne $p) {
                     [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."建市場"; kind = [string]$p."信用区分"; term = [string]$p."弁済期限"; side = [string]$p."売買"
@@ -3512,6 +3541,7 @@ try {
                     margin = $rpMarginRows
                     cash = $rpCashRows
                     executions_today = $rpExecRows
+                    executions_columns = $rpExecColumns
                     bad_rows = $rpBadRows
                     read_only = $true
                     real_submit_allowed = $false
