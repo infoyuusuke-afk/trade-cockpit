@@ -733,7 +733,8 @@ def _closed_yen(t, shares):
     return t["side"] * (t["exit"] - t["fill"]) * shares - t["fill"] * shares * rate * t["days"] / 365
 
 
-def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False, mel: bool = False) -> dict:
+def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_risk: bool = False, mel: bool = False,
+         locked: dict | None = None) -> dict:
     """Shares for each trade at one size (overnight holds first: they were opened yesterday).
     ev=None: first come, first served (the reference figures).
     ev={rule: mean % after cost of the days before today}: OWNER 2026-11-09 「枠が足りない時に期待値の高いルールを優先する形にして。
@@ -747,6 +748,21 @@ def size(trades: list, capital, now_hm: str, ev: dict | None = None, half_on_ris
     # OWNER 2026-11-09 「入れなかったサインも直近の数件を理由つきで出す」
     skipped = []
     for t in order:
+        # OWNER 2026-11-20 「15:25に決めた株数をその場で記録に固めて、次の日はそれを使う版を作って」: a hold whose shares were fixed at
+        # 15:25 of its deciding day (locked = {ticker: {"shares", "risk_cut", "skip"}} of this size and way) takes exactly those shares;
+        # nothing figured later (the after-midnight rule figures, today's prices) changes them.
+        lk = (locked or {}).get(t["ticker"]) if t["kind"] == "overnight" else None
+        if lk is not None:
+            if not lk.get("shares"):
+                sk = dict(lk.get("skip") or {"reason": "15:25に0株と固めた"})
+                skipped.append(dict(sk, at=t["in"], ticker=t["ticker"], name=t.get("name"), side="買い" if t["side"] > 0 else "空売り",
+                                    kind=t["kind"], rule=t.get("rule"), locked=True))
+                skipped_room += 1
+                continue
+            using = sum(x["fill"] * x["shares"] for x in taken if x["in"] <= t["in"] and (x["out"] is None or x["out"] > t["in"]))
+            taken.append(dict(t, shares=int(lk["shares"]), risk_cut=bool(lk.get("risk_cut")), locked=True))
+            peak = max(peak, using + t["fill"] * int(lk["shares"]))
+            continue
         sh = _shares(t["fill"], capital)
         cut = False
         if half_on_risk and capital is not None and t["kind"] == "overnight" and t.get("risk") and sh >= 200:   # OWNER 2026-11-16 半分
@@ -1647,6 +1663,76 @@ def overnight_compare(trades: list, normal: list, half: list, ai: list, now_hm: 
     return rows
 
 
+SIZE_LOCK_FILE = "overnight_size_lock_v1.json"
+SIZE_WAYS = ("通常", "半分", "AI")
+
+
+def lock_overnight_sizes(runtime: Path, day_dir: Path, today: str, next_day: str, ev_doc: dict | None, hm: str) -> dict | None:
+    """OWNER 2026-11-20 「15:25に決めた株数をその場で記録に固めて、次の日はそれを使う版を作って」: right after 15:25, the shares of each
+    hold for every capital size and way (通常・半分・AI), from the same sizing the next day used to do at 09:00 (today's rule figures,
+    the 15:25 prices, tonight's marks, Mel's locked decision), are written once to records/<today>/overnight_size_lock_v1.json.
+    An existing file is never rewritten (exclusive create). Virtual and display only: no order."""
+    f = day_dir / SIZE_LOCK_FILE
+    if f.is_file():
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+    picks = _overnight(day_dir, valid_until="")
+    if not picks:
+        return None
+    trades = trades_of([], picks, [], next_day, {}, "09:00", runtime)
+    ev = (ev_doc or {}).get("ev") or {}
+    doc = {"schema_version": "100b-v10-overnight-size-lock-v1", "date": today, "exit_day": next_day, "locked_at": hm,
+           "rule_ev_date": (ev_doc or {}).get("date"), "rule_ev": ev, "sizes": {}, "real_submit_allowed": False}
+    for label, capital in SIZES:
+        if capital is None:
+            continue
+        ways = {"通常": size(trades, capital, "09:00", ev), "半分": size(trades, capital, "09:00", ev, half_on_risk=True),
+                "AI": size(trades, capital, "09:00", ev, mel=True)}
+        doc["sizes"][label] = {}
+        for k, v in ways.items():
+            got = {x["ticker"]: x for x in v["_taken"]}
+            sk = {x.get("ticker"): x for x in v["_skipped_overnight"]}
+            doc["sizes"][label][k] = {
+                x["ticker"]: ({"shares": int(got[x["ticker"]]["shares"]), "risk_cut": bool(got[x["ticker"]].get("risk_cut"))} if x["ticker"] in got
+                              else {"shares": 0, "skip": {kk: sk.get(x["ticker"], {}).get(kk) for kk in ("reason", "need", "room")}})
+                for x in trades}
+    try:
+        with open(f, "x", encoding="utf-8") as fh:
+            json.dump(doc, fh, ensure_ascii=False)
+    except FileExistsError:
+        pass
+    except OSError:
+        return None
+    return doc
+
+
+def size_locks(records: Path, trades: list) -> dict:
+    """{decided day: lock doc} for the overnight holds in trades (only the days that have a lock file)."""
+    out = {}
+    for d in {str(t.get("decided") or "") for t in trades if t.get("kind") == "overnight"}:
+        if not d:
+            continue
+        try:
+            out[d] = json.loads((Path(records) / d / SIZE_LOCK_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def locked_for(locks: dict, trades: list, label: str, way: str) -> dict | None:
+    """{ticker: locked entry} of this size and way for the holds in trades, or None when no hold has a lock."""
+    out = {}
+    for t in trades:
+        if t.get("kind") != "overnight":
+            continue
+        e = (((locks.get(str(t.get("decided") or "")) or {}).get("sizes") or {}).get(label) or {}).get(way) or {}
+        if t["ticker"] in e:
+            out[t["ticker"]] = e[t["ticker"]]
+    return out or None
+
+
 def overnight_tonight(runtime: Path, day_dir: Path, today: str, next_day: str, ev_doc: dict | None) -> dict:
     """OWNER 2026-11-18 「OVERNIGHT 5で15:25に持ち越しが決まった時に、5銘柄それぞれ通常・半分・AIの株数と、枠が足りない銘柄は
     『枠が足りず0株（要る金額・残りの枠）』をその場で出す」: the same sizing the next day uses (size(): the holds are taken first, at their
@@ -1686,21 +1772,23 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
     sizes = []
     keep = {"date": today, "sizes": {}}
     ev = (ev_doc or {}).get("ev") or {}
+    locks = size_locks(records, trades)   # OWNER 2026-11-20: the shares fixed at 15:25 of the deciding day
     for label, capital in SIZES:
-        s = size(trades, capital, now_hm, ev if capital is not None else None)
+        lk = (lambda way: locked_for(locks, trades, label, way)) if capital is not None else (lambda way: None)
+        s = size(trades, capital, now_hm, ev if capital is not None else None, locked=lk("通常"))
         # OWNER 2026-11-16 「株数は通常と半分の両方を仮想で記録して比べる」: the same trades with half the shares on a marked night
         if capital is not None:
-            h = size(trades, capital, now_hm, ev, half_on_risk=True)
+            h = size(trades, capital, now_hm, ev, half_on_risk=True, locked=lk("半分"))
             h.pop("_taken")
             s["risk_half"] = {"done": h["rows"]["day"]["done"] + h["rows"]["overnight"]["done"],
                               "open": h["rows"]["day"]["open"] + h["rows"]["overnight"]["open"],
                               "overnight_done": h["rows"]["overnight"]["done"], "overnight_open": h["rows"]["overnight"]["open"]}
-            a = size(trades, capital, now_hm, ev, mel=True)
+            a = size(trades, capital, now_hm, ev, mel=True, locked=lk("AI"))
             a_taken = a.pop("_taken")
             s["risk_ai"] = {"done": a["rows"]["day"]["done"] + a["rows"]["overnight"]["done"],
                             "open": a["rows"]["day"]["open"] + a["rows"]["overnight"]["open"],
                             "overnight_done": a["rows"]["overnight"]["done"], "overnight_open": a["rows"]["overnight"]["open"]}
-            hh = size(trades, capital, now_hm, ev, half_on_risk=True)
+            hh = size(trades, capital, now_hm, ev, half_on_risk=True, locked=lk("半分"))
             h_taken, h_skip, a_skip = hh["_taken"], hh["_skipped_overnight"], a.pop("_skipped_overnight")
             h.pop("_skipped_overnight", None)
         # OWNER 2026-11-09 「先着順の数字も参考に残す」
@@ -1715,6 +1803,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
         if capital is not None:   # OWNER 2026-11-16: the holds out today, 通常・半分・AIの判断 side by side (shares and yen at 14:00)
             s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm,
                                                        {"通常": n_skip, "半分": h_skip, "AI": a_skip})
+            s["overnight_locked"] = sorted({str(t.get("decided")) for t in trades if t.get("kind") == "overnight" and str(t.get("decided") or "") in locks})
         day_done = s["rows"]["day"]["done"] + s["rows"]["overnight"]["done"]
         day_open = s["rows"]["day"]["open"] + s["rows"]["overnight"]["open"]
         closed = s["rows"]["day"]["closed"] + s["rows"]["overnight"]["closed"]
@@ -1982,6 +2071,10 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                                                              capital.get("rule_ev"))
         except Exception as exc:
             capital["overnight_tonight"] = {"state": "UNAVAILABLE", "reason": type(exc).__name__, "rows": []}
+        try:   # OWNER 2026-11-20: fix the shares of tonight's holds now (once); the next day uses them
+            lock_overnight_sizes(runtime, day_dir, today, _next_weekday(local.date()).isoformat(), capital.get("rule_ev"), hm)
+        except Exception:
+            pass
     try:
         soon = earnings_soon(runtime, today, hm)
         if hm >= DECIDE_AT:

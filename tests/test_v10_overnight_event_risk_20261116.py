@@ -69,7 +69,7 @@ class OvernightEventMarks(unittest.TestCase):
         self.assertFalse(normal["risk_cut"])
         self.assertEqual(pos.size([dict(risky)], None, "10:00", half_on_risk=True)["_taken"][0]["shares"], 100)   # 100株 stays
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
-        self.assertIn('h = size(trades, capital, now_hm, ev, half_on_risk=True)', src)
+        self.assertIn('h = size(trades, capital, now_hm, ev, half_on_risk=True, locked=lk("半分"))', src)
         self.assertIn('keep["sizes"][label]["half_done"] = s["risk_half"]["done"]', src)
 
     def test_ai_size_follows_the_measured_width(self):
@@ -112,7 +112,7 @@ class OvernightEventMarks(unittest.TestCase):
         normal = {t["ticker"]: t["shares"] for t in pos.size([dict(a), dict(b), dict(c)], 3_000_000, "10:00")["_taken"]}
         self.assertEqual(normal, {"8035.T": 3000, "7203.T": 3000, "9984.T": 3000})   # the normal sizing is unchanged
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
-        self.assertIn("a = size(trades, capital, now_hm, ev, mel=True)", src)
+        self.assertIn("a = size(trades, capital, now_hm, ev, mel=True, locked=lk(\"AI\"))", src)
         self.assertIn('s["overnight_compare"] = overnight_compare(trades, taken, h_taken, a_taken, now_hm,', src)
         self.assertIn('{"通常": n_skip, "半分": h_skip, "AI": a_skip})', src)   # OWNER 2026-11-18: with the reason of a 0-share way
         self.assertIn('"mel_tonight": mel_plan(runtime, today)', src)
