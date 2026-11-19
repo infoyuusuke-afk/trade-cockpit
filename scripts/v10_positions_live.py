@@ -1289,6 +1289,10 @@ def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool
     limit = bal * stop_pct / 100 if stop_pct and not hundred else None
     for t in sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"])):
         if t["kind"] == "overnight":
+            # OWNER 2026-11-20 「メル300万のきのう15:25からの持ち越しは、切り替え前であとから計算したものなので、成績から外して。
+            # メル300万の成績は、今日の場中の取引から数える」: a hold decided before the accounts start is not counted
+            if str(t.get("decided", "")) < MEL_NEW_FROM:
+                continue
             dp = plan_of(t.get("decided", ""))
             if not dp or not dp.get("overnight") or t.get("rule") not in dp["methods"]:
                 continue

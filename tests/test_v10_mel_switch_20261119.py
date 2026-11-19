@@ -48,7 +48,7 @@ class NewMel(unittest.TestCase):
     def test_loss_line_stays_after_an_overnight_gain(self):
         p = dict(PLAN, size_pct=100)
         tr = [{"kind": "overnight", "rule": "ON_SHORT", "ticker": "O", "name": "O", "side": -1, "fill": 1000.0, "in": "09:00", "out": "14:00",
-               "y100": 10000, "decided": "2026-11-19"},
+               "y100": 10000, "decided": "2026-11-20"},   # OWNER 2026-11-20: holds decided before MEL_NEW_FROM are not counted
               day("R5", "A", -1, "09:46", "09:50", -2000), day("R5", "B", -1, "09:55", "10:05", 100), day("R5", "C", -1, "14:30", "14:40", 100)]
         got = live.mel_new_day(tr, p, lambda d: dict(PLAN, methods=["ON_SHORT"], size_pct=10), 3_000_000, 1.5, False, DOWN, "23:59", False)
         names = [r["name"] for r in got["rows"]]
@@ -72,6 +72,17 @@ class NewMel(unittest.TestCase):
         self.assertEqual(live.mel_new_day(tr, PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False, frozenset({"2026-11-20"}))["n"], 0)
         self.assertEqual(live.mel_new_day(tr, PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False, frozenset())["n"], 1)
         self.assertEqual(live.mel_new_day(tr, None, dp, 0.0, None, True, DOWN, "23:59", False, frozenset({"2026-11-20"}))["n"], 1)  # 100株: no stop
+
+    def test_no_overnight_decided_before_the_start(self):
+        """OWNER 2026-11-20 「メル300万のきのう15:25からの持ち越しは…成績から外して。メル300万の成績は、今日の場中の取引から数える」"""
+        def hold(decided):
+            return {"kind": "overnight", "rule": "ON_SHORT", "ticker": "O", "name": "O", "side": -1, "fill": 1000.0, "in": "09:00", "out": "14:00",
+                    "y100": 1000, "decided": decided}
+        dp = lambda d: dict(PLAN, methods=["ON_SHORT"], size_pct=10)
+        self.assertEqual(live.MEL_NEW_FROM, "2026-11-20")
+        self.assertEqual(live.mel_new_day([hold("2026-11-19")], PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False)["n"], 0)
+        self.assertEqual(live.mel_new_day([hold("2026-11-19")], None, dp, 0.0, None, True, DOWN, "23:59", False)["n"], 0)   # 100株 too
+        self.assertEqual(live.mel_new_day([hold("2026-11-20")], PLAN, dp, 3_000_000, 1.5, False, DOWN, "23:59", False)["n"], 1)
 
     def test_rss_error_is_not_a_price(self):
         """audit 1c20526 ③: an Excel error code or a non-number from RSS is recorded as RSS_ERROR with no price"""
