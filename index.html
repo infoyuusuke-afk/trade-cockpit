@@ -768,7 +768,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   // OWNER 2026-11-09 later 「FOCUSは場中に使うので1段目の板の右に移して」
   // OWNER 2026-11-10 「タブは毎日使う5つ（トレード中・板・FOCUS・OVERNIGHT 5・AIトレード日記）を1段目、ほかは2段目に小さく、今見るタブに緑の点」
   const ROW1=["scalp","board","focus-owner","overnight","ai-journal"];
-  const ROW2=["pre-next","pts","analysts","kioxia-calendar","events","swing","value","brain","control"];
+  const ROW2=["pre-next","pts","analysts","methods","kioxia-calendar","events","swing","value","brain","control"];
   // the tab to look at now (Tokyo): weekdays トレード中 until 14:00, OVERNIGHT 5 14:00-15:30, AIトレード日記 after; weekends AIトレード日記
   function nowTab(){const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();
     if(w===0||w===6)return "ai-journal";return m<840?"scalp":m<930?"overnight":"ai-journal";}
@@ -5645,6 +5645,78 @@ document.addEventListener("DOMContentLoaded",()=>{
     else if(Number(c)===0&&excelOpen){excelOpen=false;keep("cockpitOtherExcelV1",{open:false});}
   }
   setInterval(quoteCheck,30000);setInterval(excelCheck,60000);quoteCheck();excelCheck();
+});
+</script>
+<script>
+// OWNER 2026-11-19 「手法がおおくなったから手法タブをつくって、全ての手法を書き出して、今日の使う手法を上部に表示してわかりやすく見やすくつくって」:
+// a 手法 tab from /methods_catalog.json (the PC's methods_catalog.py: the メル plan fixed this morning and every method with its numbers
+// copied from the records). Display only: no voice, no order card, no order, nothing stored.
+document.addEventListener("DOMContentLoaded",()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>{const x=Number(v);return v===null||v===undefined||v===""||!Number.isFinite(x)?null:x;};
+  const pct=v=>{const x=num(v);return x===null?"—":(x>0?"+":"")+x.toFixed(3)+"%";};
+  const cls=v=>{const x=num(v);return x===null?"g":x>0?"up":x<0?"dn":"g";};
+  const sideCol=s=>s==="買い"?"#35e2ae":s==="空売り"?"#ff6b81":"#9aa0a6";
+  let pane=null,timer=null,data=null;
+  function mount(){
+    const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
+    if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="methods"]'))return;
+    pane=document.createElement("div");pane.className="tab-pane";pane.dataset.pane="methods";pane.style.gridColumn="1/-1";
+    pane.innerHTML='<div class="pane-intro"><h2>手法｜今日使う手法と、全部の手法</h2><p>上が今日メルが使う手法（朝に決めたもの）。下に全部の手法の決まりと、記録の数字（費用込み）。表示だけで、注文はしません。</p></div><div id="mt-body"><p class="g">読み込み中…</p></div>';
+    main.append(pane);
+    const b=document.createElement("button");b.className="cockpit-tab";b.dataset.tab="methods";b.type="button";b.textContent="手法";
+    const after=nav.querySelector('.cockpit-tab[data-tab="analysts"]')||nav.querySelector('.cockpit-tab[data-tab="control"]');
+    if(after&&after.nextSibling)nav.insertBefore(b,after.nextSibling);else nav.append(b);
+    b.onclick=()=>{document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));
+      document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x===pane));try{localStorage.setItem("cockpitTabV5","methods");}catch(_){}load();};
+    try{if(localStorage.getItem("cockpitTabV5")==="methods")b.click();}catch(_){}
+  }
+  async function load(){
+    let j=null;try{const r=await fetch("/methods_catalog.json?t="+Date.now(),{cache:"no-store"});j=r.ok?await r.json():null;}catch(_){j=null;}
+    if(j&&j.schema_version==="100b-v10-methods-catalog-v1"&&j.real_submit_allowed===false&&j.trade_instruction===false&&Array.isArray(j.methods))data=j;
+    paint();
+  }
+  function card(m){
+    const today=m.today===true,col=sideCol(m.side);
+    let figs="";
+    if(m.kind==="cockpit"){const f=m.figures||{};
+      figs='<div class="mt-figs"><span>'+esc(f.label||"")+'</span><b class="'+cls(f.mean_pct)+'">1回平均 '+pct(f.mean_pct)+'</b><span>'+(num(f.n)??"—")+'回・勝ち '+(num(f.win_pct)===null?"—":num(f.win_pct).toFixed(1)+"%")+'・PF '+(num(f.pf)===null?"—":num(f.pf).toFixed(2))+'</span></div>';
+    }else{const te=m.test||{},fw=m.forward||{};
+      figs='<div class="mt-figs"><span>検証に使った日：'+(te.n?esc(te.n)+'回・'+esc(te.days)+'日・<b class="'+cls(te.mean_pct)+'">'+pct(te.mean_pct)+'</b>':'記録なし')+'</span>'+
+        '<span>前向き'+(m.forward_from?'（'+esc(String(m.forward_from).slice(5).replace("-","/"))+'から）':'')+'：'+(fw.n?esc(fw.n)+'回・<b class="'+cls(fw.mean_pct)+'">'+pct(fw.mean_pct)+'</b>（30回で確かめ直し）':'まだ0回')+'</span>'+
+        (m.verdict?'<span class="g">'+esc(m.verdict)+'</span>':'')+'</div>';}
+    return '<div class="mt-card'+(today?' mt-today':'')+'" style="border-left-color:'+col+'"><div class="mt-head"><b class="mt-letter">'+esc(m.letter)+'</b><span class="mt-name">'+esc(m.name)+'</span>'+
+      '<span class="mt-side" style="color:'+col+'">'+esc(m.side)+'</span><span class="g">'+esc(m.code)+'</span>'+(today?'<span class="mt-badge">今日使う</span>':'')+'</div>'+
+      '<div class="mt-rule">'+esc(m.rule)+'</div><div class="mt-where g">'+esc(m.where)+'</div>'+figs+'</div>';
+  }
+  function paint(){
+    const box=document.getElementById("mt-body");if(!box)return;
+    if(!data){box.innerHTML='<p class="g">手法の一覧が読めません（PCの methods_catalog_v1.json がまだ無いか、形が違います）。</p>';return;}
+    const tp=data.today_plan||{},used=Array.isArray(tp.methods)?tp.methods:[];
+    const byCode={};data.methods.forEach(m=>{byCode[m.code]=m;});
+    const chips=used.map(c=>{const m=byCode[c]||{letter:c,name:c,side:""};return '<span class="mt-chip" style="border-color:'+sideCol(m.side)+'"><b>'+esc(m.letter)+'</b> '+esc(m.name)+' <small style="color:'+sideCol(m.side)+'">'+esc(m.side)+'</small></span>';}).join("");
+    const top='<section class="mt-top"><h3>今日使う手法（メル・'+esc(data.date||"")+(tp.locked_at?'・'+esc(tp.locked_at)+'に決定':'')+'）</h3>'+
+      (used.length?'<div class="mt-chips">'+chips+'</div>':'<p class="g">今日の手法はまだ決まっていません（'+esc(tp.state||"")+'）。</p>')+
+      (used.length?'<div class="mt-plan">1回 '+esc(tp.size_pct??"—")+'%・同時に持つ上限 '+esc(tp.max_mult??"—")+'倍・1日の負けの上限 '+esc(tp.daily_stop_pct??"—")+'%・持ち越し '+(tp.overnight===true?"する":tp.overnight===false?"しない":"—")+'</div>':'')+
+      (tp.reason?'<div class="mt-reason">決めた理由：'+esc(tp.reason)+'</div>':'')+'</section>';
+    const cockpit=data.methods.filter(m=>m.kind==="cockpit"),research=data.methods.filter(m=>m.kind==="research");
+    box.innerHTML=top+'<h3 class="mt-sec">コクピットの手法（メルが選ぶ元）</h3><div class="mt-grid">'+cockpit.map(card).join("")+'</div>'+
+      '<h3 class="mt-sec">研究の前向きの記録（E〜K・画面の売買と注文には使わない）</h3><div class="mt-grid">'+research.map(card).join("")+'</div>'+
+      '<p class="cap-note">'+esc(data.note||"")+'（作った時刻 '+esc(data.generated_at||"")+'）</p>';
+  }
+  const css=document.createElement("style");
+  css.textContent='#mt-body{padding:0 4px 16px}.mt-top{border:1px solid #2a2e39;border-radius:8px;padding:12px 14px;margin:0 0 14px;background:#11151d}'+
+    '.mt-top h3,.mt-sec{font-size:15px;margin:0 0 8px;color:#e6e8eb}.mt-sec{margin:16px 0 8px}.mt-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}'+
+    '.mt-chip{border:2px solid #555;border-radius:999px;padding:6px 12px;font-size:15px;color:#fff;background:#0e1013}.mt-chip b{font-size:16px}'+
+    '.mt-plan{font-size:13px;color:#c4c9d1;margin:2px 0 6px}.mt-reason{font-size:12.5px;color:#9aa0aa;line-height:1.5}'+
+    '.mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px}'+
+    '.mt-card{border:1px solid #2a2e39;border-left:4px solid #555;border-radius:6px;padding:9px 11px;background:#0e1013}.mt-card.mt-today{box-shadow:0 0 0 2px #4CC38A inset;background:#0f1a14}'+
+    '.mt-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.mt-letter{font-size:16px;color:#fff}.mt-name{font-weight:700;color:#e6e8eb}.mt-side{font-weight:700;font-size:12.5px}'+
+    '.mt-badge{margin-left:auto;background:#4CC38A;color:#04130b;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700}'+
+    '.mt-rule{font-size:13px;color:#d1d4dc;line-height:1.5;margin:6px 0 4px}.mt-where{font-size:12px}.mt-figs{display:flex;flex-direction:column;gap:2px;font-size:12.5px;margin-top:6px;color:#c4c9d1}';
+  document.head.appendChild(css);
+  mount();load();
+  timer=setInterval(()=>{if(pane&&pane.classList.contains("active"))load();},300000);
 });
 </script>
 </body></html>
