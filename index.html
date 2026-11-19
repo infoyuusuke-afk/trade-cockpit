@@ -767,8 +767,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 (()=>{
   // OWNER 2026-11-09 later 「FOCUSは場中に使うので1段目の板の右に移して」
   // OWNER 2026-11-10 「タブは毎日使う5つ（トレード中・板・FOCUS・OVERNIGHT 5・AIトレード日記）を1段目、ほかは2段目に小さく、今見るタブに緑の点」
-  const ROW1=["scalp","board","focus-owner","overnight","ai-journal"];
-  const ROW2=["pre-next","pts","analysts","methods","kioxia-calendar","events","swing","value","brain","control"];
+  // OWNER 2026-11-20 「トレード中のタブの隣に手法タブうつして、ここでAIの戦略を確認したあと、おれもトレードするから」
+  const ROW1=["scalp","methods","board","focus-owner","overnight","ai-journal"];
+  const ROW2=["pre-next","pts","analysts","kioxia-calendar","events","swing","value","brain","control"];
   // the tab to look at now (Tokyo): weekdays トレード中 until 14:00, OVERNIGHT 5 14:00-15:30, AIトレード日記 after; weekends AIトレード日記
   function nowTab(){const d=new Date(Date.now()+9*3600e3),m=d.getUTCHours()*60+d.getUTCMinutes(),w=d.getUTCDay();
     if(w===0||w===6)return "ai-journal";return m<840?"scalp":m<930?"overnight":"ai-journal";}

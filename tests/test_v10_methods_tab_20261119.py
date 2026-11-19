@@ -33,7 +33,9 @@ class Gateway(unittest.TestCase):
 
 class Tab(unittest.TestCase):
     def test_tab_and_row(self):
-        self.assertIn('"analysts","methods","kioxia-calendar"', HTML)
+        # OWNER 2026-11-20 「トレード中のタブの隣に手法タブうつして」: row 1, right after トレード中
+        self.assertIn('const ROW1=["scalp","methods","board",', HTML)
+        self.assertNotIn('"analysts","methods","kioxia-calendar"', HTML)
         w = tab_block()
         self.assertIn('b.dataset.tab="methods"', w)
         self.assertIn('pane.dataset.pane="methods"', w)
