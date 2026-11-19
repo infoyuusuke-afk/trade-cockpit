@@ -41,6 +41,12 @@ class Card(unittest.TestCase):
         for f in ("esc(s.name)", "esc(s.code)", "esc(s.role)", "esc(v.note", "esc(a.base"):
             self.assertIn(f, w)
 
+    def test_groups_are_apart(self):
+        """OWNER 2026-11-19 「ロング・ショート戦略につかいたいから、しっかり分けて」: a heading row whenever the group changes"""
+        w = card()
+        self.assertIn('String(v.stocks[i-1].group||"")!==String(s.group||"")', w)
+        self.assertIn('<tr class="aw-g"><td colspan="4">\'+esc(s.group||"")+\'</td></tr>', w)
+
     def test_display_only(self):
         w = card()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "localStorage.setItem"):
