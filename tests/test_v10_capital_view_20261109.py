@@ -170,7 +170,8 @@ class Sizing(unittest.TestCase):
         # 2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」
         # OWNER 2026-11-10 「タブは毎日使う5つ（トレード中・板・FOCUS・OVERNIGHT 5・AIトレード日記）を1段目、ほかは2段目に小さく、今見るタブに緑の点」
         self.assertIn('const ROW1=["scalp","board","focus-owner","overnight","ai-journal"];', HTML)
-        self.assertIn('const ROW2=["pre-next","pts","analysts","kioxia-calendar","events","swing","value","brain","control"];', HTML)
+        # OWNER 2026-11-19 「手法タブをつくって」: the 手法 tab sits in row 2 right after アナリスト (nothing else moved)
+        self.assertIn('const ROW2=["pre-next","pts","analysts","methods","kioxia-calendar","events","swing","value","brain","control"];', HTML)
         self.assertIn('b.classList.toggle("tab-small",i1<0);b.classList.toggle("tab-now",k===nowTab());', HTML)
         self.assertIn('return m<840?"scalp":m<930?"overnight":"ai-journal";', HTML)
         self.assertIn("setInterval(arrange,60000);", HTML)

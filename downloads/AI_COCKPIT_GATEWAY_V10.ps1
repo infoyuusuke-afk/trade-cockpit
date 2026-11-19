@@ -1176,6 +1176,30 @@ function Get-MethodsCatalogView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-11-19 "put the Anthropic watch in the theme column, in the methods tab version": RuntimeDir\anthropic_watch_v1.json is
+# written by the research script anthropic_link_record.py --view (8:50 and 17:05). Served as is when its flags are safe. Display only.
+function Get-AnthropicWatchView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'anthropic_watch_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'ANTHROPIC_WATCH_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 65536) {
+            return (& $fail 'ANTHROPIC_WATCH_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-anthropic-watch-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'ANTHROPIC_WATCH_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'ANTHROPIC_WATCH_UNREADABLE')
+    }
+}
+
 # OWNER 2026-11-17 (15:24 lock): RuntimeDir\closing_auction_lock_v1.json is written once a day at 15:24 by the research script
 # closing_auction_lock.py. It is served only for today, only when it was locked between 15:24:00 and 15:25:59 and the file was not
 # written after 15:26:00 of that day (so a later rewrite is refused), and only when its flags are safe. Display only.
@@ -3576,6 +3600,11 @@ try {
             if ($path -eq '/methods_catalog.json') {
                 $mcView = Get-MethodsCatalogView $RuntimeDir
                 Send-Response $stream $mcView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$mcView.body))
+                continue
+            }
+            if ($path -eq '/anthropic_watch.json') {
+                $awView = Get-AnthropicWatchView $RuntimeDir
+                Send-Response $stream $awView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$awView.body))
                 continue
             }
             if ($path -eq '/closing_auction_lock.json') {

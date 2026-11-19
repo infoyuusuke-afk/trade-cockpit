@@ -5719,4 +5719,38 @@ document.addEventListener("DOMContentLoaded",()=>{
   timer=setInterval(()=>{if(pane&&pane.classList.contains("active"))load();},300000);
 });
 </script>
+<script>
+// OWNER 2026-11-19 「アンソロピック関連10銘柄を…前夜のANTの値動きも1行出して…画面のテーマ欄は手法タブの版に入れて」: a card at the top of the
+// テーマ tab from /anthropic_watch.json (the PC's anthropic_link_record.py --view: ANT's last session and the 10 stocks with their tie to
+// Anthropic, last close and change; Yahoo daily). Display only: no voice, no order card, no order.
+document.addEventListener("DOMContentLoaded",()=>{
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>{const x=Number(v);return v===null||v===undefined||v===""||!Number.isFinite(x)?null:x;};
+  const sg=v=>{const x=num(v);return x===null?"—":(x>0?"+":"")+x.toFixed(2)+"%";};
+  const cl=v=>{const x=num(v);return x===null?"g":x>0?"up":x<0?"dn":"g";};
+  let sec=null;
+  async function render(){
+    const pane=document.querySelector('.tab-pane[data-pane="pre-next"]');if(!pane)return;
+    if(!sec){sec=document.createElement("section");sec.className="card wide";sec.id="anthropic-watch";
+      const intro=pane.querySelector(":scope > .pane-intro");if(intro)intro.after(sec);else pane.prepend(sec);}
+    let v=null;try{const r=await fetch("/anthropic_watch.json?t="+Date.now(),{cache:"no-store"});v=r.ok?await r.json():null;}catch(_){v=null;}
+    if(!v||v.schema_version!=="100b-v10-anthropic-watch-v1"||v.real_submit_allowed!==false||v.trade_instruction!==false||!Array.isArray(v.stocks)){
+      sec.innerHTML='<h2>アンソロピック関連</h2><p class="g-empty">データを読めません（PCの anthropic_watch_v1.json がまだ無いか、形が違います）。</p>';return;}
+    const a=v.ant;
+    const head=a?'ANT（ナスダック）'+esc(String(a.session||"").slice(5).replace("-","/"))+'のセッション：終値 '+esc(num(a.close)===null?"—":num(a.close).toFixed(2))+'ドル・'+esc(a.base||"")+'比 <b class="'+cl(a.move_pct)+'">'+sg(a.move_pct)+'</b>'
+      :'ANT（ナスダック）：前夜の値はまだありません（上場 '+esc(v.listed||"")+'・公開価格 '+esc(v.ipo_price??"—")+'ドル）';
+    sec.innerHTML='<h2>アンソロピック関連（'+esc(v.stocks.length)+'銘柄）</h2><p class="aw-ant">'+head+'</p>'+
+      '<table class="aw-t"><thead><tr><th>銘柄</th><th>終値</th><th>前日比</th><th>アンソロピックとの関係</th></tr></thead><tbody>'+
+      v.stocks.map(s=>'<tr><td><b>'+esc(s.name)+'</b>('+esc(s.code)+')</td><td>'+esc(num(s.close)===null?"—":num(s.close).toLocaleString())+'</td><td class="'+cl(s.chg_pct)+'">'+sg(s.chg_pct)+
+        (s.day?'<small class="g">（'+esc(String(s.day).slice(5).replace("-","/"))+'）</small>':'')+'</td><td class="aw-role">'+esc(s.role)+'</td></tr>').join("")+'</tbody></table>'+
+      '<p class="g-note">'+esc(v.note||"")+' 毎日の記録 '+esc(v.record_days??0)+'日（20日でANTとの相関を出す）。作った時刻 '+esc(v.generated_at||"")+'</p>';
+  }
+  const css=document.createElement("style");
+  css.textContent='#anthropic-watch .aw-ant{font-size:15px;margin:4px 0 8px}#anthropic-watch .aw-t{width:100%;border-collapse:collapse;font-size:13px}'+
+    '#anthropic-watch .aw-t th,#anthropic-watch .aw-t td{padding:5px 8px;border-bottom:1px solid #262A30;text-align:left;vertical-align:top}'+
+    '#anthropic-watch .aw-t td:nth-child(2),#anthropic-watch .aw-t td:nth-child(3){text-align:right;white-space:nowrap}#anthropic-watch .aw-role{color:#9AA0AA;font-size:12px}';
+  document.head.appendChild(css);
+  render();setInterval(render,600000);
+});
+</script>
 </body></html>
