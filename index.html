@@ -3909,7 +3909,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>.vd8 h2 small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.vd8-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .vd8-day{display:grid;grid-template-columns:128px 74px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #22252A;border-radius:8px;background:#0E1013;padding:8px 12px;font-size:13px}
 .vd8-day.top{border-color:#E0566B}.vd8-day.today{outline:2px solid #4CC38A}.vd8-date{font-weight:700;white-space:nowrap}.vd8-lv{font-size:12px;font-weight:700;color:#F2C14E}.vd8-day.top .vd8-lv{color:#E0566B}
-.vd8-t{color:#C4C9D1;font-size:13px;margin-left:6px}.vd8-t.hot{color:#E0566B;font-weight:700}.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
+.vd8-t{color:#C4C9D1;font-size:13px;margin-left:6px}.vd8-t.hot{color:#E0566B;font-weight:700}.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}.vd8-cat{display:inline-block;padding:0 8px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-size:11px;font-weight:700;margin-right:2px}.vd8-cat.hi{color:#f0616c}.vd8-memo{color:#9AA0AA;font-size:12px}.vd8-pend{margin-top:10px;padding:8px 12px;border:1px solid #303033;border-radius:10px;background:#0E1013;font-size:13px;line-height:1.6}.vd8-pend>b{display:block;font-size:13px;color:#E8EAED;margin-bottom:2px}.vd8-src{margin-top:6px;color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
 <script>
 // OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」: at the top of the 注意 tab, the next 30 days that hold an
 // impact 高 event (event_calendar.json) or the earnings of a stock that moves the index or the SCALP8 list (earnings_calendar.json).
@@ -3937,23 +3937,34 @@ document.addEventListener("DOMContentLoaded",()=>{
   // OWNER 2026-11-05 「決算が発表済みの銘柄は『予定』でなく『発表済み 13:55』のように時刻を出して」: today's TDnet list (/tdnet_today.json) gives the real time of the 決算短信.
   function doneNote(td,today,code){const it=td&&td.date===today&&Array.isArray(td.items)?td.items.find(y=>String(y.code)===code&&/決算短信/.test(String(y.title||""))&&!/訂正/.test(String(y.title||""))):null;
     if(!it)return null;const hm=String(it.time||""),p=part(hm);return {note:"発表済み "+hm+"・"+p+(p==="前場"||p==="後場"?"（場中）":""),hot:p==="前場"||p==="後場",done:true};}
-  function pick(ev,cal,today,times,td){
+  // OWNER 2026-11-20 「アンソロピック上場と日本、米国、中国、ロシアなどの会談イベントがでてなかった、注意タブ非常に弱い、改善しろ」:
+  // /attention_events.json (the PC's attention_events.py: summits, holidays abroad, central banks with a date from an official page,
+  // large new listings from the JPX page) is added to the same days; its report-only items (no official date) are listed below.
+  function pick(ev,cal,today,times,td,ae){
     const end=add(today,30),days={};
     const at=d=>days[d]=days[d]||[];
     // 影響「高」 for 30 days; this week (7 days) also 影響「中」 (週の注意日)
     const week=add(today,7);
     (Array.isArray(ev&&ev.events)?ev.events:[]).forEach(e=>{if(e&&(e.impact==="高"||(e.impact==="中"&&e.date<=week))&&e.date>=today&&e.date<=end)at(e.date).push({when:e.time_jst||"",what:e.title});});
     OVERSEAS.forEach(o=>{if(o.date>=today&&o.date<=end)at(o.date).push({when:o.when,what:o.what});});
+    (aeOk(ae)?ae.events:[]).forEach(e=>{if(e&&typeof e.date==="string"&&e.date>=today&&e.date<=end)at(e.date).push({when:String(e.time||""),what:String(e.title||""),cat:String(e.category||""),high:e.impact==="高",src:String(e.source_name||""),memo:String(e.note||"")});});
     (Array.isArray(cal&&cal.calendar)?cal.calendar:[]).forEach(x=>{if(x&&KEY_STOCKS.includes(String(x.code))&&x.date>=today&&x.date<=end){const dn=x.date===today?doneNote(td,today,String(x.code)):null;at(x.date).push({...(dn||timeNote(times,String(x.code))),when:"決算",what:String(x.name||"").replace(/\s+/g," ").trim()+"("+x.code+")"+(dn||/確定/.test(String(x.status||""))?"":"・予定")});}});
     return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));
   }
+  const aeOk=v=>!!(v&&v.schema_version==="100b-v10-attention-events-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false&&Array.isArray(v.events));
+  function pendingHtml(ae){
+    const p=aeOk(ae)&&Array.isArray(ae.pending)?ae.pending:[];
+    return (p.length?'<div class="vd8-pend"><b>日付がまだ公式に出ていない注目の予定</b>'+p.map(x=>'<div><span class="vd8-cat">'+esc(x.category)+'</span> '+esc(x.title)+(x.note?' <small class="vd8-memo">'+esc(x.note)+'</small>':'')+'</div>').join("")+'</div>':'')+
+      (aeOk(ae)?'<div class="vd8-src">外交・上場などは公式の発表で日付を確かめたものだけ（大型の上場はJPXの公式ページ・'+esc(ae.ipo_state||"")+'）。作った時刻 '+esc(ae.generated_at||"")+'</div>':'<div class="vd8-src">外交・上場などの予定を読めません（PCの attention_events_v1.json）</div>');
+  }
   async function load(sec){
     const box=sec.querySelector(".vd8-list");
-    const [ev,cal,times,td]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json"),get("/earnings_times.json"),get("/tdnet_today.json")]);
-    if(!ev&&!cal){box.innerHTML='<div class="vd8-none">予定を読めません</div>';return;}
-    const today=day0(),rows=pick(ev,cal,today,times,td);
-    box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2;
-      return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div><small>'+esc(i.when)+'</small> '+esc(i.what)+(i.note?' <span class="vd8-t'+(i.hot?' hot':'')+'">'+esc(i.note)+'</span>':'')+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
+    const [ev,cal,times,td,ae]=await Promise.all([get("event_calendar.json"),get("earnings_calendar.json"),get("/earnings_times.json"),get("/tdnet_today.json"),get("/attention_events.json")]);
+    if(!ev&&!cal&&!aeOk(ae)){box.innerHTML='<div class="vd8-none">予定を読めません</div>';return;}
+    const today=day0(),rows=pick(ev,cal,today,times,td,ae);
+    box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2||items.some(i=>i.high);
+      return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div>'+(i.cat?'<span class="vd8-cat'+(i.high?' hi':'')+'">'+esc(i.cat)+'</span> ':'')+'<small>'+esc(i.when)+'</small> '+esc(i.what)+(i.memo?' <small class="vd8-memo">'+esc(i.memo)+(i.src?'（'+esc(i.src)+'）':'')+'</small>':'')+(i.note?' <span class="vd8-t'+(i.hot?' hot':'')+'">'+esc(i.note)+'</span>':'')+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
+    box.insertAdjacentHTML("beforeend",pendingHtml(ae));
   }
   document.addEventListener("DOMContentLoaded",()=>{
     const cal=document.getElementById("event-calendar");if(!cal||!cal.parentElement)return;
