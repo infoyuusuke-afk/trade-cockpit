@@ -1168,13 +1168,13 @@ MEL_SCHEMA = "MEL_PLAN_V1"
 MEL_METHODS = ("R1", "R2", "R4", "R5", "ON_LONG", "ON_SHORT")
 MEL_LOCK_BY = "09:00"
 _MEL_MEMO: dict = {}
-# OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」 then 「メル３００万　５００万は資金管理する
-# とめるかどうかはまかせる」: whether to stop stays メル's (its morning plan: daily_stop_pct, or null = trade until the session ends);
-# from this day on the day methods follow the market at each entry, from the
-# cockpit's own Nikkei 225 record (records/<day>/futures_index.csv, key N225): up from the day's first value by +0.3 % or more AND up
-# +0.15 % or more over the 15 minutes before → the buy methods (A R1・C R4) only; both as far down → the short methods (B R2・D R5) only;
-# otherwise the methods of the morning plan. The days before keep the rules they were played under.
-MEL_SWITCH_FROM = "2026-11-20"
+# OWNER 2026-11-19 「メル300万・500万は1日−1.5%に届いたらその日は新しく入らない。持ち越しの利益が入っても戻さない。100株換算の研究用メルは
+# 止めずに大引けまで続ける。どのメルも、場中は日経の向き（寄り±0.3%と直近15分±0.15%）で、下げは空売りの手法、上げは買いの手法、どちらでも
+# ない時は様子見。手法Dは1銘柄1日1回。今のメルと新しいメルを両方記録して比べて」: the current メル (mel300) keeps its own rules; three new
+# accounts are played from MEL_NEW_FROM beside it (mel_new). The market at each entry comes from the cockpit's own Nikkei 225 record
+# (records/<day>/futures_index.csv, key N225, values up to the entry minute only).
+MEL_NEW_FROM = "2026-11-20"
+MEL_NEW_ACCOUNTS = (("300万", 3_000_000, 1.5), ("500万", 5_000_000, 1.5), ("100株", None, None))
 MEL_LONG_RULES, MEL_SHORT_RULES = ("R1", "R4"), ("R2", "R5")
 MEL_UP_FROM_OPEN, MEL_UP_15MIN = 0.3, 0.15
 _NK_MEMO: dict = {}
@@ -1226,13 +1226,109 @@ def mel_regime(series: list, hm: str) -> str | None:
     return None
 
 
-def mel_day_methods(plan: dict, day: str, hm: str, series: list) -> tuple:
-    """the day methods メル may use at hm: from MEL_SWITCH_FROM they follow the market (mel_regime), else the plan's"""
-    base = tuple(m for m in plan.get("methods") or () if m in MEL_LONG_RULES + MEL_SHORT_RULES)
-    if day < MEL_SWITCH_FROM:
-        return base
+def mel_new_methods(series: list, hm: str) -> tuple:
+    """the day methods of the new メル accounts at hm: up → buy methods, down → short methods, neither → none (様子見)"""
     r = mel_regime(series, hm)
-    return MEL_LONG_RULES if r == "上げ" else MEL_SHORT_RULES if r == "下げ" else base
+    return MEL_LONG_RULES if r == "上げ" else MEL_SHORT_RULES if r == "下げ" else ()
+
+
+def mel_new_day(trades: list, plan, plan_of, bal: float, stop_pct, hundred: bool, series: list, now_hm: str, live: bool) -> dict:
+    """one day of one new メル account. plan = today's fixed plan (size and limit; None = no day trade for the 300万/500万 accounts);
+    plan_of(day) = the fixed plan of the day an overnight hold was decided. The loss line is checked on the trades closed before each
+    entry and, once reached, stays for the rest of the day (an overnight gain coming in later does not lift it)."""
+    out, taken, stopped_at, d_seen = [], [], None, set()
+    for t in sorted(trades, key=lambda t: (0 if t["kind"] == "overnight" else 1, t["in"])):
+        if t["kind"] == "overnight":
+            dp = plan_of(t.get("decided", ""))
+            if not dp or not dp.get("overnight") or t.get("rule") not in dp["methods"]:
+                continue
+            size, mult = dp["size_pct"], dp["max_mult"]
+        else:
+            if t.get("rule") not in mel_new_methods(series, t["in"]):
+                continue                                                   # 様子見, or a method against the market
+            if t.get("rule") == "R5" and (t.get("ticker") or t.get("name")) in d_seen:
+                continue                                                   # 手法D: one per stock per day
+            if not hundred and not plan:
+                continue
+            size, mult = (plan["size_pct"], plan["max_mult"]) if plan else (0, 0)
+            if stop_pct and not hundred:
+                if stopped_at is None:
+                    done = sum(x["y"] for x in taken if x["y"] is not None and x["out"] and x["out"] <= t["in"])
+                    if done <= -bal * stop_pct / 100:
+                        stopped_at = t["in"]
+                if stopped_at is not None:
+                    continue
+        if hundred:
+            sh = 100
+        else:
+            sh = _shares(t["fill"], bal * size / 100)
+            using = sum(x["fill"] * x["sh"] for x in taken if x["in"] <= t["in"] and (x["out"] is None or x["out"] > t["in"]))
+            if sh <= 0 or using + t["fill"] * sh > bal * mult:
+                continue
+        if live:
+            closed = t["out"] is not None and t["out"] <= now_hm
+            y = _closed_yen(t, sh) if closed else None
+            u = None if closed or t.get("last") is None else t["side"] * (t["last"] - t["fill"]) * sh
+        else:
+            closed, y, u = True, t["y100"] * sh / 100, None
+        if t["kind"] != "overnight" and t.get("rule") == "R5":
+            d_seen.add(t.get("ticker") or t.get("name"))
+        taken.append(dict(t, sh=sh, y=y))
+        out.append({"in": t["in"], "out": t["out"] if closed else None, "name": t.get("name"), "side": t["side"], "rule": t.get("rule"),
+                    "kind": t["kind"], "shares": sh, "amount": round(t["fill"] * sh), "done_yen": None if y is None else round(y),
+                    "open_yen": None if u is None else round(u)})
+    return {"done": round(sum(r["done_yen"] or 0 for r in out)), "open": round(sum(r["open_yen"] or 0 for r in out)),
+            "stopped_at": stopped_at, "n": len(out), "rows": out[-60:]}
+
+
+_MEL_NEW_MEMO: dict = {}
+
+
+def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: list | None = None) -> dict:
+    """the three new メル accounts from MEL_NEW_FROM: the days before today replayed, and today live. Virtual only."""
+    locks = {}
+
+    def plan_of(day):
+        if day not in locks:
+            try:
+                got = json.loads((Path(records) / day / MEL_LOCK).read_text(encoding="utf-8"))
+                locks[day] = got.get("plan") if isinstance(got, dict) and got.get("date") == day else None
+            except (OSError, ValueError):
+                locks[day] = None
+        return locks[day]
+    if _MEL_NEW_MEMO.get("date") != today:
+        names = []
+        try:
+            names = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and len(p.name) == 10 and MEL_NEW_FROM <= p.name < today
+                           and datetime.strptime(p.name, "%Y-%m-%d").weekday() < 5 and p.name not in EXCHANGE_HOLIDAYS)
+        except OSError:
+            names = []
+        trades = _air_trades(records, runtime, today)[0] if names else {}
+        acc = {}
+        for label, start, stop in MEL_NEW_ACCOUNTS:
+            bal, rows = float(start or 0), []
+            for d in names:
+                got = mel_new_day(trades.get(d, []), plan_of(d), plan_of, bal if start else 0.0, stop, start is None,
+                                  _nk_series(records, d), "23:59", False)
+                bal += got["done"]
+                rows.append([d, got["done"], round(bal) if start else None, got["n"], got["stopped_at"]])
+            acc[label] = {"start": start, "stop_pct": stop, "days": rows, "balance": round(bal) if start else None}
+        _MEL_NEW_MEMO.clear()
+        _MEL_NEW_MEMO.update({"date": today, "acc": acc})
+    acc = {k: dict(v) for k, v in _MEL_NEW_MEMO["acc"].items()}
+    if today >= MEL_NEW_FROM:
+        series = _nk_series(records, today)
+        for label, start, stop in MEL_NEW_ACCOUNTS:
+            acc[label]["today"] = mel_new_day(live_trades or [], plan_of(today), plan_of, float(acc[label]["balance"] or 0) if start else 0.0,
+                                              stop, start is None, series, now_hm, True)
+    return {"from": MEL_NEW_FROM, "date": today, "accounts": acc, "real_submit_allowed": False}
+
+
+def _mel_new_safe(records: Path, runtime: Path, today: str, now_hm: str, live_trades: list | None = None) -> dict:
+    try:
+        return mel_new(records, runtime, today, now_hm, live_trades)
+    except Exception as exc:  # noqa: BLE001 - display only
+        return {"state": "UNAVAILABLE", "reason": type(exc).__name__, "accounts": {}, "real_submit_allowed": False}
 
 
 def mel_plan_check(plan, day: str):
@@ -1336,7 +1432,7 @@ def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str,
                         continue
                     size, mult = dp["size_pct"], dp["max_mult"]
                 else:
-                    if not plan or t["rule"] not in mel_day_methods(plan, d, t["in"], _nk_series(records, d) if d >= MEL_SWITCH_FROM else []):
+                    if not plan or t["rule"] not in plan["methods"]:
                         continue
                     size, mult = plan["size_pct"], plan["max_mult"]
                     if plan.get("daily_stop_pct"):
@@ -1397,8 +1493,7 @@ def mel_today(records: Path, trades: list, lock_today, acct: dict, now_hm: str) 
                 continue
             size, mult = dp["size_pct"], dp["max_mult"]
         else:
-            day = str((lock_today or {}).get("date") or "")
-            if not plan or t.get("rule") not in mel_day_methods(plan, day, t["in"], _nk_series(records, day) if day >= MEL_SWITCH_FROM else []):
+            if not plan or t.get("rule") not in plan["methods"]:
                 continue
             size, mult = plan["size_pct"], plan["max_mult"]
             if plan.get("daily_stop_pct"):
@@ -1613,6 +1708,7 @@ def capital_view(records: Path, day_dir: Path, today: str, now_hm: str, trades: 
             "rule_ev": ev_doc or {}, "methods_today": today_by, "method_days": method_days(records, day_dir.parent.parent, today),
             "air300": _air300_safe(records, day_dir.parent.parent, day_dir, today),
             "mel300": _mel300_safe(records, day_dir.parent.parent, day_dir, today, now_hm, trades),
+            "mel_new": _mel_new_safe(records, day_dir.parent.parent, today, now_hm, trades),
             "note": "仮想・注文なし。1回は資金と同じ額まで（100株単位）、同時に持つ合計は資金の3.3倍まで。枠が足りない時は、同じ時刻のサインの中で成績（前の日までの平均・費用込み）の高い手法を先に。成績がマイナスの手法は、入った後に1回分の枠が残る時だけ入る。デイは費用込み、持ち越しは日数分の金利込み、含みは費用前",
             "real_submit_allowed": False}
 
