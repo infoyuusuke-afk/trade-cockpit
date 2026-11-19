@@ -1168,8 +1168,9 @@ MEL_SCHEMA = "MEL_PLAN_V1"
 MEL_METHODS = ("R1", "R2", "R4", "R5", "ON_LONG", "ON_SHORT")
 MEL_LOCK_BY = "09:00"
 _MEL_MEMO: dict = {}
-# OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」: from this day on, (1) the day's loss line no
-# longer stops new day trades (メル trades until the session ends), and (2) the day methods follow the market at each entry, from the
+# OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」 then 「メル３００万　５００万は資金管理する
+# とめるかどうかはまかせる」: whether to stop stays メル's (its morning plan: daily_stop_pct, or null = trade until the session ends);
+# from this day on the day methods follow the market at each entry, from the
 # cockpit's own Nikkei 225 record (records/<day>/futures_index.csv, key N225): up from the day's first value by +0.3 % or more AND up
 # +0.15 % or more over the 15 minutes before → the buy methods (A R1・C R4) only; both as far down → the short methods (B R2・D R5) only;
 # otherwise the methods of the morning plan. The days before keep the rules they were played under.
@@ -1338,7 +1339,7 @@ def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str,
                     if not plan or t["rule"] not in mel_day_methods(plan, d, t["in"], _nk_series(records, d) if d >= MEL_SWITCH_FROM else []):
                         continue
                     size, mult = plan["size_pct"], plan["max_mult"]
-                    if plan.get("daily_stop_pct") and d < MEL_SWITCH_FROM:
+                    if plan.get("daily_stop_pct"):
                         done = sum(x["y"] for x in taken if x["out"] and x["out"] <= t["in"])
                         if done <= -cap * plan["daily_stop_pct"] / 100:
                             stopped_at = stopped_at or t["in"]
@@ -1400,7 +1401,7 @@ def mel_today(records: Path, trades: list, lock_today, acct: dict, now_hm: str) 
             if not plan or t.get("rule") not in mel_day_methods(plan, day, t["in"], _nk_series(records, day) if day >= MEL_SWITCH_FROM else []):
                 continue
             size, mult = plan["size_pct"], plan["max_mult"]
-            if plan.get("daily_stop_pct") and day < MEL_SWITCH_FROM:
+            if plan.get("daily_stop_pct"):
                 done = sum(x["y"] for x in taken if x["y"] is not None and x["out"] and x["out"] <= t["in"])
                 if done <= -bal * plan["daily_stop_pct"] / 100:
                     stopped_at = stopped_at or t["in"]

@@ -1,5 +1,6 @@
-"""OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」: from 2026-11-20 the day's loss line no longer
-stops メル's day trades, and the day methods follow the Nikkei at each entry (up → buy methods, down → short methods, else the plan's).
+"""OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」「とめるかどうかはまかせる」: from 2026-11-20
+the day methods follow the Nikkei at each entry (up → buy methods, down → short methods, else the plan's); the loss line is メル's choice
+(daily_stop_pct of its plan; null = trade until the session ends).
 Synthetic data only; virtual, no orders."""
 import json
 import sys
@@ -42,14 +43,14 @@ class Regime(unittest.TestCase):
 
 
 class Today(unittest.TestCase):
-    def test_switch_and_no_stop_from_the_20th(self):
+    def test_switch_and_no_stop_when_mel_sets_none(self):
         with tempfile.TemporaryDirectory() as d:
             rec = Path(d) / "records"
             day = "2026-11-20"
             (rec / day).mkdir(parents=True)
             (rec / day / "futures_index.csv").write_text(series(day, [("09:00", 50000), ("09:30", 50100), ("09:45", 50250),
                                                                       ("10:30", 50250), ("11:00", 49900), ("11:15", 49700)]), encoding="utf-8")
-            lock = {"date": day, "plan": {"methods": ["R2"], "size_pct": 50, "max_mult": 3.0, "daily_stop_pct": 0.1, "overnight": False}}
+            lock = {"date": day, "plan": {"methods": ["R2"], "size_pct": 50, "max_mult": 3.0, "daily_stop_pct": None, "overnight": False}}
             tr = [
                 {"kind": "day", "rule": "R2", "ticker": "1.T", "name": "a", "side": -1, "fill": 1000.0, "in": "09:20", "out": "09:25",
                  "ret": -5.0, "exit": 1050.0, "last": 1050.0, "ticks": []},          # between: the plan's R2, a big loss
@@ -62,6 +63,21 @@ class Today(unittest.TestCase):
             got = live.mel_today(rec, tr, lock, {"from": "2026-11-12", "days": [["2026-11-19", 0, 3000000, 0, 0, None]]}, "15:30")
         self.assertEqual([r["name"] for r in got["rows"]], ["a", "b", "e"])
         self.assertIsNone(got["stopped_at"])
+
+    def test_mel_line_still_stops_from_the_20th(self):
+        with tempfile.TemporaryDirectory() as d:
+            rec = Path(d) / "records"
+            day = "2026-11-20"
+            (rec / day).mkdir(parents=True)
+            (rec / day / "futures_index.csv").write_text(series(day, [("09:00", 50000), ("09:30", 50000)]), encoding="utf-8")
+            lock = {"date": day, "plan": {"methods": ["R2"], "size_pct": 50, "max_mult": 3.0, "daily_stop_pct": 0.5, "overnight": False}}
+            tr = [{"kind": "day", "rule": "R2", "ticker": "1.T", "name": "a", "side": -1, "fill": 1000.0, "in": "09:20", "out": "09:25",
+                   "ret": -5.0, "exit": 1050.0, "last": 1050.0, "ticks": []},
+                  {"kind": "day", "rule": "R2", "ticker": "3.T", "name": "c", "side": -1, "fill": 1000.0, "in": "09:47", "out": "10:10",
+                   "ret": 1.0, "exit": 990.0, "last": 990.0, "ticks": []}]
+            got = live.mel_today(rec, tr, lock, {"from": "2026-11-12", "days": [["2026-11-19", 0, 3000000, 0, 0, None]]}, "15:30")
+        self.assertEqual([r["name"] for r in got["rows"]], ["a"])   # メル chose a 0.5 % line: it stops after the loss
+        self.assertEqual(got["stopped_at"], "09:47")
 
     def test_before_the_20th_unchanged(self):
         with tempfile.TemporaryDirectory() as d:
