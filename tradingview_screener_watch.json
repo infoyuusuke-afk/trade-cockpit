@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-19 19:46:22 JST",
+  "updated_at": "2026-11-19 23:43:06 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -5184,22 +5184,6 @@
       "already_watched": false
     },
     {
-      "code": "4307",
-      "name": "Nomura Research Institute,Ltd.",
-      "exchange": "TSE",
-      "price": 6025,
-      "change_pct": 3.238519533927348,
-      "volume": 2469700,
-      "relative_volume": 0.9564880618113515,
-      "atr_pct": 3.81,
-      "vwap": 5988.666666666667,
-      "high": 6093,
-      "low": 5848,
-      "market_cap": 3197756482178,
-      "sector": "Technology Services",
-      "already_watched": false
-    },
-    {
       "code": "4498",
       "name": "Cybertrust Japan Co.Ltd.",
       "exchange": "TSE",
@@ -5212,6 +5196,22 @@
       "high": 1760,
       "low": 1570,
       "market_cap": 28448624420,
+      "sector": "Technology Services",
+      "already_watched": false
+    },
+    {
+      "code": "4307",
+      "name": "Nomura Research Institute,Ltd.",
+      "exchange": "TSE",
+      "price": 6025,
+      "change_pct": 3.238519533927348,
+      "volume": 2469700,
+      "relative_volume": 0.9564880618113515,
+      "atr_pct": 3.81,
+      "vwap": 5988.666666666667,
+      "high": 6093,
+      "low": 5848,
+      "market_cap": 3197756482178,
       "sector": "Technology Services",
       "already_watched": false
     },
