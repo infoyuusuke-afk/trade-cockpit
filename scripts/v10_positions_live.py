@@ -1168,6 +1168,70 @@ MEL_SCHEMA = "MEL_PLAN_V1"
 MEL_METHODS = ("R1", "R2", "R4", "R5", "ON_LONG", "ON_SHORT")
 MEL_LOCK_BY = "09:00"
 _MEL_MEMO: dict = {}
+# OWNER 2026-11-19 「メルはザラバが終わるまで、トレードし続ける、手法も状況によって変化させる」: from this day on, (1) the day's loss line no
+# longer stops new day trades (メル trades until the session ends), and (2) the day methods follow the market at each entry, from the
+# cockpit's own Nikkei 225 record (records/<day>/futures_index.csv, key N225): up from the day's first value by +0.3 % or more AND up
+# +0.15 % or more over the 15 minutes before → the buy methods (A R1・C R4) only; both as far down → the short methods (B R2・D R5) only;
+# otherwise the methods of the morning plan. The days before keep the rules they were played under.
+MEL_SWITCH_FROM = "2026-11-20"
+MEL_LONG_RULES, MEL_SHORT_RULES = ("R1", "R4"), ("R2", "R5")
+MEL_UP_FROM_OPEN, MEL_UP_15MIN = 0.3, 0.15
+_NK_MEMO: dict = {}
+
+
+def _nk_series(records: Path, day: str) -> list:
+    """[(HH:MM, N225)] of the day from 09:00, status OK and above 0; kept while the file does not change."""
+    f = Path(records) / day / "futures_index.csv"
+    try:
+        st = f.stat()
+    except OSError:
+        return []
+    key = (str(f), st.st_mtime, st.st_size)
+    if _NK_MEMO.get(day, (None,))[0] == key:
+        return _NK_MEMO[day][1]
+    xs = []
+    for r in _rows(f):
+        hm = str(r.get("captured_at") or "")[11:16]
+        if r.get("key") != "N225" or r.get("status") != "OK" or hm < "09:00":
+            continue
+        p = _num(r.get("price"))
+        if p and p > 0:
+            xs.append((hm, p))
+    xs.sort()
+    _NK_MEMO[day] = (key, xs)
+    return xs
+
+
+def mel_regime(series: list, hm: str) -> str | None:
+    """"上げ" / "下げ" at the minute hm from the Nikkei series (values at or before hm only), else None."""
+    if not series or not hm:
+        return None
+    now = before = None
+    h, m = int(hm[:2]), int(hm[3:5])
+    b15 = "%02d:%02d" % divmod(h * 60 + m - 15, 60)
+    for t_, p in series:
+        if t_ > hm:
+            break
+        now = p
+        if t_ <= b15:
+            before = p
+    if now is None or before is None:
+        return None
+    mv, tr = (now / series[0][1] - 1) * 100, (now / before - 1) * 100
+    if mv >= MEL_UP_FROM_OPEN and tr >= MEL_UP_15MIN:
+        return "上げ"
+    if mv <= -MEL_UP_FROM_OPEN and tr <= -MEL_UP_15MIN:
+        return "下げ"
+    return None
+
+
+def mel_day_methods(plan: dict, day: str, hm: str, series: list) -> tuple:
+    """the day methods メル may use at hm: from MEL_SWITCH_FROM they follow the market (mel_regime), else the plan's"""
+    base = tuple(m for m in plan.get("methods") or () if m in MEL_LONG_RULES + MEL_SHORT_RULES)
+    if day < MEL_SWITCH_FROM:
+        return base
+    r = mel_regime(series, hm)
+    return MEL_LONG_RULES if r == "上げ" else MEL_SHORT_RULES if r == "下げ" else base
 
 
 def mel_plan_check(plan, day: str):
@@ -1271,10 +1335,10 @@ def mel300(records: Path, runtime: Path, day_dir: Path, today: str, now_hm: str,
                         continue
                     size, mult = dp["size_pct"], dp["max_mult"]
                 else:
-                    if not plan or t["rule"] not in plan["methods"]:
+                    if not plan or t["rule"] not in mel_day_methods(plan, d, t["in"], _nk_series(records, d) if d >= MEL_SWITCH_FROM else []):
                         continue
                     size, mult = plan["size_pct"], plan["max_mult"]
-                    if plan.get("daily_stop_pct"):
+                    if plan.get("daily_stop_pct") and d < MEL_SWITCH_FROM:
                         done = sum(x["y"] for x in taken if x["out"] and x["out"] <= t["in"])
                         if done <= -cap * plan["daily_stop_pct"] / 100:
                             stopped_at = stopped_at or t["in"]
@@ -1332,10 +1396,11 @@ def mel_today(records: Path, trades: list, lock_today, acct: dict, now_hm: str) 
                 continue
             size, mult = dp["size_pct"], dp["max_mult"]
         else:
-            if not plan or t.get("rule") not in plan["methods"]:
+            day = str((lock_today or {}).get("date") or "")
+            if not plan or t.get("rule") not in mel_day_methods(plan, day, t["in"], _nk_series(records, day) if day >= MEL_SWITCH_FROM else []):
                 continue
             size, mult = plan["size_pct"], plan["max_mult"]
-            if plan.get("daily_stop_pct"):
+            if plan.get("daily_stop_pct") and day < MEL_SWITCH_FROM:
                 done = sum(x["y"] for x in taken if x["y"] is not None and x["out"] and x["out"] <= t["in"])
                 if done <= -bal * plan["daily_stop_pct"] / 100:
                     stopped_at = stopped_at or t["in"]
