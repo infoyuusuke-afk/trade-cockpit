@@ -49,6 +49,24 @@ class MethodWords(unittest.TestCase):
         self.assertIn("esc(MDESC[m[0]])", w)
         self.assertIn("手法（名前を押すと説明）", w)
 
+    def test_cost_words_follow_the_code(self):
+        """OWNER 2026-11-19 「説明の費用の文を、持ち越しは金利だけ・線は費用なしと正しく直して」"""
+        import v10_positions_live as pos
+        common = HTML[HTML.index("const MDESC_COMMON="):HTML.index("let mDescOpen")]
+        self.assertIn("持ち越しは金利だけ", common)
+        self.assertIn("手法A〜D・ブレインが費用込み", common)
+        self.assertNotIn("100株換算・費用込み", common)
+        cap = HTML[HTML.index('<div class="mc-sub">手法ごとの通算損益'):HTML.index("</div>'+lineChart(series)")]
+        self.assertIn("持ち越しの線は費用なし（金利も引いていない）", cap)
+        self.assertNotIn("100株換算・費用込み", cap)
+        # the code the words describe: the overnight rows lose one day of interest only; the overnight line is the raw move
+        self.assertEqual(set(pos.ON_RATE_DAY), {"ON_LONG", "ON_SHORT"})
+        src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
+        md = src[src.index("def method_days("):src.index("FOCUS_ANALYST_FILE =")]
+        self.assertIn('float(r.get("return_close_pct")) / 100 * float(r.get("reference_price_1525")) * 100', md)
+        self.assertNotIn("ON_RATE_DAY", md)
+        self.assertIn('"return_pct": gross - strict_cost_pct(', (ROOT / "scripts" / "v10_signal_ev_table.py").read_text(encoding="utf-8"))
+
     def test_display_only(self):
         w = block()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "fetch(", "localStorage.setItem(\"cockpitMethodDesc"):

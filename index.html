@@ -4664,7 +4664,10 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
     BRAIN:"ブレインが選んだ銘柄を、選んだ時の手法の利確・損切りでなぞる。同じ銘柄・同じ形をまだ持っている間に出た分は数えない。",
     ON_LONG:"15:25に決まったオーバーナイト5のうち「ロング」の銘柄を、15:25の値段で買って持ち越し、次の日の14:00で手じまい。",
     ON_SHORT:"15:25に決まったオーバーナイト5のうち「ショート」の銘柄を、15:25の値段で空売りして持ち越し、次の日の14:00で手じまい。"};
-  const MDESC_COMMON="どれも仮想（注文なし）・100株換算・費用込み。サインで入る手法は、サインから30分のうちに入れなければ数えない。";
+  // OWNER 2026-11-19 「説明の費用の文を、持ち越しは金利だけ・線は費用なしと正しく直して」: the table's day rules are after the strict
+  // cost (v10_signal_ev_table._result), the overnight rows only lose the interest (rule_ev: ON_RATE_DAY; today: the days held),
+  // and the overnight lines are the raw move (method_days: return_close_pct x price x 100, no cost, no interest).
+  const MDESC_COMMON="どれも仮想（注文なし）・円は100株換算。表の数字は、手法A〜D・ブレインが費用込み（金利1日分・往復0.10%・入りと出の1ティック）、持ち越しは金利だけ（売買の費用は引いていない）。サインで入る手法は、サインから30分のうちに入れなければ数えない。";
   let mDescOpen={};
   // OWNER 2026-11-09 「このグラフちょっと見にくい」: taller, gridlines with yen at round steps, each line's name and total at its right end,
   // the legend switches a line on and off (the scale follows the lines shown), and a 「10/27から」 button starts every line on the same day.
@@ -4727,7 +4730,7 @@ color:var(--cc-text-primary);border-radius:8px;padding:8px 12px;font-size:13px;c
           '<span>'+(ev!=null?evBar(ev):bar(0,"#2a2e39"))+'<small class="'+(ev>0?"up":"dn")+'">'+(ev!=null?(ev>0?"+":"")+ev.toFixed(3)+'%':'—')+'</small></span>'+
           '<span>'+bar(p!=null?p/maxPf*100:0,p!=null&&p>=1?"#35e2ae":"#ff5a5f",100/maxPf)+'<small>'+(p!=null?p.toFixed(2):'—')+'</small></span>'+
           '<span>'+bar((f.n||0)/maxN*100,"#5aa9ff")+'<small>'+(f.n||0)+'回</small></span></div>'+descRow(m);}).join("")+
-      '<div class="mc-sub">手法ごとの通算損益（100株換算・費用込み・日ごと。ブレインは日ごとの記録が無いので線なし）</div>'+lineChart(series)+
+      '<div class="mc-sub">手法ごとの通算損益（円は100株換算・日ごと。手法A〜Dの線はその日に記録した時の費用込み、持ち越しの線は費用なし（金利も引いていない）。ブレインは日ごとの記録が無いので線なし）</div>'+lineChart(series)+
       '<div class="cap-note">研究の記録で、売買の勧めではありません。回数が少ない手法は、たまたまの差が大きいです。</div>';
   }
   // オーバーナイトのタブ：決算またぎの成績を別に
