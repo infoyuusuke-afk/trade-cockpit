@@ -5739,9 +5739,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     const a=v.ant;
     const head=a?'ANT（ナスダック）'+esc(String(a.session||"").slice(5).replace("-","/"))+'のセッション：終値 '+esc(num(a.close)===null?"—":num(a.close).toFixed(2))+'ドル・'+esc(a.base||"")+'比 <b class="'+cl(a.move_pct)+'">'+sg(a.move_pct)+'</b>'
       :'ANT（ナスダック）：前夜の値はまだありません（上場 '+esc(v.listed||"")+'・公開価格 '+esc(v.ipo_price??"—")+'ドル）';
-    sec.innerHTML='<h2>アンソロピック関連（'+esc(v.stocks.length)+'銘柄・上がる側と下がる側を分けて）</h2><p class="aw-ant">'+head+'</p>'+
+    sec.innerHTML='<h2>アンソロピック関連（'+esc(v.stocks.length)+'銘柄・組ごとに分けて。ANTと同じ向きか逆かは20日の記録で決める）</h2><p class="aw-ant">'+head+'</p>'+
       '<table class="aw-t"><thead><tr><th>銘柄</th><th>終値</th><th>前日比</th><th>アンソロピックとの関係</th></tr></thead><tbody>'+
-      // OWNER 2026-11-19 「ロング・ショート戦略につかいたいから、しっかり分けて」: a heading row for each group (上がる側 / 下がる側の候補 / セキュリティ)
+      // OWNER 2026-11-19 「…別の欄・別の組で毎日記録して。ANTに対して同じ向きか逆かは決めつけず」: a heading row for each group (提携 / SaaSなど / セキュリティ)
       v.stocks.map((s,i)=>(i===0||String(v.stocks[i-1].group||"")!==String(s.group||"")?'<tr class="aw-g"><td colspan="4">'+esc(s.group||"")+'</td></tr>':'')+'<tr><td><b>'+esc(s.name)+'</b>('+esc(s.code)+')</td><td>'+esc(num(s.close)===null?"—":num(s.close).toLocaleString())+'</td><td class="'+cl(s.chg_pct)+'">'+sg(s.chg_pct)+
         (s.day?'<small class="g">（'+esc(String(s.day).slice(5).replace("-","/"))+'）</small>':'')+'</td><td class="aw-role">'+esc(s.role)+'</td></tr>').join("")+'</tbody></table>'+
       '<p class="g-note">'+esc(v.note||"")+' 毎日の記録 '+esc(v.record_days??0)+'日（20日でANTとの相関を出す）。作った時刻 '+esc(v.generated_at||"")+'</p>';
