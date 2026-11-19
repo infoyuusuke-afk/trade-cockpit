@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-20 01:00:48 JST",
+  "updated_at": "2026-11-20 07:51:04 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -9,7 +9,7 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "DRAM/NANDを含む米国メモリ地合い",
-      "corr20": 0.73,
+      "corr20": 0.74,
       "corr60": 0.63,
       "sample20": 20,
       "sample60": 60,
@@ -17,14 +17,14 @@
       "lead_bars": null,
       "bars": 0,
       "gap_test": {
-        "days": 464,
+        "days": 465,
         "corr_all": 0.54,
         "corr_first_half": 0.58,
         "corr_second_half": 0.52,
         "corr_after_open": -0.05,
         "big_days": 288,
         "big_same_dir_pct": 77.4,
-        "corr20": 0.73,
+        "corr20": 0.74,
         "corr60": 0.63,
         "since": "2024-12-19"
       },
@@ -52,7 +52,7 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.79,
+      "corr20": 0.8,
       "corr60": 0.7,
       "sample20": 20,
       "sample60": 60,
@@ -67,9 +67,9 @@
         "corr_after_open": -0.07,
         "big_days": 186,
         "big_same_dir_pct": 87.6,
-        "corr20": 0.79,
+        "corr20": 0.8,
         "corr60": 0.7,
-        "since": "2024-11-21"
+        "since": "2024-11-22"
       },
       "state": "確認",
       "confidence": 88,
@@ -95,7 +95,7 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.76,
+      "corr20": 0.77,
       "corr60": 0.71,
       "sample20": 20,
       "sample60": 60,
@@ -110,9 +110,9 @@
         "corr_after_open": -0.1,
         "big_days": 186,
         "big_same_dir_pct": 88.2,
-        "corr20": 0.76,
+        "corr20": 0.77,
         "corr60": 0.71,
-        "since": "2024-11-21"
+        "since": "2024-11-22"
       },
       "state": "確認",
       "confidence": 88,
@@ -138,8 +138,8 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.74,
-      "corr60": 0.67,
+      "corr20": 0.75,
+      "corr60": 0.68,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -153,9 +153,9 @@
         "corr_after_open": -0.08,
         "big_days": 186,
         "big_same_dir_pct": 86.6,
-        "corr20": 0.74,
-        "corr60": 0.67,
-        "since": "2024-11-21"
+        "corr20": 0.75,
+        "corr60": 0.68,
+        "since": "2024-11-22"
       },
       "state": "確認",
       "confidence": 87,
@@ -181,7 +181,7 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.71,
+      "corr20": 0.72,
       "corr60": 0.67,
       "sample20": 20,
       "sample60": 60,
@@ -196,9 +196,9 @@
         "corr_after_open": -0.12,
         "big_days": 186,
         "big_same_dir_pct": 85.5,
-        "corr20": 0.71,
+        "corr20": 0.72,
         "corr60": 0.67,
-        "since": "2024-11-21"
+        "since": "2024-11-22"
       },
       "state": "確認",
       "confidence": 86,
@@ -224,7 +224,7 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.75,
+      "corr20": 0.76,
       "corr60": 0.7,
       "sample20": 20,
       "sample60": 60,
@@ -239,9 +239,9 @@
         "corr_after_open": -0.05,
         "big_days": 186,
         "big_same_dir_pct": 84.9,
-        "corr20": 0.75,
+        "corr20": 0.76,
         "corr60": 0.7,
-        "since": "2024-11-21"
+        "since": "2024-11-22"
       },
       "state": "確認",
       "confidence": 85,
@@ -269,13 +269,13 @@
       "reason": "NAND・SSD価格と米国メモリ株",
       "corr20": null,
       "corr60": null,
-      "sample20": 0,
-      "sample60": 0,
+      "sample20": 1,
+      "sample60": 1,
       "intraday_corr": null,
       "lead_bars": null,
       "bars": 0,
       "gap_test": {
-        "days": 0,
+        "days": 1,
         "corr_all": null,
         "corr_first_half": null,
         "corr_second_half": null,
@@ -284,7 +284,7 @@
         "big_same_dir_pct": null,
         "corr20": null,
         "corr60": null,
-        "since": null
+        "since": "2026-11-19"
       },
       "state": "根拠不足",
       "confidence": 0,
