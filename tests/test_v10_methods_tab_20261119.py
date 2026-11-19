@@ -73,6 +73,15 @@ class Tab(unittest.TestCase):
         self.assertIn("esc(r.name)", w)
         self.assertIn("esc(r.stance)", w)
 
+    def test_base_look(self):
+        """OWNER 2026-11-20 「色、文字サイズが基本と違うから修正、カードデザインなんかも古い」: the boxes and tags of the other tabs"""
+        w = tab_block()
+        self.assertIn(".mt-box{padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}", w)
+        self.assertIn(".mt-L{color:var(--cc-long);background:var(--cc-long-bg)", w)
+        self.assertIn(".mt-S{color:var(--cc-short);background:var(--cc-short-bg)", w)
+        for old_colour in ("#35e2ae", "#ff6b81", "border-left-color:"):
+            self.assertNotIn(old_colour, w)
+
     def test_display_only(self):
         w = tab_block()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "method:\"POST\"", "localStorage.setItem(\"cockpitMethods"):
