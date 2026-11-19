@@ -67,8 +67,9 @@ class NewMel(unittest.TestCase):
         self.assertEqual(live.mel_new_day(tr, None, lambda d: None, 0.0, None, True, UP, "23:59", False)["n"], 1)
 
     def test_accounts_and_the_current_mel_unchanged(self):
-        self.assertEqual([a[0] for a in live.MEL_NEW_ACCOUNTS], ["300万", "500万", "100株"])
-        self.assertEqual([a[2] for a in live.MEL_NEW_ACCOUNTS], [1.5, 1.5, None])
+        # OWNER 2026-11-19 「５００万メルは削除して」
+        self.assertEqual([a[0] for a in live.MEL_NEW_ACCOUNTS], ["300万", "100株"])
+        self.assertEqual([a[2] for a in live.MEL_NEW_ACCOUNTS], [1.5, None])
         src = (ROOT / "scripts" / "v10_positions_live.py").read_text(encoding="utf-8")
         a = src.index("def mel_today(")
         self.assertIn('if not plan or t.get("rule") not in plan["methods"]:', src[a:a + 3000])   # the current メル keeps its rules

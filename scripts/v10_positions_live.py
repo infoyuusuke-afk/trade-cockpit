@@ -1174,7 +1174,8 @@ _MEL_MEMO: dict = {}
 # accounts are played from MEL_NEW_FROM beside it (mel_new). The market at each entry comes from the cockpit's own Nikkei 225 record
 # (records/<day>/futures_index.csv, key N225, values up to the entry minute only).
 MEL_NEW_FROM = "2026-11-20"
-MEL_NEW_ACCOUNTS = (("300万", 3_000_000, 1.5), ("500万", 5_000_000, 1.5), ("100株", None, None))
+# OWNER 2026-11-19 「５００万メルは削除して」: the new 500万 account is taken out
+MEL_NEW_ACCOUNTS = (("300万", 3_000_000, 1.5), ("100株", None, None))
 MEL_LONG_RULES, MEL_SHORT_RULES = ("R1", "R4"), ("R2", "R5")
 MEL_UP_FROM_OPEN, MEL_UP_15MIN = 0.3, 0.15
 _NK_MEMO: dict = {}
@@ -1285,7 +1286,7 @@ _MEL_NEW_MEMO: dict = {}
 
 
 def mel_new(records: Path, runtime: Path, today: str, now_hm: str, live_trades: list | None = None) -> dict:
-    """the three new メル accounts from MEL_NEW_FROM: the days before today replayed, and today live. Virtual only."""
+    """the new メル accounts (300万 and the 100-share research one) from MEL_NEW_FROM: the days before today replayed, and today live. Virtual only."""
     locks = {}
 
     def plan_of(day):
