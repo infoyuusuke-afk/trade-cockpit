@@ -5674,7 +5674,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const pct=v=>{const x=num(v);return x===null?"—":(x>0?"+":"")+x.toFixed(3)+"%";};
   const cls=v=>{const x=num(v);return x===null?"g":x>0?"up":x<0?"dn":"g";};
   const sideCol=s=>s==="買い"?"#35e2ae":s==="空売り"?"#ff6b81":"#9aa0a6";
-  let pane=null,timer=null,data=null;
+  let pane=null,timer=null,data=null,tags=null;
   function mount(){
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
     if(!nav||!main||document.querySelector('.cockpit-tab[data-tab="methods"]'))return;
@@ -5704,19 +5704,40 @@ document.addEventListener("DOMContentLoaded",()=>{
         (m.verdict?'<span class="g">'+esc(m.verdict)+'</span>':'')+'</div>';}
     return '<div class="mt-card'+(today?' mt-today':'')+'" style="border-left-color:'+col+'"><div class="mt-head"><b class="mt-letter">'+esc(m.letter)+'</b><span class="mt-name">'+esc(m.name)+'</span>'+
       '<span class="mt-side" style="color:'+col+'">'+esc(m.side)+'</span><span class="g">'+esc(m.code)+'</span>'+(today?'<span class="mt-badge">今日使う</span>':'')+'</div>'+
-      '<div class="mt-rule">'+esc(m.rule)+'</div><div class="mt-where g">'+esc(m.where)+'</div>'+figs+'</div>';
+      '<div class="mt-rule">'+esc(m.rule)+'</div><div class="mt-where g">'+esc(m.where)+'</div>'+figs+(m.kind==="cockpit"&&tags?tags(m):'')+'</div>';
   }
   function paint(){
     const box=document.getElementById("mt-body");if(!box)return;
     if(!data){box.innerHTML='<p class="g">手法の一覧が読めません（PCの methods_catalog_v1.json がまだ無いか、形が違います）。</p>';return;}
     const tp=data.today_plan||{},used=Array.isArray(tp.methods)?tp.methods:[];
     const byCode={};data.methods.forEach(m=>{byCode[m.code]=m;});
+    const _tags=m=>{const a=anOk(m.code);return '<div class="mt-tags"><span class="'+(m.today?'mt-on':'mt-off')+'">今のメル：'+(m.today?'今日使う':'使わない')+'</span>'+
+      '<span class="'+(a?'mt-on':'mt-off')+'">アナリスト入り：'+(a===null?'向きがまだ':a?'使える':'使わない')+'</span></div>';};
     const chips=used.map(c=>{const m=byCode[c]||{letter:c,name:c,side:""};return '<span class="mt-chip" style="border-color:'+sideCol(m.side)+'"><b>'+esc(m.letter)+'</b> '+esc(m.name)+' <small style="color:'+sideCol(m.side)+'">'+esc(m.side)+'</small></span>';}).join("");
-    const top='<section class="mt-top"><h3>今日使う手法（メル・'+esc(data.date||"")+(tp.locked_at?'・'+esc(tp.locked_at)+'に決定':'')+'）</h3>'+
+    // OWNER 2026-11-20 「画面左が今までのメルの手法、画面右がアナリストをいれた手法などでもっとわかりやすく見やすく」: two columns side by side.
+    const an=data.analyst&&typeof data.analyst==="object"?data.analyst:null,dir=an&&["強気","弱気","中立"].includes(an.direction)?an.direction:null;
+    const dirCol=dir==="強気"?"#35e2ae":dir==="弱気"?"#ff6b81":"#9aa0a6";
+    const anOk=c=>!dir?null:dir==="強気"?["R1","R4"].includes(c):dir==="弱気"?["R2","R5"].includes(c):["R1","R2","R4","R5"].includes(c);
+    const chip=c=>{const m=byCode[c]||{letter:c,name:c,side:""};return '<span class="mt-chip" style="border-color:'+sideCol(m.side)+'"><b>'+esc(m.letter)+'</b> '+esc(m.name)+' <small style="color:'+sideCol(m.side)+'">'+esc(m.side)+'</small></span>';};
+    const left='<div class="mt-col mt-left"><div class="mt-colhead">今のメル<small>今までの決まり</small></div>'+
       (used.length?'<div class="mt-chips">'+chips+'</div>':'<p class="g">今日の手法はまだ決まっていません（'+esc(tp.state||"")+'）。</p>')+
-      (used.length?'<div class="mt-plan">1回 '+esc(tp.size_pct??"—")+'%・同時に持つ上限 '+esc(tp.max_mult??"—")+'倍・1日の負けの上限 '+(tp.daily_stop_pct===null||tp.daily_stop_pct===undefined?'なし':esc(tp.daily_stop_pct)+'%')+'（今のメル）・持ち越し '+(tp.overnight===true?"する":tp.overnight===false?"しない":"—")+'</div>':'')+
-      (tp.reason?'<div class="mt-reason">決めた理由：'+esc(tp.reason)+'</div>':'')+
-      '<div class="mt-reason">新しいメル3つ（11/20から・今のメルと並べて記録。アナリスト入り300万は、朝9時前のアナリストの多数の向き（強気なら買いの手法だけ・弱気なら空売りの手法だけ）にそろう売買だけ）：場中は日経の向きで、上げ→手法A・C、下げ→手法B・D、どちらでもない時は様子見。手法Dは1銘柄1日1回。300万は1日−1.5%で新しく入らない（持ち越しの利益が入っても戻さない）。100株の研究用は止めない。</div></section>';
+      '<ul class="mt-rules"><li>朝に決めた手法を、その日の場中ずっと使う（日経の向きでは切り替えない）</li>'+
+      (used.length?'<li>1回 '+esc(tp.size_pct??"—")+'%・同時に持つ上限 '+esc(tp.max_mult??"—")+'倍</li><li>1日の負けの上限 '+(tp.daily_stop_pct===null||tp.daily_stop_pct===undefined?'なし':esc(tp.daily_stop_pct)+'%')+'・持ち越し '+(tp.overnight===true?"する":tp.overnight===false?"しない":"—")+'</li>':'')+
+      '<li>アナリストの意見は使わない</li></ul>'+(tp.reason?'<div class="mt-reason">決めた理由：'+esc(tp.reason)+'</div>':'')+'</div>';
+    const anRows=an&&Array.isArray(an.rows)?an.rows.map(r=>'<span class="mt-an" style="color:'+(r.stance==="強気"?"#35e2ae":r.stance==="弱気"?"#ff6b81":"#9aa0a6")+'">'+esc(r.name)+'：'+esc(r.stance)+'</span>').join(""):"";
+    const anUse=!dir?'<p class="g">アナリストの向きはまだありません（朝9時前の答えから、8:50に作ります）。</p>'
+      :'<div class="mt-chips">'+["R1","R4","R2","R5"].filter(c=>anOk(c)).map(chip).join("")+'</div>';
+    const right='<div class="mt-col mt-right" style="border-top-color:'+dirCol+'"><div class="mt-colhead">アナリスト入りメル<small>300万・11/20から</small></div>'+
+      '<div class="mt-dir">今日のアナリストの向き：<b style="color:'+dirCol+'">'+esc(dir||"まだ")+'</b>'+(an?'<small>（強気 '+esc(an.bulls??0)+'・弱気 '+esc(an.bears??0)+'・中立 '+esc(an.neutral??0)+'）</small>':'')+'</div>'+
+      (anRows?'<div class="mt-anrow">'+anRows+'</div>':'')+
+      '<div class="mt-sub">使える手法（この中から、場中の日経の向きに合うものだけ）</div>'+anUse+
+      '<ul class="mt-rules"><li>場中の日経の向きで切り替え：上げ→A・C、下げ→B・D、どちらでもない時は様子見</li>'+
+      '<li>そのうえで、アナリストの多数の向きにそろう売買だけ（強気→買いだけ・弱気→空売りだけ・同数→向きで絞らない）</li>'+
+      '<li>1日−1.5%で新しく入らない・手法Dは1銘柄1日1回・勝った分は次の日の資金に足す</li><li>9時に向きを1回決めたら、その日は変えない</li></ul></div>';
+    const top='<section class="mt-top"><h3>今日使う手法（メル・'+esc(data.date||"")+(tp.locked_at?'・'+esc(tp.locked_at)+'に決定':'')+'）</h3>'+
+      '<div class="mt-vs">'+left+right+'</div>'+
+      '<div class="mt-reason">比べる相手：新しいメル（300万・アナリストなし。右と同じ決まりで、アナリストの向きで絞らない）と研究用メル（100株・止めない）。4つのメルの成績は AIトレード日記タブの比べる表。</div></section>';
+    tags=_tags;
     const cockpit=data.methods.filter(m=>m.kind==="cockpit"),research=data.methods.filter(m=>m.kind==="research");
     box.innerHTML=top+'<h3 class="mt-sec">コクピットの手法（メルが選ぶ元）</h3><div class="mt-grid">'+cockpit.map(card).join("")+'</div>'+
       '<h3 class="mt-sec">研究の前向きの記録（E〜K・画面の売買と注文には使わない）</h3><div class="mt-grid">'+research.map(card).join("")+'</div>'+
@@ -5726,6 +5747,13 @@ document.addEventListener("DOMContentLoaded",()=>{
   css.textContent='#mt-body{padding:0 4px 16px;grid-column:1/-1}.mt-top{border:1px solid #2a2e39;border-radius:8px;padding:12px 14px;margin:0 0 14px;background:#11151d}'+
     '.mt-top h3,.mt-sec{font-size:15px;margin:0 0 8px;color:#e6e8eb}.mt-sec{margin:16px 0 8px}.mt-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}'+
     '.mt-chip{border:2px solid #555;border-radius:999px;padding:6px 12px;font-size:15px;color:#fff;background:#0e1013}.mt-chip b{font-size:16px}'+
+    '.mt-vs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 10px}@media(max-width:760px){.mt-vs{grid-template-columns:1fr}}'+
+    '.mt-col{border:1px solid #2a2e39;border-top:4px solid #8ab4f8;border-radius:8px;padding:10px 12px;background:#0e1013}.mt-left{border-top-color:#8ab4f8}'+
+    '.mt-colhead{font-size:17px;font-weight:700;color:#fff;margin-bottom:6px}.mt-colhead small{font-size:12px;color:#9aa0aa;font-weight:400;margin-left:8px}'+
+    '.mt-dir{font-size:15px;color:#e6e8eb;margin:2px 0 4px}.mt-dir b{font-size:18px;margin:0 4px}.mt-dir small{color:#9aa0aa}'+
+    '.mt-anrow{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;margin:2px 0 8px}.mt-sub{font-size:12.5px;color:#c4c9d1;margin:6px 0 0}'+
+    '.mt-rules{margin:6px 0 6px 18px;padding:0;font-size:12.5px;color:#c4c9d1;line-height:1.6}'+
+    '.mt-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:12px}.mt-tags span{border-radius:4px;padding:1px 7px}.mt-on{background:#123524;color:#4CC38A}.mt-off{background:#1b1f27;color:#7d838d}'+
     '.mt-plan{font-size:13px;color:#c4c9d1;margin:2px 0 6px}.mt-reason{font-size:12.5px;color:#9aa0aa;line-height:1.5}'+
     '.mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px}'+
     '.mt-card{border:1px solid #2a2e39;border-left:4px solid #555;border-radius:6px;padding:9px 11px;background:#0e1013}.mt-card.mt-today{box-shadow:0 0 0 2px #4CC38A inset;background:#0f1a14}'+

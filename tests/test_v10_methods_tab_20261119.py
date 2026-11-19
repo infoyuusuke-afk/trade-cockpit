@@ -60,6 +60,17 @@ class Tab(unittest.TestCase):
         """OWNER 2026-11-20 「タブのサイズがなんで画面の半分」: the tab's pane is a two-column grid; the body spans both columns"""
         self.assertIn("#mt-body{padding:0 4px 16px;grid-column:1/-1}", tab_block())
 
+    def test_two_columns_now_and_analyst(self):
+        """OWNER 2026-11-20 「画面左が今までのメルの手法、画面右がアナリストをいれた手法」"""
+        w = tab_block()
+        self.assertIn(".mt-vs{display:grid;grid-template-columns:1fr 1fr", w)
+        self.assertLess(w.index("'<div class=\"mt-vs\">'+left+right"), w.index("比べる相手："))
+        self.assertIn("今のメル<small>今までの決まり</small>", w)
+        self.assertIn("アナリスト入りメル<small>", w)
+        self.assertIn('dir==="強気"?["R1","R4"].includes(c):dir==="弱気"?["R2","R5"].includes(c)', w)
+        self.assertIn("esc(r.name)", w)
+        self.assertIn("esc(r.stance)", w)
+
     def test_display_only(self):
         w = tab_block()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "method:\"POST\"", "localStorage.setItem(\"cockpitMethods"):
