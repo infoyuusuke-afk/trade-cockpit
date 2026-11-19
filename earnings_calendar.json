@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-19T02:34:30.987000+09:00",
+  "updated_at": "2026-11-19T12:51:11.503301+09:00",
   "calendar": [
     {
       "code": "1384",
@@ -9431,9 +9431,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261119583314.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -13707,9 +13711,21 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認",
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261118583043.pdf",
+          "https://www.release.tdnet.info/inbs/140120261118583049.pdf",
+          "https://www.release.tdnet.info/inbs/140120261117582374.pdf",
+          "https://www.release.tdnet.info/inbs/140120261112577355.pdf",
+          "https://www.release.tdnet.info/inbs/140120261112577360.pdf",
+          "https://www.release.tdnet.info/inbs/140120261112577361.pdf",
+          "https://www.release.tdnet.info/inbs/140120261112577367.pdf",
+          "https://www.release.tdnet.info/inbs/140120261118582946.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -28999,8 +29015,8 @@
       "momentum": {
         "available": true,
         "last_close": 1163.0,
-        "return_5d_pct": 0.43,
-        "return_20d_pct": 0.0,
+        "return_5d_pct": 1.39,
+        "return_20d_pct": 0.43,
         "momentum_direction": "中立"
       }
     },
@@ -33096,9 +33112,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261119583352.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -34032,6 +34052,153 @@
     }
   ],
   "catalysts": [
+    {
+      "code": "3415",
+      "name": "トウキョウベース",
+      "title": "（訂正）「海外出店を加速 CONZ ニューヨーク／PUBLIC TOKYO ソウル 12月オープンのお知らせ」 の一部訂正について",
+      "published_at": "2026-11-19T12:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261119583352.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9564",
+      "name": "ＦＣＥ",
+      "title": "（訂正）「2026年9月期通期 決算補足説明資料」の一部訂正について",
+      "published_at": "2026-11-19T12:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261119583314.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（訂正・数値データ訂正）令和８年12月期 第２四半期（中間期）決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118583043.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（訂正・数値データ訂正）令和８年12月期 第３四半期決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118583049.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（訂正）「過年度有価証券報告書等の訂正報告書の提出及び過年度決算短信等の訂正に関するお知らせ」の一部訂正について",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261117582374.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（数値データ訂正）令和６年12月期 第３四半期決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261112577355.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（数値データ訂正）令和７年12月期 第１四半期決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261112577360.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（数値データ訂正）令和７年12月期 第３四半期決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261112577361.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "（数値データ訂正）令和７年12月期 決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261112577367.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3719",
+      "name": "ＡＩストーム",
+      "title": "財務報告に係る内部統制の開示すべき重要な不備及び内部統制報告書の訂正報告書の提出に関するお知らせ",
+      "published_at": "2026-11-19T08:30:00+09:00",
+      "date": "2026-11-19",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261118582946.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
     {
       "code": "2449",
       "name": "プラップＪ",
