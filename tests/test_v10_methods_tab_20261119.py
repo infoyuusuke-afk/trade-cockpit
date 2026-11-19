@@ -90,6 +90,10 @@ class Tab(unittest.TestCase):
         self.assertIn('(Number(an.bulls)||0)+(Number(an.bears)||0)+(Number(an.neutral)||0)>0?an.direction:null', w)
         self.assertIn('esc(dir||"まだ")', w)
 
+    def test_no_empty_side_tag(self):
+        """audit c23a0d9: a method without 買い・空売り gets no empty tag"""
+        self.assertIn("const sideTag=s=>s?'<span class=\"mt-sd '", tab_block())
+
     def test_display_only(self):
         w = tab_block()
         for bad in ("speak", "speechSynthesis", "order_card", "submitOrder", "method:\"POST\"", "localStorage.setItem(\"cockpitMethods"):

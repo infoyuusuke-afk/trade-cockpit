@@ -36,12 +36,22 @@ class Card(unittest.TestCase):
         self.assertIn('get("/attention_events.json")', w)
         self.assertIn('v.schema_version==="100b-v10-attention-events-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false', w)
         self.assertIn("(aeOk(ae)?ae.events:[]).forEach(", w)
-        self.assertIn("日付がまだ公式に出ていない注目の予定", w)
+        self.assertIn("報道で出ている予定（公式の発表ではない）", w)
 
     def test_text_is_escaped(self):
         w = block()
-        for f in ("esc(i.cat)", "esc(i.memo)", "esc(i.src)", "esc(x.category)", "esc(x.title)", "esc(x.note)", "esc(ae.ipo_state"):
+        for f in ("esc(i.cat)", "esc(i.memo)", "esc(i.src)", "esc(x.category)", "esc(x.title)", "esc(x.note)", "esc(ae.ipo_state",
+                  "esc(day(x.date))", "esc(x.time)", "esc(s)", "esc(s&&s.name)", "esc(s&&s.code)", "esc(u)"):
             self.assertIn(f, w)
+
+    def test_reported_section(self):
+        """OWNER 2026-11-20 「…別の欄『報道で出ている予定（公式の発表ではない）』として日付順に出し、日付が決まっていないものは『日付未定』。表示だけ」"""
+        w = block()
+        self.assertIn('return "日付未定";', w)
+        self.assertIn("box.insertAdjacentHTML(\"beforeend\",reportedHtml(ae));", w)
+        # links: only http(s), opened apart from the cockpit
+        self.assertIn("const safeUrl=u=>/^https?:\/\/[^\s\"'<>]+$/.test(String(u||\"\"))?String(u):\"\";", w)
+        self.assertIn('target="_blank" rel="noopener noreferrer"', w)
 
     def test_display_only(self):
         w = block()

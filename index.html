@@ -3909,7 +3909,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>.vd8 h2 small{color:#9AA0AA;font-weight:400;font-size:12px;margin-left:8px}.vd8-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .vd8-day{display:grid;grid-template-columns:128px 74px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #22252A;border-radius:8px;background:#0E1013;padding:8px 12px;font-size:13px}
 .vd8-day.top{border-color:#E0566B}.vd8-day.today{outline:2px solid #4CC38A}.vd8-date{font-weight:700;white-space:nowrap}.vd8-lv{font-size:12px;font-weight:700;color:#F2C14E}.vd8-day.top .vd8-lv{color:#E0566B}
-.vd8-t{color:#C4C9D1;font-size:13px;margin-left:6px}.vd8-t.hot{color:#E0566B;font-weight:700}.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}.vd8-cat{display:inline-block;padding:0 8px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-size:11px;font-weight:700;margin-right:2px}.vd8-cat.hi{color:#f0616c}.vd8-memo{color:#9AA0AA;font-size:12px}.vd8-pend{margin-top:10px;padding:8px 12px;border:1px solid #303033;border-radius:10px;background:#0E1013;font-size:13px;line-height:1.6}.vd8-pend>b{display:block;font-size:13px;color:#E8EAED;margin-bottom:2px}.vd8-src{margin-top:6px;color:#9AA0AA;font-size:12px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
+.vd8-t{color:#C4C9D1;font-size:13px;margin-left:6px}.vd8-t.hot{color:#E0566B;font-weight:700}.vd8-items div{margin:1px 0}.vd8-items small{color:#9AA0AA}.vd8-none{color:#9AA0AA;font-size:12px}.vd8-cat{display:inline-block;padding:0 8px;border-radius:999px;border:1px solid #33373D;background:#141518;color:#C4C9D1;font-size:11px;font-weight:700;margin-right:2px}.vd8-cat.hi{color:#f0616c}.vd8-memo{color:#9AA0AA;font-size:12px}.vd8-pend{margin-top:10px;padding:8px 12px;border:1px solid #303033;border-radius:10px;background:#0E1013;font-size:13px;line-height:1.6}.vd8-pend>b{display:block;font-size:13px;color:#E8EAED;margin-bottom:2px}.vd8-src{margin-top:6px;color:#9AA0AA;font-size:12px}.vd8-pend>small{display:block;margin:0 0 6px}.vd8-rep{display:grid;grid-template-columns:7.5em 1fr;gap:8px;padding:5px 0;border-top:1px solid #22252A}.vd8-rd{color:#E8EAED;font-weight:700}.vd8-rd small{color:#9AA0AA;font-weight:400}.vd8-links a{color:#70c7ff;font-size:12px;margin-right:10px}@media (max-width:560px){.vd8-day{grid-template-columns:1fr}}</style>
 <script>
 // OWNER 2026-11-04 「価格が大きく変動しそうな日をしっかりピックアップして表示」: at the top of the 注意 tab, the next 30 days that hold an
 // impact 高 event (event_calendar.json) or the earnings of a stock that moves the index or the SCALP8 list (earnings_calendar.json).
@@ -3952,10 +3952,22 @@ document.addEventListener("DOMContentLoaded",()=>{
     return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));
   }
   const aeOk=v=>!!(v&&v.schema_version==="100b-v10-attention-events-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false&&Array.isArray(v.events));
-  function pendingHtml(ae){
-    const p=aeOk(ae)&&Array.isArray(ae.pending)?ae.pending:[];
-    return (p.length?'<div class="vd8-pend"><b>日付がまだ公式に出ていない注目の予定</b>'+p.map(x=>'<div><span class="vd8-cat">'+esc(x.category)+'</span> '+esc(x.title)+(x.note?' <small class="vd8-memo">'+esc(x.note)+'</small>':'')+'</div>').join("")+'</div>':'')+
-      (aeOk(ae)?'<div class="vd8-src">外交・上場などは公式の発表で日付を確かめたものだけ（大型の上場はJPXの公式ページ・'+esc(ae.ipo_state||"")+'）。作った時刻 '+esc(ae.generated_at||"")+'</div>':'<div class="vd8-src">外交・上場などの予定を読めません（PCの attention_events_v1.json）</div>');
+  // OWNER 2026-11-20 「注意タブには公式の予定表とは別の欄『報道で出ている予定（公式の発表ではない）』として日付順に出し、日付が決まっていないものは
+  // 『日付未定』。表示だけで売買の決まりには使わない」: ae.reported (the PC's 報道の予定.json, collected from the news at 7:30 and 17:30).
+  const safeUrl=u=>/^https?:\/\/[^\s"'<>]+$/.test(String(u||""))?String(u):"";
+  function reportedHtml(ae){
+    const p=aeOk(ae)&&Array.isArray(ae.reported)?ae.reported:[];
+    const day=d=>{if(typeof d!=="string"||!/^\d{4}-\d\d-\d\d$/.test(d))return "日付未定";return d.slice(5).replace("-","/")+"（"+WD[new Date(d+"T00:00:00Z").getUTCDay()]+"）";};
+    const row=x=>'<div class="vd8-rep"><div class="vd8-rd">'+esc(day(x.date))+(x.time?' <small>'+esc(x.time)+'</small>':'')+'</div><div>'+
+      (x.category?'<span class="vd8-cat">'+esc(x.category)+'</span> ':'')+esc(x.title)+
+      ((Array.isArray(x.sectors)&&x.sectors.length)||(Array.isArray(x.stocks)&&x.stocks.length)?'<div class="vd8-memo">関係：'+
+        [...(Array.isArray(x.sectors)?x.sectors.map(s=>esc(s)):[]),...(Array.isArray(x.stocks)?x.stocks.map(s=>esc(s&&s.name)+'('+esc(s&&s.code)+')'):[])].join("・")+'</div>':'')+
+      (x.note?'<div class="vd8-memo">'+esc(x.note)+'</div>':'')+
+      (Array.isArray(x.links)&&x.links.length?'<div class="vd8-links">'+x.links.map(l=>{const u=safeUrl(l&&l.url);return u?'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc((l&&l.name)||"出どころ")+'</a>':'';}).join(" ")+'</div>':'')+
+      '</div></div>';
+    return '<div class="vd8-pend"><b>報道で出ている予定（公式の発表ではない）</b><small class="vd8-memo">ニュースから毎日7:30と17:30に集めたもの。日付が決まっていないものは「日付未定」。表示だけで、売買の決まりには使いません。</small>'+
+      (p.length?p.map(row).join(""):'<div class="vd8-memo">今はありません</div>')+'</div>'+
+      (aeOk(ae)?'<div class="vd8-src">上の一覧の外交・上場などは公式の発表で日付を確かめたものだけ（大型の上場はJPXの公式ページ・'+esc(ae.ipo_state||"")+'）。作った時刻 '+esc(ae.generated_at||"")+'</div>':'<div class="vd8-src">外交・上場・報道の予定を読めません（PCの attention_events_v1.json）</div>');
   }
   async function load(sec){
     const box=sec.querySelector(".vd8-list");
@@ -3964,7 +3976,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const today=day0(),rows=pick(ev,cal,today,times,td,ae);
     box.innerHTML=rows.length?rows.map(([d,items])=>{const w=WD[new Date(d+"T00:00:00Z").getUTCDay()],top=items.length>=2||items.some(i=>i.high);
       return '<div class="vd8-day'+(top?' top':'')+(d===today?' today':'')+'"><div class="vd8-date">'+esc(d.slice(5).replace("-","/"))+'（'+w+'）'+(d===today?'今日':'')+'</div><div class="vd8-lv">'+(top?'特に注意':'注意')+'</div><div class="vd8-items">'+items.map(i=>'<div>'+(i.cat?'<span class="vd8-cat'+(i.high?' hi':'')+'">'+esc(i.cat)+'</span> ':'')+'<small>'+esc(i.when)+'</small> '+esc(i.what)+(i.memo?' <small class="vd8-memo">'+esc(i.memo)+(i.src?'（'+esc(i.src)+'）':'')+'</small>':'')+(i.note?' <span class="vd8-t'+(i.hot?' hot':'')+'">'+esc(i.note)+'</span>':'')+'</div>').join("")+'</div></div>';}).join(""):'<div class="vd8-none">30日以内に大きな予定はありません</div>';
-    box.insertAdjacentHTML("beforeend",pendingHtml(ae));
+    box.insertAdjacentHTML("beforeend",reportedHtml(ae));
   }
   document.addEventListener("DOMContentLoaded",()=>{
     const cal=document.getElementById("event-calendar");if(!cal||!cal.parentElement)return;
@@ -5687,7 +5699,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const cls=v=>{const x=num(v);return x===null?"hl-g":x>0?"hl-up":x<0?"hl-dn":"hl-g";};
   // OWNER 2026-11-20 「色、文字サイズが基本と違うから修正、カードデザインなんかも古い」: the colours, sizes and boxes of the other tabs
   // (box #111113 / #303033 / 14px, inner cards var(--cc-bg-panel), 買い・空売り as the small tags of the トレード中 tab)
-  const sideTag=s=>'<span class="mt-sd '+(s==="買い"?"mt-L":s==="空売り"?"mt-S":"mt-B")+'">'+esc(s)+'</span>';
+  const sideTag=s=>s?'<span class="mt-sd '+(s==="買い"?"mt-L":s==="空売り"?"mt-S":"mt-B")+'">'+esc(s)+'</span>':'';   // audit c23a0d9: no empty tag
   let pane=null,timer=null,data=null,tags=null;
   function mount(){
     const nav=document.querySelector(".cockpit-tabs"),main=document.querySelector(".tab-pane")?.parentElement;
