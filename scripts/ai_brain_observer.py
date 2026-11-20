@@ -103,7 +103,7 @@ MANUAL_SCORE_AFTER_JST = (15, 35)
 # OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
 # replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)
 # every 15 s into RuntimeDir/positions_live_v1.json and the Brain pick file. Display only.
-POSITIONS_MODULE = ("v10_positions_live", "8cbad8e305b0c0d595d64793bdbf562374c23597")
+POSITIONS_MODULE = ("v10_positions_live", "18431f5bd116b05b6064980cbf53969d6f2f8b6c")
 POSITIONS_INTERVAL = timedelta(seconds=15)
 BRAIN_CORE_MODULE = ("v10_brain_core", "b56d42521711f46ef00627d2746333a612b91c67")
 
