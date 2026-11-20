@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-11-20 15:37:40 JST",
+  "generated_at": "2026-11-20 16:27:22 JST",
   "note": "entryがVWAP(引け時点)未満だったか以上だったかで成績を分けた分析。経路（押し目の有無）そのものではなく代理指標であることに注意。n<30のため『試運転・検証中』のまま扱うこと。",
   "below_vwap_entry": {
-    "n": 99,
-    "win_rate_pct": 79.8,
-    "avg_r": 0.563,
-    "profit_factor": 10.63,
+    "n": 100,
+    "win_rate_pct": 79.0,
+    "avg_r": 0.557,
+    "profit_factor": 10.61,
     "status": "参考値（要検証）"
   },
   "above_vwap_entry": {
@@ -17,6 +17,6 @@
   },
   "avg_entry_extension_pct": {
     "wins": -1.58,
-    "losses": -0.039
+    "losses": -0.038
   }
 }
