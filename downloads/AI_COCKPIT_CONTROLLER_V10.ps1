@@ -303,10 +303,27 @@ function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
         }
     }
 }
+function Save-PreviousWorkerLogs([string[]]$Paths) {
+    # Keep the previous run's worker logs across STOP/START
+    # (P0-V10-INTEGRATION-AND-LIVE-START-20261020). Each existing log moves to
+    # Logs\V10\previous_runs under a unique name; nothing is deleted here. A
+    # log that cannot be moved (still locked) stays where it is and is then
+    # overwritten by the new process, as before.
+    $archive = Join-Path $LogDir "previous_runs"
+    try {
+        if (-not (Test-Path -LiteralPath $archive)) { New-Item -ItemType Directory -Force -Path $archive | Out-Null }
+    } catch { return }
+    $stamp = (Get-Date).ToString("yyyyMMdd-HHmmss-fff", [Globalization.CultureInfo]::InvariantCulture)
+    foreach ($path in @($Paths)) {
+        if ([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+        $name = [IO.Path]::GetFileNameWithoutExtension($path) + "." + $stamp + "." + [Guid]::NewGuid().ToString("N").Substring(0, 8) + ".log"
+        try { Move-Item -LiteralPath $path -Destination (Join-Path $archive $name) -ErrorAction Stop } catch { }
+    }
+}
 function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]$ExtraArgs = "") {
     $stdout = Join-Path $LogDir ($Name + "_stdout.log")
     $stderr = Join-Path $LogDir ($Name + "_stderr.log")
-    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    Save-PreviousWorkerLogs @($stdout, $stderr)
     $args = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $Script + '"'
     if (-not [string]::IsNullOrWhiteSpace($ExtraArgs)) { $args += " " + $ExtraArgs }
     return Start-Process -FilePath "powershell.exe" -ArgumentList $args -WorkingDirectory $WorkDir `
@@ -367,7 +384,7 @@ function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) 
     }
     $stdout = Join-Path $LogDir "shadow_supervisor_stdout.log"
     $stderr = Join-Path $LogDir "shadow_supervisor_stderr.log"
-    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    Save-PreviousWorkerLogs @($stdout, $stderr)
     # Windows PowerShell 5.1 flattens -ArgumentList to one command-line
     # string and does not preserve element boundaries for paths containing
     # spaces. Quote every path-valued argument explicitly so MarketSpeed II
@@ -414,6 +431,7 @@ function Start-BrainObserver([string]$RepoRootResolved, [string]$RuntimeDir) {
     $statusPath = Join-Path $RuntimeDir "ai_brain_observer_status_v1.json"
     $stdout = Join-Path $LogDir "brain_observer_stdout.log"
     $stderr = Join-Path $LogDir "brain_observer_stderr.log"
+    Save-PreviousWorkerLogs @($stdout, $stderr)
     $arguments = $prefix + @(
         "-u", ('"' + $scriptPath + '"'),
         "--live", ('"' + (Join-Path $RuntimeDir "live_ms2.json") + '"'),
@@ -445,7 +463,7 @@ function Start-Sbv2Managed {
     }
     $stdout = Join-Path $LogDir "sbv2_stdout.log"
     $stderr = Join-Path $LogDir "sbv2_stderr.log"
-    Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
+    Save-PreviousWorkerLogs @($stdout, $stderr)
     return Start-Process -FilePath $exe -ArgumentList "server_fastapi.py" -WorkingDirectory $sbvRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 

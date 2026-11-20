@@ -465,6 +465,12 @@ def ui_live_body(top5_ticker="SYN01.T"):
     payload = board(datetime.now(timezone.utc).astimezone(JST))
     payload["updated_at"] = utc_updated_at()  # the harness runs with TZ=UTC
     payload["top5"] = [r for r in payload["all_targets"] if r["ticker"] == top5_ticker]
+    # Strict dashboard LIVE gate requires the real Collector's explicit
+    # workbook/source/observation evidence; no invented auth token.
+    payload["observed_at_offset"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    payload["connection_source"] = "自宅PC・MS2 RSS LIVE"
+    payload["live_price_diagnostics"]["workbook_identity_verified"] = True
+    payload["live_price_diagnostics"]["real_submit_allowed"] = False
     return payload
 
 
@@ -483,7 +489,15 @@ class UiFailClosed(unittest.TestCase):
             raise unittest.SkipTest("node not installed; the Windows CI job runs this class")
         live = ui_live_body()
         healthy = {"runtime": {"fail_closed": False}}
+        missing_identity = json.loads(json.dumps(live))
+        del missing_identity["live_price_diagnostics"]["workbook_identity_verified"]
+        outdated = json.loads(json.dumps(live))
+        outdated["observed_at_offset"] = (datetime.now(timezone.utc) - timedelta(seconds=50)).isoformat()
         cases = [
+            {"name": "http_200_without_workbook_identity", "bridge_status": 200,
+             "bridge_body": json.dumps(missing_identity), "health": healthy},
+            {"name": "http_200_with_50s_frozen_observation", "bridge_status": 200,
+             "bridge_body": json.dumps(outdated), "health": healthy},
             {"name": "positive_control", "bridge_status": 200, "bridge_body": json.dumps(live), "health": healthy},
             {"name": "row_stale_503", "bridge_status": 503,
              "bridge_body": json.dumps(rejection_body("ROW_QUOTE_NOT_FRESH,ROW_STALE_SOURCE_QUOTE")), "health": healthy},
@@ -608,6 +622,15 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
             "watchlist_duplicate": (board(now), dup),
             "watchlist_short": (board(now), short),
             "watchlist_missing": (board(now), missing),
+            # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020).
+            "partial_one_stale": (dict(board(now, stale={"SYN07.T"}), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_five_stale": (dict(board(now, stale=set(UNIVERSE[95:])), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_six_stale": (dict(board(now, stale=set(UNIVERSE[94:])), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_undeclared": (board(now, stale={"SYN07.T"}), good),
+            "partial_identity_stale": (dict(board(now, identity_at=now - timedelta(minutes=5)),
+                                            aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_missing_row": (dict(board(now, drop={"SYN42.T"}, declared=100), aggregate_basis="FRESH_ROWS_ONLY"),
+                                    good),
         }
         cases = []
         cls.expected = {}
@@ -632,18 +655,23 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
         keys = ("decision_available", "availability_status", "reasons", "identity_quote_fresh", "universe_verified",
                 "universe_expected_count", "universe_declared", "row_count", "state_counts", "fresh_coverage_pct",
                 "missing_count", "missing_sample", "unexpected_count", "unexpected_sample", "collector_valid_count",
-                "collector_valid_quality_pass", "order_allowed", "real_submit_allowed")
+                "collector_valid_quality_pass", "partial_rows", "partial_reasons", "partial_min_fresh_pct",
+                "order_allowed", "real_submit_allowed")
         self.assertEqual(set(self.result["cases"]), set(self.expected))
         for name, py in self.expected.items():
             with self.subTest(case=name):
                 ps = self.result["cases"][name]["availability"]
                 for key in keys:
                     got = ps[key]
-                    if key in ("reasons", "missing_sample", "unexpected_sample"):
+                    if key in ("reasons", "missing_sample", "unexpected_sample", "partial_reasons"):
                         got = list(got or [])
                     self.assertEqual(got, py[key], key)
         self.assertIs(self.expected["all_fresh"]["decision_available"], True)
         self.assertIs(self.expected["one_missing"]["decision_available"], False)
+        self.assertEqual(self.expected["partial_one_stale"]["availability_status"], "AVAILABLE_PARTIAL")
+        self.assertEqual(self.expected["partial_five_stale"]["availability_status"], "AVAILABLE_PARTIAL")
+        for blocked in ("partial_six_stale", "partial_undeclared", "partial_identity_stale", "partial_missing_row"):
+            self.assertIs(self.expected[blocked]["decision_available"], False, blocked)
 
 
 BRIDGE_HARNESS = r"""

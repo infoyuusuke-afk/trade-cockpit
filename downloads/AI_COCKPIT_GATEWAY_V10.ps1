@@ -493,6 +493,163 @@ function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$
     $stream.Flush()
 }
 
+# Specialist AI research view (research lane only). The Brain receiver writes
+# agent_research_display_v1.json into the OWNER's private inbox: a wrapper whose
+# body_json is signed with the receiver key (HMAC-SHA256 over its UTF-8 bytes).
+# The Gateway re-verifies that signature with the same private key, checks the
+# safety flags and that the view was generated within the last 300 s, and only
+# then serves body_json. Anything unverifiable is UNAVAILABLE with a reason.
+# It never makes LIVE data usable or enables orders. DISABLED unless
+# V10_AGENT_RESEARCH_INBOX is set.
+function Get-AgentResearchView([string]$Inbox, [string]$ReceiverKeyHex, [datetime]$NowUtc = [datetime]::UtcNow) {
+    $fail = {
+        param([string]$Reason)
+        @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false,"brain_trade_decision_eligible":false}') }
+    }
+    if ([string]::IsNullOrWhiteSpace($Inbox)) {
+        return @{ status = '200 OK'; body = '{"state":"DISABLED","real_submit_allowed":false,"brain_trade_decision_eligible":false}' }
+    }
+    try {
+        if (-not [IO.Path]::IsPathRooted($Inbox)) { return (& $fail 'INBOX_NOT_ABSOLUTE') }
+        if ($ReceiverKeyHex -notmatch '^[0-9a-fA-F]{64}$') { return (& $fail 'RECEIVER_KEY_UNAVAILABLE') }
+        $file = Join-Path $Inbox 'agent_research_display_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'DISPLAY_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 524288) {
+            return (& $fail 'DISPLAY_FILE_UNTRUSTED')
+        }
+        $wrapper = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        $names = @($wrapper.PSObject.Properties.Name | Sort-Object)
+        if (($names -join ',') -cne 'body_json,hmac_sha256,schema_version' -or
+            [string]$wrapper.schema_version -cne '100b-v10-agent-research-display-signed-v1' -or
+            $wrapper.body_json -isnot [string]) {
+            return (& $fail 'DISPLAY_WRAPPER_INVALID')
+        }
+        $keyBytes = [byte[]]::new(32)
+        for ($i = 0; $i -lt 32; $i++) { $keyBytes[$i] = [Convert]::ToByte($ReceiverKeyHex.Substring($i * 2, 2), 16) }
+        $mac = [Security.Cryptography.HMACSHA256]::new($keyBytes)
+        try {
+            $digest = $mac.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes([string]$wrapper.body_json))
+        } finally { $mac.Dispose() }
+        $expected = -join ($digest | ForEach-Object { $_.ToString('x2') })
+        $given = ([string]$wrapper.hmac_sha256).ToLowerInvariant()
+        $diff = $expected.Length -bxor $given.Length
+        for ($i = 0; $i -lt [Math]::Min($expected.Length, $given.Length); $i++) { $diff = $diff -bor ([int][char]$expected[$i] -bxor [int][char]$given[$i]) }
+        if ($diff -ne 0) { return (& $fail 'DISPLAY_SIGNATURE_INVALID') }
+        $view = [string]$wrapper.body_json | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-agent-research-display-v1' -or
+            $view.real_submit_allowed -ne $false -or $view.brain_trade_decision_eligible -ne $false -or
+            $view.live_market_data -ne $false) {
+            return (& $fail 'DISPLAY_FLAGS_INVALID')
+        }
+        $generated = [DateTimeOffset]::Parse([string]$view.generated_at, [Globalization.CultureInfo]::InvariantCulture).UtcDateTime
+        $age = ($NowUtc - $generated).TotalSeconds
+        if ($age -lt -60 -or $age -gt 300) { return (& $fail 'DISPLAY_STALE_OR_FUTURE') }
+        return @{ status = '200 OK'; body = [string]$wrapper.body_json }
+    } catch {
+        return (& $fail 'DISPLAY_UNREADABLE')
+    }
+}
+
+# Backtest expected value of the cockpit's own recorded signals, rebuilt daily
+# by the Brain observer into RuntimeDir\signal_ev_table_v1.json. Served
+# read-only for the REALTIME 5 ranking; it is a past-data statistic, never a
+# LIVE price, never a trade instruction.
+function Get-SignalEvView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'signal_ev_table_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'EV_TABLE_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 4194304) {
+            return (& $fail 'EV_TABLE_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $table = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$table.schema_version -cne '100b-v10-signal-ev-table-v1' -or $table.real_submit_allowed -ne $false -or
+            $table.trade_instruction -ne $false) {
+            return (& $fail 'EV_TABLE_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'EV_TABLE_UNREADABLE')
+    }
+}
+
+# Brain core picks (top live signals by expected value), rewritten by the Brain
+# observer every pass into RuntimeDirrain_pick_v1.json. Read-only; no order path.
+function Get-BrainPickView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'brain_pick_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'BRAIN_PICK_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'BRAIN_PICK_FILE_UNTRUSTED')
+        }
+        if (([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds -gt 60) { return (& $fail 'BRAIN_PICK_STALE') }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'BRAIN_PICK_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'BRAIN_PICK_UNREADABLE')
+    }
+}
+
+# Night PTS -> next-morning watch candidates, rebuilt by the Brain observer into
+# RuntimeDir\pts_pickup_v1.json. Read-only; watch list only, never a trade signal.
+function Get-PtsPickupView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'pts_pickup_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'PTS_PICKUP_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'PTS_PICKUP_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-pts-pickup-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'PTS_PICKUP_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'PTS_PICKUP_UNREADABLE')
+    }
+}
+
+# Forward virtual results of the OWNER-chosen rules (R1/R2), rebuilt daily by the
+# Brain observer into RuntimeDir\rule_shadow_v1.json. Read-only; no order path.
+function Get-RuleShadowView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'rule_shadow_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'RULE_SHADOW_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'RULE_SHADOW_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-rule-shadow-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'RULE_SHADOW_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'RULE_SHADOW_UNREADABLE')
+    }
+}
+
 function Get-GitInfo([string]$repoRoot) {
     $branch = "unknown"
     $sha = "unknown"
@@ -997,6 +1154,30 @@ function Get-BoardAvailability {
     if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
     elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
     elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020). A board
+    # whose only fault is STALE or UNKNOWN rows may be used row by row when the
+    # identity quote is fresh, the universe is complete, no row is INVALID, at
+    # least 95% of the expected rows are FRESH, and the Collector declares that
+    # every market aggregate was computed from FRESH rows only and that the
+    # signals of all other rows are blocked (aggregate_basis FRESH_ROWS_ONLY).
+    # A non-fresh row is still never used: consumers keep their per-row check.
+    $partialMinFreshPct = 95.0
+    $partialRows = $false
+    $partialReasons = [string[]]@()
+    $aggregateBasis = $null
+    if ($null -ne $LiveObj) { $aggregateBasis = $LiveObj.aggregate_basis }
+    if ($status -ceq "BLOCKED_ROW_QUOTES" -and $aggregateBasis -ceq "FRESH_ROWS_ONLY" -and $null -ne $RowFreshness -and
+        $null -ne $RowFreshness.state_counts -and $null -ne $expectedCount -and $expectedCount -gt 0) {
+        $partialFresh = [int]$RowFreshness.state_counts.FRESH
+        $partialInvalid = [int]$RowFreshness.state_counts.INVALID
+        $partialOther = @($sorted | Where-Object { $_ -notlike 'ROW_*' -or $_ -like 'ROW_TICKER_*' })
+        if ($partialInvalid -eq 0 -and $partialOther.Count -eq 0 -and (100.0 * $partialFresh / $expectedCount) -ge $partialMinFreshPct) {
+            $partialRows = $true
+            $partialReasons = $sorted
+            $sorted = [string[]]@()
+            $status = "AVAILABLE_PARTIAL"
+        }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -1026,6 +1207,9 @@ function Get-BoardAvailability {
         unexpected_sample = $unexpectedSample
         collector_valid_count = $valid
         collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        partial_rows = $partialRows
+        partial_reasons = @($partialReasons)
+        partial_min_fresh_pct = $partialMinFreshPct
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -2172,7 +2356,7 @@ try {
                     $availabilityReasons += @(Get-ServedFloorReasons (Get-ServedHistoryCommonFloor) $gatewayFreshness.quote_at $healthRows.accepted_quote_at)
                 }
                 $runtime['decision_available'] = ($availabilityReasons.Count -eq 0 -and $healthAvailability.decision_available -eq $true)
-                $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
+                $runtime['availability_status'] = $(if ($runtime['decision_available']) { $(if ([string]$healthAvailability.availability_status -ceq 'AVAILABLE_PARTIAL') { 'AVAILABLE_PARTIAL' } else { 'AVAILABLE' }) } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
                 if ($availabilityReasons.Count -gt 0) {
                     $runtime.fail_closed = $true
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
@@ -2193,7 +2377,7 @@ try {
                     # is never left OK beside fail_closed; the Collector's own
                     # report stays in source_status.
                     $runtime['decision_available'] = $false
-                    if ($runtime['availability_status'] -eq 'AVAILABLE') { $runtime['availability_status'] = 'BLOCKED_FAIL_CLOSED' }
+                    if (@('AVAILABLE','AVAILABLE_PARTIAL') -ccontains [string]$runtime['availability_status']) { $runtime['availability_status'] = 'BLOCKED_FAIL_CLOSED' }
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
                         $runtime.price_source_status = "FAIL_CLOSED"
                     }
@@ -2451,6 +2635,31 @@ try {
                     real_submit_allowed = $false
                 } | ConvertTo-Json -Depth 6
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($obsPayload))
+                continue
+            }
+            if ($path -eq '/brain_pick.json') {
+                $brainView = Get-BrainPickView $RuntimeDir
+                Send-Response $stream $brainView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$brainView.body))
+                continue
+            }
+            if ($path -eq '/pts_pickup.json') {
+                $ptsView = Get-PtsPickupView $RuntimeDir
+                Send-Response $stream $ptsView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ptsView.body))
+                continue
+            }
+            if ($path -eq '/rule_shadow.json') {
+                $ruleView = Get-RuleShadowView $RuntimeDir
+                Send-Response $stream $ruleView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ruleView.body))
+                continue
+            }
+            if ($path -eq '/signal_ev.json') {
+                $evView = Get-SignalEvView $RuntimeDir
+                Send-Response $stream $evView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$evView.body))
+                continue
+            }
+            if ($path -eq '/agent_research.json') {
+                $agentView = Get-AgentResearchView ([Environment]::GetEnvironmentVariable('V10_AGENT_RESEARCH_INBOX')) ([Environment]::GetEnvironmentVariable('AGENT_BRAIN_RECEIVER_HMAC_KEY'))
+                Send-Response $stream $agentView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$agentView.body))
                 continue
             }
             # Serve ONLY the explicit public UI files. Never serve arbitrary files

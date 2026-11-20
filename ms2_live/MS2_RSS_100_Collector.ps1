@@ -727,6 +727,30 @@ function Get-BoardAvailability {
     if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
     elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
     elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020). A board
+    # whose only fault is STALE or UNKNOWN rows may be used row by row when the
+    # identity quote is fresh, the universe is complete, no row is INVALID, at
+    # least 95% of the expected rows are FRESH, and the Collector declares that
+    # every market aggregate was computed from FRESH rows only and that the
+    # signals of all other rows are blocked (aggregate_basis FRESH_ROWS_ONLY).
+    # A non-fresh row is still never used: consumers keep their per-row check.
+    $partialMinFreshPct = 95.0
+    $partialRows = $false
+    $partialReasons = [string[]]@()
+    $aggregateBasis = $null
+    if ($null -ne $LiveObj) { $aggregateBasis = $LiveObj.aggregate_basis }
+    if ($status -ceq "BLOCKED_ROW_QUOTES" -and $aggregateBasis -ceq "FRESH_ROWS_ONLY" -and $null -ne $RowFreshness -and
+        $null -ne $RowFreshness.state_counts -and $null -ne $expectedCount -and $expectedCount -gt 0) {
+        $partialFresh = [int]$RowFreshness.state_counts.FRESH
+        $partialInvalid = [int]$RowFreshness.state_counts.INVALID
+        $partialOther = @($sorted | Where-Object { $_ -notlike 'ROW_*' -or $_ -like 'ROW_TICKER_*' })
+        if ($partialInvalid -eq 0 -and $partialOther.Count -eq 0 -and (100.0 * $partialFresh / $expectedCount) -ge $partialMinFreshPct) {
+            $partialRows = $true
+            $partialReasons = $sorted
+            $sorted = [string[]]@()
+            $status = "AVAILABLE_PARTIAL"
+        }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -756,6 +780,9 @@ function Get-BoardAvailability {
         unexpected_sample = $unexpectedSample
         collector_valid_count = $valid
         collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        partial_rows = $partialRows
+        partial_reasons = @($partialReasons)
+        partial_min_fresh_pct = $partialMinFreshPct
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -904,25 +931,60 @@ function Hide-UntrustedLivePrices($rows) {
 }
 
 function Write-AtomicUtf8([string]$path, [string]$content) {
-    $tmp = "$path.tmp"
+    # The single stable "$path.tmp" collided after crash/restart or overlapping
+    # attempts. Use a private temporary file per call, in the same directory.
+    $identity = [Guid]::NewGuid().ToString('N')
+    $tmp = "$path.$identity.tmp"
+    $backup = "$path.$identity.bak"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
-    # live_ms2.json 等は127.0.0.1:28580経由で他プロセスから同時に読まれているため、
-    # Move-Item -Force が「Cannot create a file when that file already exists」で
-    # 失敗することがある（宛先ファイルが一瞬読み取りロックされているため）。
-    # 数回だけ短い間隔でリトライする。既存の他ファイル（recordsのCSV等）には触れない。
     $maxAttempts = 5
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            Move-Item -Force $tmp $path -ErrorAction Stop
-            return
-        } catch {
-            if ($attempt -ge $maxAttempts) {
-                Write-Host ("Write-AtomicUtf8: " + $path + " への書き込みに" + $maxAttempts + "回失敗: " + $_.Exception.Message) -ForegroundColor Yellow
-                if (Test-Path $tmp) { Remove-Item -Force $tmp -ErrorAction SilentlyContinue }
-                throw
+    try {
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                if ([IO.File]::Exists($path)) {
+                    # Atomic replacement of an existing JSON/CSV file. Readers
+                    # see either complete previous or complete new bytes.
+                    # Windows PowerShell 5.1/.NET Framework requires a legal
+                    # backup path; null may raise "path is not of a legal form".
+                    [IO.File]::Replace($tmp, $path, $backup)
+                } else {
+                    # Initial publication; Move is atomic within this directory.
+                    [IO.File]::Move($tmp, $path)
+                }
+                return
+            } catch {
+                if ($attempt -ge $maxAttempts) {
+                    # Do not overwrite/remove the previous good publication.
+                    Write-Host ("Write-AtomicUtf8: publish failed after " + $maxAttempts + " attempts: " + $_.Exception.GetType().Name) -ForegroundColor Yellow
+                    throw
+                }
+                Start-Sleep -Milliseconds 150
             }
-            Start-Sleep -Milliseconds 150
         }
+    } finally {
+        # Remove only this invocation's staging file. Older crash leftovers
+        # are handled by independent housekeeping after review.
+        if ([IO.File]::Exists($tmp)) {
+            try { [IO.File]::Delete($tmp) } catch { }
+        }
+        if ([IO.File]::Exists($backup)) {
+            try { [IO.File]::Delete($backup) } catch { }
+        }
+    }
+}
+
+
+function Publish-OptionalCockpitMirror([string]$mirrorPath, [string]$payload) {
+    # The primary Collector /live_ms2.json publication is authoritative.
+    # The optional dashboard copy must never terminate market-data capture.
+    # Its consumers must independently reject stale snapshots by timestamp.
+    try {
+        Write-AtomicUtf8 $mirrorPath $payload
+        return $true
+    } catch {
+        # Public-safe operational reason, no private path or raw market bytes.
+        Write-Host '[COCKPIT_MIRROR_WRITE_FAILED] primary Collector data remains authoritative' -ForegroundColor Yellow
+        return $false
     }
 }
 
@@ -1874,6 +1936,14 @@ function Invoke-SbV2Speak([string]$text) {
 }
 
 # Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
+# Timing only (OWNER 2026-10-21 "2だけ"): one [TIMING] line per completed cycle in the
+# Collector log, milliseconds per section. Decisions and outputs are unchanged.
+function Add-LoopMark([string]$Name) {
+    if ($null -eq $script:loopTimer) { return }
+    $script:loopMarks.Add($Name + '=' + ($script:loopTimer.ElapsedMilliseconds - $script:loopLastMs))
+    $script:loopLastMs = $script:loopTimer.ElapsedMilliseconds
+}
+
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
     if ($script:priceSourceMismatch) { return }
     if ([string]::IsNullOrWhiteSpace($text)) { return }
@@ -1884,6 +1954,52 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000
         Write-Host "[VOICE] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
+# OWNER 2026-10-22 「音声は①②④⑤だけ」: signal voices come only from the Brain
+# observer's rule matches in brain_pick_v1.json (same folder, at most 30 s old,
+# flags checked). Any problem gives an empty list, i.e. silence, never a guess.
+# Audit 6325885133: the file's own generated_at (offset-aware) must be at most 30 s old
+# and not in the future, the flags must be real booleans and the state PICK or NO_PICK.
+function Test-BrainPickFresh($GeneratedAt, [datetime]$Now) {
+    # pwsh 7 ConvertFrom-Json turns ISO strings into DateTime; 5.1 keeps the string.
+    if ($GeneratedAt -is [datetime]) { $GeneratedAt = ([DateTimeOffset]$GeneratedAt).ToString('o') }
+    $GeneratedAt = [string]$GeneratedAt
+    $at = [DateTimeOffset]::MinValue
+    if ($GeneratedAt -notmatch '(Z|[+-]\d{2}:\d{2})$' -or
+        -not [DateTimeOffset]::TryParse($GeneratedAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$at)) { return $false }
+    $age = ([DateTimeOffset]$Now - $at).TotalSeconds
+    return ($age -ge -2 -and $age -le 30)
+}
+function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return @() }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
+            [string]$view.state -notin @('PICK','NO_PICK')) { return @() }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
+        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
+    } catch {
+        return @()
+    }
+}
+function Test-RuleSignalStillListed([string]$Path, [string]$Key) {
+    # Re-read right before speaking: the setup must still be listed in a fresh, valid file.
+    foreach ($y in (Get-BrainRuleSignals $Path (Get-Date))) {
+        if (([string]$y.ticker+'|'+[string]$y.strategy+'|'+[string]$y.signal+'|'+[string]$y.signal_bar+'|'+[string]$y.rule) -ceq $Key) { return $true }
+    }
+    return $false
+}
+$MaxRuleVoicesPerCycle = 1   # each read-out blocks until played; one per cycle keeps the Collector on time
+$PreopenVoiceFrom = [TimeSpan]::Parse("08:55:00")
+$PreopenVoiceUntil = [TimeSpan]::Parse("08:59:30")   # audit 6326225807: never spoken at or after the open
+$preopenSkipLoggedAt = Get-Date "2000-01-01"
+$brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
+$spokenRuleSignals = @{}
+$preopenGapSpoken = $false
+$PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
 $history = @{}
 $seenTicks = @{}
@@ -1893,6 +2009,8 @@ $orLow = @{}
 $or5High = @{}
 $or5Low = @{}
 $minuteBars = @{}
+$LiveRowBars1m = 60
+$LiveRowBars5m = 24
 $currentMinuteBars = @{}
 $dayHigh = @{}
 $dayLow = @{}
@@ -1943,6 +2061,7 @@ try {
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
         $loopJst = Get-JstNow
+        $script:loopTimer = [Diagnostics.Stopwatch]::StartNew(); $script:loopLastMs = 0; $script:loopMarks = New-Object System.Collections.Generic.List[string]
         if ($StopAfterClose -and $now.TimeOfDay -ge [TimeSpan]::Parse("23:59:00")) {
             if (Test-Path $statsScript) {
                 try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
@@ -1955,7 +2074,7 @@ try {
             $activeDay=$now.ToString("yyyy-MM-dd")
             $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -2076,11 +2195,12 @@ try {
             $script:excelComTelemetry.consecutive_failed_loops++
             $failText = (New-ExcelComFailClosedPayload $now (Get-ExcelComReason $valueRead)) | ConvertTo-Json -Depth 6
             Write-AtomicUtf8 $jsonPath $failText
-            if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $failText }
+            if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $failText }
             if ($valueRead.error_class -ceq "OTHER") { throw ("リアルタイム値取得：Excel COM エラー " + $script:excelComTelemetry.last_event.code) }
             Start-Sleep -Seconds $IntervalSeconds
             continue
         }
+        Add-LoopMark 'excel_read'
         $script:excelComTelemetry.consecutive_failed_loops = 0
         $values = $valueRead.value.Data
         $codeColumn = $null
@@ -2468,6 +2588,7 @@ try {
             }
             $previous[$ticker]=[pscustomobject]@{Price=$price;Volume=$volume;UnderRatio=$underRatio}
         }
+        Add-LoopMark 'rows_read'
         $preopenRecordingStatus=if($now.TimeOfDay -ge [TimeSpan]::Parse("08:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")){
             if($preopenQuoteCount -gt 0){"記録中 $preopenQuoteCount/100"}else{"RSS気配未取得"}
         }else{"時間外"}
@@ -2496,6 +2617,7 @@ try {
         $identityReason = Get-IdentitySourceReason $identityQuote
         if (-not [string]::IsNullOrEmpty($identityReason) -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add($identityReason) }
         if ($symbolMismatchCount -gt 0 -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        Add-LoopMark 'identity'
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
         $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
         if ($null -eq $collectorProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
@@ -2503,6 +2625,7 @@ try {
         elseif ($collectorProcessCount -lt 1) { [void]$sourceReasons.Add("COLLECTOR_PROCESS_UNVERIFIED") }
         if ($null -eq $watcherProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
         elseif ($watcherProcessCount -gt 1) { [void]$sourceReasons.Add("DUPLICATE_WATCHER") }
+        Add-LoopMark 'process_check'
         $script:priceSourceMismatch = ($sourceReasons.Count -gt 0)
         $priceSourceReason = ($sourceReasons -join ",")
         if ($script:priceSourceMismatch) {
@@ -2555,6 +2678,7 @@ try {
             $kioxia | Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 5 ([double]$kioxia.vwap)) -Force
             $kioxia | Add-Member -NotePropertyName bars_15m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 15 ([double]$kioxia.vwap)) -Force
         }
+        Add-LoopMark 'kioxia'
         $inPts = Test-JnxSession $now
         $tseIndex=@{}
         foreach($item in $results){$tseIndex[[string]$item.ticker]=$item}
@@ -2718,11 +2842,28 @@ try {
 
         # 地合いと業種の確認を、OR5/OR15の最終点灯条件に使う。
         # UNDER/OVERは補助情報に留め、板の見せ玉だけでサインを出さない。
-        $breadthBase=@($results|Where-Object{$_.vwap -gt 0})
+        # 地合い・業種強度・TOP5は、気配時刻が新しい銘柄（FRESH）だけで計算する
+        # （P0-V10-INTEGRATION-AND-LIVE-START-20261020）。判定はGatewayと同じ
+        # Get-RowQuoteFreshness。古い・時刻不明の銘柄はサインを止め、集計に入れない。
+        Add-LoopMark 'pts_ir_signal'
+        $aggregateNow=Get-JstNow
+        $aggregateBoardQuoteAt=$null
+        if($null -ne $script:identityQuoteObservation){$aggregateBoardQuoteAt=$script:identityQuoteObservation.source_timestamp_at}
+        $aggregateFreshCount=0
+        foreach($result in $results){
+            $aggregateVerdict=Get-RowQuoteFreshness -Row $result -Now $aggregateNow -BoardQuoteAt $aggregateBoardQuoteAt
+            $aggregateFresh=($aggregateVerdict.fresh -eq $true)
+            if($aggregateFresh){$aggregateFreshCount++}
+            $result|Add-Member -NotePropertyName aggregate_row_fresh -NotePropertyValue $aggregateFresh -Force
+            $result|Add-Member -NotePropertyName aggregate_row_state -NotePropertyValue ([string]$aggregateVerdict.state) -Force
+        }
+        $aggregateRows=@($results|Where-Object{$_.aggregate_row_fresh -eq $true})
+        $breadthBase=@($aggregateRows|Where-Object{$_.vwap -gt 0})
         $breadthPct=if($breadthBase.Count -ge 20){[Math]::Round((@($breadthBase|Where-Object{$_.price -gt $_.vwap}).Count/$breadthBase.Count)*100,1)}else{$null}
         $marketState=if($null -eq $breadthPct){"地合い確認待ち"}elseif($breadthPct -ge 60){"地合い強い"}elseif($breadthPct -le 40){"地合い弱い"}else{"地合い中立"}
+        Add-LoopMark 'aggregate'
         $sectorBreadth=@{}
-        foreach($sectorGroup in @($results|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
+        foreach($sectorGroup in @($aggregateRows|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
             $sectorItems=@($sectorGroup.Group)
             $sectorBreadth[[string]$sectorGroup.Name]=if($sectorItems.Count -ge 2){[Math]::Round((@($sectorItems|Where-Object{$_.price -gt $_.vwap}).Count/$sectorItems.Count)*100,1)}else{$null}
         }
@@ -2749,6 +2890,7 @@ try {
             }
             if($validCount -lt 90){$result.signal="データ不足・売買禁止"}
             elseif([string]$result.special_quote -ne "なし"){$result.signal="特別気配・売買禁止"}
+            elseif($inSession -and $result.aggregate_row_fresh -ne $true){$result.signal="鮮度不足・売買禁止"}
 
             $range=[double]$result.day_high-[double]$result.day_low
             $closeLocation=if($range -gt 0){Limit (([double]$result.price-[double]$result.day_low)/$range) 0 1}else{0.5}
@@ -2782,6 +2924,7 @@ try {
                 elseif($shortHold -ge 70 -and $shortHold -ge $longHold+15){$holdSignal="持ち越しショート候補";$holdScore=$shortHold}
                 else{$holdSignal="日中限定・持ち越し禁止"}
             }
+            if($result.aggregate_row_fresh -ne $true -and $holdSignal -ne "15時判定待ち"){$holdSignal="鮮度不足・持ち越し判定不可"}
             $result.hold_signal=$holdSignal; $result.hold_score=[Math]::Round($holdScore)
             $result|Add-Member -NotePropertyName market_state -NotePropertyValue $marketState -Force
             $result|Add-Member -NotePropertyName breadth_pct -NotePropertyValue $breadthPct -Force
@@ -2810,8 +2953,18 @@ try {
             $result|Add-Member -NotePropertyName common_coverage -NotePropertyValue $commonDecision.coverage -Force
             $result|Add-Member -NotePropertyName common_missing -NotePropertyValue @($commonDecision.missing) -Force
             $result|Add-Member -NotePropertyName safety_gate -NotePropertyValue $safetyGate -Force
-            $result|Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 1 ([double]$result.vwap)) -Force
-            $result|Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 5 ([double]$result.vwap)) -Force
+            # Rows other than Kioxia carry only recent bars (cards draw the last 36 1-minute closes).
+            # Full-day bars for 100 rows made live_ms2.json ~15MB by 11:00 and the 2-second cycle ~25 s.
+            $rowBars=@($minuteBars[[string]$result.ticker])
+            if([string]$result.ticker -ne "285A.T"){
+                $rowBars1m=@($rowBars|Select-Object -Last $LiveRowBars1m)
+                $rowBars5m=@(Convert-LiveBars @($rowBars|Select-Object -Last ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)|Select-Object -Last $LiveRowBars5m)
+            } else {
+                $rowBars1m=$rowBars
+                $rowBars5m=@(Convert-LiveBars $rowBars 5 ([double]$result.vwap))
+            }
+            $result|Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars $rowBars1m 1 ([double]$result.vwap)) -Force
+            $result|Add-Member -NotePropertyName bars_5m -NotePropertyValue $rowBars5m -Force
 
             if($result.signal -in @("買いサイン","空売りサイン") -and -not [string]::IsNullOrWhiteSpace([string]$result.signal_bar_time)){
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
@@ -2823,6 +2976,7 @@ try {
             }
         }
         $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
+        Add-LoopMark 'rows_decide'
         $provisionalHoldTop5=@($results|Where-Object{$validCount -ge 90 -and $_.special_quote -eq "なし" -and $_.hold_signal -in @("持ち越しロング候補","持ち越しショート候補")}|Sort-Object hold_score -Descending|Select-Object -First 5)
         if(-not $holdFinalized -and $now.TimeOfDay -ge [TimeSpan]::Parse("15:25:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:26:00")){
             $rank=0
@@ -2859,7 +3013,7 @@ try {
             $created=Write-ImmutableJson $holdImmutableJson $immutable
             $snapshotHash=if(Test-Path $holdImmutableJson){(Get-FileHash -Algorithm SHA256 $holdImmutableJson).Hash.ToLower()}else{""}
             Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count;immutable_created=$created;snapshot_sha256=$snapshotHash;model_version=$immutable.model_version}|ConvertTo-Json))
-            Invoke-SerializedSpeak $speaker ("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。")
+            # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
         }
         $holdTop5=if($holdFinalized){@($finalHoldTop5)}else{@($provisionalHoldTop5)}
 
@@ -2908,6 +3062,7 @@ try {
         }
         $holdStats=Get-OvernightHoldStats $holdHistory
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
+        Add-LoopMark 'hold'
         $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
         $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
         $capabilities=[ordered]@{
@@ -2939,10 +3094,12 @@ try {
         # first, outside the literal (this crashed every Collector cycle).
         $missingRowArray = [object[]]$missingRows.ToArray()
         $missingRowCount = [int]$missingRows.Count
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
-        $jsonText=$payload|ConvertTo-Json -Depth 6
+        Add-LoopMark 'prepare'
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;aggregate_basis='FRESH_ROWS_ONLY';aggregate_fresh_count=$aggregateFreshCount;aggregate_row_count=@($results).Count;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
+        $jsonText=$payload|ConvertTo-Json -Depth 6 -Compress
         Write-AtomicUtf8 $jsonPath $jsonText
-        if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
+        Add-LoopMark 'json_write'
+        if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $jsonText }
 
         $cards = if ($qualified.Count -eq 0) {'<div class="empty">発動条件を満たす候補なし</div>'} else {($qualified|ForEach-Object{
             $cls=if($_.signal -in @("買いサイン","初動買い候補","買い準備")){"buy"}elseif($_.signal -in @("空売りサイン","初動ショート候補","ショート準備")){"sell"}elseif($_.signal -eq "往復ピンタ回避"){"block"}else{"watch"}
@@ -2985,6 +3142,7 @@ try {
             $kioxiaCard='<section class="focus '+$kioxiaClass+'"><div class="focus-title"><span>キオクシア専用・常時監視</span><b>'+ (Escape-Html $kioxia.signal) +' / '+ (Escape-Html $kioxia.strategy) +'</b><strong>'+([string]$kioxia.score)+'</strong></div><div class="focus-body"><div class="price">'+("{0:N1}" -f $kioxia.price)+'円</div><div class="metrics"><span>注文目安<br><b>'+ (Escape-Html $entryText) +'</b></span><span>地合い<br><b>'+ (Escape-Html $kioxia.market_state) +' '+([string]$kioxia.breadth_pct)+'%</b></span><span>持ち越し<br><b>'+ (Escape-Html $kioxia.hold_signal) +' '+([string]$kioxia.hold_score)+'</b></span><span>8:55作戦<br><b>'+ (Escape-Html $kioxia.preopen_plan) +'</b></span><span>寄り前気配<br><b>'+([string]$kioxia.preopen_quote)+'円</b></span><span>GU/GD<br><b>'+([string]$kioxia.preopen_gap_pct)+'%</b></span><span>特別気配<br><b>'+ (Escape-Html $kioxia.special_quote) +'</b></span><span>VWAP<br><b>'+([string]$kioxia.vwap)+'</b></span><span>EMA9/20<br><b>'+([string]$kioxia.ema9)+' / '+([string]$kioxia.ema20)+'</b></span><span>UNDER<br><b>'+([string]$kioxia.under_ratio)+'%</b></span><span>歩み値偏り<br><b>'+([string]$kioxia.flow_bias)+'%</b></span><span>時間帯統計<br><b>'+ (Escape-Html $historyText) +'</b></span><span>JNX夜間PTS<br><b>'+ (Escape-Html $ptsPriceText) +'</b></span><span>東証終値比<br><b>'+ (Escape-Html $ptsGapText) +'</b></span><span>PTS判定<br><b>'+ (Escape-Html $ptsState) +'</b></span></div></div><small>'+ (Escape-Html $orText) +' / 確定1分足で判定 / PTSは参考 / 注文は武蔵で手動 / 成行禁止</small></section>'
         }
         $html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MS2 LIVE TOP5 Ver.1</title><style>body{margin:0;background:#05090d;color:#edf5fa;font-family:Segoe UI,Yu Gothic,sans-serif}main{max-width:1300px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #253541;padding-bottom:16px}h1{margin:0;font-size:29px}h2{margin:28px 0 2px;font-size:22px}.sub{margin:0;color:#8296a5;font-size:12px}header span,.note{color:#8296a5}.status{color:#4be0b6}.focus{margin-top:16px;padding:18px;background:linear-gradient(135deg,#102433,#0b151d);border:1px solid #39708e;border-left:6px solid #42b8f5;border-radius:14px}.focus.buy{border-left-color:#36dfa9}.focus.sell{border-left-color:#ff6370}.focus.block{border-left-color:#f5c451}.focus-title{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center}.focus-title span{font-size:20px;font-weight:800}.focus-title b{padding:7px 12px;border-radius:99px;background:#172630}.focus-title strong{font-size:26px}.focus-body{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center}.focus small{display:block;color:#8eb3c8;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:16px}.pick{background:#0d161e;border:1px solid #253744;border-left:4px solid #789;border-radius:12px;padding:15px}.pick.buy{border-left-color:#36dfa9}.pick.sell{border-left-color:#ff6370}.pick.block{border-left-color:#f5c451}.head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.head span{font-size:11px;border-radius:99px;background:#172630;padding:5px 8px}.head b{font-size:16px}.head strong{font-size:22px}.price{font-size:29px;font-weight:800;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:5px}.metrics span{background:#111f29;border-radius:7px;padding:8px;color:#8296a5;font-size:10px}.metrics b{color:#e9f3f8;font-size:14px}.pick small{display:block;color:#758895;margin-top:12px}.pick a{color:#55c8ff}.note{margin-top:18px;padding:12px;background:#10171d;border-radius:8px}.empty{padding:50px;text-align:center;color:#8ca0ae}@media(max-width:650px){header{align-items:start;flex-direction:column}.focus-body{grid-template-columns:1fr}.focus-title{grid-template-columns:1fr auto}.metrics{grid-template-columns:1fr 1fr}}</style></head><body><main><header><div><span>MARKETSPEED II RSS・試運転 Ver.1</span><h1>デイトレ100銘柄 LIVE TOP5</h1></div><div><b class="status">'+ (Escape-Html $marketState) +' / VWAP上 '+([string]$breadthPct)+'%</b><br>有効 '+$validCount+'/100<br>'+ (Escape-Html $now.ToString("yyyy-MM-dd HH:mm:ss")) +'</div></header>'+$kioxiaCard+'<section class="grid">'+$cards+'</section>'+$holdSection+$ptsSection+$irPtsSection+'<p class="note">確定1分足だけを使用。OR5は初動、OR15は地合いが弱ければ利確警戒、押し戻りは反転足を確認します。UNDER/OVER単独では売買しません。注文は武蔵で手動、特別気配・往復ピンタ・データ不足時は売買禁止です。</p></main></body></html>'
+        Add-LoopMark 'html_build'
         Write-AtomicUtf8 $htmlPath $html
         # Browser launch intentionally disabled here; one-click launcher opens localhost:28581 only.
 
@@ -2998,27 +3156,79 @@ try {
             }
         }
 
-        $voiceCandidates=@()
-        if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
-        $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
-        foreach ($x in $voiceCandidates) {
-            $key=$x.ticker; $old=$lastSignal[$key]; $spokenAt=$lastSpoken[$key]
-            $isKioxia=($key -eq "285A.T")
-            $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
-            if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
-                $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
-                $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
-                Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
-                $lastSpoken[$key]=$now
+        # Only signals matching rule ①②④⑤ (Brain observer), each setup once, at most one
+        # voice per issue per 10 minutes and $MaxRuleVoicesPerCycle per cycle. Before each
+        # read-out (audit 6325885133): this cycle published live values, the Brain file is
+        # at most 30 s old by its own generated_at, and the issue's current row is still
+        # fresh with the same signal and strategy. A setup skipped by the 10-minute rule is
+        # marked, so it is never read out later at an old price.
+        $ruleVoices=0
+        if ($publishLiveValues) {
+            # audit 6326225807: the Brain rewrites its file every 5 s from the live data this
+            # cycle just published, so its generated_at is normally later than the cycle start;
+            # the current clock is the reference, not $now.
+            foreach ($x in (Get-BrainRuleSignals $brainPickPath (Get-Date))) {
+                if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }
+                $key=[string]$x.ticker+'|'+[string]$x.strategy+'|'+[string]$x.signal+'|'+[string]$x.signal_bar+'|'+[string]$x.rule
+                if ($spokenRuleSignals.ContainsKey($key)) { continue }
+                $row=@($results | Where-Object { $_.ticker -eq $x.ticker } | Select-Object -First 1)
+                if ($row.Count -eq 0 -or $row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal -or [string]$row[0].strategy -ne [string]$x.strategy) { continue }
+                # the same bar and entry price as now: a re-lit setup on a new bar is a new key
+                if ([string]$row[0].signal_bar_time -ne [string]$x.signal_bar -or $null -eq $row[0].entry_price -or
+                    [Math]::Abs([double]$row[0].entry_price - [double]$x.entry) -gt 1e-6) { continue }
+                $spokenRuleSignals[$key]=$now
+                $spokenAt=$lastSpoken[[string]$x.ticker]
+                if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
+                if (-not (Test-RuleSignalStillListed $brainPickPath $key)) { continue }
+                $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
+                $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
+                Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                $lastSpoken[[string]$x.ticker]=$now
+                $ruleVoices++
             }
-            $lastSignal[$key]=$x.signal
+        }
+        # OWNER 2026-10-22 「キオクシアの8時55分の判定より、寄りの気配で期待値のある銘柄を読み上げて」:
+        # before the open the only rule the opening quote decides is ⑤ (shorts on a day that
+        # opens >= 1 % below 前日終値). Once at 08:55-09:00: up to five issues whose pre-open
+        # quote implies such a gap (split-sized gaps left out), largest first.
+        # Audit 6325885133: only when at least $PreopenMinCoverage issues have a pre-open gap
+        # (quote and 基準値) and the price source agrees; otherwise silent this cycle and the
+        # flag stays unset. A per-row 120 s check cannot work before the open.
+        $preopenCovered=@($results | Where-Object { $null -ne $_.preopen_gap_pct }).Count
+        # Audit 6326225807: also $publishLiveValues, and the window 08:55:00-08:59:30 is
+        # re-checked on the current clock right before speaking (never at or after the open).
+        # Inside the window it retries every cycle until the gates pass; a skip is logged
+        # once a minute with the reason. With 80-99 covered issues the voice says so.
+        $inPreopenWindow=($now.TimeOfDay -ge $PreopenVoiceFrom -and $now.TimeOfDay -lt $PreopenVoiceUntil)
+        if (-not $preopenGapSpoken -and $inPreopenWindow) {
+            $preopenReady=($preopenCovered -ge $PreopenMinCoverage -and -not $script:priceSourceMismatch -and $publishLiveValues)
+            if (-not $preopenReady) {
+                if (((Get-Date)-$preopenSkipLoggedAt).TotalSeconds -ge 60) {
+                    Write-Host ("[VOICE] 08:55 gap voice skipped: covered=" + $preopenCovered + "/" + $PreopenMinCoverage + " live=" + [bool]$publishLiveValues + " mismatch=" + [bool]$script:priceSourceMismatch) -ForegroundColor Yellow
+                    $preopenSkipLoggedAt=Get-Date
+                }
+            } else {
+                $gapDown=@($results | Where-Object { $null -ne $_.preopen_gap_pct -and [double]$_.preopen_gap_pct -le -1 -and [double]$_.preopen_gap_pct -gt -20 } |
+                    Sort-Object { [double]$_.preopen_gap_pct } | Select-Object -First 5)
+                $scope=if($preopenCovered -ge 100){"寄り前の気配で"}else{"寄り前の気配が取得済みの"+$preopenCovered+"銘柄では"}
+                $clock=(Get-Date).TimeOfDay
+                if ($clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil) {
+                    if ($gapDown.Count -eq 0) {
+                        Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"、窓下げ1パーセント以上の銘柄はありません。ルール5の対象候補はなしです。")
+                    } else {
+                        $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,1))+"パーセント" }) -join "。"
+                        Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"窓下げ1パーセント以上、ルール5の対象候補です。"+$names+"。寄った後にルール5のサインが出た時だけ有効です。気配は始値ではありません。")
+                    }
+                    $preopenGapSpoken=$true
+                }
+            }
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
             foreach($x in @($holdTop5|Select-Object -First 3)){
                 $holdKey=[string]$x.ticker+'|'+[string]$x.hold_signal
                 $holdAt=$lastHoldSpoken[$holdKey]
                 if($null -eq $holdAt -or ($now-$holdAt).TotalMinutes -ge 20){
-                    Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.hold_signal+"、評価"+$x.hold_score+"点。後場のOR15維持と引け位置を確認しました。決算、IR、PTS、米国市場が未確認なら持ち越し禁止です。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastHoldSpoken[$holdKey]=$now
                 }
             }
@@ -3028,18 +3238,13 @@ try {
                 $ptsBand=if($ptsGap -ge 2){2}elseif($ptsGap -ge 1){1}elseif($ptsGap -le -2){-2}elseif($ptsGap -le -1){-1}else{0}
                 if($ptsBand -ne 0 -and ($ptsBand -ne $lastPtsBand -or ($now-$lastPtsVoiceAt).TotalMinutes -ge 30)){
                     $ptsDirection=if($ptsBand -gt 0){"上昇"}else{"下落"}
-                    Invoke-SerializedSpeak $speaker ("キオクシア夜間PTS。東証終値から"+$ptsDirection+"、"+[Math]::Abs([Math]::Round($ptsGap,2))+"パーセント。現在値"+$ptsPrice+"円。出来高"+$ptsVolume+"株。アンダー比率"+[Math]::Round($ptsUnderRatio,1)+"パーセント。PTSは参考値です。翌朝の気配で再確認してください。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastPtsBand=$ptsBand
                     $lastPtsVoiceAt=$now
                 }
             }
-            if($now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00") -and $lastPreopenVoice -ne [string]$kioxia.preopen_plan){
-                $gapVoice=if($null -eq $kioxia.preopen_gap_pct){"GU、GDは算出不能"}else{"GU、GD、"+$kioxia.preopen_gap_pct+"パーセント"}
-                Invoke-SerializedSpeak $speaker ("キオクシア、8時55分判定。"+$kioxia.preopen_plan+"。"+$gapVoice+"。成行偏り"+$kioxia.preopen_market_imbalance+"パーセント。これは準備判定です。寄った直後は注文せず、実価格と歩み値を確認してください。")
-                $lastPreopenVoice=[string]$kioxia.preopen_plan
-            }
             if($now.TimeOfDay -ge [TimeSpan]::Parse("09:01:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00") -and $kioxia.open_decision -in @("初動買い候補","初動ショート候補") -and $lastOpenDecisionVoice -ne [string]$kioxia.open_decision){
-                Invoke-SerializedSpeak $speaker ("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。")
+                # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                 $lastOpenDecisionVoice=[string]$kioxia.open_decision
             }
             $flowState=[string]$kioxia.orderflow_state
@@ -3054,7 +3259,7 @@ try {
                     if ($null -ne $kioxia.historical_prediction -and $kioxia.historical_prediction.ready) {
                         $statText="同時間帯の過去統計は"+$kioxia.historical_prediction.prediction+"。5分後の上昇率"+$kioxia.historical_prediction.up_rate_5m+"パーセント、下落率"+$kioxia.historical_prediction.down_rate_5m+"パーセントです"
                     }
-                    Invoke-SerializedSpeak $speaker ("キオクシア。"+$kioxia.time_band+"。"+$directionText+"。アンダー比率"+$kioxia.under_ratio+"パーセント。"+$oneMinuteText+"。歩み値偏り"+$kioxia.flow_bias+"パーセント。"+$statText+"。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastKioFlowSpoken=$flowState
                     $lastKioFlowSpokenAt=$now
                 }
@@ -3062,6 +3267,8 @@ try {
                 $kioFlowCandidate=""
             }
         }
+        Add-LoopMark 'voice_tail'
+        Write-Host ('[TIMING] ' + $now.ToString('HH:mm:ss') + ' total=' + $script:loopTimer.ElapsedMilliseconds + ' ' + ($script:loopMarks -join ' '))
         Start-Sleep -Seconds $IntervalSeconds
     }
 } finally {
