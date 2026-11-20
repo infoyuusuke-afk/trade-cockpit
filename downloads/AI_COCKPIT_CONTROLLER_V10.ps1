@@ -236,10 +236,35 @@ function Read-State {
     } catch { return $null }
 }
 
+# OWNER 2026-11-12 (cockpit stopped): at 10:50:36 the rename of the state file failed once (the file was busy for a moment, most likely
+# being read by the Gateway); with ErrorActionPreference Stop that went to the final catch, which waits at Read-Host in a hidden
+# window, so the Controller stood still and the screen went fail-closed. A busy file is now retried for about 2 seconds, then
+# written in place; if even that fails, this one write is skipped (the next loop writes again in 2 seconds). Never throws.
+# OWNER 2026-11-14 Cursor audit (7): never stand still at "Press Enter" - in a hidden window nobody can press it.
+# The message stays readable for a while in a visible window (Enter closes it sooner); without a console it returns at once.
+function Wait-CloseOrTimeout([int]$Seconds = 120) {
+    Write-Host ("This window closes by itself in " + $Seconds + " s (Enter closes it now).") -ForegroundColor Cyan
+    $end = (Get-Date).AddSeconds($Seconds)
+    try {
+        while ((Get-Date) -lt $end) {
+            if ([Console]::KeyAvailable) { $k = [Console]::ReadKey($true); if ($k.Key -eq [ConsoleKey]::Enter) { break } }
+            Start-Sleep -Milliseconds 200
+        }
+    } catch { }
+}
 function Save-State($state) {
     $tmp = $StateFile + "." + $PID + ".tmp"
-    [IO.File]::WriteAllText($tmp, ($state | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-    Move-Item -LiteralPath $tmp -Destination $StateFile -Force
+    $json = ($state | ConvertTo-Json -Depth 6)
+    try { [IO.File]::WriteAllText($tmp, $json, [Text.UTF8Encoding]::new($false)) } catch { }
+    for ($i = 0; $i -lt 20; $i++) {
+        try { Move-Item -LiteralPath $tmp -Destination $StateFile -Force -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 100 }
+    }
+    try {
+        [IO.File]::WriteAllText($StateFile, $json, [Text.UTF8Encoding]::new($false))
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    } catch {
+        try { Write-Status "State file busy - this write skipped (next loop writes again)." Yellow } catch { }
+    }
 }
 
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
@@ -1105,6 +1130,15 @@ try {
     Write-Host "==================================================" -ForegroundColor DarkCyan
     Write-Host ""
 
+    # OWNER 2026-10-22 S2 (also in START): before anything is stopped, started
+    # or opened, refuse while any Excel already runs in this Windows session.
+    # The other Excel is never closed, killed or operated.
+    $otherExcelAtControllerStart = @(Get-ForeignExcelProcesses)
+    if ($otherExcelAtControllerStart.Count -gt 0) {
+        Write-Host ("V10_START_BLOCKED_OTHER_EXCEL (PID " + (($otherExcelAtControllerStart | ForEach-Object { $_.Id }) -join ",") + "); nothing was started.") -ForegroundColor Red
+        throw "Another Excel is open in this Windows session. Close it, then start AI Cockpit again. Nothing was started or stopped."
+    }
+
     Write-Status "Resolving repo checkout and MS2 runtime folder..."
     $RepoRootResolved = Resolve-RepoRoot $RepoRoot
     $RuntimeDir = Resolve-RuntimeDir $RuntimeDirOverride
@@ -1366,6 +1400,26 @@ try {
         -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
         -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
         -LogDirectory $LogDir) $launchedExcelProc
+
+    # OWNER 2026-11-18: wait for the Excel window to be ready and check again. On 11/18 08:43 the first start stopped
+    # on HWND_PROCESS_NOT_READY (the workbook was registered before the launched Excel owned its window). Only this
+    # one state is checked again, at most 2 more times after a 5 s wait, and only while the launched Excel is still
+    # running. Each try is the full identity probe (PID, HWND, session, command line, parent, same file); nothing is
+    # adopted while waiting, and if it still fails the stop below is the same as before.
+    $windowWaitTries = 0
+    while (-not $probe.ok -and [string]$probe.last_error -eq "HWND_PROCESS_NOT_READY" -and
+           -not [bool]$probe.process_exited -and $windowWaitTries -lt 2) {
+        $windowWaitTries++
+        $launchedExcelProc.Refresh()
+        if ($launchedExcelProc.HasExited) { break }
+        Write-Status ("  Excel window not ready yet (HWND_PROCESS_NOT_READY). Waiting 5s and checking again (" + $windowWaitTries + "/2). Nothing was adopted.") Yellow
+        Start-Sleep -Seconds 5
+        $probe = Complete-ExcelProbeResult (Invoke-ExcelIdentityProbe `
+            -WorkbookPath $WorkbookPath `
+            -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
+            -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
+            -LogDirectory $LogDir) $launchedExcelProc
+    }
 
     if (-not $probe.ok) {
         $state.excel_pid = 0
@@ -1886,7 +1940,8 @@ try {
     Write-Host ("Logs: " + $LogDir) -ForegroundColor Cyan
     Write-Host ("State file: " + $StateFile) -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "This window is intentionally left open so you can read the cause above." -ForegroundColor Cyan
-    Read-Host "Press Enter to close"
+    try { Add-Content -LiteralPath (Join-Path $LogDir "controller_stopped_on_error.log") -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss") + " " + [string]$_.Exception.Message) -Encoding UTF8 } catch { }
+    Write-Host "The cause above is also kept in controller_stopped_on_error.log in the log folder." -ForegroundColor Cyan
+    Wait-CloseOrTimeout 120
     [Environment]::Exit(1)
 }

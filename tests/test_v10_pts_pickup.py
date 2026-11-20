@@ -61,6 +61,46 @@ class Pickup(unittest.TestCase):
         view = pts.build(empty, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
         self.assertEqual((view["pts_session_date"], view["recorded_pts_evenings"], view["rows"]), (None, 0, []))
 
+    def test_side_and_expected_value_from_the_local_table(self):
+        # OWNER 2026-10-28 「買い　空売り　期待値　色付け」 (synthetic table, not market data)
+        write(self.records, "2026-10-21", [
+            row("2026-10-21 21:00:00", "2000.JNX", 2.5, 50_000_000, 0.2),
+            row("2026-10-21 21:00:00", "3000.JNX", -3.5, 50_000_000, 0.2),
+            row("2026-10-21 21:00:00", "7000.JNX", -3.5, 50_000_000, 0.2),
+        ])
+        s = lambda n, ev, pf: {"n": n, "ev_pct": ev, "pf": pf}
+        table = {"schema_version": pts.EV_SCHEMA, "real_submit_allowed": False, "trade_instruction": False,
+                 "overall": {"+2〜3%": {"side": "SKIP", "buy": s(100, -0.1, 0.9), "short": s(100, -0.2, 0.8)},
+                             "−3%以下": {"side": "BUY", "buy": s(100, 0.2, 1.1), "short": s(100, -0.4, 0.7)}},
+                 "per_stock": {"7000": {"−3%以下": {"buy": s(25, -0.3, 0.8), "short": s(25, 0.1, 1.1)}}}}
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+        target = self.records.parent / "pts_pickup_v1.json"
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        got = {r["ticker"]: (r["ev_side"], r["ev_pct"], r["ev_buy_pct"], r["ev_short_pct"], r["ev_basis"]) for r in view["rows"]}
+        self.assertEqual(got["2000.T"], ("SKIP", None, -0.1, -0.2, "全体"))
+        # OWNER 2026-10-28 「PF1.5以上・回数30以上の時だけ買い・空売りの札」: PF1.1 -> no badge
+        self.assertEqual(got["3000.T"], ("SKIP", None, 0.2, -0.4, "全体"))
+        # the stock's own numbers (25 times) are under 30: the overall numbers are used
+        self.assertEqual(got["7000.T"], ("SKIP", None, 0.2, -0.4, "全体"))
+        table["overall"]["−3%以下"]["buy"] = s(100, 0.4, 1.6)
+        table["per_stock"]["7000"]["−3%以下"] = {"buy": s(40, 0.5, 1.8), "short": s(40, -0.5, 0.5)}
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        got = {r["ticker"]: (r["ev_side"], r["ev_pct"], r["ev_basis"]) for r in view["rows"]}
+        self.assertEqual(got["3000.T"], ("BUY", 0.4, "全体"))
+        self.assertEqual(got["7000.T"], ("BUY", 0.5, "この銘柄"))
+        # a table that is not ours or allows orders is ignored: no side at all
+        table["real_submit_allowed"] = True
+        (self.records.parent / pts.EV_FILE).write_text(json.dumps(table), encoding="utf-8")
+        view = pts.write_pickup(self.records, target, now=datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc))
+        self.assertTrue(all("ev_side" not in r for r in view["rows"]))
+
+    def test_card_shows_side_ev_and_colour(self):
+        self.assertIn('const ptsSide={BUY:["買い","pts-buy"],SHORT:["空売り","pts-short"],SKIP:["見送り","pts-skip"]};', HTML)
+        self.assertIn("'<div class=\"pts-ev-row\">'+ptsEvHtml(p)+'</div>'", HTML)
+        self.assertIn(".pts-buy{background:#0d2b23;color:#35e2ae}.pts-short{background:#341418;color:#ff5a5f}", HTML)
+        self.assertIn("期待値 未計算", HTML)
+
 
 class Observer(unittest.TestCase):
     def test_pin_and_rebuild_every_five_minutes(self):
@@ -115,3 +155,29 @@ $o | ConvertTo-Json -Compress
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegimeColour(unittest.TestCase):
+    # OWNER 2026-10-28 「色付け」 (地合い判定): spans inside the cells survive the card adapter; VIX / yields are inverted
+    def test_good_and_bad_spans(self):
+        self.assertIn("const rg = (good, text) => good == null ? text : \"<span class='\" + (good ? \"rg-good\" : \"rg-bad\") + \"'>\" + text + \"</span>\";", HTML)
+        self.assertIn("const inverse = n => /VIX|金利/.test(n);", HTML)
+        self.assertIn("rg(/^強い/.test(v.label || \"\") ? true : /^弱い/.test(v.label || \"\") ? false : null", HTML)
+        self.assertIn(".rg-good{color:#35e2ae!important;font-weight:700}.rg-bad{color:#ff5a5f!important;font-weight:700}", HTML)
+
+    def test_wick_rows_coloured(self):
+        # OWNER 2026-10-28 「色付け」 (下ヒゲ吸収反転)
+        self.assertIn("const g = t => \"<span class='rg-good'>\" + t + \"</span>\", b = t => \"<span class='rg-bad'>\" + t + \"</span>\";", HTML)
+        # OWNER 2026-10-28 「下ヒゲ反転と大口の点数は未検証と書いて緑をやめて」
+        self.assertIn('e(x.score) + "/100（未検証）"', HTML)
+        self.assertIn('x.score + "/100（未検証）</b>', HTML)
+        self.assertNotIn("g(e(x.score)", HTML)
+        self.assertNotIn("gs(true, x.score", HTML)
+        self.assertIn("b(\"−\" + num(x.fall_from_10d, 1) + \"%\")", HTML)
+        self.assertIn("b(yen(x.stop))", HTML)
+
+    def test_accumulation_coloured_with_day_change(self):
+        # OWNER 2026-10-28 「色付け　毎日の変化率」 (大口買い集め): 前日比 column from the fed chart's last two closes
+        self.assertIn("<th>終値</th><th>前日比</th><th>5日</th>", HTML)
+        self.assertIn("const dayChg = x => {", HTML)
+        self.assertIn("gs(false, yen(x.stop))", HTML)

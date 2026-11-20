@@ -5,7 +5,7 @@ whole day's 1-minute and 5-minute bars and the payload was written indented,
 so live_ms2.json was ~15MB, the Collector cycle took ~25 s and every LIVE panel
 (REALTIME 5 TOP5, watchlist, pre-open ranking) showed "データ取得待ち".
 
-This test extracts the shipped Convert-LiveBars function and the row-bars
+This test extracts the shipped Convert-LiveBars and Get-LastItems functions and the row-bars
 block from the Collector and runs them in powershell.exe 5.1 with 300
 synthetic minute bars: a normal row keeps the last 60 1-minute and 24 5-minute
 bars, Kioxia (285A.T) keeps what it had before (Convert-LiveBars: last 180). It also pins the compressed write.
@@ -27,9 +27,11 @@ $ErrorActionPreference = 'Stop'
 $t = $null; $e = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($Collector, [ref]$t, [ref]$e)
 if ($e.Count) { throw 'PARSE_FAILED' }
-$fn = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Convert-LiveBars' }, $true))
-if ($fn.Count -ne 1) { throw 'CONVERT_LIVE_BARS_COUNT' }
-. ([scriptblock]::Create($fn[0].Extent.Text))
+foreach ($name in @('Convert-LiveBars', 'Get-LastItems')) {
+    $fn = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true))
+    if ($fn.Count -ne 1) { throw ('FUNCTION_COUNT ' + $name) }
+    . ([scriptblock]::Create($fn[0].Extent.Text))
+}
 $src = [IO.File]::ReadAllText($Collector)
 $start = $src.IndexOf('            $rowBars=@($minuteBars[[string]$result.ticker])')
 $endMark = '$result|Add-Member -NotePropertyName bars_5m -NotePropertyValue $rowBars5m -Force'

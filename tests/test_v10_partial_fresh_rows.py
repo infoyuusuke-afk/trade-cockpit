@@ -121,6 +121,38 @@ class PartialAvailabilityRule(unittest.TestCase):
         self.assertEqual(got["availability_status"], "BLOCKED_UNIVERSE_INCOMPLETE")
         self.assertIs(got["decision_available"], False)
 
+    def test_quote_pending_rows_do_not_block(self):
+        # OWNER 2026-10-26 「特別気配の直し」: rows with no price yet (特別気配) listed by the Collector
+        pending = [base._pending("SYN42.T"), base._pending("SYN43.T")]
+        payload = partial(board(self.now, drop={"SYN42.T", "SYN43.T"}, declared=100))
+        payload["missing_rows"] = pending
+        got = self._avail(payload)
+        self.assertEqual(got["availability_status"], "AVAILABLE_PARTIAL")
+        self.assertIs(got["decision_available"], True)
+        self.assertEqual(got["reasons"], [])
+        self.assertEqual((got["quote_pending_count"], got["quote_pending_sample"]), (2, ["SYN42.T", "SYN43.T"]))
+        self.assertIn("UNIVERSE_QUOTE_PENDING", got["partial_reasons"])
+        self.assertEqual(got["missing_count"], 2)                       # still reported, never used
+        self.assertIs(got["real_submit_allowed"], False)
+        # without the Collector's PRICE_MISSING listing, a missing row still blocks
+        payload["missing_rows"] = [pending[0]]
+        self.assertEqual(self._avail(payload)["availability_status"], "BLOCKED_UNIVERSE_INCOMPLETE")
+        # more than 5 rows, or a wrong sheet code, still blocks
+        many = partial(board(self.now, drop=set(UNIVERSE[94:]), declared=100))
+        many["missing_rows"] = [base._pending(t) for t in UNIVERSE[94:]]
+        self.assertIs(self._avail(many)["decision_available"], False)
+        wrong = partial(board(self.now, drop={"SYN42.T"}, declared=100))
+        wrong["missing_rows"] = [dict(base._pending("SYN42.T"), sheet_code_matches=False)]
+        self.assertIs(self._avail(wrong)["decision_available"], False)
+        # with stale rows too, >= 95% of expected rows must still be FRESH
+        mixed = partial(board(self.now, drop={"SYN42.T", "SYN43.T"}, stale=set(UNIVERSE[96:]), declared=100))
+        mixed["missing_rows"] = pending
+        self.assertIs(self._avail(mixed)["decision_available"], False)
+        # without the Collector's FRESH_ROWS_ONLY declaration, it stays blocked
+        bare = board(self.now, drop={"SYN42.T", "SYN43.T"}, declared=100)
+        bare["missing_rows"] = pending
+        self.assertIs(self._avail(bare)["decision_available"], False)
+
     def test_invalid_row_is_never_partial(self):
         # A row observed in the future is INVALID; one INVALID row blocks.
         future = self.now + timedelta(seconds=60)

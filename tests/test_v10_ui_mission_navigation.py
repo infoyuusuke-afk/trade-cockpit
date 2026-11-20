@@ -23,12 +23,13 @@ class V10MissionNavigation(unittest.TestCase):
 
     def test_priority_primary_tabs_preserve_strategies_and_owner(self):
         buttons = re.findall(r'<button class="cockpit-tab(?: active)?" data-tab="([^"]+)"', self.nav)
-        self.assertEqual(buttons[:13], [
+        # OWNER 2026-11-09 「PTS専用のタブを作って。OVERNIGHT 5の隣に『PTS』のタブを置き」
+        self.assertEqual(buttons[:14], [
             "control", "brain", "ai-journal", "scalp", "event-hot",
-            "ms2-live", "pre-next", "overnight", "swing", "value",
+            "ms2-live", "pre-next", "overnight", "pts", "swing", "value",
             "focus-owner", "kioxia-calendar", "events",
         ])
-        self.assertEqual(len(buttons), 22)
+        self.assertEqual(len(buttons), 23)
         self.assertIn("button.dataset.tab='earnings'", self.earnings)  # Script-injected tab, not statically duplicated.
 
     def test_reference_preserves_research_without_empty_weekly(self):
