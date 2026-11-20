@@ -1,6 +1,14 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-23（GitHub mainを開発・進捗共有の唯一の正本として同期）
+最終更新: 2026-10-14（Issue #342 時系列仮想約定監査を Draft で追加。main 未マージ）
+
+## Issue #342 時系列仮想約定監査（2026-10-14）
+
+`scripts/timeseries_fill_audit.py` は、仮想約定を SIGNAL → ENTRY_ELIGIBLE → ENTRY_OBSERVED → EXIT_OBSERVED → CLOSED の順で判定する純粋関数。日足の高値・安値、15秒足の足内順序、未検証の手数料0円では CLOSED にしない。見積もり約定は `shadow-fill-model-0.1` を再利用し、`estimated_fill=true` / `real_fill=false`。実約定レーン（BROKER_EXECUTION_EXPORT）はここでは受け取らない。
+
+公開リポジトリの既存データでは実観測の CLOSED 適格件数は 0。`paper_trade_history.json` の 263 件はバイト不変で、`morning_review.py` の日足監査は置き換えていない。`real_submit_allowed` / `promotion_eligible` / `statistical_edge_confirmed` は false。これは main マージでも実注文の許可でもない。
+
+最終更新（それ以前の同期記録）: 2026-09-23（GitHub mainを開発・進捗共有の唯一の正本として同期）
 役割分担（現行）：GPT/Codex側＝主開発・実装・検証・GitHub連携／Cloud側＝レビュー・診断・補助実装。役割は固定せず、GitHub mainの最新状態を基準に引き継ぐ。
 運用体制: GitHub main＝コードと進捗共有の唯一の正本。新しいセッションは必ずmainのSTATUS.mdと関連Issue/PRを確認してから作業し、古いチャット内の役割分担や進捗を正本として扱わない。
 同期ルール: GPT/Codex側・Cloud側のどちらで作業しても、共有すべき完了事項・未解決事項・Owner判断待ちはSTATUS.mdまたは関連Issue/PRへ反映する。main未反映の作業は「共有済み」と扱わない。
