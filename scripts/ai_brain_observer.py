@@ -117,8 +117,15 @@ def analyze(snapshot, *, now, file_modified_at):
             unique.add(sym)
     watch = []
     counts = {name: 0 for name in sorted(ALLOWED)}
+    non_fresh_rows = 0
     if not reasons and isinstance(rows, list):
         for row in rows:
+            # Only a row the Collector judged FRESH this cycle (own quote time,
+            # same day, within 120 s) is observed; a stale, undated or
+            # unknown row is counted and skipped, never read as current.
+            if row.get("aggregate_row_fresh") is not True:
+                non_fresh_rows += 1
+                continue
             price, vwap, high, low = (row.get("price"), row.get("vwap"),
                                       row.get("or_high"), row.get("or_low"))
             # Incomplete OR15 and missing VWAP are not signs.
@@ -142,7 +149,8 @@ def analyze(snapshot, *, now, file_modified_at):
         "exchange_tick_date_verified": False,
         "signal_provenance_verified": False,
         "tested_expectancy_available": False,
-        "observed_rows": len(rows) if status == "OBSERVATION_ONLY" else 0,
+        "observed_rows": len(rows) - non_fresh_rows if status == "OBSERVATION_ONLY" else 0,
+        "non_fresh_rows_skipped": non_fresh_rows if status == "OBSERVATION_ONLY" else 0,
         "watch_counts": counts if status == "OBSERVATION_ONLY" else {name: 0 for name in sorted(ALLOWED)},
         "watch_observations": watch,
     }

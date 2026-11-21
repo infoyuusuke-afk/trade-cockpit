@@ -1,5 +1,6 @@
-"""P0-V10-WATCHLIST-464A-SOURCE-PIN-20261019: the watchlist pin check accepts
-exactly the OWNER-approved 5595.T -> 464A.T replacement and nothing else.
+"""P0-V10-WATCHLIST-464A-SOURCE-PIN-20261019 + P0-V10-INTEGRATION-AND-LIVE-START-20261020:
+the watchlist pin check accepts exactly the OWNER-approved replacements (the 15
+thin rows of 2026-10-21, the pinned 5595.T row now 9983.T) and nothing else.
 
 Each negative below is a deliberate tampering the CI must reject. The pinned
 watchlist is read from the candidate commit recorded in the manifest, so the
@@ -59,10 +60,17 @@ class WatchlistReplacementCheck(unittest.TestCase):
         ci.check_replacement(self.candidate, self.pinned)
         items = list(self.candidate["stocks"].items())
         self.assertEqual(len(items), 100)
-        self.assertEqual(items[87][0], "QPSホールディングス（464A）")
-        self.assertEqual(items[87][1]["ticker"], "464A.T")
-        self.assertNotIn("5595.T", [row["ticker"] for _, row in items])
-        self.assertEqual([k for k, _ in items[:87]], [k for k, _ in list(self.pinned["stocks"].items())[:87]])
+        self.assertEqual(len(ci.APPROVED), 15)
+        self.assertEqual(items[87][0], "ファーストリテイリング（9983）")
+        self.assertEqual(items[87][1]["ticker"], "9983.T")
+        tickers = [row["ticker"] for _, row in items]
+        for removed in ("5595.T", "464A.T", "5129.T", "598A.T", "4722.T", "4370.T", "1934.T", "4667.T", "4165.T",
+                        "2158.T", "7564.T", "2782.T", "3778.T", "3663.T", "6324.T", "4478.T"):
+            self.assertNotIn(removed, tickers)
+        self.assertIn("285A.T", tickers)
+        pinned = list(self.pinned["stocks"].items())
+        changed = [i for i in range(100) if items[i] != pinned[i]]
+        self.assertEqual(len(changed), 15)
 
     def test_manifest_pins_the_committed_watchlist_blob(self):
         pin = next(f["git_blob_sha"] for f in MANIFEST["files"] if f["path"] == WATCHLIST)
@@ -83,9 +91,9 @@ class WatchlistReplacementCheck(unittest.TestCase):
 
     def test_two_changed_names_rejected(self):
         items = list(self.candidate["stocks"].items())
-        name, row = items[10]
-        items[10] = (name, dict(row, ticker="9998.T"))
-        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_CHANGE_COUNT_NOT_ONE")
+        name, row = items[0]
+        items[0] = (name, dict(row, ticker="9998.T"))
+        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_CHANGE_COUNT_NOT_APPROVED")
 
     def test_duplicate_ticker_rejected(self):
         items = list(self.candidate["stocks"].items())
@@ -96,29 +104,41 @@ class WatchlistReplacementCheck(unittest.TestCase):
     def test_reordered_names_rejected(self):
         items = list(self.candidate["stocks"].items())
         items[1], items[2] = items[2], items[1]
-        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_CHANGE_COUNT_NOT_ONE")
+        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_CHANGE_COUNT_NOT_APPROVED")
 
     def test_unapproved_code_rejected(self):
         items = list(self.candidate["stocks"].items())
         name, row = items[87]
-        items[87] = (name, dict(row, ticker="465A.T"))
+        items[87] = (name, dict(row, ticker="9985.T"))
         self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_UNAPPROVED_REPLACEMENT")
 
     def test_unapproved_name_rejected(self):
         items = list(self.candidate["stocks"].items())
         _, row = items[87]
-        items[87] = ("別名（464A）", row)
+        items[87] = ("別名（9983）", row)
         self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_UNAPPROVED_REPLACEMENT")
 
     def test_other_attribute_change_rejected(self):
         items = list(self.candidate["stocks"].items())
         name, row = items[87]
         items[87] = (name, dict(row, sector="changed"))
-        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_OTHER_ATTRIBUTES_CHANGED")
+        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_UNAPPROVED_REPLACEMENT")
+
+    def test_approved_row_moved_to_another_position_rejected(self):
+        items = list(self.candidate["stocks"].items())
+        items[87], items[88] = items[88], items[87]
+        with self.assertRaises(ci.WatchlistReplacementError):
+            ci.check_replacement(_rebuild(self.candidate, items), self.pinned)
+
+    def test_only_14_of_15_replacements_rejected(self):
+        items = list(self.candidate["stocks"].items())
+        pinned = list(self.pinned["stocks"].items())
+        items[87] = pinned[87]
+        self.assertRejected(_rebuild(self.candidate, items), "WATCHLIST_CHANGE_COUNT_NOT_APPROVED")
 
     def test_unchanged_pinned_list_rejected(self):
-        # The pinned list itself still carries the delisted code: not "one change".
-        self.assertRejected(copy.deepcopy(self.pinned), "WATCHLIST_CHANGE_COUNT_NOT_ONE")
+        # The pinned list itself still carries the delisted code: not the approved changes.
+        self.assertRejected(copy.deepcopy(self.pinned), "WATCHLIST_CHANGE_COUNT_NOT_APPROVED")
 
     def test_cli_exit_codes(self):
         import tempfile
