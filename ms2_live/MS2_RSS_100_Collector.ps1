@@ -3033,31 +3033,51 @@ $bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
 Write-Host "[VOICE] SBV2 API : READY / SBV2 ONLY" -ForegroundColor Cyan
-# OWNER 2026-11-24 「起動したの音声がまずでない」: the voice engine (Style-Bert-VITS2, started at the same time) is still loading its
-# model when the Collector reaches here, so the one-time startup voice failed and was never tried again. It is now tried at once and,
-# while it fails, again every 10 s for up to 4 minutes (inside the loop, so collecting is never held up).
+# OWNER 2026-11-24 「起動したの音声がまずでない」「起動の声のやり直しは、待つ時間を3秒ほどに短くして、値段の取り込みを止めない形にして」:
+# the voice engine (Style-Bert-VITS2) starts with the cockpit and, on the first start of the day, made the first voice in 105 s
+# (7:50:34 -> 7:52:19), so the one startup call (35 s wait) failed and was never tried again. The startup voice is now handed to a
+# background job: the job asks the bridge, and while it fails asks again every 10 s for up to 4 minutes. The loop only looks at the
+# job's state (no wait), so collecting prices is never held up; the result is written to this window once.
 $script:startupVoiceText = "キオクシアを含む、100銘柄の音声監視を開始しました。"
-$script:startupVoiceUntil = (Get-Date).AddMinutes(4)
-$script:startupVoiceNext = Get-Date
-$script:startupVoicePending = $true
-function Invoke-StartupVoiceIfPending {
-    if (-not $script:startupVoicePending) { return }
-    $now = Get-Date
-    if ($now -lt $script:startupVoiceNext) { return }
-    if ($now -gt $script:startupVoiceUntil) {
-        $script:startupVoicePending = $false
-        Write-Host "[VOICE] startup voice gave up after 4 minutes (voice engine not ready)" -ForegroundColor Yellow
-        return
+$script:startupVoiceJob = $null
+if (-not $script:priceSourceMismatch) {
+    try {
+        $startupChunks = @(Split-CockpitSpeechText (Convert-ToCockpitSpeechText $script:startupVoiceText))
+        $script:startupVoiceJob = Start-Job -Name ("MS2_STARTUP_VOICE_" + $PID) -ArgumentList (,$startupChunks) -ScriptBlock {
+            param([string[]]$chunks)
+            $until = (Get-Date).AddMinutes(4)
+            $try = 0
+            while ((Get-Date) -lt $until) {
+                $try++
+                $ok = $true
+                foreach ($chunk in $chunks) {
+                    try {
+                        $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:28583/announce?level=WATCH&text=" + [Uri]::EscapeDataString($chunk)) -TimeoutSec 40
+                        if ($r.StatusCode -ne 200) { $ok = $false; break }
+                    } catch { $ok = $false; break }
+                }
+                if ($ok) { return ("OK try=" + $try) }
+                Start-Sleep -Seconds 10
+            }
+            return ("GAVE_UP try=" + $try)
+        }
+    } catch {
+        Write-Host ("[VOICE] startup voice job not started: " + $_.Exception.GetType().Name) -ForegroundColor Yellow
     }
-    Invoke-SerializedSpeak $speaker $script:startupVoiceText
-    if ($script:lastSpeakOk -eq $true) { $script:startupVoicePending = $false; return }
-    $script:startupVoiceNext = $now.AddSeconds(10)
 }
-Invoke-StartupVoiceIfPending
+function Test-StartupVoiceJob {
+    $j = $script:startupVoiceJob
+    if ($null -eq $j -or $j.State -eq 'Running' -or $j.State -eq 'NotStarted') { return }
+    $res = ""
+    try { $res = [string](Receive-Job $j -ErrorAction SilentlyContinue | Select-Object -Last 1) } catch { $res = "" }
+    Remove-Job $j -Force -ErrorAction SilentlyContinue
+    $script:startupVoiceJob = $null
+    if ($res -like "OK*") { Write-Host ("[VOICE] startup voice played (" + $res + ")") -ForegroundColor Cyan }
+    else { Write-Host ("[VOICE] startup voice not played (" + $res + ")") -ForegroundColor Yellow }
+}
 
 try {
     while ($true) {
-        Invoke-StartupVoiceIfPending
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
@@ -4774,6 +4794,7 @@ try {
                 $kioFlowCandidate=""
             }
         }
+        Test-StartupVoiceJob   # OWNER 2026-11-24: only looks at the startup voice job's state (no wait)
         Add-LoopMark 'voice_tail'
         Write-Host ('[TIMING] ' + $now.ToString('HH:mm:ss') + ' total=' + $script:loopTimer.ElapsedMilliseconds + ' ' + ($script:loopMarks -join ' '))
         # OWNER 2026-11-08 「1周の内訳の記録」: the same line goes to records/<day>/collector_timing.csv (measurement only).
@@ -4800,5 +4821,6 @@ try {
     }
 } finally {
     if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
+    if ($null -ne $script:startupVoiceJob) { Stop-Job $script:startupVoiceJob -ErrorAction SilentlyContinue; Remove-Job $script:startupVoiceJob -Force -ErrorAction SilentlyContinue }
     Write-Host "監視を停止しました。日別CSVは records フォルダーに残っています。" -ForegroundColor Yellow
 }
