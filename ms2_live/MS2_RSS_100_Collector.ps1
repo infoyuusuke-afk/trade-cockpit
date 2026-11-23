@@ -3033,10 +3033,31 @@ $bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
 Write-Host "[VOICE] SBV2 API : READY / SBV2 ONLY" -ForegroundColor Cyan
-Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声監視を開始しました。"
+# OWNER 2026-11-24 「起動したの音声がまずでない」: the voice engine (Style-Bert-VITS2, started at the same time) is still loading its
+# model when the Collector reaches here, so the one-time startup voice failed and was never tried again. It is now tried at once and,
+# while it fails, again every 10 s for up to 4 minutes (inside the loop, so collecting is never held up).
+$script:startupVoiceText = "キオクシアを含む、100銘柄の音声監視を開始しました。"
+$script:startupVoiceUntil = (Get-Date).AddMinutes(4)
+$script:startupVoiceNext = Get-Date
+$script:startupVoicePending = $true
+function Invoke-StartupVoiceIfPending {
+    if (-not $script:startupVoicePending) { return }
+    $now = Get-Date
+    if ($now -lt $script:startupVoiceNext) { return }
+    if ($now -gt $script:startupVoiceUntil) {
+        $script:startupVoicePending = $false
+        Write-Host "[VOICE] startup voice gave up after 4 minutes (voice engine not ready)" -ForegroundColor Yellow
+        return
+    }
+    Invoke-SerializedSpeak $speaker $script:startupVoiceText
+    if ($script:lastSpeakOk -eq $true) { $script:startupVoicePending = $false; return }
+    $script:startupVoiceNext = $now.AddSeconds(10)
+}
+Invoke-StartupVoiceIfPending
 
 try {
     while ($true) {
+        Invoke-StartupVoiceIfPending
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
