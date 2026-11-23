@@ -14,7 +14,7 @@ class StartupVoice(unittest.TestCase):
         self.assertIn("$script:startupVoiceNext = $now.AddSeconds(10)", t)
         self.assertIn("if ($script:lastSpeakOk -eq $true) { $script:startupVoicePending = $false; return }", t)
         i = t.index("try {\n    while ($true) {\n")
-        self.assertTrue(t[i:i + 120].rstrip().endswith("Invoke-StartupVoiceIfPending"))
+        self.assertEqual(t[i:].splitlines()[2].strip(), "Invoke-StartupVoiceIfPending")   # first line inside the loop
         self.assertEqual(t.count('"キオクシアを含む、100銘柄の音声監視を開始しました。"'), 1)
 
 
