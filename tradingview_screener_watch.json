@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-24 03:42:31 JST",
+  "updated_at": "2026-11-24 07:51:28 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -568,7 +568,7 @@
           "vwap": 4033.3333333333335,
           "high": 4279,
           "low": 3906,
-          "market_cap": 876723197937,
+          "market_cap": 1587163557129,
           "sector": "Finance",
           "already_watched": false
         },
@@ -632,7 +632,7 @@
           "vwap": 4657.333333333333,
           "high": 4778,
           "low": 4522,
-          "market_cap": 2668937886719,
+          "market_cap": 2644985046875,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -1138,7 +1138,7 @@
           "vwap": 4657.333333333333,
           "high": 4778,
           "low": 4522,
-          "market_cap": 2668937886719,
+          "market_cap": 2644985046875,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -1463,7 +1463,7 @@
           "vwap": 4657.333333333333,
           "high": 4778,
           "low": 4522,
-          "market_cap": 2668937886719,
+          "market_cap": 2644985046875,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -2043,7 +2043,7 @@
       "vwap": 4657.333333333333,
       "high": 4778,
       "low": 4522,
-      "market_cap": 2668937886719,
+      "market_cap": 2644985046875,
       "sector": "Electronic Technology",
       "already_watched": false
     },
@@ -3771,7 +3771,7 @@
       "vwap": 4033.3333333333335,
       "high": 4279,
       "low": 3906,
-      "market_cap": 876723197937,
+      "market_cap": 1587163557129,
       "sector": "Finance",
       "already_watched": false
     },
