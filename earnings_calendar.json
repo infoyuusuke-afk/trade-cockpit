@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-24T05:34:38.059515+09:00",
+  "updated_at": "2026-11-24T15:24:11.849624+09:00",
   "calendar": [
     {
       "code": "8630",
@@ -118,9 +118,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1150.0,
-        "return_5d_pct": -0.95,
-        "return_20d_pct": -0.86,
+        "last_close": 1165.0,
+        "return_5d_pct": 0.87,
+        "return_20d_pct": 0.6,
         "momentum_direction": "中立"
       }
     },
@@ -5231,7 +5231,359 @@
       }
     }
   ],
-  "catalysts": [],
+  "catalysts": [
+    {
+      "code": "9823",
+      "name": "マミーマートＨＤ",
+      "title": "（訂正）「中期経営計画（2027～2029）」の一部訂正について",
+      "published_at": "2026-11-24T14:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584969.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2623",
+      "name": "ｉＳユロＩＧ社債ヘジ",
+      "title": "2026年10月期 決算短信（2026年４月12日～2026年10月11日）",
+      "published_at": "2026-11-24T12:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584802.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "488A",
+      "name": "ｉＳ円高フォーカス",
+      "title": "2026年10月期 決算短信（2026年４月12日～2026年10月11日）",
+      "published_at": "2026-11-24T12:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584806.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "515A",
+      "name": "ｉＳ高格付日本円社債",
+      "title": "2026年10月期 決算短信（2026年２月27日～2026年10月11日）",
+      "published_at": "2026-11-24T12:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584808.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "296A",
+      "name": "Ｇ－令和ＡＨ",
+      "title": "通期業績予想及び配当予想の修正(増配)に関するお知らせ",
+      "published_at": "2026-11-24T11:30:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261120584474.pdf",
+      "tags": [
+        "増配",
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "140A",
+      "name": "ｉＦ米１０国債ベア",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584756.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2017",
+      "name": "ｉＦＪＰＸプラ１５０",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584750.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2624",
+      "name": "ｉＦ２２５年４",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584739.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2625",
+      "name": "ｉＦＴＰＸ年４",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584743.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2868",
+      "name": "ＧＸＳＰＸカバコ",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584656.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "356A",
+      "name": "ＧＸＳＰＣＦ１００",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584661.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "363A",
+      "name": "ｉＦ英国ＦＴ１００",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584760.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "379A",
+      "name": "ＧＸＳＰＸプロテクト",
+      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584670.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "563A",
+      "name": "ＧＸナスＤカバコ",
+      "title": "2026年10月期（2026年4月21日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584702.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "564A",
+      "name": "ＧＸ先進ＣＦ１００",
+      "title": "2026年10月期（2026年4月21日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584712.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "576A",
+      "name": "ＧＸチャイテクカバコ",
+      "title": "2026年10月期（2026年5月26日～2026年10月10日）決算短信",
+      "published_at": "2026-11-24T11:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584718.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "1595",
+      "name": "ＮＺＡＭ　Ｊリート",
+      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584664.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2086",
+      "name": "ＮＺＡＭ　ＳＰ５Ｈ",
+      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584666.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2087",
+      "name": "ＮＺＡＭ　ＮＱ１Ｈ",
+      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584668.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2088",
+      "name": "ＮＺＡＭ　ＤｏｗＨ",
+      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584672.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "532A",
+      "name": "ＮＺＡＭ　ＴＰ高４０",
+      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584674.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "533A",
+      "name": "ＮＺＡＭ　ＳＰ５００",
+      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584679.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "534A",
+      "name": "ＮＺＡＭ　ＮＱ１００",
+      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584704.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "536A",
+      "name": "ＮＺＡＭ　先進国株",
+      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584706.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "537A",
+      "name": "ＮＺＡＭ　全世界株",
+      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
+      "published_at": "2026-11-24T10:10:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584708.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    }
+  ],
   "sources": [
     {
       "url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan09_1106.xlsx",
