@@ -3045,21 +3045,42 @@ if (-not $script:priceSourceMismatch) {
         $startupChunks = @(Split-CockpitSpeechText (Convert-ToCockpitSpeechText $script:startupVoiceText))
         $script:startupVoiceJob = Start-Job -Name ("MS2_STARTUP_VOICE_" + $PID) -ArgumentList (,$startupChunks) -ScriptBlock {
             param([string[]]$chunks)
+            # audit 92a5979: the bridge answers /announce only after it has played the voice and does not notice a caller that
+            # left, so a retry after the caller's own time-out could play the line twice. So: wait (every 10 s, up to 4 min) until
+            # /health says sbv2_ready, then send each chunk once with a long wait (150 s, longer than the bridge's own 20 s lock
+            # + 30 s engine + play). Ask again only when the reply proves nothing was played (the bridge refused or answered an
+            # error, or it could not be reached); after a time-out never ask again. A chunk that played is never sent again.
             $until = (Get-Date).AddMinutes(4)
-            $try = 0
+            $ready = $false
             while ((Get-Date) -lt $until) {
-                $try++
-                $ok = $true
-                foreach ($chunk in $chunks) {
-                    try {
-                        $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:28583/announce?level=WATCH&text=" + [Uri]::EscapeDataString($chunk)) -TimeoutSec 40
-                        if ($r.StatusCode -ne 200) { $ok = $false; break }
-                    } catch { $ok = $false; break }
-                }
-                if ($ok) { return ("OK try=" + $try) }
+                try {
+                    $h = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:28583/health" -TimeoutSec 5
+                    if (($h.Content | ConvertFrom-Json).sbv2_ready -eq $true) { $ready = $true; break }
+                } catch { }
                 Start-Sleep -Seconds 10
             }
-            return ("GAVE_UP try=" + $try)
+            if (-not $ready) { return "GAVE_UP not_ready" }
+            $i = 0
+            $try = 0
+            while ($i -lt $chunks.Count -and (Get-Date) -lt $until) {
+                $try++
+                try {
+                    $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:28583/announce?level=WATCH&text=" + [Uri]::EscapeDataString($chunks[$i])) -TimeoutSec 150
+                    if ($r.StatusCode -eq 200) { $i++; continue }
+                    Start-Sleep -Seconds 10
+                } catch [System.Net.WebException] {
+                    $st = $_.Exception.Status
+                    if ($st -eq [System.Net.WebExceptionStatus]::Timeout) { return ("TIMEOUT_NO_RETRY chunk=" + $i + " try=" + $try) }
+                    if ($st -ne [System.Net.WebExceptionStatus]::ProtocolError -and $st -ne [System.Net.WebExceptionStatus]::ConnectFailure) {
+                        return ("STOPPED " + $st + " chunk=" + $i + " try=" + $try)
+                    }
+                    Start-Sleep -Seconds 10
+                } catch {
+                    return ("STOPPED " + $_.Exception.GetType().Name + " chunk=" + $i + " try=" + $try)
+                }
+            }
+            if ($i -ge $chunks.Count) { return ("OK try=" + $try) }
+            return ("GAVE_UP chunk=" + $i + " try=" + $try)
         }
     } catch {
         Write-Host ("[VOICE] startup voice job not started: " + $_.Exception.GetType().Name) -ForegroundColor Yellow

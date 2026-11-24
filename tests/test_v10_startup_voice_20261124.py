@@ -25,6 +25,12 @@ class StartupVoice(unittest.TestCase):
         self.assertIn("$until = (Get-Date).AddMinutes(4)", job)
         self.assertIn("Start-Sleep -Seconds 10", job)
         self.assertIn("http://127.0.0.1:28583/announce?level=WATCH&text=", job)
+        # audit 92a5979: wait for /health sbv2_ready first, send once with a long wait, never ask again after a time-out
+        self.assertLess(job.index('"http://127.0.0.1:28583/health"'), job.index("/announce?level=WATCH"))
+        self.assertIn("-TimeoutSec 150", job)
+        self.assertIn('if ($st -eq [System.Net.WebExceptionStatus]::Timeout) { return ("TIMEOUT_NO_RETRY', job)
+        self.assertIn("if ($r.StatusCode -eq 200) { $i++; continue }", job)   # a chunk that played is not sent again
+        self.assertNotIn("-TimeoutSec 40", job)
         self.assertEqual(t.count('"キオクシアを含む、100銘柄の音声監視を開始しました。"'), 1)
         self.assertNotIn("Invoke-SerializedSpeak $speaker $script:startupVoiceText", t)
 
