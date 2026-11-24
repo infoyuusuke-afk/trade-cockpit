@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-24T15:24:11.849624+09:00",
+  "updated_at": "2026-11-25T04:42:53.606339+09:00",
   "calendar": [
     {
       "code": "8630",
@@ -115,13 +115,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 1165.0,
-        "return_5d_pct": 0.87,
-        "return_20d_pct": 0.6,
-        "momentum_direction": "中立"
       }
     },
     {
@@ -145,6 +138,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 3045.0,
+        "return_5d_pct": -2.25,
+        "return_20d_pct": 0.0,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -168,6 +168,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 381.0,
+        "return_5d_pct": -1.8,
+        "return_20d_pct": -3.79,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -5233,6 +5240,77 @@
   ],
   "catalysts": [
     {
+      "code": "9009",
+      "name": "京成",
+      "title": "株式会社オリエンタルランドが実施する自己株式立会外買付取引による自己株式の買付けへの応募並びに特別利益及び特別損失の計上見込みに関するお知らせ",
+      "published_at": "2026-11-24T18:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261119583443.pdf",
+      "tags": [
+        "一過性利益",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7695",
+      "name": "Ｇ－リフォームテクノ",
+      "title": "(訂正)「自己株式立会外買付取引（ToSTNeT-3）による自己株式の取得結果及び取得終了に関するお知らせ」の訂正について",
+      "published_at": "2026-11-24T16:30:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124585237.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3808",
+      "name": "オーケーウェブ",
+      "title": "（開示事項の経過）人員削減等の合理化の実施結果及び特別損失の計上に関するお知らせ",
+      "published_at": "2026-11-24T16:00:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261120583986.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "156A",
+      "name": "Ｇ－マテリアルＧ",
+      "title": "2026年8月期決算短信〔IFRS〕（連結）",
+      "published_at": "2026-11-24T15:30:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124585097.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7199",
+      "name": "プレミアグループ",
+      "title": "剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-11-24T15:30:00+09:00",
+      "date": "2026-11-24",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124585039.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "9823",
       "name": "マミーマートＨＤ",
       "title": "（訂正）「中期経営計画（2027～2029）」の一部訂正について",
@@ -5596,8 +5674,13 @@
   ],
   "disclosure_coverage": [
     {
-      "date": "2026-11-24",
+      "date": "2026-11-25",
       "pages": 1,
+      "truncated": false
+    },
+    {
+      "date": "2026-11-24",
+      "pages": 3,
       "truncated": false
     },
     {
@@ -5609,11 +5692,6 @@
       "date": "2026-11-22",
       "pages": 1,
       "truncated": false
-    },
-    {
-      "date": "2026-11-21",
-      "pages": 1,
-      "truncated": false
     }
   ],
   "errors": [],
@@ -5621,7 +5699,7 @@
   "coverage_note": "JPX掲載月次表の前7日〜先60日（掲載対象のみ、全銘柄網羅ではない）。TDnetは直近4暦日・各日最大8ページ。",
   "kabutan_calendar_url": "https://s.kabutan.jp/warnings/news_schedule/",
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
-  "momentum_target_date": "2026-11-25",
+  "momentum_target_date": "2026-11-26",
   "momentum_validation": {
     "resolved_n": 3248,
     "hit_rate_pct": 35.1,
