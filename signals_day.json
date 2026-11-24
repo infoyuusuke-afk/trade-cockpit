@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-24 03:42:08 JST",
+  "updated_at": "2026-11-25 03:13:30 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -2402,8 +2402,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-11-24T03:42:01+09:00",
-    "decision_at": "2026-11-24T03:42:01+09:00",
+    "generated_at": "2026-11-25T03:13:24+09:00",
+    "decision_at": "2026-11-25T03:13:24+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -4300,5 +4300,5 @@
   "daily_capitulation_reversals": [],
   "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。",
   "horizon": "day",
-  "tagged_at": "2026-11-24 03:45:04 JST"
+  "tagged_at": "2026-11-25 03:19:47 JST"
 }
