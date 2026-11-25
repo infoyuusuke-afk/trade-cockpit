@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-25T04:42:53.606339+09:00",
+  "updated_at": "2026-11-25T14:01:52.574701+09:00",
   "calendar": [
     {
       "code": "8630",
@@ -141,10 +141,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3045.0,
-        "return_5d_pct": -2.25,
-        "return_20d_pct": 0.0,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 3115.0,
+        "return_5d_pct": 0.32,
+        "return_20d_pct": 0.81,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -171,9 +171,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 381.0,
-        "return_5d_pct": -1.8,
-        "return_20d_pct": -3.79,
+        "last_close": 389.0,
+        "return_5d_pct": 1.04,
+        "return_20d_pct": -1.27,
         "momentum_direction": "中立"
       }
     },
@@ -5239,6 +5239,62 @@
     }
   ],
   "catalysts": [
+    {
+      "code": "5570",
+      "name": "Ｇ－ジェノバ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-11-25T13:00:00+09:00",
+      "date": "2026-11-25",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261125585797.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4012",
+      "name": "アクシス",
+      "title": "配当予想の修正に関するお知らせ",
+      "published_at": "2026-11-25T12:00:00+09:00",
+      "date": "2026-11-25",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584785.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3454",
+      "name": "ファーストブラザーズ",
+      "title": "配当方針の変更（DOE基準引き上げ）、配当予想の修正（特別配当の実施）及び株主優待制度の変更に関するお知らせ",
+      "published_at": "2026-11-25T11:35:00+09:00",
+      "date": "2026-11-25",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261125585751.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3393",
+      "name": "スターティアＨＤ",
+      "title": "（訂正）「決算補足資料 2027年３月期 第２四半期」の一部訂正に関するお知らせ",
+      "published_at": "2026-11-25T09:00:00+09:00",
+      "date": "2026-11-25",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124585496.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
     {
       "code": "9009",
       "name": "京成",
