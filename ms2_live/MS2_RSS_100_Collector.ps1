@@ -2739,7 +2739,8 @@ function Convert-ToCockpitSpeechText([string]$text) {
     # in brackets, English names in katakana, and HD / FG in full words.
     foreach ($pair in $script:SpeechNameReadings) { $s = $s.Replace([string]$pair[0], [string]$pair[1]) }
     # OWNER 2026-11-11 「コードもよんで」: the code in brackets is read one character at a time after the name (was dropped, 11/02)
-    $speechCodeRead = @{"0"="ぜろ";"1"="いち";"2"="に";"3"="さん";"4"="よん";"5"="ご";"6"="ろく";"7"="なな";"8"="はち";"9"="きゅう";"A"="エー";"B"="ビー";"C"="シー";"D"="ディー";"E"="イー";"F"="エフ";"G"="ジー";"H"="エイチ";"I"="アイ";"J"="ジェー";"K"="ケー";"L"="エル";"M"="エム";"N"="エヌ";"O"="オー";"P"="ピー";"Q"="キュー";"R"="アール";"S"="エス";"T"="ティー";"U"="ユー";"V"="ブイ";"W"="ダブリュー";"X"="エックス";"Y"="ワイ";"Z"="ゼット"}
+    # OWNER 2026-11-25 voice reading check: the hiragana 8 was spoken as "wachi", so 8 is written in katakana
+    $speechCodeRead = @{"0"="ぜろ";"1"="いち";"2"="に";"3"="さん";"4"="よん";"5"="ご";"6"="ろく";"7"="なな";"8"="ハチ";"9"="きゅう";"A"="エー";"B"="ビー";"C"="シー";"D"="ディー";"E"="イー";"F"="エフ";"G"="ジー";"H"="エイチ";"I"="アイ";"J"="ジェー";"K"="ケー";"L"="エル";"M"="エム";"N"="エヌ";"O"="オー";"P"="ピー";"Q"="キュー";"R"="アール";"S"="エス";"T"="ティー";"U"="ユー";"V"="ブイ";"W"="ダブリュー";"X"="エックス";"Y"="ワイ";"Z"="ゼット"}
     $s = [regex]::Replace($s, '（([0-9][0-9A-Z]{3})）|\(([0-9][0-9A-Z]{3})\)', [System.Text.RegularExpressions.MatchEvaluator]{ param($m)
         $c = $m.Groups[1].Value + $m.Groups[2].Value
         "、コード " + ((@($c.ToCharArray() | ForEach-Object { $speechCodeRead[[string]$_] })) -join " ") + "、" })

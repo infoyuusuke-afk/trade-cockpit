@@ -48,7 +48,7 @@ class VoiceClear(unittest.TestCase):
             got = out.read_text(encoding="utf-8")
         # OWNER 2026-11-11 「コードもよんで」: the code is read one character at a time after the name
         self.assertEqual(got, "ショートリバ上がり切り。ヘンゲ,コード よん よん なな ご。スクリーン ホールディングス,コード なな なな さん ご、"
-                              "三菱ユーエフジェイ フィナンシャルグループ,コード はち さん ぜろ ろく。")
+                              "三菱ユーエフジェイ フィナンシャルグループ,コード ハチ さん ぜろ ろく。")   # OWNER 2026-11-25: 8 in katakana (hiragana was spoken "wachi")
         self.assertTrue(all(ord(c) < 128 for c in fn.split("\n")[0]))
         self.assertNotIn("（", fn)   # no raw full-width bracket in the bridge's code (it would be garbled under cp932)
 
@@ -66,8 +66,9 @@ class VoiceClear(unittest.TestCase):
             subprocess.run([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps)], capture_output=True, timeout=120)
             got = out.read_text(encoding="utf-8")
         # OWNER 2026-11-11 「コードもよんで」: the code is read one character at a time after the name (it was dropped on 11/02)
-        self.assertEqual(got, "きおくしあ ホールディングス、コード に はち ご エー、マイナス15パーセント。スクリーン ホールディングス、コード なな なな さん ご、マイナス12パーセント。"
-                              "コクサイ エレクトリック、コード ろく ご に ご、マイナス10パーセント。三井住友フィナンシャルグループ、コード はち さん いち ろく。ティアフォー、コード ご きゅう さん エー。")
+        # OWNER 2026-11-25: 8 is written in katakana (the hiragana was spoken "wachi")
+        self.assertEqual(got, "きおくしあ ホールディングス、コード に ハチ ご エー、マイナス15パーセント。スクリーン ホールディングス、コード なな なな さん ご、マイナス12パーセント。"
+                              "コクサイ エレクトリック、コード ろく ご に ご、マイナス10パーセント。三井住友フィナンシャルグループ、コード ハチ さん いち ろく。ティアフォー、コード ご きゅう さん エー。")
 
 
 if __name__ == "__main__":
