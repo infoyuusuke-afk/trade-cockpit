@@ -5504,7 +5504,7 @@ main .card hr{display:none}
 #today-scenario .ts-scn b{color:#E8EAED}#today-scenario .ts-scn ul{margin:2px 0 0;padding-left:18px;color:#d6d8dc}
 #today-scenario .ts-weak{margin:4px 0 2px;padding:6px 10px;border-radius:8px;background:#1c1c1e;border-left:4px solid #5f6368;font-size:13px;line-height:1.6;color:#d6d8dc}
 #today-scenario .ts-weak b{color:#E8EAED;margin-right:8px}#today-scenario .ts-weak small{display:block;color:#9aa0a6;font-size:12px}
-#today-scenario .ts-weak.warn{border-left-color:#f9ab00}#today-scenario .ts-weak.bad{border-left-color:#ff6d00}#today-scenario .ts-weak.bad b{color:#ffb74d}</style>
+#today-scenario .ts-weak.good{border-left-color:#34a853}#today-scenario .ts-weak.good b{color:#81c995}#today-scenario .ts-weak.bad{border-left-color:#ff6d00}#today-scenario .ts-weak.bad b{color:#ffb74d}</style>
 <script>
 // OWNER 2026-11-18 「上部に今日の予測シナリオかいて」: /today_scenario.json = the PC's file made from the market-state analysts'
 // answers (Claude 地合い 朝 8:15・昼 11:35・引け 15:35, and the pre-market analyst's 相場の向き). In the 今やること box (トレード中):
@@ -5523,16 +5523,16 @@ main .card hr{display:none}
     const today=typeof window.jstParts==="function"?window.jstParts(Date.now()).day:new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
     if(!j||j.real_submit_allowed!==false||j.trade_instruction!==false||!Array.isArray(j.items)){
       box.innerHTML='<div class="ts-head"><b>今日の予測シナリオ</b><small>まだ読めません（研究・売買の合図ではありません）</small></div>';return;}
-    // OWNER 2026-11-26 「朝の地合予想に、おれが苦手な日かどうかを追加して」: the PC's owner_weak_day (owner_weak_day.py, from the
-    // owner's own record: the shapes found in the first half and seen again in the second). Today's only. Words only (escaped), no amount,
-    // no stock, no arrow, no voice, no order: research, not a trade signal.
+    // OWNER 2026-11-26 「朝の地合い予想の欄に『今日は苦手な日か』を1行足す版を作って…当てはまる項目を並べて『苦手な日／ふつう／得意な日』を
+    // 出す…表示だけで、音声・注文・メルは変えない。自分の収支はPCの中だけで読み、GitHubには入れない」: the PC's owner_weak_day (written by a
+    // PC-only script from the owner's own record and the 8:50 market; only words come here). Today's only. Escaped, no amount, no stock,
+    // no arrow, no voice, no order: research, not a trade signal.
     const wd=j.owner_weak_day&&String(j.owner_weak_day.day||"")===today?j.owner_weak_day:null;
     const wl=v=>Array.isArray(v)?v:[];
-    const weak=wd?'<div class="ts-weak'+(wd.level==="苦手な日"?" bad":wd.level==="少し苦手"?" warn":"")+'"><b>あなたの苦手な日：'+esc(wd.level)+'</b>'+
-      (wl(wd.hits).length?'<span>'+wl(wd.hits).slice(0,5).map(h=>esc(h&&h.what)+'（'+esc(h&&h.strength)+'）').join("・")+'</span>':'')+
-      (wl(wd.unknown).length?'<small>まだ分からない：'+wl(wd.unknown).slice(0,3).map(esc).join("・")+'</small>':'')+
-      (wl(wd.watch).length?'<small>場中の注意：'+wl(wd.watch).slice(0,3).map(esc).join("／")+'</small>':'')+
-      '<small>自分の記録の傾向（強＝前半・後半とも／中＝前半・後半とも悪いが線の手前／弱＝後半だけ）・研究のみ・売買の合図ではありません</small></div>':'';
+    const weak=wd?'<div class="ts-weak'+(wd.level==="苦手な日"?" bad":wd.level==="得意な日"?" good":"")+'"><b>今日は：'+esc(wd.level)+'</b>'+
+      (wl(wd.hits).length?'<span>'+wl(wd.hits).slice(0,6).map(h=>esc(h&&h.side)+'：'+esc(h&&h.what)).join("・")+'</span>':'<span>当てはまる項目なし</span>')+
+      (wl(wd.unknown).length?'<small>まだ分からない：'+wl(wd.unknown).slice(0,4).map(esc).join("・")+'</small>':'')+
+      '<small>自分の記録（2022/5〜）の傾向・8:50に分かるものだけ・研究のみ・売買の合図ではありません</small></div>':'';
     const items=j.items.filter(x=>x&&(String(x.made_day||"")===today));
     if(!items.length){box.innerHTML='<div class="ts-head"><b>今日の予測シナリオ</b><small>今日の答えはまだありません（朝8:15ごろに出ます）・研究・売買の合図ではありません</small></div>'+weak;return;}
     const main=items.filter(x=>x.kind==="tech").sort((a,b)=>String(b.made_at).localeCompare(String(a.made_at)))[0]||items[0];
