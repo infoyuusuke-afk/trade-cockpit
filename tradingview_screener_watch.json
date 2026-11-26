@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-26 20:30:54 JST",
+  "updated_at": "2026-11-27 00:49:38 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -6208,22 +6208,6 @@
       "already_watched": false
     },
     {
-      "code": "8338",
-      "name": "Tsukuba Bank, Ltd.",
-      "exchange": "TSE",
-      "price": 545,
-      "change_pct": 1.48975791433892,
-      "volume": 1553900,
-      "relative_volume": 1.176644303433236,
-      "atr_pct": 7.08,
-      "vwap": 543,
-      "high": 554,
-      "low": 530,
-      "market_cap": 44314508263,
-      "sector": "Finance",
-      "already_watched": false
-    },
-    {
       "code": "1332",
       "name": "Nissui Corporation",
       "exchange": "TSE",
@@ -6237,6 +6221,22 @@
       "low": 1089.5,
       "market_cap": 336914234375,
       "sector": "Consumer Non-Durables",
+      "already_watched": false
+    },
+    {
+      "code": "8338",
+      "name": "Tsukuba Bank, Ltd.",
+      "exchange": "TSE",
+      "price": 545,
+      "change_pct": 1.48975791433892,
+      "volume": 1553900,
+      "relative_volume": 1.176644303433236,
+      "atr_pct": 7.08,
+      "vwap": 543,
+      "high": 554,
+      "low": 530,
+      "market_cap": 44314508263,
+      "sector": "Finance",
       "already_watched": false
     },
     {
