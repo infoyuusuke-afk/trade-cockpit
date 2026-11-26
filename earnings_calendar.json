@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-26T03:51:06.790317+09:00",
+  "updated_at": "2026-11-26T13:22:43.517002+09:00",
   "calendar": [
     {
       "code": "8630",
@@ -191,9 +191,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 621.0,
-        "return_5d_pct": -0.96,
-        "return_20d_pct": -6.76,
+        "last_close": 641.0,
+        "return_5d_pct": 0.94,
+        "return_20d_pct": -1.54,
         "momentum_direction": "中立"
       }
     },
@@ -221,9 +221,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2083.0,
-        "return_5d_pct": -0.86,
-        "return_20d_pct": -2.62,
+        "last_close": 2091.0,
+        "return_5d_pct": -0.1,
+        "return_20d_pct": -1.92,
         "momentum_direction": "中立"
       }
     },
@@ -251,9 +251,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2625.0,
-        "return_5d_pct": -2.09,
-        "return_20d_pct": -11.08,
+        "last_close": 2550.0,
+        "return_5d_pct": -2.22,
+        "return_20d_pct": -15.28,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -281,9 +281,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 294.0,
-        "return_5d_pct": -2.97,
-        "return_20d_pct": -9.26,
+        "last_close": 268.0,
+        "return_5d_pct": -9.76,
+        "return_20d_pct": -17.03,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -5258,6 +5258,20 @@
   ],
   "catalysts": [
     {
+      "code": "3583",
+      "name": "オーベクス",
+      "title": "（開示事項の経過）投資有価証券売却に伴う特別利益の計上に関するお知らせ",
+      "published_at": "2026-11-26T12:00:00+09:00",
+      "date": "2026-11-26",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126586466.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "3358",
       "name": "Ｔｒａｉｌｈｅａｄ",
       "title": "剰余金の配当（中間配当・復配）の効力発生日変更に関するお知らせ",
@@ -6092,7 +6106,7 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-11-30",
   "momentum_validation": {
-    "resolved_n": 3248,
+    "resolved_n": 3249,
     "hit_rate_pct": 35.1,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
