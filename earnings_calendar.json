@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-27T13:32:02.386219+09:00",
+  "updated_at": "2026-11-28T03:27:52.860262+09:00",
   "calendar": [
     {
       "code": "2391",
@@ -107,9 +107,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 639.0,
-        "return_5d_pct": 1.75,
-        "return_20d_pct": 0.79,
+        "last_close": 640.0,
+        "return_5d_pct": 0.79,
+        "return_20d_pct": -1.69,
         "momentum_direction": "中立"
       }
     },
@@ -137,9 +137,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2093.0,
-        "return_5d_pct": 0.38,
-        "return_20d_pct": -1.04,
+        "last_close": 2089.0,
+        "return_5d_pct": -0.19,
+        "return_20d_pct": -2.02,
         "momentum_direction": "中立"
       }
     },
@@ -167,10 +167,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2662.0,
-        "return_5d_pct": 3.5,
-        "return_20d_pct": -16.68,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2531.0,
+        "return_5d_pct": -2.95,
+        "return_20d_pct": -15.91,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -197,9 +197,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 255.0,
-        "return_5d_pct": -14.43,
-        "return_20d_pct": -19.81,
+        "last_close": 268.0,
+        "return_5d_pct": -9.76,
+        "return_20d_pct": -17.03,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -1987,9 +1987,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261126586939.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -2838,9 +2842,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261127587502.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -5178,6 +5186,338 @@
   ],
   "catalysts": [
     {
+      "code": "562A",
+      "name": "Ｐ－寶結",
+      "title": "（訂正）「支配株主等に関する事項について」の一部訂正について",
+      "published_at": "2026-11-27T18:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127588076.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7488",
+      "name": "ヤガミ",
+      "title": "(訂正・数値データ訂正)「2027年4月期 第2四半期（中間期）決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-11-27T17:40:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127588054.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "506A",
+      "name": "Ｐ－シンカナース",
+      "title": "通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T17:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127588031.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3323",
+      "name": "レカム",
+      "title": "（訂正・数値データ訂正） 「2026年９月期 決算短信〔ＩＦＲＳ〕(連結)」の一部変更に関するお知らせ",
+      "published_at": "2026-11-27T17:10:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127588019.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "473A",
+      "name": "ＮＡＭ日経２２５イン",
+      "title": "ニッセイＥＴＦ日経２２５インデックス（2026年10月期）決算短信",
+      "published_at": "2026-11-27T17:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587829.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "652A",
+      "name": "Ｇ－トグルＨＤ",
+      "title": "(訂正・数値データ訂正) 「2026年９月期 決算短信〔日本基準〕（連結）」の一部訂正に関するお知らせ",
+      "published_at": "2026-11-27T17:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587490.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7680",
+      "name": "Ｐ－軽自動車館",
+      "title": "通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T17:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124585117.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3359",
+      "name": "Ｇ－ｃｏｔｔａ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-11-27T16:50:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587969.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5721",
+      "name": "エスクリプトエナジー",
+      "title": "（訂正）「第三者割当による第11回新株予約権及び買取契約の締結並びに第６回無担保普通社債の発行及び第５回無担保普通社債の償還に関するお知らせ」の一部訂正",
+      "published_at": "2026-11-27T16:50:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127588002.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6331",
+      "name": "菱化工機",
+      "title": "(訂正)「臨時株主総会付議議案の内容の決定に関するお知らせ」の一部訂正について",
+      "published_at": "2026-11-27T16:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587939.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3161",
+      "name": "アゼアス",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126586939.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3848",
+      "name": "データアプリ",
+      "title": "投資有価証券の売却及び特別利益計上の見込みに関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126587060.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4427",
+      "name": "Ｇ－ＥｄｕＬａｂ",
+      "title": "（訂正）「通期連結業績予想と実績の差異及び個別業績の前期実績との差異 並びに営業外費用、特別利益及び特別損失の計上に関するお知らせ」の一部訂正について",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587737.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "一過性利益",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4762",
+      "name": "ＸＮＥＴ",
+      "title": "（訂正・数値データ訂正）「2027年３月期 第２四半期（中間期）決算短信〔日本基準〕（非連結）」の一部訂正について",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261125586144.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7434",
+      "name": "オータケ",
+      "title": "固定資産の譲渡に伴う特別利益の計上及び通期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587757.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8025",
+      "name": "ツカモト",
+      "title": "事業整理に伴う特別損失計上の見込みに関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587330.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8894",
+      "name": "ＲＥＶＯＬＵＴＩＯＮ",
+      "title": "2026年10月期決算短信の開示が期末後50日を超えることに関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587730.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9351",
+      "name": "東洋埠頭",
+      "title": "特別利益及び特別損失の計上に関するお知らせ",
+      "published_at": "2026-11-27T16:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261125585860.pdf",
+      "tags": [
+        "一過性利益",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "567A",
+      "name": "Ｐ－ディープラス",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T15:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587447.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7279",
+      "name": "ハイレックス",
+      "title": "通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T15:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587502.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9009",
+      "name": "京成",
+      "title": "業績予想の修正及び期末配当予想の修正に関するお知らせ",
+      "published_at": "2026-11-27T15:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126587141.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7488",
+      "name": "ヤガミ",
+      "title": "2027年４月期　第２四半期（中間期）決算短信〔日本基準〕（連結）",
+      "published_at": "2026-11-27T15:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126586818.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7488",
+      "name": "ヤガミ",
+      "title": "2027年４月期第２四半期（中間期）業績予想と実績との差異及び通期業績予想の修正並びに剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-11-27T15:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126586836.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "8697",
       "name": "ＪＰＸ",
       "title": "臨時決算及び剰余金の配当（中間配当）に関するお知らせ",
@@ -5861,428 +6201,6 @@
       "basis": "TDnet表題。数値・本文はリンク先で確認",
       "forecast_probability": null,
       "watched": false
-    },
-    {
-      "code": "9009",
-      "name": "京成",
-      "title": "株式会社オリエンタルランドが実施する自己株式立会外買付取引による自己株式の買付けへの応募並びに特別利益及び特別損失の計上見込みに関するお知らせ",
-      "published_at": "2026-11-24T18:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261119583443.pdf",
-      "tags": [
-        "一過性利益",
-        "一過性損失"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "7695",
-      "name": "Ｇ－リフォームテクノ",
-      "title": "(訂正)「自己株式立会外買付取引（ToSTNeT-3）による自己株式の取得結果及び取得終了に関するお知らせ」の訂正について",
-      "published_at": "2026-11-24T16:30:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124585237.pdf",
-      "tags": [
-        "訂正・取消確認"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "3808",
-      "name": "オーケーウェブ",
-      "title": "（開示事項の経過）人員削減等の合理化の実施結果及び特別損失の計上に関するお知らせ",
-      "published_at": "2026-11-24T16:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261120583986.pdf",
-      "tags": [
-        "一過性損失"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "156A",
-      "name": "Ｇ－マテリアルＧ",
-      "title": "2026年8月期決算短信〔IFRS〕（連結）",
-      "published_at": "2026-11-24T15:30:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124585097.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "7199",
-      "name": "プレミアグループ",
-      "title": "剰余金の配当（中間配当）に関するお知らせ",
-      "published_at": "2026-11-24T15:30:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124585039.pdf",
-      "tags": [
-        "配当変更・内容要確認"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "9823",
-      "name": "マミーマートＨＤ",
-      "title": "（訂正）「中期経営計画（2027～2029）」の一部訂正について",
-      "published_at": "2026-11-24T14:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584969.pdf",
-      "tags": [
-        "訂正・取消確認"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2623",
-      "name": "ｉＳユロＩＧ社債ヘジ",
-      "title": "2026年10月期 決算短信（2026年４月12日～2026年10月11日）",
-      "published_at": "2026-11-24T12:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584802.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "488A",
-      "name": "ｉＳ円高フォーカス",
-      "title": "2026年10月期 決算短信（2026年４月12日～2026年10月11日）",
-      "published_at": "2026-11-24T12:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584806.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "515A",
-      "name": "ｉＳ高格付日本円社債",
-      "title": "2026年10月期 決算短信（2026年２月27日～2026年10月11日）",
-      "published_at": "2026-11-24T12:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584808.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "296A",
-      "name": "Ｇ－令和ＡＨ",
-      "title": "通期業績予想及び配当予想の修正(増配)に関するお知らせ",
-      "published_at": "2026-11-24T11:30:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261120584474.pdf",
-      "tags": [
-        "増配",
-        "業績修正・方向要確認"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "140A",
-      "name": "ｉＦ米１０国債ベア",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584756.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2017",
-      "name": "ｉＦＪＰＸプラ１５０",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584750.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2624",
-      "name": "ｉＦ２２５年４",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584739.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2625",
-      "name": "ｉＦＴＰＸ年４",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584743.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2868",
-      "name": "ＧＸＳＰＸカバコ",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584656.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "356A",
-      "name": "ＧＸＳＰＣＦ１００",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584661.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "363A",
-      "name": "ｉＦ英国ＦＴ１００",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584760.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "379A",
-      "name": "ＧＸＳＰＸプロテクト",
-      "title": "2026年10月期（2026年4月11日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584670.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "563A",
-      "name": "ＧＸナスＤカバコ",
-      "title": "2026年10月期（2026年4月21日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584702.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "564A",
-      "name": "ＧＸ先進ＣＦ１００",
-      "title": "2026年10月期（2026年4月21日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584712.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "576A",
-      "name": "ＧＸチャイテクカバコ",
-      "title": "2026年10月期（2026年5月26日～2026年10月10日）決算短信",
-      "published_at": "2026-11-24T11:00:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584718.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "1595",
-      "name": "ＮＺＡＭ　Ｊリート",
-      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584664.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2086",
-      "name": "ＮＺＡＭ　ＳＰ５Ｈ",
-      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584666.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2087",
-      "name": "ＮＺＡＭ　ＮＱ１Ｈ",
-      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584668.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "2088",
-      "name": "ＮＺＡＭ　ＤｏｗＨ",
-      "title": "2026年10月期　決算短信（2026年４月16日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584672.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "532A",
-      "name": "ＮＺＡＭ　ＴＰ高４０",
-      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584674.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "533A",
-      "name": "ＮＺＡＭ　ＳＰ５００",
-      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584679.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "534A",
-      "name": "ＮＺＡＭ　ＮＱ１００",
-      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584704.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "536A",
-      "name": "ＮＺＡＭ　先進国株",
-      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584706.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
-    },
-    {
-      "code": "537A",
-      "name": "ＮＺＡＭ　全世界株",
-      "title": "2026年10月期　決算短信（2026年３月18日～2026年10月15日）",
-      "published_at": "2026-11-24T10:10:00+09:00",
-      "date": "2026-11-24",
-      "source_url": "https://www.release.tdnet.info/inbs/140120261124584708.pdf",
-      "tags": [
-        "決算発表"
-      ],
-      "basis": "TDnet表題。数値・本文はリンク先で確認",
-      "forecast_probability": null,
-      "watched": false
     }
   ],
   "sources": [
@@ -6297,8 +6215,13 @@
   ],
   "disclosure_coverage": [
     {
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "pages": 1,
+      "truncated": false
+    },
+    {
+      "date": "2026-11-27",
+      "pages": 3,
       "truncated": false
     },
     {
@@ -6308,11 +6231,6 @@
     },
     {
       "date": "2026-11-25",
-      "pages": 3,
-      "truncated": false
-    },
-    {
-      "date": "2026-11-24",
       "pages": 3,
       "truncated": false
     }
