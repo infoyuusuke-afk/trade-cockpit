@@ -38994,7 +38994,10 @@
     "logged_at": "2026-11-25 04:42:57 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -2.25,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -4.67,
+    "actual_direction": "下落",
+    "hit": true
   },
   {
     "code": "7590",
@@ -39003,7 +39006,10 @@
     "logged_at": "2026-11-25 04:42:57 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.8,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 1.83,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "3031",

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-27T03:38:34.875663+09:00",
+  "updated_at": "2026-11-27T13:32:02.386219+09:00",
   "calendar": [
     {
       "code": "2391",
@@ -108,8 +108,8 @@
       "momentum": {
         "available": true,
         "last_close": 639.0,
-        "return_5d_pct": -0.47,
-        "return_20d_pct": -3.03,
+        "return_5d_pct": 1.75,
+        "return_20d_pct": 0.79,
         "momentum_direction": "中立"
       }
     },
@@ -137,9 +137,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2092.0,
-        "return_5d_pct": -0.38,
-        "return_20d_pct": -1.88,
+        "last_close": 2093.0,
+        "return_5d_pct": 0.38,
+        "return_20d_pct": -1.04,
         "momentum_direction": "中立"
       }
     },
@@ -167,10 +167,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2433.0,
-        "return_5d_pct": -6.42,
-        "return_20d_pct": -16.02,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 2662.0,
+        "return_5d_pct": 3.5,
+        "return_20d_pct": -16.68,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -197,9 +197,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 283.0,
-        "return_5d_pct": -5.03,
-        "return_20d_pct": -12.92,
+        "last_close": 255.0,
+        "return_5d_pct": -14.43,
+        "return_20d_pct": -19.81,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -5178,6 +5178,119 @@
   ],
   "catalysts": [
     {
+      "code": "8697",
+      "name": "ＪＰＸ",
+      "title": "臨時決算及び剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-11-27T12:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261126587210.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "447A",
+      "name": "ＳＳゴールドヘッジ無",
+      "title": "2026年10月期 決算短信（2025年11月17日～2026年10月20日）",
+      "published_at": "2026-11-27T10:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127586411.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "448A",
+      "name": "ＳＳゴールドヘッジ有",
+      "title": "2026年10月期 決算短信（2025年11月17日～2026年10月20日）",
+      "published_at": "2026-11-27T10:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127586413.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "449A",
+      "name": "ＳＳＳＰヘッジ無",
+      "title": "2026年10月期 決算短信（2026年4月21日～2026年10月20日）",
+      "published_at": "2026-11-27T10:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587377.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "450A",
+      "name": "ＳＳＳＰヘッジ有",
+      "title": "2026年10月期 決算短信（2026年4月21日～2026年10月20日）",
+      "published_at": "2026-11-27T10:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587382.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "451A",
+      "name": "ＳＳＳＰ高配当",
+      "title": "2026年10月期 決算短信（2026年4月21日～2026年10月20日）",
+      "published_at": "2026-11-27T10:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261127587390.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3323",
+      "name": "レカム",
+      "title": "（訂正・数値データ訂正）配当原資、配当支払開始予定日の変更及び 「2026年９月期 決算短信〔ＩＦＲＳ〕(連結)」の一部変更に関するお知らせ",
+      "published_at": "2026-11-27T08:30:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261125586304.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6276",
+      "name": "シリウスＶ",
+      "title": "2026年12月期 配当予想の修正(復配)に関するお知らせ",
+      "published_at": "2026-11-27T08:00:00+09:00",
+      "date": "2026-11-27",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261124584747.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "2612",
       "name": "かどや製油",
       "title": "（株）ITG-Gホールディングスによる公開買付届出書の訂正に伴う「かどや製油（株）の普通株式に対する公開買付けの開始に関するお知らせ」の変更について",
@@ -6211,7 +6324,7 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-11-30",
   "momentum_validation": {
-    "resolved_n": 3249,
+    "resolved_n": 3251,
     "hit_rate_pct": 35.1,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
