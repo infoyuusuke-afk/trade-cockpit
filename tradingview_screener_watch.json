@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-11-27 20:27:03 JST",
+  "updated_at": "2026-11-28 00:38:27 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -3632,22 +3632,6 @@
       "already_watched": true
     },
     {
-      "code": "4568",
-      "name": "Daiichi Sankyo Company, Limited",
-      "exchange": "TSE",
-      "price": 2872,
-      "change_pct": -0.10434782608695652,
-      "volume": 4041500,
-      "relative_volume": 0.6840168706672444,
-      "atr_pct": 3.26,
-      "vwap": 2892.1666666666665,
-      "high": 2932.5,
-      "low": 2872,
-      "market_cap": 5231502944946,
-      "sector": "Health Technology",
-      "already_watched": false
-    },
-    {
       "code": "4502",
       "name": "Takeda Pharmaceutical Co. Ltd.",
       "exchange": "TSE",
@@ -3660,6 +3644,22 @@
       "high": 7480,
       "low": 7341,
       "market_cap": 11573011627197,
+      "sector": "Health Technology",
+      "already_watched": false
+    },
+    {
+      "code": "4568",
+      "name": "Daiichi Sankyo Company, Limited",
+      "exchange": "TSE",
+      "price": 2872,
+      "change_pct": -0.10434782608695652,
+      "volume": 4041500,
+      "relative_volume": 0.6840168706672444,
+      "atr_pct": 3.26,
+      "vwap": 2892.1666666666665,
+      "high": 2932.5,
+      "low": 2872,
+      "market_cap": 5231502944946,
       "sector": "Health Technology",
       "already_watched": false
     },
