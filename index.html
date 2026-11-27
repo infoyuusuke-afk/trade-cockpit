@@ -759,6 +759,48 @@ document.addEventListener("DOMContentLoaded",()=>{
 .cockpit-tabs .cockpit-tab.tab-now{box-shadow:inset 0 0 0 2px #4CC38A!important}
 /* OWNER 2026-11-10 「注意タブの●も一緒、注意イベントがある日は枠線を赤」 */
 .cockpit-tabs .cockpit-tab.tab-warn-frame{box-shadow:inset 0 0 0 2px #F23645!important}</style>
+<style>
+/* OWNER 2026-11-27 「AIコクピットを一度整理して、100億プロジェクトのゴールに向けて全面改修」 版1（片づけ） */
+.secondary-tabs .cockpit-tab.tab-ref{font-size:12px}
+.cockpit-tabs > .secondary-tabs[open]{flex-wrap:wrap;white-space:normal;max-width:100%}
+.tab-pane > details.ref-fold{margin:14px 0 6px;border:1px solid #2a2e35;border-radius:10px;background:#121418;padding:6px 10px}
+.tab-pane > details.ref-fold > summary{cursor:pointer;color:#9aa0a6;font-size:12px;padding:4px 2px}
+.scalp-strip.gpt-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;background:transparent;padding:0;overflow:visible}
+.scalp-strip.gpt-cards .gpt-card{border-color:#2a2e35!important;box-shadow:none!important;background:#16181c}
+</style>
+<script>
+// OWNER 2026-11-27 「AIコクピットを一度整理して、100億プロジェクトのゴールに向けて全面改修」 版1（片づけ）：
+// 合格した証拠があるものを上に残し、合格していないものは記録を続けたまま下げる（研究結果\\コクピットの棚卸し\\棚卸し_20261126.csv の案）。
+// - 合格していないタブは「参考」の中へ移す（タブも中身も消さない。押せばいつでも開く）
+// - いくつかの欄は、そのタブの下の「参考（未検証・記録中）」の中にたたむ。使い道の決まっていない欄と、古いまま止まっている欄は隠す
+// - 声を3つ止める：スイング・長期の「仮想で入りました・出ました」、ショートリバ、15:23の引けの板寄せへの自動切替（表示と記録は続く）
+// 画面の並びと声だけの変更。データ・記録・注文の仕組みは変えない。戻すときは下の一覧から外すだけ。
+(()=>{
+  const R={version:"2026-11-27-v1",muteShortRebound:true,muteHoldVoice:true,noCloseTabSwitch:true,
+    refTabs:["pre-next","analysts","kioxia-calendar","swing","value","brain","closing-auction"],
+    foldIds:["owner-brain-rules","trial-methods","virtual-trades","ec-plan","ec-past"],
+    hideIds:["trade-fx-link","owner-history-review"]};
+  window.cockpitRenovation=R;
+  function moveTabs(){
+    const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
+    const more=nav.querySelector(":scope > details.secondary-tabs");if(!more)return;
+    R.refTabs.forEach(k=>{const b=nav.querySelector(':scope > .cockpit-tab[data-tab="'+k+'"]');if(b){b.classList.add("tab-ref");b.classList.remove("tab-now");more.appendChild(b);}});
+  }
+  function fold(){
+    R.foldIds.forEach(id=>{const el=document.getElementById(id);if(!el||el.closest("details.ref-fold"))return;
+      const pane=el.closest(".tab-pane");if(!pane)return;
+      let f=pane.querySelector(":scope > details.ref-fold");
+      if(!f){f=document.createElement("details");f.className="ref-fold";f.innerHTML="<summary>参考（未検証・記録中）：合格していない欄です。記録は続いています</summary>";pane.appendChild(f);}
+      f.appendChild(el);});
+    R.hideIds.forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display!=="none")el.style.display="none";});
+  }
+  document.addEventListener("DOMContentLoaded",()=>{
+    const run=()=>{try{moveTabs();fold();}catch(_){}};
+    run();let n=0;const t=setInterval(()=>{run();if(++n>=30)clearInterval(t);},2000);
+    const nav=document.querySelector(".cockpit-tabs");if(nav)new MutationObserver(run).observe(nav,{childList:true});
+  });
+})();
+</script>
 <script>
 // OWNER 2026-11-09 「上のタブを2段にして、横にスクロールしなくても全部見えるようにして。1段目は トレード中・注文・板・REALTIME 5・PTS・OVERNIGHT 5・
 // テーマ・アナリスト、2段目は SOX・注意・FOCUS・SWING 5・VALUE 5・AIトレード日記・BRAIN・CONTROL。中身は変えず並びだけ」:
@@ -3238,7 +3280,8 @@ document.addEventListener("DOMContentLoaded",()=>{
       "売買の合図ではありません。</small>";
     let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){}
     if(st.day!==day)st={day,first:[],top:[]};
-    const say=msg=>{if(typeof window.cockpitSpeak==="function"&&min<=900){try{window.cockpitSpeak(msg,"CALM");}catch(_){}}};
+    const say=msg=>{if(window.cockpitRenovation&&window.cockpitRenovation.muteShortRebound)return;   // OWNER 2026-11-27 版1：ショートリバの声は止める（表示と記録は続く）
+      if(typeof window.cockpitSpeak==="function"&&min<=900){try{window.cockpitSpeak(msg,"CALM");}catch(_){}}};
     for(const r of firsts.slice().reverse()){const k=r.ticker+"|"+r.detected_at;if(st.first.includes(k))continue;st.first.push(k);if(st.first.length<=8)say("ショートリバ初動。"+short(r.name)+"。まだショートしない。");}
     for(const t of tops.slice().reverse()){const k=t.ticker+"|"+t.top_at;if(st.top.includes(k))continue;st.top.push(k);if(st.top.length<=8)say("ショートリバ上がり切り。"+short(t.name)+"。ショート候補。損切りの目安、"+t.stop+"円。");}
     try{localStorage.setItem(KEY,JSON.stringify(st))}catch(_){}
@@ -4231,6 +4274,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     // one sentence per look, once per event; not while the real account's stop-loss band is on (its voice comes first, this waits)
     const g=typeof window.realGuardFresh==="function"?window.realGuardFresh():null,stopOn=!!(g&&Array.isArray(g.stop)&&g.stop.length);
     const e=Object.values(mem.ev).find(x=>!x.spoken);
+    if(window.cockpitRenovation&&window.cockpitRenovation.muteHoldVoice)return;   // OWNER 2026-11-27 版1：スイング・長期の仮想のIN・OUTの声は止める（表示と記録は続く）
     if(e&&!stopOn&&typeof window.cockpitSpeak==="function"){
       e.spoken=true;saveMem();
       const nm=String(e.name||"").replace(/（[0-9A-Z]{4}）$/,"");
@@ -5293,6 +5337,7 @@ main .card hr{display:none}
   // (cockpitOvernightSwitchV1, 15:25:10), left as it is. Only the tab changes: no voice, no order.
   const SWKEY="cockpitCloseTabSwitchV1";
   function autoSwitch(){
+    if(window.cockpitRenovation&&window.cockpitRenovation.noCloseTabSwitch)return;   // OWNER 2026-11-27 版1：15:23の自動切替は止める（タブは参考の中）
     const j=new Date(Date.now()+9*3600e3),day=j.toISOString().slice(0,10),hms=j.toISOString().slice(11,19),wd=j.getUTCDay();
     const hol=Array.isArray(window.cockpitHolidays)?window.cockpitHolidays:[];
     if(wd<1||wd>5||hol.includes(day)||hms<"15:23:00"||hms>="15:25:00")return;
