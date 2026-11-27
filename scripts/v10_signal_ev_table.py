@@ -48,6 +48,14 @@ LONG_INTEREST_PCT_PER_YEAR = 2.80
 SHORT_LENDING_FEE_PCT_PER_YEAR = 1.10
 FINANCING_DAYS_PER_DAY_TRADE = 1          # UNVERIFIED (one day assumed)
 SLIPPAGE_PCT_PER_SIDE = 0.0               # PROVISIONAL: shown as the break-even value instead
+# OWNER 2026-11-17 「画面の期待値をきびしい費用で出す版」: every expected value the screen shows from this replay (EV表, the
+# rules' forward record, the Brain's picks, order cards, the virtual yen built on them) is after the strict cost: the
+# financing above + 0.10 % round trip (the research's cost) + one tick at the fill and one tick at the exit (TSE
+# standard tick table, which is the coarser one for TOPIX500 issues, so never smaller than the real tick). The
+# former light cost stays beside it as light_ev_pct for comparison only. Nothing is loosened by this.
+STRICT_ROUND_TRIP_PCT = 0.10
+TICK_TABLE = ((3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (3000000, 1000),
+              (5000000, 5000), (30000000, 10000), (50000000, 50000))
 MIN_N = 20
 SIDES = {"買いサイン": 1, "空売りサイン": -1}
 
@@ -130,11 +138,11 @@ def replay(signal: dict, ticks: list, *, target_mult: float = 1.0, stop_mult: fl
         stops = [p for p in prices if (side > 0 and p <= stop) or (side < 0 and p >= stop)]
         targets = [p for p in prices if (side > 0 and p >= target) or (side < 0 and p <= target)]
         if stops:  # a second touching both is resolved to the stop
-            return _result(side, fill, stops[0], "STOP", fill_t, t)
+            return _result(side, fill, stops[0], "STOP", fill_t, t, signal.get("ticker"))
         if targets:
-            return _result(side, fill, targets[0], "TARGET", fill_t, t)
+            return _result(side, fill, targets[0], "TARGET", fill_t, t, signal.get("ticker"))
     last_t, last = (rest[-1][0], rest[-1][2]) if rest else (fill_t, fill)
-    return _result(side, fill, last, "TIME_EXIT", fill_t, last_t)
+    return _result(side, fill, last, "TIME_EXIT", fill_t, last_t, signal.get("ticker"))
 
 
 def cost_pct(side: int) -> float:
@@ -143,15 +151,63 @@ def cost_pct(side: int) -> float:
     return 2 * (COMMISSION_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) + rate / 365 * FINANCING_DAYS_PER_DAY_TRADE
 
 
-def _result(side, fill, exit_price, how, fill_t, exit_t):
+# OWNER 2026-11-17 「費用の刻みを直す版を作って：TOPIX500の銘柄はJPX公式の一覧で確かめて細かい刻み、それ以外は粗い刻み。一覧の日付も記録する」:
+# the JPX tick table for TOPIX500 issues (TOPIX100 + Mid400), and config/topix500_ticks_v1.json (the JPX list with its date). Without the
+# file, or for a code not in it, the coarse table stays (never lighter than before).
+FINE_TICK_TABLE = ((1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10), (300000, 50), (1000000, 100), (3000000, 500),
+                   (10000000, 1000), (30000000, 5000), (50000000, 10000))
+TOPIX500_FILE = Path(__file__).resolve().parents[1] / "config" / "topix500_ticks_v1.json"
+# audit 22a943e: the list is pinned by its SHA-256 (an edited list cannot make the cost lighter) and is used only up to its
+# valid_until (from 2027-03-01 JPX sets ticks by each issue's STR); otherwise every code gets the coarse table
+TOPIX500_SHA256 = "74964fed6d0d71bc2adf65134e4fb0b82baf41cef8b697099fdb4306fe0161f8"
+
+
+def _topix500():
+    try:
+        import hashlib
+        raw = TOPIX500_FILE.read_bytes()
+        if hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest() != TOPIX500_SHA256:
+            return frozenset()
+        doc = json.loads(raw.decode("utf-8"))
+        if doc.get("schema_version") != "100b-v10-topix500-ticks-v1":
+            return frozenset()
+        today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+        if not (str(doc.get("valid_until") or "") >= today):
+            return frozenset()
+        return frozenset(str(c) for c in doc.get("codes") or [])
+    except (OSError, ValueError, AttributeError):
+        return frozenset()
+
+
+TOPIX500 = _topix500()
+
+
+def tick_size(price: float, code: str | None = None) -> float:
+    """The TSE tick for a price: the TOPIX500 table for a code in config/topix500_ticks_v1.json, else the other (coarser) table."""
+    fine = code is not None and str(code).replace(".T", "") in TOPIX500
+    for upper, tick in (FINE_TICK_TABLE if fine else TICK_TABLE):
+        if price <= upper:
+            return tick
+    return 10000 if fine else 100000
+
+
+def strict_cost_pct(side: int, fill: float, exit_price: float, code: str | None = None) -> float:
+    """The strict cost in % of one trade: financing + 0.10 % round trip + one tick in and one tick out (the code's own tick table)."""
+    return (cost_pct(side) + STRICT_ROUND_TRIP_PCT + tick_size(fill, code) / fill * 100
+            + tick_size(exit_price, code) / exit_price * 100)
+
+
+def _result(side, fill, exit_price, how, fill_t, exit_t, code=None):
     gross = side * (exit_price / fill - 1) * 100
     return {"state": "FILLED", "exit": how, "side": side, "fill_price": fill, "exit_price": exit_price,
-            "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross, "return_pct": gross - cost_pct(side)}
+            "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross,
+            "return_pct": gross - strict_cost_pct(side, fill, exit_price, code), "light_return_pct": gross - cost_pct(side)}
 
 
 def stats(trades: list[dict]) -> dict:
-    """Net of the provisional cost (ev_pct, win_rate_pct, pf) and gross (before cost)."""
+    """Net of the strict cost (ev_pct, win_rate_pct, pf), the former light cost (light_ev_pct) and gross (before cost)."""
     returns = [t["return_pct"] for t in trades]
+    light = [t.get("light_return_pct", t["return_pct"]) for t in trades]
     n = len(returns)
     if not n:
         return {"n": 0, "status": "INSUFFICIENT"}
@@ -166,6 +222,8 @@ def stats(trades: list[dict]) -> dict:
         "ev_pct": round(sum(returns) / n, 3),
         "pf": round(sum(wins) / loss, 2) if loss > 0 else None,
         "gross_ev_pct": round(sum(gross) / n, 3),
+        "light_ev_pct": round(sum(light) / n, 3),
+        "cost_basis": "STRICT",
         # the slippage per side at which this group's average net return is zero
         "breakeven_slippage_pct_per_side": round((sum(returns) / n) / 2 + SLIPPAGE_PCT_PER_SIDE, 4),
         "gross_win_rate_pct": round(sum(1 for g in gross if g > 0) / n * 100, 1),
@@ -226,8 +284,11 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
                         "short_lending_fee_pct_per_year": SHORT_LENDING_FEE_PCT_PER_YEAR,
                         "financing_days_per_day_trade": FINANCING_DAYS_PER_DAY_TRADE,
                         "slippage_pct_per_side": SLIPPAGE_PCT_PER_SIDE, "min_n": MIN_N,
+                        "strict_round_trip_pct": STRICT_ROUND_TRIP_PCT,
+                        "strict_ticks": "one tick at the fill and one at the exit (TSE standard table)",
                         "status": "楽天証券ゼロコース・制度信用 (OWNER 2026-10-21; rates checked 2026-10-21); "
-                                  "1 financing day per day trade UNVERIFIED; slippage 0 PROVISIONAL (break-even shown); "
+                                  "1 financing day per day trade UNVERIFIED; strict cost = financing + 0.10 % round trip "
+                                  "+ 1 tick in + 1 tick out (OWNER 2026-11-17); break-even = extra slippage beyond it; "
                                   "fill window PROVISIONAL"},
         "counts": counts,
         "by_strategy": {k: stats(v) for k, v in sorted(by_strategy.items())},
@@ -247,7 +308,11 @@ R4_BACKTEST = {"train": {"n": 188, "ev_pct": 0.111, "pf": 1.63}, "test": {"n": 9
 R5_BACKTEST = {"train": {"n": 24, "ev_pct": 0.15, "pf": 1.75}, "test": {"n": 44, "ev_pct": 0.387, "pf": 4.19}}
 RULES_FORWARD_FROM = "2026-10-22"
 RULES = {
+    # OWNER 2026-10-26 「ルール①を記録だけにして、1銘柄1日1回を入れて」: since 2026-10-16 the rule lost
+    # (records 9/19..10/15 PF1.44, 10/16..10/26 PF0.65). It is still replayed and shown, but never scored,
+    # picked, spoken or put on an order card; one filled trade per stock per day.
     "R1": {"label": "① 買い 9:15〜10:00・目標2倍・損切り2倍", "side": 1, "from": "09:15", "to": "10:00",
+           "record_only": True, "once_per_ticker_day": True,
            "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
            "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
            "backtest": {"train": {"n": 102, "ev_pct": 0.097, "pf": 1.39}, "test": {"n": 54, "ev_pct": 0.096, "pf": 1.51}}},
@@ -260,7 +325,7 @@ RULES = {
     # All three blocks chose them, so no block is out of sample: the Brain gives their
     # backtest a small weight (PROVISIONAL) until forward trades accumulate. Only the
     # strategy the search saw (押し目 for buys, 戻り for shorts) matches.
-    "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄の押し目・目標2倍・損切り2倍", "side": 1, "from": "09:00",
+    "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄が、最初の15分の高値まで押して上で引けた時（押し目買い）・目標2倍・損切り2倍", "side": 1, "from": "09:00",
            "to": "15:20", "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
            "strategy": "OR15押し目", "min_move_pct": 0.5, "selection": "IN_SAMPLE_ALL_BLOCKS", "backtest_weight": 0.1,
            "backtest": R4_BACKTEST},
@@ -323,7 +388,8 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
         gross = side * (exit_p / open_ - 1) * 100
         out.append({"state": "FILLED", "exit": "TIME_EXIT", "side": side, "fill_price": open_, "exit_price": exit_p,
                     "fill_time": open_t, "exit_time": exit_t, "gap_pct": round(gap, 3), "gross_pct": gross,
-                    "return_pct": gross - cost_pct(side), "ticker": ticker, "name": "", "signal_at": open_t})
+                    "return_pct": gross - strict_cost_pct(side, open_, exit_p, ticker), "light_return_pct": gross - cost_pct(side),
+                    "ticker": ticker, "name": "", "signal_at": open_t})
     return out
 
 
@@ -427,9 +493,11 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         with open(sig_path, newline="", encoding="utf-8-sig") as f:
             signals = list(csv.DictReader(f))
         for key, rule in RULES.items():
-            open_until = {}
+            open_until, traded = {}, set()
             for s in signals:
                 if not rule_matches(rule, s, context):
+                    continue
+                if rule.get("once_per_ticker_day") and s.get("ticker", "") in traded:
                     continue
                 setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
                 stamp = str(s.get("captured_at", ""))[11:19]
@@ -440,6 +508,7 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
                 if not got or got.get("state") != "FILLED":
                     continue
                 open_until[setup] = got["exit_time"]
+                traded.add(s.get("ticker", ""))
                 trades[key].append(dict(got, day=day, ticker=s.get("ticker", ""), name=s.get("name", ""),
                                         signal_at=s.get("captured_at", "")))
     return {

@@ -127,6 +127,11 @@ def board(now, *, stale=(), unknown=(), drop=(), duplicate=None, replace=None, i
     }
 
 
+def _pending(ticker):
+    # OWNER 2026-10-26: a row the Collector lists as having no price yet (特別気配 at the open)
+    return {"ticker": ticker, "reason": "PRICE_MISSING", "sheet_code_matches": True, "source_time_text": "  :  :  ", "price": None}
+
+
 def availability_of(payload, now, universe):
     quote = sup.assess_quote_freshness(payload, now=now)
     rows = sup.board_row_freshness(payload, now=now, board_quote_at=quote.get("quote_at"))
@@ -631,6 +636,13 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
                                             aggregate_basis="FRESH_ROWS_ONLY"), good),
             "partial_missing_row": (dict(board(now, drop={"SYN42.T"}, declared=100), aggregate_basis="FRESH_ROWS_ONLY"),
                                     good),
+            # OWNER 2026-10-26 「特別気配の直し」: rows with no price yet, listed by the Collector
+            "quote_pending_two": (dict(board(now, drop={"SYN42.T", "SYN43.T"}, declared=100), aggregate_basis="FRESH_ROWS_ONLY",
+                                       missing_rows=[_pending("SYN42.T"), _pending("SYN43.T")]), good),
+            "quote_pending_six": (dict(board(now, drop=set(UNIVERSE[94:]), declared=100), aggregate_basis="FRESH_ROWS_ONLY",
+                                       missing_rows=[_pending(t) for t in UNIVERSE[94:]]), good),
+            "quote_pending_code_mismatch": (dict(board(now, drop={"SYN42.T"}, declared=100), aggregate_basis="FRESH_ROWS_ONLY",
+                                                 missing_rows=[dict(_pending("SYN42.T"), sheet_code_matches=False)]), good),
         }
         cases = []
         cls.expected = {}
@@ -656,22 +668,25 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
                 "universe_expected_count", "universe_declared", "row_count", "state_counts", "fresh_coverage_pct",
                 "missing_count", "missing_sample", "unexpected_count", "unexpected_sample", "collector_valid_count",
                 "collector_valid_quality_pass", "partial_rows", "partial_reasons", "partial_min_fresh_pct",
-                "order_allowed", "real_submit_allowed")
+                "quote_pending_count", "quote_pending_sample", "order_allowed", "real_submit_allowed")
         self.assertEqual(set(self.result["cases"]), set(self.expected))
         for name, py in self.expected.items():
             with self.subTest(case=name):
                 ps = self.result["cases"][name]["availability"]
                 for key in keys:
                     got = ps[key]
-                    if key in ("reasons", "missing_sample", "unexpected_sample", "partial_reasons"):
+                    if key in ("reasons", "missing_sample", "unexpected_sample", "partial_reasons", "quote_pending_sample"):
                         got = list(got or [])
                     self.assertEqual(got, py[key], key)
         self.assertIs(self.expected["all_fresh"]["decision_available"], True)
         self.assertIs(self.expected["one_missing"]["decision_available"], False)
         self.assertEqual(self.expected["partial_one_stale"]["availability_status"], "AVAILABLE_PARTIAL")
         self.assertEqual(self.expected["partial_five_stale"]["availability_status"], "AVAILABLE_PARTIAL")
-        for blocked in ("partial_six_stale", "partial_undeclared", "partial_identity_stale", "partial_missing_row"):
+        for blocked in ("partial_six_stale", "partial_undeclared", "partial_identity_stale", "partial_missing_row",
+                        "quote_pending_six", "quote_pending_code_mismatch"):
             self.assertIs(self.expected[blocked]["decision_available"], False, blocked)
+        self.assertEqual(self.expected["quote_pending_two"]["availability_status"], "AVAILABLE_PARTIAL")
+        self.assertEqual(self.expected["quote_pending_two"]["quote_pending_sample"], ["SYN42.T", "SYN43.T"])
 
 
 BRIDGE_HARNESS = r"""

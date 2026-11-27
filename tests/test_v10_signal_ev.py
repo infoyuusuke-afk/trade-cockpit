@@ -60,14 +60,19 @@ class Replay(unittest.TestCase):
         self.assertEqual(buy_stats["exits"], {"TARGET": 1, "TIME_EXIT": 1})
         c_gross = (1005 / 1001 - 1) * 100   # C fills at the 1001 tick, not at the 1000 entry
         self.assertAlmostEqual(buy_stats["gross_ev_pct"], (1.0 + c_gross) / 2, places=3)
-        # 楽天ゼロコース: no commission; 制度信用 buyer interest 2.80 %/year for one day
-        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + c_gross) / 2 - 2.80 / 365, places=3)
-        self.assertAlmostEqual(buy_stats["breakeven_slippage_pct_per_side"], ((1.0 + c_gross) / 2 - 2.80 / 365) / 2, places=3)
+        # 楽天ゼロコース: no commission; 制度信用 buyer interest 2.80 %/year for one day (the former light cost)
+        self.assertAlmostEqual(buy_stats["light_ev_pct"], (1.0 + c_gross) / 2 - 2.80 / 365, places=3)
+        # OWNER 2026-11-17 strict cost: + 0.10 % round trip + one tick (1 yen under 3,000) at the fill and at the exit
+        strict = ((0.10 + 100 / 1000 + 100 / 1010) + (0.10 + 100 / 1001 + 100 / 1005)) / 2
+        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + c_gross) / 2 - 2.80 / 365 - strict, places=3)
+        self.assertEqual(buy_stats["cost_basis"], "STRICT")
+        self.assertAlmostEqual(buy_stats["breakeven_slippage_pct_per_side"], ((1.0 + c_gross) / 2 - 2.80 / 365 - strict) / 2, places=3)
         self.assertEqual(buy_stats["status"], "INSUFFICIENT")
         short_stats = table["by_strategy"]["OR15戻り|空売りサイン"]
         self.assertEqual(short_stats["exits"], {"STOP": 1})
         self.assertAlmostEqual(short_stats["gross_ev_pct"], -1.0, places=3)
-        self.assertAlmostEqual(short_stats["ev_pct"], -1.0 - 1.10 / 365, places=3)  # 貸株料 1.10 %/year, one day
+        self.assertAlmostEqual(short_stats["ev_pct"], -1.0 - 1.10 / 365 - (0.10 + 100 / 1000 + 100 / 1010), places=3)  # 貸株料 1.10 %/year, one day + strict
+        self.assertAlmostEqual(short_stats["light_ev_pct"], -1.0 - 1.10 / 365, places=3)
         self.assertEqual(table["assumptions"]["commission_pct_per_side"], 0.0)
         self.assertIs(table["real_submit_allowed"], False)
         self.assertIs(table["trade_instruction"], False)
@@ -169,11 +174,12 @@ class RuleShadow(unittest.TestCase):
         a, b = view["forward"]["R3A_1000"], view["forward"]["R3B_1000"]
         self.assertEqual((a["n"], b["n"]), (1, 1))
         gross = (1030 / 1020 - 1) * 100
-        self.assertAlmostEqual(a["recent"][0]["return_pct"], gross - 2.80 / 365, places=6)   # follow = long
-        self.assertAlmostEqual(b["recent"][0]["return_pct"], -gross - 1.10 / 365, places=6)  # fade = short
+        strict = 0.10 + 100 / 1020 + 100 / 1030   # OWNER 2026-11-17: 0.10 % + one tick in + one tick out
+        self.assertAlmostEqual(a["recent"][0]["return_pct"], gross - 2.80 / 365 - strict, places=6)   # follow = long
+        self.assertAlmostEqual(b["recent"][0]["return_pct"], -gross - 1.10 / 365 - strict, places=6)  # fade = short
         self.assertEqual(sorted(view["gap_rules"]), ["R3A_0915", "R3A_0930", "R3A_1000", "R3B_0915", "R3B_0930", "R3B_1000"])
         self.assertEqual(view["forward"]["R3A_0915"]["n"], 1)   # 09:00:05 fill, exit at the same tick by 09:15
-        self.assertAlmostEqual(view["forward"]["R3A_0915"]["recent"][0]["return_pct"], -2.80 / 365, places=6)
+        self.assertAlmostEqual(view["forward"]["R3A_0915"]["recent"][0]["return_pct"], -2.80 / 365 - (0.10 + 2 * 100 / 1020), places=6)
 
     def test_r4_needs_the_move_from_open_and_r5_a_gap_down(self):
         write_day(self.records, "2026-10-21", [], [("C.T", "15:24:00", 1000), ("E.T", "15:24:00", 1000)])
