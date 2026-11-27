@@ -20,8 +20,13 @@ class RenovationV1(unittest.TestCase):
         b = self.block()
         self.assertIn('muteShortRebound:true,muteHoldVoice:true,noCloseTabSwitch:true', b)
         self.assertIn('refTabs:["pre-next","analysts","kioxia-calendar","swing","value","brain","closing-auction"]', b)
-        self.assertIn('foldIds:["owner-brain-rules","trial-methods","virtual-trades","ec-plan","ec-past"]', b)
+        self.assertIn('foldIds:["owner-brain-rules","trial-methods","virtual-trades"]', b)
         self.assertIn('hideIds:["trade-fx-link","owner-history-review"]', b)
+        self.assertIn('wholeBox:["owner-brain-rules","owner-history-review"]', b)
+        # audit 7d810e5: panels that are rebuilt by their own refresh are not folded
+        self.assertNotIn('"ec-plan"', b)
+        self.assertNotIn('"ec-past"', b)
+        self.assertIn('f.style.order="999";f.style.gridColumn="1 / -1";', b)
         self.assertIn("window.cockpitRenovation=R;", b)
 
     def test_tabs_go_into_the_reference_menu_not_deleted(self):

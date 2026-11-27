@@ -778,21 +778,29 @@ document.addEventListener("DOMContentLoaded",()=>{
 (()=>{
   const R={version:"2026-11-27-v1",muteShortRebound:true,muteHoldVoice:true,noCloseTabSwitch:true,
     refTabs:["pre-next","analysts","kioxia-calendar","swing","value","brain","closing-auction"],
-    foldIds:["owner-brain-rules","trial-methods","virtual-trades","ec-plan","ec-past"],
-    hideIds:["trade-fx-link","owner-history-review"]};
+    // audit 7d810e5: ec-plan / ec-past are looked up inside their panel on every refresh, so they are not folded (the panel would make them again)
+    foldIds:["owner-brain-rules","trial-methods","virtual-trades"],
+    hideIds:["trade-fx-link","owner-history-review"],
+    // audit 7d810e5: these two are a div inside a titled box; fold / hide the whole box (the nearest section) so no empty heading is left
+    wholeBox:["owner-brain-rules","owner-history-review"]};
   window.cockpitRenovation=R;
   function moveTabs(){
     const nav=document.querySelector(".cockpit-tabs");if(!nav)return;
     const more=nav.querySelector(":scope > details.secondary-tabs");if(!more)return;
     R.refTabs.forEach(k=>{const b=nav.querySelector(':scope > .cockpit-tab[data-tab="'+k+'"]');if(b){b.classList.add("tab-ref");b.classList.remove("tab-now");more.appendChild(b);}});
   }
+  const target=id=>{const el=document.getElementById(id);if(!el)return null;
+    if(R.wholeBox.includes(id)){const box=el.closest("section");if(box&&!box.classList.contains("tab-pane"))return box;}
+    return el;};
   function fold(){
-    R.foldIds.forEach(id=>{const el=document.getElementById(id);if(!el||el.closest("details.ref-fold"))return;
+    R.foldIds.forEach(id=>{const el=target(id);if(!el||el.closest("details.ref-fold"))return;
       const pane=el.closest(".tab-pane");if(!pane)return;
       let f=pane.querySelector(":scope > details.ref-fold");
-      if(!f){f=document.createElement("details");f.className="ref-fold";f.innerHTML="<summary>参考（未検証・記録中）：合格していない欄です。記録は続いています</summary>";pane.appendChild(f);}
+      if(!f){f=document.createElement("details");f.className="ref-fold";f.innerHTML="<summary>参考（未検証・記録中）：合格していない欄です。記録は続いています</summary>";
+        f.style.order="999";f.style.gridColumn="1 / -1";   // audit 7d810e5: the CONTROL tab is a grid with ordered children; keep this box at the bottom
+        pane.appendChild(f);}
       f.appendChild(el);});
-    R.hideIds.forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display!=="none")el.style.display="none";});
+    R.hideIds.forEach(id=>{const el=target(id);if(el&&el.style.display!=="none")el.style.display="none";});
   }
   document.addEventListener("DOMContentLoaded",()=>{
     const run=()=>{try{moveTabs();fold();}catch(_){}};
