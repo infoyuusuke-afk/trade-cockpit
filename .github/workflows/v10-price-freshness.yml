@@ -19,6 +19,8 @@ on:
       - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
       - "ms2_live/MS2_RSS_100_Collector.ps1"
       - "tests/test_v10_collector_payload_ps51.py"
+      - "tests/test_v10_collector_atomic_publish.py"
+      - "tests/test_v10_collector_row_bars_trim.py"
       - "tests/test_v10_price_freshness.py"
       - "tests/test_v10_live_row_gate_http.py"
       - "tests/test_v10_row_gate_operability.py"
@@ -32,6 +34,20 @@ on:
 permissions:
   contents: read
 jobs:
+  collector-atomic-windows:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collector atomic first-write, replace, and locked-reader regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest tests.test_v10_collector_atomic_publish -v
+          if ($LASTEXITCODE -ne 0) { throw 'COLLECTOR_ATOMIC_REGRESSION_FAILED' }
   freshness:
     strategy:
       fail-fast: false
@@ -52,7 +68,7 @@ jobs:
         run: |
           set -o pipefail
           export V10_SYNTHETIC_METRICS="$PWD/v10_synthetic_metrics.json"
-          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py tests/test_v10_row_gate_operability.py tests/test_v10_market_operability.py tests/test_v10_collector_payload_ps51.py -v 2>&1 | tee freshness.log
+          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py tests/test_v10_row_gate_operability.py tests/test_v10_market_operability.py tests/test_v10_collector_payload_ps51.py tests/test_v10_collector_atomic_publish.py tests/test_v10_collector_row_bars_trim.py -v 2>&1 | tee freshness.log
           # Gateway/Collector parity runs in Windows PowerShell 5.1, the
           # production host. It may skip on Linux (no powershell.exe) but
           # must never skip on Windows.
