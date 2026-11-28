@@ -200,15 +200,15 @@
 
   document.addEventListener("ms2RssUpdate",e=>{
     const d=e.detail||{};
-    const all=Array.isArray(d.all_targets)?d.all_targets:[];
-    const stale=d.stale!==false;
+    const stale=window.cockpitMs2ScreenReady?.(d)!==true;
+    const all=!stale&&Array.isArray(d.all_targets)?d.all_targets.filter(x=>window.cockpitMs2RowReady?.(x)===true):[];
     const section=ensureRadar();
     if(!section)return;
     const state=document.getElementById("opportunity-radar-state");
     const box=document.getElementById("opportunity-radar-cards");
 
     if(!all.length){
-      if(state){state.textContent="データ待ち";state.classList.remove("hot");}
+      if(state){state.textContent=stale?"FAIL-CLOSED":"データ待ち";state.classList.remove("hot");}
       if(box)box.innerHTML='<div class="focus-empty">100銘柄データ待ち</div>';
       return;
     }
@@ -227,7 +227,7 @@
       state.classList.toggle("hot",!stale&&hot>0);
     }
 
-    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"]
+    const fixed=["464A.T","9984.T","8035.T","6920.T","6857.T"]
       .map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
     setTimeout(()=>updateFixedCardAttention(fixed,scored),0);
   });
