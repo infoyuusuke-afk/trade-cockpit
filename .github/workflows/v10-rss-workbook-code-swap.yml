@@ -1,0 +1,46 @@
+name: V10 RSS workbook code swap (synthetic)
+# P0 RSS Excel 464A. Synthetic workbooks only: the one-row code swap must change only the
+# target row, its shared strings and its RTD topics, and the read-only verifier must match
+# the workbook codes with ms2_live/watchlist_100.json. CI PASS is not a real-machine
+# acceptance and does not approve replacing the OWNER workbook.
+on:
+  pull_request:
+    paths:
+      - "scripts/v10_rss_workbook_code_swap.py"
+      - "scripts/verify_v10_workbook_watchlist.py"
+      - "tests/test_v10_rss_workbook_code_swap.py"
+      - "tests/test_v10_workbook_watchlist_verify.py"
+      - ".github/workflows/v10-rss-workbook-code-swap.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  swap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Swap and verifier tests
+        shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python -m unittest tests/test_v10_rss_workbook_code_swap.py tests/test_v10_workbook_watchlist_verify.py -v
+      - name: Watchlist on this HEAD carries 464A at position 88 and no 5595
+        shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python - <<'PY'
+          import json
+          s = list(json.load(open("ms2_live/watchlist_100.json", encoding="utf-8-sig"))["stocks"].values())
+          t = [x["ticker"] for x in s]
+          assert len(t) == 100 and len(set(t)) == 100, len(t)
+          assert t[87] == "464A.T" and "5595.T" not in t, t[87]
+          print("WATCHLIST_464A_ROW89=PASS")
+          PY
