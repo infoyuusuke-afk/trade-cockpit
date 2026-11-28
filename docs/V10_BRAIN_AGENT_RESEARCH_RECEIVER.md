@@ -1,0 +1,82 @@
+# V10 Brain receiver for signed Agents SDK research
+
+PROJECT_ITEM_ID: P0-AGENTS-SDK-V10-BRAIN-INTEGRATION-20261021
+Stacked on Draft PR #481 (`draft/agent-sdk-coordination-pilot-20261020`).
+Status: synthetic CI only. Not installed in the running V10. No order path.
+
+## What it adds
+
+PR #481 lets the Agents SDK sidecar write a signed research envelope
+`agent_research_<run_id>.json` into an OWNER-selected private inbox. Nothing
+on the Brain side received it. `scripts/v10_brain_agent_research_receiver.py`
+is that receiving end:
+
+| Step | Behaviour |
+|---|---|
+| Re-verify | Each envelope is read once and those exact bytes are verified (`verify_document` in the handoff module): HMAC, exact schema, safety flags, source binding, freshness (15 min), public HTTPS sources, release-time order, roles and NO_DATA rules, by the receiver process itself. The sidecar's own `*.ack.json` is never read or counted. |
+| Store | Durable receipt in the private SQLite `brain_agent_research_receipts.sqlite` (BEGIN IMMEDIATE, synchronous=FULL, rollback journal) with the exact canonical ACK bytes. `real_submit_allowed` is constrained to 0 in the schema. If the process stops after the receipt but before the ACK file, the next pass rewrites the ACK from the stored bytes (hash-checked). |
+| ACK | `agent_research_<run_id>.brain_ack.json`, `ack_kind=BRAIN_RECEIVER_ACK`, signed with a separate receiver key (`AGENT_BRAIN_RECEIVER_HMAC_KEY`) that must differ from the sidecar key and must not be given to the sidecar; run_id, envelope SHA-256, received_at, receiver identity (component, receiver code SHA-256, process id), verification, state, reasons, roles, conflicts, `real_submit_allowed=false`. Signed, then read back independently. |
+| Roles | Each role keeps exactly WATCH / NO_SIGNAL / NO_DATA. A failing envelope is BLOCKED as a whole. |
+| Conflicts | Coordinator-reported conflicts and role status divergence are recorded, never resolved. |
+| Duplicates | A verified envelope whose run_id was already received is `DUPLICATE_REJECTED`; an unverified file is `BLOCKED` whatever its name. The same unchanged file is decided once and not re-logged. |
+| Restart | Receipts and ACKs survive; an acknowledged envelope is not reprocessed; a modified ACK is reported. |
+| Pending | `--status` lists inbox envelopes the receiver has not processed yet (Brain stopped) with `expires_at_unverified` = emitted_at + 15 min. After that the envelope is `BLOCKED` (stale) once and the research must be re-run. Keeping 15 min (research expires) is the current decision; a longer receiver-side window would be a separate decision. |
+
+Research stays in the research lane: `data_lane=PUBLIC_RESEARCH_UNAUTHENTICATED_NOT_EXECUTION`,
+`live_market_data=false`, `brain_trade_decision_eligible=false`. It is input
+for Shadow and post-hoc review only.
+
+## Unchanged
+
+The 31 pinned V10 runtime files, the release manifest, Controller/START/STOP,
+Collector, Gateway, Watcher, Brain observer, Shadow supervisor, Excel, UI,
+colours, fonts, layout, scheduled tasks, Risk/Permission gates and Kill
+Switch. No network, broker, subprocess, timer or paid API code.
+
+## OWNER Windows check (only after OWNER approval of the exact SHA)
+
+Uses saved public data and the offline runner: no OpenAI call, no cost.
+`<PRIVATE>` is an OWNER-selected absolute folder outside the repository, for
+example `D:\100億PROJECT\AGENT_RESEARCH_INBOX`. The key is a 64-hex secret
+kept only on the PC (never in GitHub or chat).
+
+```powershell
+$env:AGENT_BRIDGE_HMAC_KEY = '<64 hex: sidecar key, kept on this PC>'
+$env:AGENT_BRAIN_RECEIVER_HMAC_KEY = '<64 hex: a DIFFERENT receiver key, never given to the sidecar>'
+cd <reviewed checkout of the approved SHA>
+# 1) sidecar: offline coordination of the saved public file, then signed handoff
+python -B scripts\agent_sdk_coordination_pilot.py --input examples\agent_sdk_public_synthetic_20261021.json --offline-test --receipt-db <PRIVATE_PARENT>\pilot_receipts.sqlite --handoff-dir <PRIVATE>
+# 2) Brain receiver: receive once, then show receipts/pending
+python -B -m scripts.v10_brain_agent_research_receiver --private-dir <PRIVATE> --once
+python -B -m scripts.v10_brain_agent_research_receiver --private-dir <PRIVATE> --status
+```
+
+PASS on the PC means: `--once` shows `RECEIVED` for the run_id, the folder has
+`agent_research_<run_id>.brain_ack.json` with `ack_kind=BRAIN_RECEIVER_ACK`,
+and `--status` (run again after closing the window) lists the run_id under
+`received_run_ids` with no `ack_mismatch_run_ids`. Run `--once` again: no new
+result (already received). Exit code 2 / `BLOCKED` is a fail-closed result,
+not a crash.
+
+`<PRIVATE_PARENT>` is the folder that contains `<PRIVATE>` (the pilot's own
+receipt database must also stay outside the repository). This exact sequence
+was run offline on the OWNER PC with a Japanese folder name: step 1 printed
+`SIGNED_PRIVATE_RESEARCH_ONLY_PENDING_RECEIVER_ACK`, step 2 `RECEIVED`, the
+status listed the run_id with no ACK mismatch, and a second `--once` returned
+no new result. That was a synthetic offline run, not an end-to-end acceptance.
+
+## Limits
+
+- HMAC proves possession of the local keys, not official market truth. The
+  receiver identity (code SHA-256, pid) is self-reported. On one PC both keys
+  sit in the same user's environment, so the key separation stops a sidecar
+  that only holds its own key, not a privileged local process. This is not a
+  sandbox.
+- The receiver is a one-shot: it receives when run. It is not yet started by
+  the V10 Controller; doing so is a separate, OWNER-approved change to pinned
+  files.
+- An envelope older than 15 minutes when the receiver runs is BLOCKED (stale),
+  so the receiver must run soon after the sidecar.
+- END_TO_END_VERIFIED requires the OWNER Windows run above; CI PASS is not it.
+
+Actual revenue, realized P&L, costs, net profit and the remainder to 10 billion yen: UNKNOWN.
